@@ -1,0 +1,194 @@
+/**
+ * lib/constants/errors の関数型定数とエクスポートの検証。
+ * 静的文字列定数は import 可能であることを確認し、関数型定数は動作を検証する。
+ */
+
+import {
+  ERR_NETWORK,
+  ERR_OFFLINE,
+  ERR_OFFLINE_ACTION,
+  ERR_TIMEOUT,
+  ERR_SESSION_EXPIRED,
+  ERR_AUTH_REQUIRED,
+  ERR_LOGIN_INVALID_CREDENTIALS,
+  ERR_ACCOUNT_SUSPENDED,
+  ERR_EMAIL_NOT_VERIFIED,
+  ERR_RATE_LIMIT,
+  ERR_RATE_LIMIT_DAILY_POSTS,
+  ERR_RATE_LIMIT_DAILY_COMMENTS,
+  ERR_RATE_LIMIT_SEARCH,
+  ERR_NOT_FOUND,
+  ERR_POST_NOT_FOUND,
+  ERR_USER_NOT_FOUND,
+  ERR_FORBIDDEN,
+  ERR_INVALID_INPUT,
+  ERR_REQUIRED_FIELD,
+  ERR_EMAIL_INVALID,
+  ERR_PASSWORD_MIN_LENGTH,
+  ERR_PASSWORD_MAX_LENGTH,
+  ERR_PASSWORD_ALPHANUMERIC,
+  ERR_CONTENT_REQUIRED,
+  ERR_COMMENT_CONTENT_REQUIRED,
+  ERR_CONTENT_TOO_LONG,
+  ERR_POST_CONTENT_TOO_LONG,
+  ERR_COMMENT_CONTENT_TOO_LONG,
+  ERR_GENRE_LIMIT,
+  ERR_IMAGE_LIMIT,
+  ERR_VIDEO_LIMIT,
+  ERR_VIDEO_PREMIUM_ONLY,
+  ERR_IMAGE_SIZE_EXCEEDED,
+  ERR_INVALID_IMAGE_FORMAT,
+  ERR_POST_CREATE_FAILED,
+  ERR_POST_UPDATE_FAILED,
+  ERR_POST_DELETE_FAILED,
+  ERR_COMMENT_CREATE_FAILED,
+  ERR_COMMENT_DELETE_FAILED,
+  ERR_LIKE_FAILED,
+  ERR_FOLLOW_FAILED,
+  ERR_BLOCK_FAILED,
+  ERR_UNBLOCK_FAILED,
+  ERR_ACCOUNT_DELETE_FAILED,
+  ERR_MEDIA_UPLOAD_FAILED,
+  ERR_SELF_ACTION,
+  ERR_PRIVATE_ACCOUNT_FOLLOW,
+  ERR_PUSH_SUBSCRIBE_FAILED,
+  ERR_PREMIUM_ONLY,
+  ERR_PURCHASE_FAILED,
+  ERR_PURCHASE_PENDING,
+  ERR_GENERIC,
+  ERR_RETRY_HINT,
+  ERR_SERVER,
+  ERR_LOAD_FAILED,
+  ERR_FEED_LOAD_FAILED,
+  ERR_NOTIFICATIONS_LOAD_FAILED,
+  ERR_PROFILE_LOAD_FAILED,
+  ERR_SEARCH_FAILED,
+  ERR_POST_LOAD_FAILED,
+} from '@/lib/constants/errors';
+
+describe('静的エラー定数', () => {
+  it('ネットワーク系定数が文字列型である', () => {
+    expect(typeof ERR_NETWORK).toBe('string');
+    expect(typeof ERR_OFFLINE).toBe('string');
+    expect(typeof ERR_OFFLINE_ACTION).toBe('string');
+    expect(typeof ERR_TIMEOUT).toBe('string');
+  });
+
+  it('認証系定数が文字列型である', () => {
+    expect(typeof ERR_SESSION_EXPIRED).toBe('string');
+    expect(typeof ERR_AUTH_REQUIRED).toBe('string');
+    expect(typeof ERR_LOGIN_INVALID_CREDENTIALS).toBe('string');
+    expect(typeof ERR_ACCOUNT_SUSPENDED).toBe('string');
+    expect(typeof ERR_EMAIL_NOT_VERIFIED).toBe('string');
+  });
+
+  it('レート制限系定数が文字列型である', () => {
+    expect(typeof ERR_RATE_LIMIT).toBe('string');
+    expect(typeof ERR_RATE_LIMIT_DAILY_POSTS).toBe('string');
+    expect(typeof ERR_RATE_LIMIT_DAILY_COMMENTS).toBe('string');
+    expect(typeof ERR_RATE_LIMIT_SEARCH).toBe('string');
+  });
+
+  it('権限・存在確認系定数が文字列型である', () => {
+    expect(typeof ERR_NOT_FOUND).toBe('string');
+    expect(typeof ERR_POST_NOT_FOUND).toBe('string');
+    expect(typeof ERR_USER_NOT_FOUND).toBe('string');
+    expect(typeof ERR_FORBIDDEN).toBe('string');
+  });
+
+  it('入力バリデーション系の静的定数が文字列型である', () => {
+    expect(typeof ERR_INVALID_INPUT).toBe('string');
+    expect(typeof ERR_REQUIRED_FIELD).toBe('string');
+    expect(typeof ERR_EMAIL_INVALID).toBe('string');
+    expect(typeof ERR_PASSWORD_MIN_LENGTH).toBe('string');
+    expect(typeof ERR_PASSWORD_MAX_LENGTH).toBe('string');
+    expect(typeof ERR_PASSWORD_ALPHANUMERIC).toBe('string');
+    expect(typeof ERR_CONTENT_REQUIRED).toBe('string');
+    expect(typeof ERR_COMMENT_CONTENT_REQUIRED).toBe('string');
+    expect(typeof ERR_VIDEO_PREMIUM_ONLY).toBe('string');
+    expect(typeof ERR_IMAGE_SIZE_EXCEEDED).toBe('string');
+    expect(typeof ERR_INVALID_IMAGE_FORMAT).toBe('string');
+  });
+
+  it('CRUD失敗系定数が文字列型である', () => {
+    expect(typeof ERR_POST_CREATE_FAILED).toBe('string');
+    expect(typeof ERR_POST_UPDATE_FAILED).toBe('string');
+    expect(typeof ERR_POST_DELETE_FAILED).toBe('string');
+    expect(typeof ERR_COMMENT_CREATE_FAILED).toBe('string');
+    expect(typeof ERR_COMMENT_DELETE_FAILED).toBe('string');
+    expect(typeof ERR_LIKE_FAILED).toBe('string');
+    expect(typeof ERR_FOLLOW_FAILED).toBe('string');
+    expect(typeof ERR_BLOCK_FAILED).toBe('string');
+    expect(typeof ERR_UNBLOCK_FAILED).toBe('string');
+    expect(typeof ERR_ACCOUNT_DELETE_FAILED).toBe('string');
+    expect(typeof ERR_MEDIA_UPLOAD_FAILED).toBe('string');
+  });
+
+  it('ソーシャル操作系定数が文字列型である', () => {
+    expect(typeof ERR_SELF_ACTION).toBe('string');
+    expect(typeof ERR_PRIVATE_ACCOUNT_FOLLOW).toBe('string');
+  });
+
+  it('Push通知・課金・汎用系定数が文字列型である', () => {
+    expect(typeof ERR_PUSH_SUBSCRIBE_FAILED).toBe('string');
+    expect(typeof ERR_PREMIUM_ONLY).toBe('string');
+    expect(typeof ERR_PURCHASE_FAILED).toBe('string');
+    expect(typeof ERR_PURCHASE_PENDING).toBe('string');
+    expect(typeof ERR_GENERIC).toBe('string');
+    expect(typeof ERR_RETRY_HINT).toBe('string');
+    expect(typeof ERR_SERVER).toBe('string');
+    expect(typeof ERR_LOAD_FAILED).toBe('string');
+    expect(typeof ERR_FEED_LOAD_FAILED).toBe('string');
+    expect(typeof ERR_NOTIFICATIONS_LOAD_FAILED).toBe('string');
+    expect(typeof ERR_PROFILE_LOAD_FAILED).toBe('string');
+    expect(typeof ERR_SEARCH_FAILED).toBe('string');
+    expect(typeof ERR_POST_LOAD_FAILED).toBe('string');
+  });
+});
+
+describe('関数型エラー定数', () => {
+  describe('ERR_CONTENT_TOO_LONG', () => {
+    it('max 文字数を含むメッセージを返す', () => {
+      expect(ERR_CONTENT_TOO_LONG(100)).toBe('100文字以内で入力してください。');
+      expect(ERR_CONTENT_TOO_LONG(500)).toBe('500文字以内で入力してください。');
+    });
+  });
+
+  describe('ERR_POST_CONTENT_TOO_LONG', () => {
+    it('無料プランの文字数制限メッセージを返す', () => {
+      expect(ERR_POST_CONTENT_TOO_LONG(500)).toBe('投稿は500文字以内で入力してください。');
+    });
+
+    it('プレミアムプランの文字数制限メッセージを返す', () => {
+      expect(ERR_POST_CONTENT_TOO_LONG(2000)).toBe('投稿は2000文字以内で入力してください。');
+    });
+  });
+
+  describe('ERR_COMMENT_CONTENT_TOO_LONG', () => {
+    it('コメント文字数制限メッセージを返す', () => {
+      expect(ERR_COMMENT_CONTENT_TOO_LONG(500)).toBe('コメントは500文字以内で入力してください。');
+    });
+  });
+
+  describe('ERR_GENRE_LIMIT', () => {
+    it('ジャンル選択上限メッセージを返す', () => {
+      expect(ERR_GENRE_LIMIT(3)).toBe('ジャンルは3つまで選択できます。');
+    });
+  });
+
+  describe('ERR_IMAGE_LIMIT', () => {
+    it('無料プラン画像枚数制限メッセージを返す', () => {
+      expect(ERR_IMAGE_LIMIT(4)).toBe('画像は4枚までです。');
+    });
+
+    it('プレミアムプラン画像枚数制限メッセージを返す', () => {
+      expect(ERR_IMAGE_LIMIT(6)).toBe('画像は6枚までです。');
+    });
+  });
+
+  describe('ERR_VIDEO_LIMIT', () => {
+    it('動画本数制限メッセージを返す', () => {
+      expect(ERR_VIDEO_LIMIT(1)).toBe('動画は1本までです。');
+    });
+  });
+});

@@ -48,8 +48,12 @@
   },
   "jest": {
     "preset": "jest-expo",
+    "setupFilesAfterEnv": [
+      "<rootDir>/__tests__/setup.ts"
+    ],
     "testPathIgnorePatterns": [
-      "__tests__/utils/test-utils\\.tsx$"
+      "__tests__/utils/test-utils\\.tsx$",
+      "__tests__/setup\\.ts$"
     ],
     "transformIgnorePatterns": [
       "node_modules/(?!((jest-)?react-native|@react-native(-community)?)|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@sentry/react-native|native-base|react-native-svg)"
@@ -57,6 +61,7 @@
     "collectCoverageFrom": [
       "lib/**/*.{ts,tsx}",
       "hooks/**/*.{ts,tsx}",
+      "components/**/*.{ts,tsx}",
       "!lib/api/generated/**",
       "!**/*.d.ts",
       "!**/node_modules/**"
