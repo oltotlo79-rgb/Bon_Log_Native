@@ -43,8 +43,8 @@ export default function TabsLayout() {
           tabBarLabel: ({ focused }) => (
             <TabLabel label="ホーム" focused={focused} />
           ),
-          tabBarIcon: ({ color }) => (
-            <TabBarIcon name="home" color={color} size={20} />
+          tabBarIcon: ({ color, focused }) => (
+            <TabBarIcon name="home" color={color} focused={focused} size={20} />
           ),
           tabBarAccessibilityLabel: 'ホーム',
         }}
@@ -56,8 +56,8 @@ export default function TabsLayout() {
           tabBarLabel: ({ focused }) => (
             <TabLabel label="検索" focused={focused} />
           ),
-          tabBarIcon: ({ color }) => (
-            <TabBarIcon name="search" color={color} size={20} />
+          tabBarIcon: ({ color, focused }) => (
+            <TabBarIcon name="search" color={color} focused={focused} size={20} />
           ),
           tabBarAccessibilityLabel: '検索',
         }}
@@ -69,8 +69,8 @@ export default function TabsLayout() {
           tabBarLabel: ({ focused }) => (
             <TabLabel label="通知" focused={focused} />
           ),
-          tabBarIcon: ({ color }) => (
-            <TabBarIcon name="bell" color={color} size={20} />
+          tabBarIcon: ({ color, focused }) => (
+            <TabBarIcon name="bell" color={color} focused={focused} size={20} />
           ),
           tabBarAccessibilityLabel: '通知',
         }}
@@ -82,8 +82,8 @@ export default function TabsLayout() {
           tabBarLabel: ({ focused }) => (
             <TabLabel label="プロフィール" focused={focused} />
           ),
-          tabBarIcon: ({ color }) => (
-            <TabBarIcon name="user" color={color} size={20} />
+          tabBarIcon: ({ color, focused }) => (
+            <TabBarIcon name="user" color={color} focused={focused} size={20} />
           ),
           tabBarAccessibilityLabel: 'プロフィール',
         }}
