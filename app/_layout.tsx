@@ -1,11 +1,32 @@
+import { useEffect, useRef } from 'react';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { StyleSheet } from 'react-native';
+import { QueryClientProvider } from '@tanstack/react-query';
+import type { QueryClient } from '@tanstack/react-query';
+import { createQueryClient } from '@/lib/queries/query-client';
+import { setupOnlineManager, setupFocusManager } from '@/lib/queries/managers';
 
 export default function RootLayout() {
+  // React の StrictMode 二重発火で重複生成しないよう ref で保持する
+  const queryClientRef = useRef<QueryClient | null>(null);
+  if (queryClientRef.current === null) {
+    queryClientRef.current = createQueryClient();
+  }
+
+  useEffect(() => {
+    const cleanupOnline = setupOnlineManager();
+    const cleanupFocus = setupFocusManager();
+    return () => {
+      cleanupOnline();
+      cleanupFocus();
+    };
+  }, []);
+
   return (
+    <QueryClientProvider client={queryClientRef.current}>
     <GestureHandlerRootView style={styles.root}>
       <SafeAreaProvider>
         <Stack>
@@ -60,6 +81,7 @@ export default function RootLayout() {
         <StatusBar style="dark" />
       </SafeAreaProvider>
     </GestureHandlerRootView>
+    </QueryClientProvider>
   );
 }
 

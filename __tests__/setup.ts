@@ -122,3 +122,43 @@ jest.mock('@expo/vector-icons', () => ({
 jest.mock('expo-status-bar', () => ({
   StatusBar: () => null,
 }));
+
+// expo-image のモック
+jest.mock('expo-image', () => {
+  const React = require('react');
+  const { Image } = require('react-native');
+  return {
+    Image: ({
+      source,
+      style,
+      contentFit: _contentFit,
+      transition: _transition,
+      recyclingKey: _recyclingKey,
+      placeholder: _placeholder,
+      accessibilityLabel,
+      accessibilityRole,
+      testID,
+      ...rest
+    }: {
+      source?: unknown;
+      style?: unknown;
+      contentFit?: string;
+      transition?: number;
+      recyclingKey?: string;
+      placeholder?: unknown;
+      accessibilityLabel?: string;
+      accessibilityRole?: string;
+      testID?: string;
+      [key: string]: unknown;
+    }) =>
+      React.createElement(Image, {
+        source,
+        style,
+        accessibilityLabel,
+        accessibilityRole,
+        testID,
+        ...rest,
+      }),
+  };
+});
+

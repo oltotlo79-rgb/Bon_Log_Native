@@ -1,4 +1,5 @@
-import { View, Text, StyleSheet, Pressable, Platform } from 'react-native';
+import { View, StyleSheet, Pressable, Platform } from 'react-native';
+import { Text } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -6,25 +7,27 @@ import {
   colorBackground,
   colorSurfaceWashi,
   colorTextPrimary,
-  colorTextSecondary,
   colorBorderLight,
   colorFab,
   colorFabText,
   spacing4,
   spacing5,
-  textBase,
   textLg,
   letterSpacingWidest,
   radiusFull,
   shadowWashiLg,
 } from '@/lib/constants/design-tokens';
-import { ROUTE_POST_NEW } from '@/lib/constants/routes';
+import { ROUTE_POST_NEW, ROUTE_SEARCH } from '@/lib/constants/routes';
+import { ScreenEmpty } from '@/components/common/ScreenEmpty';
+import { OfflineBanner } from '@/components/common/OfflineBanner';
+import { useOnlineStatus } from '@/hooks/use-online-status';
 
 const TAB_BAR_HEIGHT = 60;
 const FAB_SIZE = 56;
 
 export default function FeedScreen() {
   const insets = useSafeAreaInsets();
+  const isOnline = useOnlineStatus();
 
   // FAB の bottom は BottomTabBar 高さ + セーフエリア下端 + spacing4 分を確保する（仕様 §4.2）
   const fabBottom =
@@ -36,21 +39,27 @@ export default function FeedScreen() {
     router.push(ROUTE_POST_NEW);
   }
 
+  function handleSearchAction() {
+    router.push(ROUTE_SEARCH);
+  }
+
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
+      <OfflineBanner isVisible={!isOnline} />
+
       <View style={styles.header}>
         <Text style={styles.headerTitle} accessibilityRole="header">
           ホーム
         </Text>
       </View>
-      <View style={styles.content}>
-        <Text style={styles.placeholder}>
-          フィード（実装予定）
-        </Text>
-        <Text style={styles.description}>
-          フォロー中のユーザーの投稿が表示されます。
-        </Text>
-      </View>
+
+      <ScreenEmpty
+        iconName="leaf-outline"
+        title="タイムラインに投稿がありません"
+        description="ユーザーをフォローすると、その人の投稿がここに表示されます"
+        actionLabel="ユーザーを検索"
+        onAction={handleSearchAction}
+      />
 
       <Pressable
         style={({ pressed }) => [
@@ -87,22 +96,6 @@ const styles = StyleSheet.create({
     ...textLg,
     color: colorTextPrimary,
     letterSpacing: letterSpacingWidest,
-  },
-  content: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: spacing4,
-    gap: spacing4,
-  },
-  placeholder: {
-    ...textLg,
-    color: colorTextPrimary,
-  },
-  description: {
-    ...textBase,
-    color: colorTextSecondary,
-    textAlign: 'center',
   },
   fab: {
     position: 'absolute',
