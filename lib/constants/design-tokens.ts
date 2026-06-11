@@ -186,9 +186,12 @@ export const textXs = { fontSize: 10, lineHeight: 14 } satisfies Pick<TextStyle,
 export const textSm = { fontSize: 12, lineHeight: 18 } satisfies Pick<TextStyle, 'fontSize' | 'lineHeight'>;
 export const textBase = { fontSize: 14, lineHeight: 22 } satisfies Pick<TextStyle, 'fontSize' | 'lineHeight'>;
 export const textMd = { fontSize: 15, lineHeight: 23 } satisfies Pick<TextStyle, 'fontSize' | 'lineHeight'>;
-export const textLg = { fontSize: 17, fontWeight: '600' as TextStyle['fontWeight'], lineHeight: 24 } satisfies Pick<TextStyle, 'fontSize' | 'fontWeight' | 'lineHeight'>;
-export const textXl = { fontSize: 20, fontWeight: '700' as TextStyle['fontWeight'], lineHeight: 28 } satisfies Pick<TextStyle, 'fontSize' | 'fontWeight' | 'lineHeight'>;
-export const text2xl = { fontSize: 24, fontWeight: '700' as TextStyle['fontWeight'], lineHeight: 32 } satisfies Pick<TextStyle, 'fontSize' | 'fontWeight' | 'lineHeight'>;
+const fontWeightSemibold: TextStyle['fontWeight'] = '600';
+const fontWeightBold: TextStyle['fontWeight'] = '700';
+
+export const textLg = { fontSize: 17, fontWeight: fontWeightSemibold, lineHeight: 24 } satisfies Pick<TextStyle, 'fontSize' | 'fontWeight' | 'lineHeight'>;
+export const textXl = { fontSize: 20, fontWeight: fontWeightBold, lineHeight: 28 } satisfies Pick<TextStyle, 'fontSize' | 'fontWeight' | 'lineHeight'>;
+export const text2xl = { fontSize: 24, fontWeight: fontWeightBold, lineHeight: 32 } satisfies Pick<TextStyle, 'fontSize' | 'fontWeight' | 'lineHeight'>;
 
 /** 字間トークン（Web の letter-spacing 規約に対応） */
 export const letterSpacingNone = 0;
