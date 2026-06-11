@@ -8,6 +8,38 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import type { QueryClient } from '@tanstack/react-query';
 import { createQueryClient } from '@/lib/queries/query-client';
 import { setupOnlineManager, setupFocusManager } from '@/lib/queries/managers';
+import { initSentry, captureException } from '@/lib/monitoring/sentry';
+import { ScreenError } from '@/components/common/ScreenError';
+
+// Sentry はモジュールロード時（アプリ起動最初期）に1回だけ初期化する
+initSentry();
+
+// ---------------------------------------------------------------------------
+// ErrorBoundary（ルートレベル）
+// ---------------------------------------------------------------------------
+
+export function ErrorBoundary({
+  error,
+  retry,
+}: {
+  error: Error;
+  retry: () => void;
+}) {
+  // ErrorBoundary が捕捉した例外は予期しないエラーとして Sentry へ送信する
+  captureException(error);
+
+  return (
+    <ScreenError
+      title="エラーが発生しました"
+      onRetry={retry}
+      debugMessage={error.message}
+    />
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Root Layout
+// ---------------------------------------------------------------------------
 
 export default function RootLayout() {
   // StrictMode の二重発火でも再生成されないよう lazy init で保持する
