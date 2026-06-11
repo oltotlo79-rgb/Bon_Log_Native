@@ -30,6 +30,7 @@ model: opus
 - エラーは `lib/constants/errors.ts` 定数。画面に 4 状態（ローディング/空/エラー/オフライン）があるか（`error-handling.md`）
 - レイヤ分離・依存方向（`architecture.md`）— UI から `lib/api/` 直接呼び出しがないか、`generated/` の手編集がないか
 - a11y: accessibilityLabel / タップターゲット 44pt（`components.md`）
+- iOS 互換: Android 専用 API・ライブラリが `Platform.OS` 分岐・抽象化なしで直書きされていないか（CLAUDE.md 核心ルール11 — リリースは Android 先行だが iOS 互換実装を維持）
 - ストア審査要件: 外部決済への誘導がないか、通報・ブロック導線、プレミアム判定がサーバー購読状態ベースか（`store-compliance.md`, `billing.md`）
 - コメント規約（WHY のみ、WHAT/タスク参照/死んだコードなし）（`comments.md`）
 

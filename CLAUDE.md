@@ -7,8 +7,9 @@ alwaysApply: true
 
 ## プロジェクト概要
 
-盆栽SNS「Bon_Log」(www.bon-log.com) の**スマホネイティブアプリ (iOS / Android)** を React Native (Expo) で開発するリポジトリ。
+盆栽SNS「Bon_Log」(www.bon-log.com) の**スマホネイティブアプリ**を React Native (Expo) で開発するリポジトリ。
 
+- **リリースは Android (Google Play) 先行。iOS は当面リリースしないが、iOS でも動作するクロスプラットフォーム実装を維持する**（計画書 §1.5）
 - DB・サーバーは既存 Web リポジトリ **Bon_Log_cfw** (Next.js 16 / Prisma 6 / Supabase PostgreSQL) を共有する
 - アプリからのデータアクセスは**必ず Next.js サーバーの REST API (`/api/v1/*`) 経由**。直接の DB 接続は存在しない
 - 計画書: `docs/plans/react-native-mobile-app-plan-2026-06-11.md`（フェーズ・スコープ・ADR の正本）
@@ -21,8 +22,8 @@ MVP スコープ: フィード / 投稿 CRUD / コメント / いいね / フォ
 
 ```bash
 npx expo start             # 開発サーバー起動
-npx expo run:ios           # iOS development build 作成 + 起動
-npx expo run:android       # Android development build 作成 + 起動
+npx expo run:android       # Android development build 作成 + 起動（開発の基本）
+npx expo run:ios           # iOS 互換確認用（要 macOS。リリースは Android 先行）
 npm run lint               # ESLint (eslint-config-expo)
 npx tsc --noEmit           # TypeScript 型チェック
 
@@ -57,12 +58,12 @@ eas submit                        # TestFlight / Play 内部テストへ提出
 - **サーバー状態**: TanStack Query（無限スクロールはカーソルベース）
 - **API クライアント**: OpenAPI スペックからの自動生成クライアント（手書き fetch 禁止）
 - **画像**: expo-image (表示) / expo-image-picker (取得) / expo-image-manipulator (アップロード前圧縮)
-- **Push 通知**: expo-notifications + FCM / APNs
-- **課金**: RevenueCat (react-native-purchases)
+- **Push 通知**: expo-notifications + FCM（APNs は将来の iOS リリース時に追加）
+- **課金**: RevenueCat (react-native-purchases) — 当面 Play Billing のみ接続
 - **トークン保管**: expo-secure-store（AsyncStorage へのトークン保存は禁止）
 - **監視**: @sentry/react-native（既存 Sentry プロジェクトに追加）
 - **テスト**: Jest (jest-expo) + React Native Testing Library / E2E: Maestro
-- **ビルド / 配布**: EAS Build → TestFlight / Play 内部テスト
+- **ビルド / 配布**: EAS Build → Play 内部テスト（TestFlight は将来の iOS リリース時）
 - **スタイリング**: 未確定（NativeWind 採用可否は Phase 3 着手前に決定 — 計画書 未決事項#3）。確定までは和風デザイントークンの定数化を前提に設計する
 - **API サーバー**: https://www.bon-log.com（Bon_Log_cfw / Next.js 16 / fly.io）
 
@@ -78,6 +79,7 @@ eas submit                        # TestFlight / Play 内部テストへ提出
 8. **`any` / `as` キャスト禁止** — 型ガードか Zod で安全に絞り込む。strict mode を維持
 9. **既存ヘルパーを再利用** — 新コード追加前に `lib/`、`hooks/`、`components/` に同等機能がないか確認し、あればそれを使う
 10. **新機能・バグ修正にはテストを伴う** — カバレッジ閾値（branches 80%, functions/lines/statements 85%）を下回らない
+11. **iOS 互換を壊さない** — リリースは Android 先行だが、Android 専用 API・ライブラリは `Platform.OS` 分岐か抽象化レイヤで分離し、iOS でも動作する実装を維持する（計画書 §1.5）
 
 ## アーキテクチャ（目標構成）
 
@@ -128,8 +130,8 @@ __tests__/              # Jest ユニットテスト (src 構成をミラー)
 ```bash
 EXPO_PUBLIC_API_BASE_URL          # API ベース URL (本番: https://www.bon-log.com)
 EXPO_PUBLIC_SENTRY_DSN            # Sentry (RN)
-EXPO_PUBLIC_REVENUECAT_IOS_API_KEY, EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY  # RevenueCat 公開SDKキー
-EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID, EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID, EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID  # Google OAuth
+EXPO_PUBLIC_REVENUECAT_IOS_API_KEY, EXPO_PUBLIC_REVENUECAT_ANDROID_API_KEY  # RevenueCat 公開SDKキー（IOS は将来の iOS リリース用）
+EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID, EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID, EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID  # Google OAuth（IOS は将来用）
 SENTRY_AUTH_TOKEN                 # ビルド時のみ (EAS Secrets 管理)
 SUPABASE_ACCESS_TOKEN             # Claude Code の MCP (supabase) 用。アプリからは一切使用しない
 ```

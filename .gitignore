@@ -34,3 +34,5 @@ coverage/
 *.tsbuildinfo
 .DS_Store
 *.orig.*
+
+/docs/plans/

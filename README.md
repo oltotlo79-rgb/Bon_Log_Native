@@ -1,8 +1,10 @@
 # Bon_Log Native
 
-盆栽SNS「[Bon_Log](https://www.bon-log.com)」のスマホネイティブアプリ (iOS / Android)。
+盆栽SNS「[Bon_Log](https://www.bon-log.com)」のスマホネイティブアプリ。
 React Native (Expo) で開発し、DB・サーバーは Web リポジトリ **Bon_Log_cfw** (Next.js 16) を共有する。
 アプリからのデータアクセスはすべてサーバーの REST API (`/api/v1/*`) 経由。
+
+**リリースは Android (Google Play) 先行。** iOS は当面リリースしないが、将来の公開に備え iOS 互換のクロスプラットフォーム実装を維持する。
 
 ## 現状
 

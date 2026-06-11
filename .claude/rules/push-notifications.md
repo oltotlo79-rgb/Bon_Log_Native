@@ -6,7 +6,7 @@ globs: "lib/push/**/*.ts"
 
 ## 構成（計画書 工事#4）
 
-- 受信: expo-notifications + FCM / APNs
+- 受信: expo-notifications + FCM（APNs は将来の iOS リリース時に追加 — 計画書 §1.5。expo-notifications の抽象化を維持し、APNs 追加時にアプリ側ロジックが変わらない構造にする）
 - 送信はサーバーの `lib/services/notification-core`（Bon_Log_cfw 管轄）。通知の発火条件・本文はサーバーが決める
 - クライアントの責務は**許可取得・デバイストークン登録・受信表示・タップ遷移のみ**
 

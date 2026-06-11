@@ -1,6 +1,7 @@
 # Web (Bon_Log_cfw) からのルール移植対応表
 
 作成日: 2026-06-11
+改訂: 2026-06-12 — Android 先行リリース方針（計画書 §1.5）を計画書・CLAUDE.md・関連ルール（store-compliance / billing / push-notifications / setup-dev / components / evaluator）に反映
 目的: Web リポジトリの開発規約・エージェント構成・MCP 設定を、モバイル (React Native / Expo) の文脈に合わせてどう移植・改定したかの記録。
 
 正本の構成は Web と同一の思想を維持している:
@@ -59,4 +60,5 @@
 
 1. **NativeWind 採用可否**（計画書 未決事項#3）— 確定まではデザイントークン定数 + StyleSheet 前提
 2. **OpenAPI クライアント生成ツールの選定**（openapi-typescript / orval / hey-api）— Phase 1 のスペック生成基盤確定後
-3. **Sign in with Apple の要否**（App Store Guideline 4.8、移植時に追加した論点）— Google ログインを iOS で出すなら原則必要。Phase 4 までに決定
+3. **Sign in with Apple の要否**（App Store Guideline 4.8、移植時に追加した論点）— 2026-06-12 改訂で iOS リリース自体が将来スコープになったため、iOS 公開判断時に決定（計画書 §10）
+4. **iOS 互換性の検証方法**（2026-06-12 追加 — 計画書 未決事項#4）— EAS の iOS simulator ビルドの頻度・macOS 環境の要否。Phase 3 着手前
