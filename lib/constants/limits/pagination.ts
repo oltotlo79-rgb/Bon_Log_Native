@@ -1,0 +1,26 @@
+/**
+ * @module lib/constants/limits/pagination
+ * ページネーション・データ取得件数の制限値（クライアント事前検証用ミラー）。
+ * 値の正はサーバー。サーバーエラー (400/429) のハンドリングは必須（api-client.md）。
+ */
+
+/** フィードのデフォルトページ取得件数 */
+export const FEED_PAGE_SIZE = 20;
+
+/** 通知一覧のページ取得件数 */
+export const NOTIFICATIONS_PAGE_SIZE = 20;
+
+/** コメント一覧のページ取得件数 */
+export const COMMENTS_PAGE_SIZE = 20;
+
+/** ユーザー検索・一覧のページ取得件数 */
+export const USERS_PAGE_SIZE = 20;
+
+/** おすすめユーザーの取得件数（検索画面の初期表示） */
+export const RECOMMENDED_USERS_LIMIT = 5;
+
+/** トレンドハッシュタグの取得件数 */
+export const TRENDING_HASHTAGS_LIMIT = 10;
+
+/** ページネーション limit パラメータの最大値 */
+export const MAX_PAGE_LIMIT = 100;
