@@ -95,7 +95,7 @@ describe('PostCardContent', () => {
       renderContent('#黒松');
       fireEvent.press(screen.getByRole('link', { name: '#黒松を検索' }));
       expect(mockRouter.push).toHaveBeenCalledWith(
-        `/(tabs)/search?q=${encodeURIComponent('#黒松')}`
+        { pathname: '/(tabs)/search', params: { q: '#黒松' } }
       );
     });
   });

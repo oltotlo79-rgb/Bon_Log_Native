@@ -8,6 +8,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { router } from 'expo-router';
+import { routeSearchByGenre } from '@/lib/constants/routes';
 import {
   colorActionSecondary,
   colorActionSecondaryText,
@@ -46,7 +47,7 @@ export function PostGenreTags({ genres }: PostGenreTagsProps) {
   if (genres.length === 0) return null;
 
   function handlePressGenre(genreId: string) {
-    router.push(`/(tabs)/search?genre=${encodeURIComponent(genreId)}`);
+    router.push(routeSearchByGenre(genreId));
   }
 
   return (

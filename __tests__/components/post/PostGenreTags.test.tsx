@@ -43,7 +43,7 @@ describe('PostGenreTags', () => {
     render(<PostGenreTags genres={[genre]} />);
     fireEvent.press(screen.getByRole('button', { name: '松柏類で検索' }));
     expect(mockRouter.push).toHaveBeenCalledWith(
-      `/(tabs)/search?genre=${encodeURIComponent('genre-abc')}`
+      { pathname: '/(tabs)/search', params: { genre: 'genre-abc' } }
     );
   });
 

@@ -5,7 +5,7 @@
  * 仕様: docs/design/post-card.md §7
  */
 
-import React, { useCallback } from 'react';
+import React, { useMemo } from 'react';
 import { View, StyleSheet, useWindowDimensions } from 'react-native';
 import { Image } from 'expo-image';
 import {
@@ -80,14 +80,14 @@ export function PostImageGallery({ media, authorNickname }: PostImageGalleryProp
   const { width: screenWidth } = useWindowDimensions();
 
   // 画像のみを対象とし、sortOrder でソートして最大 4 枚に絞る
-  const images = useCallback(
+  const images = useMemo(
     () =>
       media
         .filter((m) => m.type === 'image')
         .sort((a, b) => a.sortOrder - b.sortOrder)
         .slice(0, 4),
     [media]
-  )();
+  );
 
   if (images.length === 0) return null;
 

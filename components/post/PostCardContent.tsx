@@ -19,7 +19,7 @@ import {
   textSm,
 } from '@/lib/constants/design-tokens';
 import { parseContentSegments } from '@/lib/utils/parse-content-segments';
-import { routeUserDetail } from '@/lib/constants/routes';
+import { routeUserDetail, routeSearchByQuery } from '@/lib/constants/routes';
 
 // ---------------------------------------------------------------------------
 // 定数（post-card.md §6.1 / lib/constants/limits/post.ts に合わせた値）
@@ -87,9 +87,7 @@ export function PostCardContent({
   }
 
   function handlePressHashtag(tag: string) {
-    // タグから # を除いた値を検索クエリとして渡す
-    const encodedTag = encodeURIComponent(tag);
-    router.push(`/(tabs)/search?q=${encodedTag}`);
+    router.push(routeSearchByQuery(tag));
   }
 
   return (
