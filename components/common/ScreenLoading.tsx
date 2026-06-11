@@ -5,7 +5,7 @@
  * 仕様: docs/design/common-states.md §2
  */
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Animated, StyleSheet, ActivityIndicator } from 'react-native';
 import {
   colorBackground,
@@ -26,18 +26,16 @@ import {
 // ---------------------------------------------------------------------------
 
 function SkeletonBlock({ hasImage = false }: { hasImage?: boolean }) {
-  const shimmer = useRef(new Animated.Value(0)).current;
+  // Animated.Value をレンダー間で安定させるため lazy init で保持する
+  const [shimmer] = useState(() => new Animated.Value(0));
 
   useEffect(() => {
-    // 左から右へのシマーアニメーションをループ実行する
-    // react/react-native-renderer のバージョン不一致により jest テスト環境では
-    // useNativeDriver: true がクラッシュするため false を使う。
-    // 実機では Reanimated 移行時に true に戻すことを推奨（performance.md）。
     const animation = Animated.loop(
       Animated.sequence([
         Animated.timing(shimmer, {
           toValue: 1,
           duration: durationSlow,
+          // backgroundColor アニメーションはネイティブドライバー非対応
           useNativeDriver: false,
         }),
         Animated.timing(shimmer, {

@@ -5,7 +5,7 @@
  * 仕様: docs/design/common-states.md §5
  */
 
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, Animated } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -46,16 +46,14 @@ type OfflineBannerProps = {
 
 export function OfflineBanner({ isVisible, message = ERR_OFFLINE }: OfflineBannerProps) {
   const insets = useSafeAreaInsets();
-  const translateY = useRef(new Animated.Value(-BANNER_HEIGHT - insets.top)).current;
+  // Animated.Value をレンダー間で安定させるため lazy init で保持する
+  const [translateY] = useState(() => new Animated.Value(-BANNER_HEIGHT - insets.top));
 
   useEffect(() => {
-    // react/react-native-renderer のバージョン不一致により jest テスト環境では
-    // useNativeDriver: true がクラッシュするため false を使う。
-    // 実機では Reanimated 移行時に true に戻すことを推奨（performance.md）。
     Animated.timing(translateY, {
       toValue: isVisible ? 0 : -BANNER_HEIGHT - insets.top,
       duration: isVisible ? durationNormal : durationFast,
-      useNativeDriver: false,
+      useNativeDriver: true,
     }).start();
   }, [isVisible, translateY, insets.top]);
 

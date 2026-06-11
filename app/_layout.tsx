@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -10,11 +10,8 @@ import { createQueryClient } from '@/lib/queries/query-client';
 import { setupOnlineManager, setupFocusManager } from '@/lib/queries/managers';
 
 export default function RootLayout() {
-  // React の StrictMode 二重発火で重複生成しないよう ref で保持する
-  const queryClientRef = useRef<QueryClient | null>(null);
-  if (queryClientRef.current === null) {
-    queryClientRef.current = createQueryClient();
-  }
+  // StrictMode の二重発火でも再生成されないよう lazy init で保持する
+  const [queryClient] = useState<QueryClient>(() => createQueryClient());
 
   useEffect(() => {
     const cleanupOnline = setupOnlineManager();
@@ -26,7 +23,7 @@ export default function RootLayout() {
   }, []);
 
   return (
-    <QueryClientProvider client={queryClientRef.current}>
+    <QueryClientProvider client={queryClient}>
     <GestureHandlerRootView style={styles.root}>
       <SafeAreaProvider>
         <Stack>
