@@ -102,7 +102,6 @@ const styles = StyleSheet.create({
     ...textBase,
     color: colorTextSecondary,
     textAlign: 'center',
-    lineHeight: 22,
   },
   hint: {
     ...textSm,

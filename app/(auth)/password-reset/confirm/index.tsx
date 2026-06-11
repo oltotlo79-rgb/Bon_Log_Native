@@ -34,34 +34,26 @@ import {
 } from '@/lib/constants/design-tokens';
 import { routes } from '@/lib/constants/routes';
 import { TIMEOUT_AUTO_REDIRECT } from '@/lib/constants/limits';
+import {
+  ERR_NEW_PASSWORD_REQUIRED,
+  ERR_PASSWORD_CONFIRM_REQUIRED,
+  ERR_PASSWORD_MISMATCH,
+  // API 接続後フェーズで使用（現段階は送信未接続のため未使用）
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  ERR_RESET_LINK_INVALID,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  ERR_PASSWORD_UPDATE_FAILED,
+  MSG_RESET_LINK_INVALID_TITLE,
+  MSG_RESET_LINK_INVALID_BODY,
+  MSG_PASSWORD_UPDATED_TITLE,
+  MSG_PASSWORD_UPDATED_BODY,
+} from '@/lib/constants/errors';
 
 // ---------------------------------------------------------------------------
 // 状態の型
 // ---------------------------------------------------------------------------
 
 type PageState = 'token-invalid' | 'form' | 'success';
-
-// ---------------------------------------------------------------------------
-// エラー文言（auth-forms.md §5.5 準拠）
-// ---------------------------------------------------------------------------
-
-const ERR_PASSWORD_REQUIRED = '新しいパスワードを入力してください';
-const ERR_CONFIRM_REQUIRED = 'パスワード（確認）を入力してください';
-const MSG_PASSWORD_MISMATCH = 'パスワードが一致しません';
-// API 接続後にエラーハンドリングで使用する定数。現段階では送信未接続のため未使用。
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const ERR_RESET_LINK_INVALID =
-  'リセットリンクが無効または期限切れです。もう一度お試しください。';
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const MSG_RESET_UPDATE_ERROR = 'パスワードの更新に失敗しました。再度お試しください。';
-
-const MSG_TOKEN_INVALID_TITLE = 'リンクが無効です';
-const MSG_TOKEN_INVALID_BODY =
-  'リセットリンクが無効または期限切れです。もう一度パスワードリセットをお試しください。';
-
-const MSG_SUCCESS_TITLE = 'パスワードを更新しました';
-const MSG_SUCCESS_BODY =
-  '新しいパスワードでログインできます。ログインページへ移動します...';
 
 // ---------------------------------------------------------------------------
 // Component
@@ -101,13 +93,13 @@ export default function PasswordResetConfirmScreen() {
   }, [pageState]);
 
   function validatePasswordField(value: string): string | null {
-    if (value.length === 0) return ERR_PASSWORD_REQUIRED;
+    if (value.length === 0) return ERR_NEW_PASSWORD_REQUIRED;
     return validatePassword(value);
   }
 
   function validateConfirmField(value: string): string | null {
-    if (value.length === 0) return ERR_CONFIRM_REQUIRED;
-    if (value !== password) return MSG_PASSWORD_MISMATCH;
+    if (value.length === 0) return ERR_PASSWORD_CONFIRM_REQUIRED;
+    if (value !== password) return ERR_PASSWORD_MISMATCH;
     return null;
   }
 
@@ -139,7 +131,7 @@ export default function PasswordResetConfirmScreen() {
     //   成功 → setPageState('success')
     //   トークン無効 → setPageState('token-invalid') または setFormError(ERR_RESET_LINK_INVALID)
     //   network error → setFormError(ERR_NETWORK)
-    //   other → setFormError(MSG_RESET_UPDATE_ERROR)
+    //   other → setFormError(ERR_PASSWORD_UPDATE_FAILED)
     setIsSubmitting(false);
   }
 
@@ -148,8 +140,8 @@ export default function PasswordResetConfirmScreen() {
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.scrollContent}>
           <View style={styles.errorBanner}>
-            <Text style={styles.errorBannerTitle}>{MSG_TOKEN_INVALID_TITLE}</Text>
-            <Text style={styles.errorBannerBody}>{MSG_TOKEN_INVALID_BODY}</Text>
+            <Text style={styles.errorBannerTitle}>{MSG_RESET_LINK_INVALID_TITLE}</Text>
+            <Text style={styles.errorBannerBody}>{MSG_RESET_LINK_INVALID_BODY}</Text>
           </View>
 
           <Pressable
@@ -179,8 +171,8 @@ export default function PasswordResetConfirmScreen() {
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.scrollContent}>
           <View style={styles.successBanner}>
-            <Text style={styles.successTitle}>{MSG_SUCCESS_TITLE}</Text>
-            <Text style={styles.successBody}>{MSG_SUCCESS_BODY}</Text>
+            <Text style={styles.successTitle}>{MSG_PASSWORD_UPDATED_TITLE}</Text>
+            <Text style={styles.successBody}>{MSG_PASSWORD_UPDATED_BODY}</Text>
           </View>
 
           <Pressable

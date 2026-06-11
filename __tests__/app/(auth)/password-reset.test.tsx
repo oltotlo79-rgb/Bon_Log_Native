@@ -10,6 +10,7 @@ import PasswordResetScreen from '@/app/(auth)/password-reset/index';
 // expo-router は setup.ts でモック済み
 // router.replace への参照を取得する
 import { router } from 'expo-router';
+import { ERR_EMAIL_REQUIRED } from '@/lib/constants/errors';
 
 describe('PasswordResetScreen', () => {
   beforeEach(() => {
@@ -48,7 +49,7 @@ describe('PasswordResetScreen', () => {
     it('空のまま blur するとエラーが表示される', () => {
       render(<PasswordResetScreen />);
       fireEvent(screen.getByLabelText('メールアドレス'), 'blur');
-      expect(screen.getByText('メールアドレスを入力してください')).toBeTruthy();
+      expect(screen.getByText(ERR_EMAIL_REQUIRED)).toBeTruthy();
     });
 
     it('不正なメール形式で blur するとエラーアイコンが表示される', () => {
@@ -64,7 +65,7 @@ describe('PasswordResetScreen', () => {
       render(<PasswordResetScreen />);
       fireEvent.changeText(screen.getByLabelText('メールアドレス'), 'test@example.com');
       fireEvent(screen.getByLabelText('メールアドレス'), 'blur');
-      expect(screen.queryByText('メールアドレスを入力してください')).toBeNull();
+      expect(screen.queryByText(ERR_EMAIL_REQUIRED)).toBeNull();
     });
   });
 

@@ -12,6 +12,12 @@ import { TIMEOUT_AUTO_REDIRECT } from '@/lib/constants/limits';
 // expo-router は setup.ts でモック済み
 // useLocalSearchParams の戻り値だけ制御する
 import { useLocalSearchParams, router } from 'expo-router';
+import {
+  ERR_NEW_PASSWORD_REQUIRED,
+  ERR_PASSWORD_MISMATCH,
+  MSG_RESET_LINK_INVALID_TITLE,
+  MSG_RESET_LINK_INVALID_BODY,
+} from '@/lib/constants/errors';
 
 const mockUseLocalSearchParams = useLocalSearchParams as jest.MockedFunction<typeof useLocalSearchParams>;
 
@@ -31,17 +37,13 @@ describe('PasswordResetConfirmScreen', () => {
     it('token がないとき「リンクが無効です」タイトルが表示される', () => {
       mockUseLocalSearchParams.mockReturnValue({});
       render(<PasswordResetConfirmScreen />);
-      expect(screen.getByText('リンクが無効です')).toBeTruthy();
+      expect(screen.getByText(MSG_RESET_LINK_INVALID_TITLE)).toBeTruthy();
     });
 
     it('token がないとき説明メッセージが表示される', () => {
       mockUseLocalSearchParams.mockReturnValue({});
       render(<PasswordResetConfirmScreen />);
-      expect(
-        screen.getByText(
-          'リセットリンクが無効または期限切れです。もう一度パスワードリセットをお試しください。'
-        )
-      ).toBeTruthy();
+      expect(screen.getByText(MSG_RESET_LINK_INVALID_BODY)).toBeTruthy();
     });
 
     it('token がないときパスワードリセット再リクエストリンクが表示される', () => {
@@ -69,7 +71,7 @@ describe('PasswordResetConfirmScreen', () => {
     it('email のみで token がないとき token-invalid 状態になる', () => {
       mockUseLocalSearchParams.mockReturnValue({ email: 'test@example.com' });
       render(<PasswordResetConfirmScreen />);
-      expect(screen.getByText('リンクが無効です')).toBeTruthy();
+      expect(screen.getByText(MSG_RESET_LINK_INVALID_TITLE)).toBeTruthy();
     });
   });
 
@@ -113,7 +115,7 @@ describe('PasswordResetConfirmScreen', () => {
     it('パスワードが空のまま blur するとエラーが表示される', () => {
       render(<PasswordResetConfirmScreen />);
       fireEvent(screen.getByLabelText('新しいパスワード'), 'blur');
-      expect(screen.getByText('新しいパスワードを入力してください')).toBeTruthy();
+      expect(screen.getAllByText(ERR_NEW_PASSWORD_REQUIRED).length).toBeGreaterThan(0);
     });
 
     it('パスワードと確認が不一致で blur するとエラーが表示される', () => {
@@ -121,7 +123,7 @@ describe('PasswordResetConfirmScreen', () => {
       fireEvent.changeText(screen.getByLabelText('新しいパスワード'), 'Password123');
       fireEvent.changeText(screen.getByLabelText('新しいパスワード（確認）'), 'Different456');
       fireEvent(screen.getByLabelText('新しいパスワード（確認）'), 'blur');
-      expect(screen.getByText('パスワードが一致しません')).toBeTruthy();
+      expect(screen.getByText(ERR_PASSWORD_MISMATCH)).toBeTruthy();
     });
 
     it('「ログインページへ戻る」リンクが表示される', () => {

@@ -31,24 +31,17 @@ import {
 } from '@/lib/constants/design-tokens';
 import { routes } from '@/lib/constants/routes';
 import { router } from 'expo-router';
-
-// ---------------------------------------------------------------------------
-// エラー文言（auth-forms.md §4.4 準拠）
-// ---------------------------------------------------------------------------
-
-const ERR_EMAIL_REQUIRED = 'メールアドレスを入力してください';
-// API 接続後にエラーハンドリングで使用する定数。現段階では送信未接続のため未使用。
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const ERR_RESET_TOO_MANY =
-  'パスワードリセットの要求が多すぎます。しばらく経ってからお試しください。';
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const ERR_EMAIL_SEND_FAILED =
-  'メールの送信に失敗しました。しばらく経ってからお試しください。';
-const MSG_RESET_SUCCESS_TITLE = 'メールを送信しました';
-const MSG_RESET_SUCCESS_BODY =
-  '入力されたメールアドレスにパスワードリセット用のリンクを送信しました。メールをご確認ください。';
-const MSG_RESET_SUCCESS_HINT =
-  'メールが届かない場合は、迷惑メールフォルダもご確認ください。';
+import {
+  ERR_EMAIL_REQUIRED,
+  // API 接続後フェーズで使用（現段階は送信未接続のため未使用）
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  ERR_PASSWORD_RESET_RATE_LIMITED,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  ERR_PASSWORD_RESET_SEND_FAILED,
+  MSG_PASSWORD_RESET_SENT_TITLE,
+  MSG_PASSWORD_RESET_SENT_BODY,
+  MSG_PASSWORD_RESET_SENT_HINT,
+} from '@/lib/constants/errors';
 
 // ---------------------------------------------------------------------------
 // Component
@@ -88,8 +81,8 @@ export default function PasswordResetScreen() {
     // API 接続は後フェーズで差し替える。現段階は検証完了後に何もしない。
     // 接続後は以下のパターン:
     //   成功（存在しないメールも200を返す設計）→ setIsSuccess(true)
-    //   429 → setFormError(ERR_RESET_TOO_MANY)
-    //   5xx → setFormError(ERR_EMAIL_SEND_FAILED)
+    //   429 → setFormError(ERR_PASSWORD_RESET_RATE_LIMITED)
+    //   5xx → setFormError(ERR_PASSWORD_RESET_SEND_FAILED)
     //   network error → setFormError(ERR_NETWORK)
     setIsSubmitting(false);
   }
@@ -103,11 +96,11 @@ export default function PasswordResetScreen() {
           </Text>
 
           <View style={styles.successBanner}>
-            <Text style={styles.successTitle}>{MSG_RESET_SUCCESS_TITLE}</Text>
-            <Text style={styles.successBody}>{MSG_RESET_SUCCESS_BODY}</Text>
+            <Text style={styles.successTitle}>{MSG_PASSWORD_RESET_SENT_TITLE}</Text>
+            <Text style={styles.successBody}>{MSG_PASSWORD_RESET_SENT_BODY}</Text>
           </View>
 
-          <Text style={styles.hint}>{MSG_RESET_SUCCESS_HINT}</Text>
+          <Text style={styles.hint}>{MSG_PASSWORD_RESET_SENT_HINT}</Text>
 
           <Pressable
             onPress={() => router.replace(routes.login)}
@@ -203,7 +196,6 @@ const styles = StyleSheet.create({
     ...textBase,
     color: colorTextSecondary,
     marginBottom: spacing6,
-    lineHeight: 22,
   },
   form: {
     gap: spacing4,

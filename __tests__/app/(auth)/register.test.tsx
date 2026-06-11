@@ -7,6 +7,13 @@ import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react-native';
 import RegisterScreen from '@/app/(auth)/register/index';
 import { routes } from '@/lib/constants/routes';
+import {
+  ERR_EMAIL_REQUIRED,
+  ERR_PASSWORD_REQUIRED,
+  ERR_PASSWORD_CONFIRM_REQUIRED,
+  ERR_PASSWORD_MISMATCH,
+  ERR_TERMS_AGREEMENT_REQUIRED,
+} from '@/lib/constants/errors';
 
 describe('RegisterScreen', () => {
   it('新規登録タイトルが表示される', () => {
@@ -87,7 +94,7 @@ describe('RegisterScreen', () => {
       fireEvent.changeText(screen.getByLabelText('パスワード'), 'Password123');
       fireEvent.changeText(screen.getByLabelText('パスワード（確認）'), 'Password123');
       fireEvent.press(screen.getByRole('button', { name: '新規登録' }));
-      expect(screen.getByText('利用規約とプライバシーポリシーに同意してください')).toBeTruthy();
+      expect(screen.getByText(ERR_TERMS_AGREEMENT_REQUIRED)).toBeTruthy();
     });
   });
 
@@ -97,7 +104,7 @@ describe('RegisterScreen', () => {
       fireEvent.changeText(screen.getByLabelText('パスワード'), 'Password123');
       fireEvent.changeText(screen.getByLabelText('パスワード（確認）'), 'Different456');
       fireEvent(screen.getByLabelText('パスワード（確認）'), 'blur');
-      expect(screen.getByText('パスワードが一致しません')).toBeTruthy();
+      expect(screen.getByText(ERR_PASSWORD_MISMATCH)).toBeTruthy();
     });
 
     it('パスワードと確認が一致する場合、blur でエラーが表示されない', () => {
@@ -105,7 +112,7 @@ describe('RegisterScreen', () => {
       fireEvent.changeText(screen.getByLabelText('パスワード'), 'Password123');
       fireEvent.changeText(screen.getByLabelText('パスワード（確認）'), 'Password123');
       fireEvent(screen.getByLabelText('パスワード（確認）'), 'blur');
-      expect(screen.queryByText('パスワードが一致しません')).toBeNull();
+      expect(screen.queryByText(ERR_PASSWORD_MISMATCH)).toBeNull();
     });
   });
 
@@ -113,19 +120,19 @@ describe('RegisterScreen', () => {
     it('メールアドレスが空のまま blur するとエラーが表示される', () => {
       render(<RegisterScreen />);
       fireEvent(screen.getByLabelText('メールアドレス'), 'blur');
-      expect(screen.getByText('メールアドレスを入力してください')).toBeTruthy();
+      expect(screen.getByText(ERR_EMAIL_REQUIRED)).toBeTruthy();
     });
 
     it('パスワードが空のまま blur するとエラーが表示される', () => {
       render(<RegisterScreen />);
       fireEvent(screen.getByLabelText('パスワード'), 'blur');
-      expect(screen.getByText('パスワードを入力してください')).toBeTruthy();
+      expect(screen.getByText(ERR_PASSWORD_REQUIRED)).toBeTruthy();
     });
 
     it('確認パスワードが空のまま blur するとエラーが表示される', () => {
       render(<RegisterScreen />);
       fireEvent(screen.getByLabelText('パスワード（確認）'), 'blur');
-      expect(screen.getByText('パスワード（確認）を入力してください')).toBeTruthy();
+      expect(screen.getByText(ERR_PASSWORD_CONFIRM_REQUIRED)).toBeTruthy();
     });
   });
 

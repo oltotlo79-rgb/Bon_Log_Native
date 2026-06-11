@@ -38,24 +38,19 @@ import {
   letterSpacingWidest,
 } from '@/lib/constants/design-tokens';
 import { routes } from '@/lib/constants/routes';
-
-// ---------------------------------------------------------------------------
-// エラー文言（auth-forms.md §1.5 準拠）
-// ---------------------------------------------------------------------------
-
-const ERR_PASSWORD_REQUIRED = 'パスワードを入力してください';
-const ERR_EMAIL_REQUIRED = 'メールアドレスを入力してください';
-// API 接続後にエラーハンドリングで使用する定数。現段階では送信未接続のため未使用。
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const ERR_LOGIN_INVALID_CREDENTIALS = 'メールアドレスまたはパスワードが間違っています';
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const ERR_EMAIL_NOT_VERIFIED =
-  'メールアドレスがまだ確認されていません。確認メールのリンクをクリックするか、下のボタンから再送してください。';
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const MSG_LOGIN_RATE_LIMITED =
-  'ログイン試行回数の上限に達しました。しばらく待ってから再試行してください。';
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const MSG_LOGIN_ERROR = 'ログイン中にエラーが発生しました。再度お試しください。';
+import {
+  ERR_EMAIL_REQUIRED,
+  ERR_PASSWORD_REQUIRED,
+  // API 接続後フェーズで使用（現段階は送信未接続のため未使用）
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  ERR_LOGIN_INVALID_CREDENTIALS,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  ERR_EMAIL_NOT_VERIFIED,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  ERR_LOGIN_RATE_LIMITED,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  ERR_LOGIN_FAILED,
+} from '@/lib/constants/errors';
 
 // ---------------------------------------------------------------------------
 // Component
@@ -109,11 +104,11 @@ export default function LoginScreen() {
     // API 接続は後フェーズで差し替える。現段階は検証完了後に何もしない。
     // 接続後は以下のパターン:
     //   成功 → queryClient.clear() → router.replace(routes.feed)
-    //   ERR_EMAIL_NOT_VERIFIED → setIsEmailVerifiedError(true), setFormError(...)
+    //   ERR_EMAIL_NOT_VERIFIED → setIsEmailVerifiedError(true), setFormError(ERR_EMAIL_NOT_VERIFIED)
     //   ERR_LOGIN_INVALID_CREDENTIALS → setFormError(ERR_LOGIN_INVALID_CREDENTIALS)
-    //   429 → setFormError(MSG_LOGIN_RATE_LIMITED)
+    //   429 → setFormError(ERR_LOGIN_RATE_LIMITED)
     //   network error → setFormError(ERR_NETWORK)
-    //   other → setFormError(MSG_LOGIN_ERROR)
+    //   other → setFormError(ERR_LOGIN_FAILED)
     setIsSubmitting(false);
   }
 

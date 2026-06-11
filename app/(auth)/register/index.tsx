@@ -32,25 +32,20 @@ import {
   textXl,
 } from '@/lib/constants/design-tokens';
 import { routes } from '@/lib/constants/routes';
-
-// ---------------------------------------------------------------------------
-// エラー文言（auth-forms.md §2.5 準拠）
-// ---------------------------------------------------------------------------
-
-const ERR_EMAIL_REQUIRED = 'メールアドレスを入力してください';
-const ERR_PASSWORD_REQUIRED = 'パスワードを入力してください';
-const ERR_CONFIRM_REQUIRED = 'パスワード（確認）を入力してください';
-const MSG_PASSWORD_MISMATCH = 'パスワードが一致しません';
-const MSG_TERMS_AGREEMENT_REQUIRED =
-  '利用規約とプライバシーポリシーに同意してください';
-// API 接続後にエラーハンドリングで使用する定数。現段階では送信未接続のため未使用。
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const ERR_EMAIL_ALREADY_REGISTERED = 'このメールアドレスは既に登録されています';
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const ERR_NICKNAME_RESERVED =
-  'このユーザー名は利用できません。別のユーザー名をご利用ください。';
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-const MSG_REGISTER_ERROR = '登録中にエラーが発生しました。再度お試しください。';
+import {
+  ERR_EMAIL_REQUIRED,
+  ERR_PASSWORD_REQUIRED,
+  ERR_PASSWORD_CONFIRM_REQUIRED,
+  ERR_PASSWORD_MISMATCH,
+  ERR_TERMS_AGREEMENT_REQUIRED,
+  // API 接続後フェーズで使用（現段階は送信未接続のため未使用）
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  ERR_EMAIL_ALREADY_REGISTERED,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  ERR_NICKNAME_RESERVED,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  ERR_REGISTER_FAILED,
+} from '@/lib/constants/errors';
 
 // ---------------------------------------------------------------------------
 // Component
@@ -85,8 +80,8 @@ export default function RegisterScreen() {
   }
 
   function validateConfirmField(value: string, passwordValue: string): string | null {
-    if (value.length === 0) return ERR_CONFIRM_REQUIRED;
-    if (value !== passwordValue) return MSG_PASSWORD_MISMATCH;
+    if (value.length === 0) return ERR_PASSWORD_CONFIRM_REQUIRED;
+    if (value !== passwordValue) return ERR_PASSWORD_MISMATCH;
     return null;
   }
 
@@ -123,7 +118,7 @@ export default function RegisterScreen() {
     setConfirmError(newConfirmError);
 
     if (!termsChecked) {
-      setFormError(MSG_TERMS_AGREEMENT_REQUIRED);
+      setFormError(ERR_TERMS_AGREEMENT_REQUIRED);
       return;
     }
 
@@ -145,7 +140,7 @@ export default function RegisterScreen() {
     //   ERR_EMAIL_ALREADY_REGISTERED → setFormError(ERR_EMAIL_ALREADY_REGISTERED)
     //   ERR_NICKNAME_RESERVED → setFormError(ERR_NICKNAME_RESERVED)
     //   network error → setFormError(ERR_NETWORK)
-    //   other → setFormError(MSG_REGISTER_ERROR)
+    //   other → setFormError(ERR_REGISTER_FAILED)
     setIsSubmitting(false);
   }
 

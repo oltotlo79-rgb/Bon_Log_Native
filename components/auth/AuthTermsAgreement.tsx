@@ -10,6 +10,7 @@ import { Ionicons } from '@expo/vector-icons';
 import {
   colorActionPrimary,
   colorBorder,
+  colorTextInverse,
   colorTextLink,
   colorTextSecondary,
   radiusXs,
@@ -66,7 +67,7 @@ export function AuthTermsAgreement({
           <Ionicons
             name="checkmark"
             size={14}
-            color="#ffffff"
+            color={colorTextInverse}
             accessibilityElementsHidden
             importantForAccessibility="no"
           />

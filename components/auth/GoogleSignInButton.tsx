@@ -13,6 +13,7 @@ import {
   colorActionSecondaryText,
   colorBorder,
   colorBackground,
+  colorGoogleBrand,
   radiusLg,
   spacing2,
   spacing3,
@@ -57,7 +58,7 @@ export function GoogleSignInButton({
         <Ionicons
           name="logo-google"
           size={LOGO_SIZE}
-          color={disabled ? colorBorder : '#4285F4'}
+          color={disabled ? colorBorder : colorGoogleBrand}
           accessibilityElementsHidden
           importantForAccessibility="no"
         />

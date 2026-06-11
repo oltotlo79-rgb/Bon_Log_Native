@@ -6,6 +6,11 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react-native';
 import LoginScreen from '@/app/(auth)/login/index';
+import {
+  ERR_EMAIL_REQUIRED,
+  ERR_PASSWORD_REQUIRED,
+  ERR_LOGIN_INVALID_CREDENTIALS,
+} from '@/lib/constants/errors';
 
 describe('LoginScreen (詳細)', () => {
   describe('メールアドレスフィールドの blur 検証', () => {
@@ -13,7 +18,7 @@ describe('LoginScreen (詳細)', () => {
       render(<LoginScreen />);
       const emailInput = screen.getByLabelText('メールアドレス');
       fireEvent(emailInput, 'blur');
-      expect(screen.getByText('メールアドレスを入力してください')).toBeTruthy();
+      expect(screen.getByText(ERR_EMAIL_REQUIRED)).toBeTruthy();
     });
 
     it('不正なメール形式で blur するとエラーアイコンが表示される', () => {
@@ -31,7 +36,7 @@ describe('LoginScreen (詳細)', () => {
       const emailInput = screen.getByLabelText('メールアドレス');
       fireEvent.changeText(emailInput, 'test@example.com');
       fireEvent(emailInput, 'blur');
-      expect(screen.queryByText('メールアドレスを入力してください')).toBeNull();
+      expect(screen.queryByText(ERR_EMAIL_REQUIRED)).toBeNull();
     });
   });
 
@@ -40,7 +45,7 @@ describe('LoginScreen (詳細)', () => {
       render(<LoginScreen />);
       const passwordInput = screen.getByLabelText('パスワード');
       fireEvent(passwordInput, 'blur');
-      expect(screen.getByText('パスワードを入力してください')).toBeTruthy();
+      expect(screen.getByText(ERR_PASSWORD_REQUIRED)).toBeTruthy();
     });
   });
 
@@ -86,7 +91,7 @@ describe('LoginScreen (詳細)', () => {
     it('初期状態では formError が表示されない', () => {
       render(<LoginScreen />);
       expect(
-        screen.queryByText('メールアドレスまたはパスワードが間違っています')
+        screen.queryByText(ERR_LOGIN_INVALID_CREDENTIALS)
       ).toBeNull();
     });
 
