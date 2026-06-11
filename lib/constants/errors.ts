@@ -90,14 +90,38 @@ export const ERR_REQUIRED_FIELD = 'この項目は必須です。';
 /** メールアドレス形式エラー */
 export const ERR_EMAIL_INVALID = '有効なメールアドレスを入力してください。';
 
+/** メールアドレス長すぎ（テンプレート） */
+export const ERR_EMAIL_TOO_LONG = (max: number) => `メールアドレスは${max}文字以内で入力してください。`;
+
+/** ニックネーム未入力 */
+export const ERR_NICKNAME_REQUIRED = 'ニックネームを入力してください。';
+
+/** ニックネーム長すぎ（テンプレート） */
+export const ERR_NICKNAME_TOO_LONG = (max: number) => `ニックネームは${max}文字以内で入力してください。`;
+
+/** ニックネームに使用できない文字が含まれている */
+export const ERR_NICKNAME_INVALID_CHARS = 'ニックネームに改行や < > は使えません。';
+
+/** 自己紹介長すぎ（テンプレート） */
+export const ERR_BIO_TOO_LONG = (max: number) => `自己紹介は${max}文字以内で入力してください。`;
+
+/** 居住地域長すぎ（テンプレート） */
+export const ERR_LOCATION_TOO_LONG = (max: number) => `居住地域は${max}文字以内で入力してください。`;
+
 /** パスワード短すぎ */
 export const ERR_PASSWORD_MIN_LENGTH = 'パスワードは8文字以上で入力してください。';
 
 /** パスワード長すぎ */
 export const ERR_PASSWORD_MAX_LENGTH = 'パスワードは72文字以下で入力してください。';
 
-/** パスワード形式エラー */
+/** パスワード形式エラー（アルファベットと数字の両方が必要） */
 export const ERR_PASSWORD_ALPHANUMERIC = 'パスワードはアルファベットと数字を両方含めてください。';
+
+/** パスワードにアルファベットが含まれていない */
+export const ERR_PASSWORD_REQUIRE_LETTER = 'パスワードはアルファベットを含めてください。';
+
+/** パスワードに数字が含まれていない */
+export const ERR_PASSWORD_REQUIRE_NUMBER = 'パスワードは数字を含めてください。';
 
 /** 投稿本文なし */
 export const ERR_CONTENT_REQUIRED = 'テキストまたはメディアを入力してください。';

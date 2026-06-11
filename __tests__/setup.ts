@@ -126,6 +126,18 @@ jest.mock('expo-status-bar', () => ({
   StatusBar: () => null,
 }));
 
+// @sentry/react-native のデフォルトモック
+// sentry.test.ts は jest.resetModules() + 個別 mock で上書きするため、
+// ここでは他テストへの副作用（実ネイティブモジュール呼び出し）を防ぐ最小モックを置く
+jest.mock('@sentry/react-native', () => ({
+  init: jest.fn(),
+  captureException: jest.fn(),
+  captureMessage: jest.fn(),
+  addBreadcrumb: jest.fn(),
+  setUser: jest.fn(),
+  withScope: jest.fn(),
+}));
+
 // expo-image のモック
 jest.mock('expo-image', () => {
   const React = require('react');

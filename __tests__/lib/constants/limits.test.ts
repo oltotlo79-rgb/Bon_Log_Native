@@ -11,12 +11,15 @@ import {
   MAX_GENRES_PER_POST,
   MAX_COMMENT_LENGTH,
   DAILY_COMMENT_LIMIT,
-  MAX_NICKNAME_LENGTH,
-  MAX_BIO_LENGTH,
-  MAX_LOCATION_LENGTH,
   MAX_SEARCH_QUERY_LENGTH,
   GENRE_CATEGORY_ORDER,
 } from '@/lib/constants/limits/post';
+
+import {
+  MAX_NICKNAME_LENGTH,
+  MAX_BIO_LENGTH,
+  MAX_LOCATION_LENGTH,
+} from '@/lib/constants/limits/auth';
 
 import {
   MAX_IMAGE_SIZE_MB,

@@ -4,6 +4,7 @@
  * ドメイン別ファイルから全定数を再エクスポート。
  */
 
+export * from './auth';
 export * from './post';
 export * from './media';
 export * from './pagination';

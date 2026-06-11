@@ -25,15 +25,6 @@ export const MAX_COMMENT_LENGTH = 500;
 /** 1日のコメント上限数 */
 export const DAILY_COMMENT_LIMIT = 100;
 
-/** ニックネームの最大文字数 */
-export const MAX_NICKNAME_LENGTH = 50;
-
-/** 自己紹介の最大文字数 */
-export const MAX_BIO_LENGTH = 200;
-
-/** 居住地域の最大文字数 */
-export const MAX_LOCATION_LENGTH = 100;
-
 /** 検索クエリの最大文字数 */
 export const MAX_SEARCH_QUERY_LENGTH = 100;
 
