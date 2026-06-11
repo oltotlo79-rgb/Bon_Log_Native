@@ -1,6 +1,7 @@
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import {
   colorBackground,
   colorSurfaceWashi,
@@ -29,7 +30,13 @@ export default function ProfileScreen() {
           accessibilityLabel="設定を開く"
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
-          <Text style={styles.settingsIcon}>⚙</Text>
+          <Ionicons
+            name="settings-outline"
+            size={22}
+            color={colorTextPrimary}
+            accessibilityElementsHidden
+            importantForAccessibility="no"
+          />
         </TouchableOpacity>
       </View>
       <View style={styles.content}>
@@ -73,10 +80,6 @@ const styles = StyleSheet.create({
     width: 44,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  settingsIcon: {
-    fontSize: 20,
-    color: colorTextPrimary,
   },
   content: {
     flex: 1,

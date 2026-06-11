@@ -1,6 +1,6 @@
 /**
  * app/(auth)/login の画面テスト。
- * 新規登録・パスワードリセットへのリンクが存在することを確認する。
+ * 主要な要素（ボタン・フィールド・リンク）が存在することを確認する。
  */
 
 import React from 'react';
@@ -21,35 +21,35 @@ describe('LoginScreen', () => {
 
   it('新規登録へのリンクが表示されている', () => {
     render(<LoginScreen />);
-    const link = screen.getByRole('link', { name: 'アカウントをお持ちでない方はこちら' });
+    const link = screen.getByRole('link', { name: '新規登録' });
     expect(link).toBeTruthy();
   });
 
   it('パスワードリセットへのリンクが表示されている', () => {
     render(<LoginScreen />);
-    const link = screen.getByRole('link', { name: 'パスワードをお忘れの方' });
+    const link = screen.getByRole('link', { name: 'パスワードをお忘れですか？' });
     expect(link).toBeTruthy();
   });
 
   it('メールアドレス入力フィールドが表示されている', () => {
     render(<LoginScreen />);
-    expect(screen.getByLabelText('メールアドレス入力')).toBeTruthy();
+    expect(screen.getByLabelText('メールアドレス')).toBeTruthy();
   });
 
   it('パスワード入力フィールドが表示されている', () => {
     render(<LoginScreen />);
-    expect(screen.getByLabelText('パスワード入力')).toBeTruthy();
+    expect(screen.getByLabelText('パスワード')).toBeTruthy();
   });
 
   it('新規登録リンクが正しいルートを指している', () => {
     render(<LoginScreen />);
-    const link = screen.getByRole('link', { name: 'アカウントをお持ちでない方はこちら' });
+    const link = screen.getByRole('link', { name: '新規登録' });
     expect(link.props.testID).toBe(`link-${routes.register}`);
   });
 
   it('パスワードリセットリンクが正しいルートを指している', () => {
     render(<LoginScreen />);
-    const link = screen.getByRole('link', { name: 'パスワードをお忘れの方' });
+    const link = screen.getByRole('link', { name: 'パスワードをお忘れですか？' });
     expect(link.props.testID).toBe(`link-${routes.passwordReset}`);
   });
 });

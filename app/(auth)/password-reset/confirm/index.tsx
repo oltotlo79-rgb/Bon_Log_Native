@@ -1,36 +1,203 @@
+import React, { useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
   KeyboardAvoidingView,
   ScrollView,
   Platform,
+  Pressable,
+  StyleSheet,
+  type TextInput,
 } from 'react-native';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { PasswordField } from '@/components/auth/PasswordField';
+import { AuthPrimaryButton } from '@/components/auth/AuthPrimaryButton';
+import { FormErrorMessage } from '@/components/auth/FormErrorMessage';
+import { validatePassword } from '@/lib/utils/validate-auth';
 import {
   colorBackground,
   colorTextPrimary,
   colorTextSecondary,
-  colorActionPrimary,
-  colorActionPrimaryText,
-  colorBorder,
-  spacing2,
+  colorTextLink,
+  colorSuccess,
+  colorSuccessBg,
+  colorError,
+  colorErrorBg,
   spacing3,
   spacing4,
   spacing6,
   spacing8,
   radiusMd,
-  radiusLg,
   textBase,
-  textLg,
-  letterSpacingWidest,
+  textXl,
 } from '@/lib/constants/design-tokens';
 import { routes } from '@/lib/constants/routes';
 
+// ---------------------------------------------------------------------------
+// 状態の型
+// ---------------------------------------------------------------------------
+
+type PageState = 'token-invalid' | 'form' | 'success';
+
+// ---------------------------------------------------------------------------
+// エラー文言（auth-forms.md §5.5 準拠）
+// ---------------------------------------------------------------------------
+
+const ERR_PASSWORD_REQUIRED = '新しいパスワードを入力してください';
+const ERR_CONFIRM_REQUIRED = 'パスワード（確認）を入力してください';
+const MSG_PASSWORD_MISMATCH = 'パスワードが一致しません';
+// API 接続後にエラーハンドリングで使用する定数。現段階では送信未接続のため未使用。
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const ERR_RESET_LINK_INVALID =
+  'リセットリンクが無効または期限切れです。もう一度お試しください。';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const MSG_RESET_UPDATE_ERROR = 'パスワードの更新に失敗しました。再度お試しください。';
+
+const MSG_TOKEN_INVALID_TITLE = 'リンクが無効です';
+const MSG_TOKEN_INVALID_BODY =
+  'リセットリンクが無効または期限切れです。もう一度パスワードリセットをお試しください。';
+
+const MSG_SUCCESS_TITLE = 'パスワードを更新しました';
+const MSG_SUCCESS_BODY =
+  '新しいパスワードでログインできます。ログインページへ移動します...';
+
+// ---------------------------------------------------------------------------
+// Component
+// ---------------------------------------------------------------------------
+
 export default function PasswordResetConfirmScreen() {
+  const params = useLocalSearchParams();
+
+  // useLocalSearchParams は string | string[] を返すため型ガードで絞る
+  const token = typeof params.token === 'string' ? params.token : null;
+  const emailParam = typeof params.email === 'string' ? params.email : null;
+
+  // token / email がパラメータに存在しない場合は即座に無効状態を初期値とする。
+  // API 接続後はトークン検証の非同期結果に応じて 'form' または 'token-invalid' に切り替える。
+  const initialPageState: PageState =
+    token && emailParam ? 'form' : 'token-invalid';
+  // API 接続後に setPageState で 'success' / 'token-invalid' へ遷移させる
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [pageState, setPageState] = useState<PageState>(initialPageState);
+  const [password, setPassword] = useState('');
+  const [confirm, setConfirm] = useState('');
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [confirmError, setConfirmError] = useState<string | null>(null);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const confirmRef = useRef<TextInput>(null);
+
+  useEffect(() => {
+    if (pageState !== 'success') return;
+
+    // 成功後は一定時間後に自動ログイン画面遷移する
+    // TIMEOUT_AUTO_REDIRECT は lib/constants/ 管轄のため core に移管後、定数参照に差し替える
+    const TIMEOUT_AUTO_REDIRECT = 3000;
+    const timer = setTimeout(() => {
+      router.replace(routes.login);
+    }, TIMEOUT_AUTO_REDIRECT);
+
+    return () => clearTimeout(timer);
+  }, [pageState]);
+
+  function validatePasswordField(value: string): string | null {
+    if (value.length === 0) return ERR_PASSWORD_REQUIRED;
+    return validatePassword(value);
+  }
+
+  function validateConfirmField(value: string): string | null {
+    if (value.length === 0) return ERR_CONFIRM_REQUIRED;
+    if (value !== password) return MSG_PASSWORD_MISMATCH;
+    return null;
+  }
+
+  function handlePasswordBlur() {
+    setPasswordError(validatePasswordField(password));
+  }
+
+  function handleConfirmBlur() {
+    setConfirmError(validateConfirmField(confirm));
+  }
+
+  const allRequiredFilled = password.length > 0 && confirm.length > 0;
+
+  function handleSubmit() {
+    const newPasswordError = validatePasswordField(password);
+    const newConfirmError = validateConfirmField(confirm);
+    setPasswordError(newPasswordError);
+    setConfirmError(newConfirmError);
+
+    if (newPasswordError !== null || newConfirmError !== null) {
+      return;
+    }
+
+    setFormError(null);
+    setIsSubmitting(true);
+
+    // API 接続は後フェーズで差し替える。現段階は検証完了後に何もしない。
+    // 接続後は以下のパターン:
+    //   成功 → setPageState('success')
+    //   トークン無効 → setPageState('token-invalid') または setFormError(ERR_RESET_LINK_INVALID)
+    //   network error → setFormError(ERR_NETWORK)
+    //   other → setFormError(MSG_RESET_UPDATE_ERROR)
+    setIsSubmitting(false);
+  }
+
+  if (pageState === 'token-invalid') {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.scrollContent}>
+          <View style={styles.errorBanner}>
+            <Text style={styles.errorBannerTitle}>{MSG_TOKEN_INVALID_TITLE}</Text>
+            <Text style={styles.errorBannerBody}>{MSG_TOKEN_INVALID_BODY}</Text>
+          </View>
+
+          <Pressable
+            onPress={() => router.replace(routes.passwordReset)}
+            style={({ pressed }) => [styles.link, pressed && styles.linkPressed]}
+            accessibilityRole="link"
+            accessibilityLabel="パスワードリセットを再度リクエスト"
+          >
+            <Text style={styles.linkText}>パスワードリセットを再度リクエスト</Text>
+          </Pressable>
+
+          <Pressable
+            onPress={() => router.replace(routes.login)}
+            style={({ pressed }) => [styles.link, pressed && styles.linkPressed]}
+            accessibilityRole="link"
+            accessibilityLabel="ログインページへ戻る"
+          >
+            <Text style={styles.linkText}>ログインページへ戻る</Text>
+          </Pressable>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  if (pageState === 'success') {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.scrollContent}>
+          <View style={styles.successBanner}>
+            <Text style={styles.successTitle}>{MSG_SUCCESS_TITLE}</Text>
+            <Text style={styles.successBody}>{MSG_SUCCESS_BODY}</Text>
+          </View>
+
+          <Pressable
+            onPress={() => router.replace(routes.login)}
+            style={({ pressed }) => [styles.link, pressed && styles.linkPressed]}
+            accessibilityRole="link"
+            accessibilityLabel="今すぐログインする"
+          >
+            <Text style={styles.linkText}>今すぐログインする</Text>
+          </Pressable>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <KeyboardAvoidingView
@@ -45,37 +212,54 @@ export default function PasswordResetConfirmScreen() {
             新しいパスワードを設定
           </Text>
 
+          <Text style={styles.description}>新しいパスワードを入力してください。</Text>
+
           <View style={styles.form}>
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>新しいパスワード</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="8文字以上"
-                placeholderTextColor={colorTextSecondary}
-                secureTextEntry
-                accessibilityLabel="新しいパスワード入力"
-              />
-            </View>
+            <PasswordField
+              label="新しいパスワード"
+              value={password}
+              onChangeText={setPassword}
+              onBlur={handlePasswordBlur}
+              error={passwordError}
+              disabled={isSubmitting}
+              placeholder="8文字以上（英字・数字を含む）"
+              autoComplete="new-password"
+              textContentType="newPassword"
+              returnKeyType="next"
+              onSubmitEditing={() => confirmRef.current?.focus()}
+            />
 
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>パスワードの確認</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="もう一度入力してください"
-                placeholderTextColor={colorTextSecondary}
-                secureTextEntry
-                accessibilityLabel="パスワード確認入力"
-              />
-            </View>
+            <PasswordField
+              ref={confirmRef}
+              label="新しいパスワード（確認）"
+              value={confirm}
+              onChangeText={setConfirm}
+              onBlur={handleConfirmBlur}
+              error={confirmError}
+              disabled={isSubmitting}
+              placeholder="もう一度入力"
+              autoComplete="new-password"
+              textContentType="newPassword"
+              returnKeyType="done"
+            />
 
-            <TouchableOpacity
-              style={styles.primaryButton}
+            <FormErrorMessage message={formError} />
+
+            <AuthPrimaryButton
+              label="パスワードを変更する"
+              onPress={handleSubmit}
+              disabled={!allRequiredFilled}
+              isLoading={isSubmitting}
+            />
+
+            <Pressable
               onPress={() => router.replace(routes.login)}
-              accessibilityRole="button"
-              accessibilityLabel="パスワードを変更する"
+              style={({ pressed }) => [styles.link, pressed && styles.linkPressed]}
+              accessibilityRole="link"
+              accessibilityLabel="ログインページへ戻る"
             >
-              <Text style={styles.primaryButtonText}>パスワードを変更する</Text>
-            </TouchableOpacity>
+              <Text style={styles.linkText}>ログインページへ戻る</Text>
+            </Pressable>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -97,42 +281,64 @@ const styles = StyleSheet.create({
     paddingVertical: spacing8,
   },
   title: {
-    ...textLg,
+    ...textXl,
     color: colorTextPrimary,
+    marginBottom: spacing4,
+  },
+  description: {
+    ...textBase,
+    color: colorTextSecondary,
     marginBottom: spacing6,
   },
   form: {
     gap: spacing4,
   },
-  inputGroup: {
-    gap: spacing2,
-  },
-  label: {
-    ...textBase,
-    color: colorTextPrimary,
-  },
-  input: {
-    height: 44,
-    borderWidth: 1,
-    borderColor: colorBorder,
+  errorBanner: {
+    backgroundColor: colorErrorBg,
+    borderLeftWidth: 3,
+    borderLeftColor: colorError,
     borderRadius: radiusMd,
-    paddingHorizontal: spacing3,
+    padding: spacing3,
+    marginBottom: spacing4,
+    gap: spacing3,
+  },
+  errorBannerTitle: {
+    ...textBase,
+    color: colorError,
+    fontWeight: '600',
+  },
+  errorBannerBody: {
+    ...textBase,
+    color: colorError,
+  },
+  successBanner: {
+    backgroundColor: colorSuccessBg,
+    borderLeftWidth: 3,
+    borderLeftColor: colorSuccess,
+    borderRadius: radiusMd,
+    padding: spacing3,
+    marginBottom: spacing4,
+    gap: spacing3,
+  },
+  successTitle: {
     ...textBase,
     color: colorTextPrimary,
-    backgroundColor: colorBackground,
-  },
-  primaryButton: {
-    height: 44,
-    backgroundColor: colorActionPrimary,
-    borderRadius: radiusLg,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: spacing2,
-  },
-  primaryButtonText: {
-    ...textBase,
-    color: colorActionPrimaryText,
     fontWeight: '600',
-    letterSpacing: letterSpacingWidest,
+  },
+  successBody: {
+    ...textBase,
+    color: colorTextPrimary,
+  },
+  link: {
+    paddingVertical: spacing3,
+    alignSelf: 'flex-start',
+  },
+  linkPressed: {
+    opacity: 0.6,
+  },
+  linkText: {
+    ...textBase,
+    color: colorTextLink,
+    textDecorationLine: 'underline',
   },
 });

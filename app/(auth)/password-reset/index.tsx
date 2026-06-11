@@ -1,34 +1,127 @@
+import React, { useState } from 'react';
 import {
   View,
   Text,
-  TextInput,
-  TouchableOpacity,
-  StyleSheet,
   KeyboardAvoidingView,
   ScrollView,
   Platform,
+  Pressable,
+  StyleSheet,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { AuthTextField } from '@/components/auth/AuthTextField';
+import { AuthPrimaryButton } from '@/components/auth/AuthPrimaryButton';
+import { FormErrorMessage } from '@/components/auth/FormErrorMessage';
+import { validateEmail } from '@/lib/utils/validate-auth';
 import {
   colorBackground,
   colorTextPrimary,
   colorTextSecondary,
-  colorActionPrimary,
-  colorActionPrimaryText,
-  colorBorder,
-  spacing2,
+  colorSuccess,
+  colorSuccessBg,
+  colorTextLink,
   spacing3,
   spacing4,
   spacing6,
   spacing8,
   radiusMd,
-  radiusLg,
   textBase,
-  textLg,
-  letterSpacingWidest,
+  textSm,
+  textXl,
 } from '@/lib/constants/design-tokens';
+import { routes } from '@/lib/constants/routes';
+import { router } from 'expo-router';
+
+// ---------------------------------------------------------------------------
+// エラー文言（auth-forms.md §4.4 準拠）
+// ---------------------------------------------------------------------------
+
+const ERR_EMAIL_REQUIRED = 'メールアドレスを入力してください';
+// API 接続後にエラーハンドリングで使用する定数。現段階では送信未接続のため未使用。
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const ERR_RESET_TOO_MANY =
+  'パスワードリセットの要求が多すぎます。しばらく経ってからお試しください。';
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const ERR_EMAIL_SEND_FAILED =
+  'メールの送信に失敗しました。しばらく経ってからお試しください。';
+const MSG_RESET_SUCCESS_TITLE = 'メールを送信しました';
+const MSG_RESET_SUCCESS_BODY =
+  '入力されたメールアドレスにパスワードリセット用のリンクを送信しました。メールをご確認ください。';
+const MSG_RESET_SUCCESS_HINT =
+  'メールが届かない場合は、迷惑メールフォルダもご確認ください。';
+
+// ---------------------------------------------------------------------------
+// Component
+// ---------------------------------------------------------------------------
 
 export default function PasswordResetScreen() {
+  const [email, setEmail] = useState('');
+  const [emailError, setEmailError] = useState<string | null>(null);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  // API 接続後に setIsSuccess(true) で成功状態に切り替える
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [isSuccess, setIsSuccess] = useState(false);
+
+  function validateEmailField(value: string): string | null {
+    if (value.length === 0) return ERR_EMAIL_REQUIRED;
+    return validateEmail(value);
+  }
+
+  function handleEmailBlur() {
+    setEmailError(validateEmailField(email));
+  }
+
+  const allRequiredFilled = email.length > 0;
+
+  function handleSubmit() {
+    const newEmailError = validateEmailField(email);
+    setEmailError(newEmailError);
+
+    if (newEmailError !== null) {
+      return;
+    }
+
+    setFormError(null);
+    setIsSubmitting(true);
+
+    // API 接続は後フェーズで差し替える。現段階は検証完了後に何もしない。
+    // 接続後は以下のパターン:
+    //   成功（存在しないメールも200を返す設計）→ setIsSuccess(true)
+    //   429 → setFormError(ERR_RESET_TOO_MANY)
+    //   5xx → setFormError(ERR_EMAIL_SEND_FAILED)
+    //   network error → setFormError(ERR_NETWORK)
+    setIsSubmitting(false);
+  }
+
+  if (isSuccess) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.scrollContent}>
+          <Text style={styles.title} accessibilityRole="header">
+            パスワードの再設定
+          </Text>
+
+          <View style={styles.successBanner}>
+            <Text style={styles.successTitle}>{MSG_RESET_SUCCESS_TITLE}</Text>
+            <Text style={styles.successBody}>{MSG_RESET_SUCCESS_BODY}</Text>
+          </View>
+
+          <Text style={styles.hint}>{MSG_RESET_SUCCESS_HINT}</Text>
+
+          <Pressable
+            onPress={() => router.replace(routes.login)}
+            style={({ pressed }) => [styles.link, pressed && styles.linkPressed]}
+            accessibilityRole="link"
+            accessibilityLabel="ログインページへ戻る"
+          >
+            <Text style={styles.linkText}>← ログインページへ戻る</Text>
+          </Pressable>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <KeyboardAvoidingView
@@ -42,32 +135,45 @@ export default function PasswordResetScreen() {
           <Text style={styles.title} accessibilityRole="header">
             パスワードの再設定
           </Text>
+
           <Text style={styles.description}>
-            登録したメールアドレスを入力してください。{'\n'}
-            パスワード再設定用のリンクをお送りします。
+            登録したメールアドレスを入力してください。パスワード再設定用のリンクをお送りします。
           </Text>
 
           <View style={styles.form}>
-            <View style={styles.inputGroup}>
-              <Text style={styles.label}>メールアドレス</Text>
-              <TextInput
-                style={styles.input}
-                placeholder="example@email.com"
-                placeholderTextColor={colorTextSecondary}
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoCorrect={false}
-                accessibilityLabel="メールアドレス入力"
-              />
-            </View>
+            <AuthTextField
+              label="メールアドレス"
+              value={email}
+              onChangeText={setEmail}
+              onBlur={handleEmailBlur}
+              error={emailError}
+              disabled={isSubmitting}
+              placeholder="mail@example.com"
+              keyboardType="email-address"
+              autoCapitalize="none"
+              autoCorrect={false}
+              autoComplete="email"
+              textContentType="emailAddress"
+              returnKeyType="done"
+            />
 
-            <TouchableOpacity
-              style={styles.primaryButton}
-              accessibilityRole="button"
-              accessibilityLabel="再設定メールを送信する"
+            <FormErrorMessage message={formError} />
+
+            <AuthPrimaryButton
+              label="再設定メールを送信する"
+              onPress={handleSubmit}
+              disabled={!allRequiredFilled}
+              isLoading={isSubmitting}
+            />
+
+            <Pressable
+              onPress={() => router.replace(routes.login)}
+              style={({ pressed }) => [styles.link, pressed && styles.linkPressed]}
+              accessibilityRole="link"
+              accessibilityLabel="ログインページへ戻る"
             >
-              <Text style={styles.primaryButtonText}>再設定メールを送信する</Text>
-            </TouchableOpacity>
+              <Text style={styles.linkText}>← ログインページへ戻る</Text>
+            </Pressable>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
@@ -89,48 +195,52 @@ const styles = StyleSheet.create({
     paddingVertical: spacing8,
   },
   title: {
-    ...textLg,
+    ...textXl,
     color: colorTextPrimary,
     marginBottom: spacing4,
   },
   description: {
     ...textBase,
     color: colorTextSecondary,
-    lineHeight: 24,
     marginBottom: spacing6,
+    lineHeight: 22,
   },
   form: {
     gap: spacing4,
   },
-  inputGroup: {
-    gap: spacing2,
-  },
-  label: {
-    ...textBase,
-    color: colorTextPrimary,
-  },
-  input: {
-    height: 44,
-    borderWidth: 1,
-    borderColor: colorBorder,
+  successBanner: {
+    backgroundColor: colorSuccessBg,
+    borderLeftWidth: 3,
+    borderLeftColor: colorSuccess,
     borderRadius: radiusMd,
-    paddingHorizontal: spacing3,
+    padding: spacing3,
+    marginBottom: spacing4,
+    gap: spacing3,
+  },
+  successTitle: {
     ...textBase,
     color: colorTextPrimary,
-    backgroundColor: colorBackground,
-  },
-  primaryButton: {
-    height: 44,
-    backgroundColor: colorActionPrimary,
-    borderRadius: radiusLg,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: spacing2,
-  },
-  primaryButtonText: {
-    ...textBase,
-    color: colorActionPrimaryText,
     fontWeight: '600',
-    letterSpacing: letterSpacingWidest,
+  },
+  successBody: {
+    ...textBase,
+    color: colorTextPrimary,
+  },
+  hint: {
+    ...textSm,
+    color: colorTextSecondary,
+    marginBottom: spacing6,
+  },
+  link: {
+    paddingVertical: spacing3,
+    alignSelf: 'flex-start',
+  },
+  linkPressed: {
+    opacity: 0.6,
+  },
+  linkText: {
+    ...textBase,
+    color: colorTextLink,
+    textDecorationLine: 'underline',
   },
 });
