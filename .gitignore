@@ -36,3 +36,6 @@ coverage/
 *.orig.*
 
 /docs/plans/
+
+# 一時ディレクトリ
+temp_expo/
