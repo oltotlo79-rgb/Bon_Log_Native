@@ -33,6 +33,7 @@ import {
   textXl,
 } from '@/lib/constants/design-tokens';
 import { routes } from '@/lib/constants/routes';
+import { TIMEOUT_AUTO_REDIRECT } from '@/lib/constants/limits';
 
 // ---------------------------------------------------------------------------
 // 状態の型
@@ -92,9 +93,6 @@ export default function PasswordResetConfirmScreen() {
   useEffect(() => {
     if (pageState !== 'success') return;
 
-    // 成功後は一定時間後に自動ログイン画面遷移する
-    // TIMEOUT_AUTO_REDIRECT は lib/constants/ 管轄のため core に移管後、定数参照に差し替える
-    const TIMEOUT_AUTO_REDIRECT = 3000;
     const timer = setTimeout(() => {
       router.replace(routes.login);
     }, TIMEOUT_AUTO_REDIRECT);

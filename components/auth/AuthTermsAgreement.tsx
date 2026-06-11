@@ -2,10 +2,6 @@
  * @module components/auth/AuthTermsAgreement
  * 利用規約・プライバシーポリシーへの同意チェックボックス行。
  * store-compliance.md 要件（Google Play UGC ポリシー）で必須の同意導線。
- *
- * 外部 URL は lib/constants/ 管轄だが現時点では未整備のため、
- * コンポーネントローカル定数として定義している。
- * core への移管事項: TERMS_URL / PRIVACY_URL を lib/constants/ に追加してほしい。
  */
 
 import React from 'react';
@@ -21,13 +17,7 @@ import {
   spacing3,
   textSm,
 } from '@/lib/constants/design-tokens';
-
-// ---------------------------------------------------------------------------
-// コンポーネントローカル定数（core 移管事項）
-// ---------------------------------------------------------------------------
-
-const TERMS_URL = 'https://www.bon-log.com/terms' as const;
-const PRIVACY_URL = 'https://www.bon-log.com/privacy' as const;
+import { TERMS_URL, PRIVACY_URL } from '@/lib/constants/external-links';
 
 const CHECKBOX_SIZE = 20;
 
