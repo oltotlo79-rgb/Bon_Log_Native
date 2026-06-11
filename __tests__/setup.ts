@@ -4,6 +4,9 @@
  * テストファイルごとの ad-hoc モックを散在させない（testing.md 規約）。
  */
 
+/* eslint-disable @typescript-eslint/no-require-imports */
+// jest.mock のファクトリ内では ES import が使えないため require を使用する（Jest 制約）。
+
 // expo-router のモック
 jest.mock('expo-router', () => ({
   useLocalSearchParams: jest.fn(() => ({})),

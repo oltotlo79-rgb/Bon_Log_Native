@@ -59,6 +59,7 @@
     ],
     "testPathIgnorePatterns": [
       "__tests__/utils/test-utils\\.tsx$",
+      "__tests__/utils/post-card-factory\\.ts$",
       "__tests__/setup\\.ts$"
     ],
     "transformIgnorePatterns": [

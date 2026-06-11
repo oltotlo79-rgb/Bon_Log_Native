@@ -1,0 +1,23 @@
+# フィード空状態フロー
+# 前提: development build がインストール済み、ネットワーク接続なし または未フォロー状態
+# 確認内容: 起動 → フィード画面が表示され「タイムラインに投稿がありません」が見える
+appId: com.bonlog.app
+---
+- launchApp:
+    clearState: false
+
+# フィード画面ヘッダーの表示を待つ
+- assertVisible:
+    text: "ホーム"
+
+# 空状態メッセージが表示されること
+- assertVisible:
+    text: "タイムラインに投稿がありません"
+
+# 「ユーザーを検索」アクションボタンが表示されること
+- assertVisible:
+    text: "ユーザーを検索"
+
+# FAB（新規投稿ボタン）が表示されること
+- assertVisible:
+    accessibilityLabel: "新規投稿"

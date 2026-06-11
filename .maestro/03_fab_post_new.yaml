@@ -1,0 +1,26 @@
+# FAB タップ → 新規投稿画面表示フロー
+# 前提: フィード画面が表示済み
+# 確認内容: FAB をタップして新規投稿画面が表示されること
+# 注記: testID は production コードに post-new 画面に設定されていないため
+#       画面内の固有テキスト（「新しい投稿」）でアサーションする
+appId: com.bonlog.app
+---
+- launchApp:
+    clearState: false
+
+# フィード画面が表示されることを確認
+- assertVisible:
+    text: "ホーム"
+
+# FAB をタップ
+- tapOn:
+    accessibilityLabel: "新規投稿"
+
+# 新規投稿画面固有の要素が表示されること（遷移完了を待つ）
+# 「新規投稿」はフィード FAB の accessibilityLabel と重複するため、
+# 投稿画面固有の「キャンセル」ボタンが存在することで遷移完了を確認する
+- assertVisible:
+    accessibilityLabel: "キャンセル"
+
+- assertVisible:
+    accessibilityLabel: "投稿する"

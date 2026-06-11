@@ -43,6 +43,7 @@ describe('setupOnlineManager', () => {
   });
 
   it('NetInfo.addEventListener を呼び出す', () => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
     const NetInfo = require('@react-native-community/netinfo');
     setupOnlineManager();
     expect(NetInfo.addEventListener).toHaveBeenCalled();

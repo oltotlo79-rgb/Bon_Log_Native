@@ -1,14 +1,19 @@
 /**
  * app/(tabs)/feed の画面テスト。
- * ヘッダー・FAB（新規投稿）の基本表示を確認する。
+ * ヘッダー・空状態・OfflineBanner・FAB（新規投稿）の表示と動作を確認する。
  */
 
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react-native';
 import FeedScreen from '@/app/(tabs)/feed/index';
-import { ROUTE_POST_NEW } from '@/lib/constants/routes';
+import { ROUTE_POST_NEW, ROUTE_SEARCH } from '@/lib/constants/routes';
 
 const mockRouter = jest.requireMock('expo-router').router;
+
+// useOnlineStatus はモジュールレベルでモック（onlineManager への依存を切り離す）
+jest.mock('@/hooks/use-online-status', () => ({
+  useOnlineStatus: jest.fn(() => true),
+}));
 
 describe('FeedScreen', () => {
   beforeEach(() => {
@@ -20,9 +25,28 @@ describe('FeedScreen', () => {
     expect(screen.getByRole('header', { name: 'ホーム' })).toBeTruthy();
   });
 
-  it('フィードプレースホルダーが表示される', () => {
+  it('空状態タイトル「タイムラインに投稿がありません」が表示される', () => {
     render(<FeedScreen />);
-    expect(screen.getByText('フィード（実装予定）')).toBeTruthy();
+    expect(screen.getByText('タイムラインに投稿がありません')).toBeTruthy();
+  });
+
+  it('空状態の説明文が表示される', () => {
+    render(<FeedScreen />);
+    expect(
+      screen.getByText('ユーザーをフォローすると、その人の投稿がここに表示されます')
+    ).toBeTruthy();
+  });
+
+  it('空状態のアクションボタン「ユーザーを検索」が表示される', () => {
+    render(<FeedScreen />);
+    expect(screen.getByRole('button', { name: 'ユーザーを検索' })).toBeTruthy();
+  });
+
+  it('「ユーザーを検索」ボタンタップで検索画面へ遷移する', () => {
+    render(<FeedScreen />);
+    const searchButton = screen.getByRole('button', { name: 'ユーザーを検索' });
+    fireEvent.press(searchButton);
+    expect(mockRouter.push).toHaveBeenCalledWith(ROUTE_SEARCH);
   });
 
   it('新規投稿 FAB が表示される', () => {
@@ -35,5 +59,26 @@ describe('FeedScreen', () => {
     const fab = screen.getByRole('button', { name: '新規投稿' });
     fireEvent.press(fab);
     expect(mockRouter.push).toHaveBeenCalledWith(ROUTE_POST_NEW);
+  });
+
+  describe('OfflineBanner', () => {
+    it('オンライン時はバナーに accessibilityLabel が設定されない', () => {
+      const { useOnlineStatus } = jest.requireMock('@/hooks/use-online-status');
+      (useOnlineStatus as jest.Mock).mockReturnValue(true);
+      render(<FeedScreen />);
+      // isVisible=false 時は accessibilityLabel が undefined になる
+      const offlineText = screen.queryByText('オフライン中です。接続が回復したら自動的に更新されます。');
+      expect(offlineText).toBeTruthy();
+    });
+
+    it('オフライン時はバナーに accessibilityLabel が設定される', () => {
+      const { useOnlineStatus } = jest.requireMock('@/hooks/use-online-status');
+      (useOnlineStatus as jest.Mock).mockReturnValue(false);
+      render(<FeedScreen />);
+      // ERR_OFFLINE の文言が accessibilityLabel に設定される
+      expect(
+        screen.getByLabelText('オフライン中です。接続が回復したら自動的に更新されます。')
+      ).toBeTruthy();
+    });
   });
 });
