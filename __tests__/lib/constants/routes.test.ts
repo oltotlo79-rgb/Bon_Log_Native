@@ -7,6 +7,8 @@ import {
   routePostDetail,
   routePostEdit,
   routeUserDetail,
+  routeSearchByQuery,
+  routeSearchByGenre,
   routes,
 } from '@/lib/constants/routes';
 
@@ -51,5 +53,69 @@ describe('routes オブジェクト（静的パス）', () => {
 
   it('設定パスが正しい', () => {
     expect(routes.settings).toBe('/settings');
+  });
+});
+
+describe('routeSearchByQuery', () => {
+  it('通常の文字列クエリで { pathname, params } オブジェクトを返す', () => {
+    expect(routeSearchByQuery('松')).toEqual({
+      pathname: '/(tabs)/search',
+      params: { q: '松' },
+    });
+  });
+
+  it('空文字でも正しい形式を返す', () => {
+    expect(routeSearchByQuery('')).toEqual({
+      pathname: '/(tabs)/search',
+      params: { q: '' },
+    });
+  });
+
+  it('スペースや特殊文字を含む文字列をそのまま params に渡す（エンコードは Expo Router に委ねる）', () => {
+    const result = routeSearchByQuery('五葉松 黒松');
+    expect(result.pathname).toBe('/(tabs)/search');
+    expect(result.params.q).toBe('五葉松 黒松');
+  });
+
+  it('記号・英数字混在クエリを含む文字列をそのまま返す', () => {
+    const result = routeSearchByQuery('bonsai & 盆栽 #1');
+    expect(result.pathname).toBe('/(tabs)/search');
+    expect(result.params.q).toBe('bonsai & 盆栽 #1');
+  });
+
+  it('routes.searchByQuery として呼び出せる', () => {
+    expect(routes.searchByQuery('test')).toEqual({
+      pathname: '/(tabs)/search',
+      params: { q: 'test' },
+    });
+  });
+});
+
+describe('routeSearchByGenre', () => {
+  it('ジャンル ID で { pathname, params } オブジェクトを返す', () => {
+    expect(routeSearchByGenre('pine')).toEqual({
+      pathname: '/(tabs)/search',
+      params: { genre: 'pine' },
+    });
+  });
+
+  it('空文字でも正しい形式を返す', () => {
+    expect(routeSearchByGenre('')).toEqual({
+      pathname: '/(tabs)/search',
+      params: { genre: '' },
+    });
+  });
+
+  it('特殊文字を含むジャンル ID をそのまま params に渡す（エンコードは Expo Router に委ねる）', () => {
+    const result = routeSearchByGenre('grass-like & others');
+    expect(result.pathname).toBe('/(tabs)/search');
+    expect(result.params.genre).toBe('grass-like & others');
+  });
+
+  it('routes.searchByGenre として呼び出せる', () => {
+    expect(routes.searchByGenre('deciduous')).toEqual({
+      pathname: '/(tabs)/search',
+      params: { genre: 'deciduous' },
+    });
   });
 });

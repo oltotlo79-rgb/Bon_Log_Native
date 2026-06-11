@@ -34,12 +34,11 @@ function shouldRetry(failureCount: number, error: Error): boolean {
 
 /** HTTP ステータスを持つエラー判定の型ガード。 */
 function isHttpError(error: unknown): error is { status: number } {
-  return (
-    typeof error === 'object' &&
-    error !== null &&
-    'status' in error &&
-    typeof (error as Record<string, unknown>).status === 'number'
-  );
+  if (typeof error !== 'object' || error === null || !('status' in error)) {
+    return false;
+  }
+  // 'status' in error を通過した時点で TypeScript は error.status へのアクセスを許可する
+  return typeof error.status === 'number';
 }
 
 /** QueryClient のリトライ遅延（指数バックオフ）。 */

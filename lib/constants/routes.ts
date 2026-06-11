@@ -70,6 +70,34 @@ export const ROUTE_SETTINGS_MUTED = '/settings/muted' as const;
 export const ROUTE_SETTINGS_SUBSCRIPTION = '/settings/subscription' as const;
 
 // ---------------------------------------------------------------------------
+// 検索遷移ヘルパー
+// ---------------------------------------------------------------------------
+
+/**
+ * クエリ文字列で検索画面へ遷移する引数オブジェクトを返す。
+ * `router.push(routeSearchByQuery('松'))` のようにそのまま渡せる。
+ * Expo Router の typed routes に適合する { pathname, params } 形式を採用し、
+ * クエリ文字列の手動エンコードによるパス破壊を防ぐ。
+ */
+export function routeSearchByQuery(query: string): {
+  pathname: typeof ROUTE_SEARCH;
+  params: { q: string };
+} {
+  return { pathname: ROUTE_SEARCH, params: { q: query } };
+}
+
+/**
+ * ジャンル ID で検索画面へ遷移する引数オブジェクトを返す。
+ * `router.push(routeSearchByGenre('pine'))` のようにそのまま渡せる。
+ */
+export function routeSearchByGenre(genreId: string): {
+  pathname: typeof ROUTE_SEARCH;
+  params: { genre: string };
+} {
+  return { pathname: ROUTE_SEARCH, params: { genre: genreId } };
+}
+
+// ---------------------------------------------------------------------------
 // 動的ルートヘルパー
 // ---------------------------------------------------------------------------
 
@@ -133,4 +161,6 @@ export const routes = {
   postDetail: routePostDetail,
   postEdit: routePostEdit,
   userDetail: routeUserDetail,
+  searchByQuery: routeSearchByQuery,
+  searchByGenre: routeSearchByGenre,
 } as const;
