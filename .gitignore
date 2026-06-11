@@ -1,0 +1,36 @@
+# dependencies
+node_modules/
+
+# Expo
+.expo/
+dist/
+web-build/
+expo-env.d.ts
+
+# CNG (prebuild) 生成物 — ネイティブディレクトリを手管理する場合は解除
+/ios
+/android
+
+# 環境変数 (秘密情報を含むためコミット禁止)
+.env
+.env.local
+.env*.local
+
+# 署名鍵
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+
+# テスト
+coverage/
+
+# Claude Code (個人ローカル設定)
+.claude/settings.local.json
+
+# misc
+*.log
+*.tsbuildinfo
+.DS_Store
+*.orig.*

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Bon_Log Native Rules"
+  short_description: "Load Claude project rules on demand"
+  default_prompt: "Use $bon-log-native-rules for this Bon_Log Native coding task."
