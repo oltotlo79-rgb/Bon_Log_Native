@@ -11,8 +11,17 @@ import {
   ERR_SESSION_EXPIRED,
   ERR_AUTH_REQUIRED,
   ERR_LOGIN_INVALID_CREDENTIALS,
+  ERR_LOGIN_RATE_LIMITED,
+  ERR_LOGIN_FAILED,
   ERR_ACCOUNT_SUSPENDED,
   ERR_EMAIL_NOT_VERIFIED,
+  ERR_REGISTER_FAILED,
+  ERR_EMAIL_ALREADY_REGISTERED,
+  ERR_NICKNAME_RESERVED,
+  ERR_PASSWORD_RESET_RATE_LIMITED,
+  ERR_PASSWORD_RESET_SEND_FAILED,
+  ERR_RESET_LINK_INVALID,
+  ERR_PASSWORD_UPDATE_FAILED,
   ERR_RATE_LIMIT,
   ERR_RATE_LIMIT_DAILY_POSTS,
   ERR_RATE_LIMIT_DAILY_COMMENTS,
@@ -23,7 +32,13 @@ import {
   ERR_FORBIDDEN,
   ERR_INVALID_INPUT,
   ERR_REQUIRED_FIELD,
+  ERR_EMAIL_REQUIRED,
   ERR_EMAIL_INVALID,
+  ERR_PASSWORD_REQUIRED,
+  ERR_PASSWORD_CONFIRM_REQUIRED,
+  ERR_NEW_PASSWORD_REQUIRED,
+  ERR_PASSWORD_MISMATCH,
+  ERR_TERMS_AGREEMENT_REQUIRED,
   ERR_PASSWORD_MIN_LENGTH,
   ERR_PASSWORD_MAX_LENGTH,
   ERR_PASSWORD_ALPHANUMERIC,
@@ -64,6 +79,13 @@ import {
   ERR_PROFILE_LOAD_FAILED,
   ERR_SEARCH_FAILED,
   ERR_POST_LOAD_FAILED,
+  MSG_PASSWORD_RESET_SENT_TITLE,
+  MSG_PASSWORD_RESET_SENT_BODY,
+  MSG_PASSWORD_RESET_SENT_HINT,
+  MSG_RESET_LINK_INVALID_TITLE,
+  MSG_RESET_LINK_INVALID_BODY,
+  MSG_PASSWORD_UPDATED_TITLE,
+  MSG_PASSWORD_UPDATED_BODY,
 } from '@/lib/constants/errors';
 
 describe('静的エラー定数', () => {
@@ -78,8 +100,17 @@ describe('静的エラー定数', () => {
     expect(typeof ERR_SESSION_EXPIRED).toBe('string');
     expect(typeof ERR_AUTH_REQUIRED).toBe('string');
     expect(typeof ERR_LOGIN_INVALID_CREDENTIALS).toBe('string');
+    expect(typeof ERR_LOGIN_RATE_LIMITED).toBe('string');
+    expect(typeof ERR_LOGIN_FAILED).toBe('string');
     expect(typeof ERR_ACCOUNT_SUSPENDED).toBe('string');
     expect(typeof ERR_EMAIL_NOT_VERIFIED).toBe('string');
+    expect(typeof ERR_REGISTER_FAILED).toBe('string');
+    expect(typeof ERR_EMAIL_ALREADY_REGISTERED).toBe('string');
+    expect(typeof ERR_NICKNAME_RESERVED).toBe('string');
+    expect(typeof ERR_PASSWORD_RESET_RATE_LIMITED).toBe('string');
+    expect(typeof ERR_PASSWORD_RESET_SEND_FAILED).toBe('string');
+    expect(typeof ERR_RESET_LINK_INVALID).toBe('string');
+    expect(typeof ERR_PASSWORD_UPDATE_FAILED).toBe('string');
   });
 
   it('レート制限系定数が文字列型である', () => {
@@ -99,7 +130,13 @@ describe('静的エラー定数', () => {
   it('入力バリデーション系の静的定数が文字列型である', () => {
     expect(typeof ERR_INVALID_INPUT).toBe('string');
     expect(typeof ERR_REQUIRED_FIELD).toBe('string');
+    expect(typeof ERR_EMAIL_REQUIRED).toBe('string');
     expect(typeof ERR_EMAIL_INVALID).toBe('string');
+    expect(typeof ERR_PASSWORD_REQUIRED).toBe('string');
+    expect(typeof ERR_PASSWORD_CONFIRM_REQUIRED).toBe('string');
+    expect(typeof ERR_NEW_PASSWORD_REQUIRED).toBe('string');
+    expect(typeof ERR_PASSWORD_MISMATCH).toBe('string');
+    expect(typeof ERR_TERMS_AGREEMENT_REQUIRED).toBe('string');
     expect(typeof ERR_PASSWORD_MIN_LENGTH).toBe('string');
     expect(typeof ERR_PASSWORD_MAX_LENGTH).toBe('string');
     expect(typeof ERR_PASSWORD_ALPHANUMERIC).toBe('string');
@@ -143,6 +180,16 @@ describe('静的エラー定数', () => {
     expect(typeof ERR_PROFILE_LOAD_FAILED).toBe('string');
     expect(typeof ERR_SEARCH_FAILED).toBe('string');
     expect(typeof ERR_POST_LOAD_FAILED).toBe('string');
+  });
+
+  it('認証フォーム案内メッセージが文字列型である', () => {
+    expect(typeof MSG_PASSWORD_RESET_SENT_TITLE).toBe('string');
+    expect(typeof MSG_PASSWORD_RESET_SENT_BODY).toBe('string');
+    expect(typeof MSG_PASSWORD_RESET_SENT_HINT).toBe('string');
+    expect(typeof MSG_RESET_LINK_INVALID_TITLE).toBe('string');
+    expect(typeof MSG_RESET_LINK_INVALID_BODY).toBe('string');
+    expect(typeof MSG_PASSWORD_UPDATED_TITLE).toBe('string');
+    expect(typeof MSG_PASSWORD_UPDATED_BODY).toBe('string');
   });
 });
 

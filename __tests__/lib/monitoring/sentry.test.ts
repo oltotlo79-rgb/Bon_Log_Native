@@ -245,4 +245,125 @@ describe('beforeSend スクラブ', () => {
       expect(() => beforeSend(event, {})).not.toThrow();
     });
   });
+
+  it('request.headers が非オブジェクト型でもエラーなく動作する', () => {
+    jest.isolateModules(() => {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const { initSentry } = require('@/lib/monitoring/sentry') as {
+        initSentry: () => void;
+      };
+      initSentry();
+
+      const beforeSend = extractBeforeSend();
+      const event: EventLike = { request: { headers: 'raw-string-header' } };
+      expect(() => beforeSend(event, {})).not.toThrow();
+    });
+  });
+
+  it('exception.values の value に Bearer トークンが含まれる場合は [Filtered] に置換する', () => {
+    jest.isolateModules(() => {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const { initSentry } = require('@/lib/monitoring/sentry') as {
+        initSentry: () => void;
+      };
+      initSentry();
+
+      const beforeSend = extractBeforeSend();
+      const event: EventLike = {
+        exception: {
+          values: [
+            { type: 'Error', value: 'Request failed with Bearer abc123' },
+            { type: 'Error', value: 'Normal error message' },
+          ],
+        },
+      };
+      const result = beforeSend(event, {}) as {
+        exception: { values: { type: string; value: string }[] };
+      };
+
+      expect(result.exception.values[0].value).toBe('[Filtered]');
+      expect(result.exception.values[1].value).toBe('Normal error message');
+    });
+  });
+
+  it('exception がない場合もエラーなく動作する', () => {
+    jest.isolateModules(() => {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const { initSentry } = require('@/lib/monitoring/sentry') as {
+        initSentry: () => void;
+      };
+      initSentry();
+
+      const beforeSend = extractBeforeSend();
+      const event: EventLike = { message: 'no exception field' };
+      expect(() => beforeSend(event, {})).not.toThrow();
+    });
+  });
+
+  it('breadcrumbs の data に token フィールドがある場合は [Filtered] に置換する', () => {
+    jest.isolateModules(() => {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const { initSentry } = require('@/lib/monitoring/sentry') as {
+        initSentry: () => void;
+      };
+      initSentry();
+
+      const beforeSend = extractBeforeSend();
+      // ErrorEvent.breadcrumbs は Breadcrumb[]（values プロパティなし）
+      const event: EventLike = {
+        breadcrumbs: [
+          {
+            type: 'http',
+            message: 'API call',
+            data: { accessToken: 'secret-token', url: '/api/v1/posts' },
+          },
+        ],
+      };
+      const result = beforeSend(event, {}) as {
+        breadcrumbs: { data: Record<string, unknown> }[];
+      };
+
+      expect(result.breadcrumbs[0].data.accessToken).toBe('[Filtered]');
+      expect(result.breadcrumbs[0].data.url).toBe('/api/v1/posts');
+    });
+  });
+
+  it('breadcrumbs の message に Bearer が含まれる場合は [Filtered] に置換する', () => {
+    jest.isolateModules(() => {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const { initSentry } = require('@/lib/monitoring/sentry') as {
+        initSentry: () => void;
+      };
+      initSentry();
+
+      const beforeSend = extractBeforeSend();
+      // ErrorEvent.breadcrumbs は Breadcrumb[]（values プロパティなし）
+      const event: EventLike = {
+        breadcrumbs: [
+          { type: 'debug', message: 'Sending Bearer my-secret-token' },
+          { type: 'debug', message: 'Normal breadcrumb' },
+        ],
+      };
+      const result = beforeSend(event, {}) as {
+        breadcrumbs: { message: string }[];
+      };
+
+      expect(result.breadcrumbs[0].message).toBe('[Filtered]');
+      expect(result.breadcrumbs[1].message).toBe('Normal breadcrumb');
+    });
+  });
+
+  it('breadcrumbs がない場合もエラーなく動作する', () => {
+    jest.isolateModules(() => {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      const { initSentry } = require('@/lib/monitoring/sentry') as {
+        initSentry: () => void;
+      };
+      initSentry();
+
+      const beforeSend = extractBeforeSend();
+      const event: EventLike = { message: 'no breadcrumbs field' };
+      expect(() => beforeSend(event, {})).not.toThrow();
+    });
+  });
 });

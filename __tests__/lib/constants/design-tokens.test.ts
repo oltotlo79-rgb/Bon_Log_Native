@@ -37,6 +37,7 @@ import {
   colorNavIconInactive,
   colorNavLabel,
   colorNavLabelInactive,
+  colorGoogleBrand,
   spacing0,
   spacing1,
   spacing2,
@@ -131,6 +132,12 @@ describe('カラートークン', () => {
     expect(colorNavIconInactive).toMatch(hexPattern);
     expect(colorNavLabel).toMatch(hexPattern);
     expect(colorNavLabelInactive).toMatch(hexPattern);
+  });
+
+  it('外部サービスブランド色が正しい hex 値で定義されている', () => {
+    const hexPattern = /^#[0-9a-fA-F]{6}$/;
+    expect(colorGoogleBrand).toMatch(hexPattern);
+    expect(colorGoogleBrand).toBe('#4285F4');
   });
 });
 
