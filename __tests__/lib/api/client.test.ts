@@ -81,6 +81,13 @@ describe('parseApiError', () => {
     const err = await parseApiError(res);
     expect(err.code).toBe('INTERNAL_ERROR');
   });
+
+  it('スペック外の未知コードを受け取った場合は INTERNAL_ERROR にフォールバックする', async () => {
+    const res = makeResponse(500, makeErrorBody('UNKNOWN_FUTURE_CODE', 'Unknown'));
+    const err = await parseApiError(res);
+    expect(err.code).toBe('INTERNAL_ERROR');
+    expect(err.status).toBe(500);
+  });
 });
 
 // ---------------------------------------------------------------------------

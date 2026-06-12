@@ -8,7 +8,7 @@
 
 import createClient, { type Middleware } from 'openapi-fetch';
 import type { paths } from '@/lib/api/generated/schema.d.ts';
-import { ApiError, isApiError, type MobileApiErrorCode } from '@/lib/api/errors';
+import { ApiError, isApiError, isMobileApiErrorCode, type MobileApiErrorCode } from '@/lib/api/errors';
 import { REQUEST_TIMEOUT_MS } from '@/lib/constants/query';
 
 // ---------------------------------------------------------------------------
@@ -98,7 +98,8 @@ export async function parseApiError(response: Response): Promise<ApiError> {
       'message' in body.error &&
       typeof body.error.message === 'string'
     ) {
-      code = body.error.code as MobileApiErrorCode;
+      // スペック外の未知コードは INTERNAL_ERROR として扱い、as キャストを避ける
+      code = isMobileApiErrorCode(body.error.code) ? body.error.code : 'INTERNAL_ERROR';
       message = body.error.message;
     }
   } catch {
@@ -160,6 +161,14 @@ function buildAuthAndErrorMiddleware(): Middleware {
   };
 }
 
+function hasUnref(value: unknown): value is { unref: () => void } {
+  if (typeof value !== 'object' || value === null || !('unref' in value)) {
+    return false;
+  }
+  // in 演算子チェック後、TypeScript は value を object & { unref: unknown } に絞り込む
+  return typeof value.unref === 'function';
+}
+
 function buildTimeoutMiddleware(): Middleware {
   const timers = new Map<string, ReturnType<typeof setTimeout>>();
 
@@ -179,9 +188,9 @@ function buildTimeoutMiddleware(): Middleware {
         controller.abort();
       }, REQUEST_TIMEOUT_MS);
       // Node.js 環境（Jest）でテスト終了を妨げないよう unref する。
-      // RN の Hermes は unref を持たないため存在チェックをする。
-      if (typeof timerId === 'object' && timerId !== null && 'unref' in timerId) {
-        (timerId as { unref: () => void }).unref();
+      // RN の Hermes は unref を持たないため型ガードで存在確認してから呼ぶ。
+      if (hasUnref(timerId)) {
+        timerId.unref();
       }
       timers.set(id, timerId);
       return new Request(request, { signal: controller.signal });

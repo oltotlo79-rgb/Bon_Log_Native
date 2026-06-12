@@ -2,7 +2,7 @@
  * ApiError クラスと型ガードのユニットテスト。
  */
 
-import { ApiError, isApiError, isReuseDetected } from '@/lib/api/errors';
+import { ApiError, isApiError, isMobileApiErrorCode, isReuseDetected } from '@/lib/api/errors';
 import type { MobileApiErrorCode } from '@/lib/api/errors';
 
 describe('ApiError', () => {
@@ -86,6 +86,41 @@ describe('isApiError', () => {
 
   it('status フィールドを持つ非 ApiError オブジェクトで false を返す', () => {
     expect(isApiError({ status: 404, message: 'Not found' })).toBe(false);
+  });
+});
+
+describe('isMobileApiErrorCode', () => {
+  it('18 値すべてで true を返す', () => {
+    const codes: MobileApiErrorCode[] = [
+      'AUTH_REQUIRED',
+      'AUTH_INVALID_TOKEN',
+      'AUTH_TOKEN_EXPIRED',
+      'AUTH_INVALID_CREDENTIALS',
+      'AUTH_2FA_REQUIRED',
+      'AUTH_2FA_INVALID_CODE',
+      'AUTH_2FA_TICKET_EXPIRED',
+      'AUTH_REFRESH_TOKEN_INVALID',
+      'AUTH_REFRESH_TOKEN_REUSE_DETECTED',
+      'ACCOUNT_SUSPENDED',
+      'GUEST_NOT_ALLOWED',
+      'EMAIL_NOT_VERIFIED',
+      'VALIDATION_ERROR',
+      'RATE_LIMITED',
+      'NOT_FOUND',
+      'CONFLICT',
+      'INTERNAL_ERROR',
+      'SERVER_MISCONFIGURED',
+    ];
+    expect(codes).toHaveLength(18);
+    codes.forEach((code) => {
+      expect(isMobileApiErrorCode(code)).toBe(true);
+    });
+  });
+
+  it('スペック外の文字列で false を返す', () => {
+    expect(isMobileApiErrorCode('UNKNOWN_CODE')).toBe(false);
+    expect(isMobileApiErrorCode('')).toBe(false);
+    expect(isMobileApiErrorCode('internal_error')).toBe(false);
   });
 });
 

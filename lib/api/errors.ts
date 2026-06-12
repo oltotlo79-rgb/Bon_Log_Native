@@ -9,6 +9,36 @@ import type { components } from '@/lib/api/generated/schema.d.ts';
 export type MobileApiErrorCode = components['schemas']['MobileApiErrorCode'];
 
 /**
+ * スペック由来の 18 値 readonly 配列。
+ * isMobileApiErrorCode の照合基準として使う。生成スキーマの enum と一致させること。
+ */
+const MOBILE_API_ERROR_CODES = [
+  'AUTH_REQUIRED',
+  'AUTH_INVALID_TOKEN',
+  'AUTH_TOKEN_EXPIRED',
+  'AUTH_INVALID_CREDENTIALS',
+  'AUTH_2FA_REQUIRED',
+  'AUTH_2FA_INVALID_CODE',
+  'AUTH_2FA_TICKET_EXPIRED',
+  'AUTH_REFRESH_TOKEN_INVALID',
+  'AUTH_REFRESH_TOKEN_REUSE_DETECTED',
+  'ACCOUNT_SUSPENDED',
+  'GUEST_NOT_ALLOWED',
+  'EMAIL_NOT_VERIFIED',
+  'VALIDATION_ERROR',
+  'RATE_LIMITED',
+  'NOT_FOUND',
+  'CONFLICT',
+  'INTERNAL_ERROR',
+  'SERVER_MISCONFIGURED',
+] as const satisfies readonly MobileApiErrorCode[];
+
+/** 文字列が MobileApiErrorCode の許容値かを判定する型ガード。 */
+export function isMobileApiErrorCode(value: string): value is MobileApiErrorCode {
+  return (MOBILE_API_ERROR_CODES as readonly string[]).includes(value);
+}
+
+/**
  * API から返る型付きエラー。
  * `code` を使って認証エラー・レート制限などを区別する。
  * `retryAfter` は 429 レスポンスの Retry-After ヘッダー値（秒）。
