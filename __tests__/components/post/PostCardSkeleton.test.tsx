@@ -14,11 +14,18 @@ jest.spyOn(Animated, 'loop').mockImplementation(() => ({
   reset: jest.fn(),
 }));
 
+/** toJSON() の戻り値から root 要素の props を安全に取り出すヘルパー。 */
+function getRootProps(toJSON: ReturnType<typeof render>['toJSON']): Record<string, unknown> {
+  const json = toJSON();
+  if (json === null || Array.isArray(json)) return {};
+  return (json.props ?? {}) as Record<string, unknown>;
+}
+
 describe('PostCardSkeleton', () => {
   it('accessibilityElementsHidden が設定されスクリーンリーダーから隠れている', () => {
     const { toJSON } = render(<PostCardSkeleton />);
-    const root = toJSON() as unknown as { props: { accessibilityElementsHidden: boolean } };
-    expect(root.props.accessibilityElementsHidden).toBe(true);
+    const props = getRootProps(toJSON);
+    expect(props.accessibilityElementsHidden).toBe(true);
   });
 
   it('hasImage=false のとき画像エリアが描画されない', () => {
