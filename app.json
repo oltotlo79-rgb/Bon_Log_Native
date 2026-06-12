@@ -17,7 +17,21 @@
         "backgroundImage": "./assets/images/android-icon-background.png",
         "backgroundColor": "#F5F0E8"
       },
-      "package": "com.bonlog.app"
+      "package": "com.bonlog.app",
+      "intentFilters": [
+        {
+          "action": "VIEW",
+          "autoVerify": true,
+          "data": [
+            {
+              "scheme": "https",
+              "host": "www.bon-log.com",
+              "pathPrefix": "/password-reset/confirm"
+            }
+          ],
+          "category": ["BROWSABLE", "DEFAULT"]
+        }
+      ]
     },
     "web": {
       "output": "static",

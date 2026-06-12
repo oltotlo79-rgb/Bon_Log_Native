@@ -4,6 +4,7 @@
  */
 
 import {
+  messageForApiError,
   ERR_NETWORK,
   ERR_OFFLINE,
   ERR_OFFLINE_ACTION,
@@ -237,5 +238,81 @@ describe('関数型エラー定数', () => {
     it('動画本数制限メッセージを返す', () => {
       expect(ERR_VIDEO_LIMIT(1)).toBe('動画は1本までです。');
     });
+  });
+});
+
+describe('messageForApiError', () => {
+  it('AUTH_REQUIRED は ERR_AUTH_REQUIRED を返す', () => {
+    expect(typeof messageForApiError('AUTH_REQUIRED')).toBe('string');
+    expect(messageForApiError('AUTH_REQUIRED')).toBeTruthy();
+  });
+
+  it('AUTH_INVALID_TOKEN は ERR_SESSION_EXPIRED を返す', () => {
+    expect(messageForApiError('AUTH_INVALID_TOKEN')).toBeTruthy();
+  });
+
+  it('AUTH_TOKEN_EXPIRED は ERR_SESSION_EXPIRED を返す', () => {
+    expect(messageForApiError('AUTH_TOKEN_EXPIRED')).toBeTruthy();
+  });
+
+  it('AUTH_INVALID_CREDENTIALS は ERR_LOGIN_INVALID_CREDENTIALS を返す', () => {
+    expect(messageForApiError('AUTH_INVALID_CREDENTIALS')).toBeTruthy();
+  });
+
+  it('AUTH_2FA_REQUIRED は ERR_2FA_NO_TICKET を返す', () => {
+    expect(messageForApiError('AUTH_2FA_REQUIRED')).toBeTruthy();
+  });
+
+  it('AUTH_2FA_INVALID_CODE は ERR_2FA_INVALID_CODE を返す', () => {
+    expect(messageForApiError('AUTH_2FA_INVALID_CODE')).toBeTruthy();
+  });
+
+  it('AUTH_2FA_TICKET_EXPIRED は ERR_2FA_TICKET_EXPIRED を返す', () => {
+    expect(messageForApiError('AUTH_2FA_TICKET_EXPIRED')).toBeTruthy();
+  });
+
+  it('AUTH_REFRESH_TOKEN_INVALID は ERR_SESSION_EXPIRED を返す', () => {
+    expect(messageForApiError('AUTH_REFRESH_TOKEN_INVALID')).toBeTruthy();
+  });
+
+  it('AUTH_REFRESH_TOKEN_REUSE_DETECTED は ERR_SESSION_REUSE_DETECTED を返す', () => {
+    const msg = messageForApiError('AUTH_REFRESH_TOKEN_REUSE_DETECTED');
+    expect(msg).toContain('不正アクセス');
+  });
+
+  it('ACCOUNT_SUSPENDED は ERR_ACCOUNT_SUSPENDED を返す', () => {
+    expect(messageForApiError('ACCOUNT_SUSPENDED')).toBeTruthy();
+  });
+
+  it('GUEST_NOT_ALLOWED は ERR_AUTH_REQUIRED を返す', () => {
+    expect(messageForApiError('GUEST_NOT_ALLOWED')).toBeTruthy();
+  });
+
+  it('EMAIL_NOT_VERIFIED は ERR_EMAIL_NOT_VERIFIED を返す', () => {
+    expect(messageForApiError('EMAIL_NOT_VERIFIED')).toBeTruthy();
+  });
+
+  it('VALIDATION_ERROR は ERR_INVALID_INPUT を返す', () => {
+    expect(messageForApiError('VALIDATION_ERROR')).toBeTruthy();
+  });
+
+  it('RATE_LIMITED は ERR_RATE_LIMIT を返す', () => {
+    expect(messageForApiError('RATE_LIMITED')).toBeTruthy();
+  });
+
+  it('NOT_FOUND は ERR_NOT_FOUND を返す', () => {
+    expect(messageForApiError('NOT_FOUND')).toBeTruthy();
+  });
+
+  it('CONFLICT は ERR_INVALID_INPUT を返す', () => {
+    expect(messageForApiError('CONFLICT')).toBeTruthy();
+  });
+
+  it('INTERNAL_ERROR は ERR_SERVER を返す', () => {
+    expect(messageForApiError('INTERNAL_ERROR')).toBeTruthy();
+  });
+
+  it('SERVER_MISCONFIGURED は ERR_SERVER を返す', () => {
+    expect(messageForApiError('SERVER_MISCONFIGURED')).toBeTruthy();
   });
 });

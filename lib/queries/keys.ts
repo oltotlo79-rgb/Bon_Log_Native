@@ -46,6 +46,8 @@ export const queryKeys = {
   users: {
     /** ルートキー */
     all: ['users'] as const,
+    /** 認証中ユーザー自身の基本情報（GET /api/v1/users/me） */
+    me: ['users', 'me'] as const,
     /** ユーザー詳細・プロフィール */
     detail: (id: string) => ['users', 'detail', id] as const,
   },

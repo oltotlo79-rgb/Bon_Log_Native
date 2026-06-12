@@ -138,6 +138,24 @@ jest.mock('@sentry/react-native', () => ({
   withScope: jest.fn(),
 }));
 
+// expo-secure-store のモック
+// トークンを実際のキーストアに書き込まないよう、in-memory ストアで代替する
+jest.mock('expo-secure-store', () => {
+  const store = new Map<string, string>();
+  return {
+    setItemAsync: jest.fn(async (key: string, value: string) => {
+      store.set(key, value);
+    }),
+    getItemAsync: jest.fn(async (key: string): Promise<string | null> => {
+      return store.get(key) ?? null;
+    }),
+    deleteItemAsync: jest.fn(async (key: string) => {
+      store.delete(key);
+    }),
+    _store: store,
+  };
+});
+
 // expo-image のモック
 jest.mock('expo-image', () => {
   const React = require('react');
