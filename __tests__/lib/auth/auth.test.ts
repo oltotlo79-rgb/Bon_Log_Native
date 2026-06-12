@@ -4,8 +4,8 @@
  * expo-secure-store はセットアップで一元モック済み。
  */
 
-import type { QueryClient } from '@tanstack/react-query';
 import { ApiError } from '@/lib/api/errors';
+import { createTestQueryClient } from '@/__tests__/utils/test-utils';
 import type { MobileApiErrorCode } from '@/lib/api/errors';
 import {
   initializeAuth,
@@ -53,10 +53,10 @@ jest.mock('expo-secure-store', () => ({
 // ヘルパー
 // ---------------------------------------------------------------------------
 
-function makeQueryClient(): QueryClient {
-  return {
-    clear: jest.fn(),
-  } as unknown as QueryClient;
+function makeQueryClient() {
+  const queryClient = createTestQueryClient();
+  jest.spyOn(queryClient, 'clear');
+  return queryClient;
 }
 
 function makeTokenPair() {
