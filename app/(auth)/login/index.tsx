@@ -113,7 +113,7 @@ export default function LoginScreen() {
       {
         onSuccess: (result) => {
           if (result.requires2FA) {
-            router.push(`/(auth)/two-factor-verify`);
+            router.push(routes.twoFactorVerify);
           }
           // requires2FA === false の場合は AuthGuard が feed へ流す
         },
