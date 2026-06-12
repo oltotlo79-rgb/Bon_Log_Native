@@ -4,51 +4,52 @@
  */
 
 import React from 'react';
-import { render, screen } from '@testing-library/react-native';
+import { screen } from '@testing-library/react-native';
+import { renderWithProviders } from '../../utils/test-utils';
 import LoginScreen from '@/app/(auth)/login/index';
 import { routes } from '@/lib/constants/routes';
 
 describe('LoginScreen', () => {
   it('ログインボタンが表示されている', () => {
-    render(<LoginScreen />);
+    renderWithProviders(<LoginScreen />);
     expect(screen.getByRole('button', { name: 'ログイン' })).toBeTruthy();
   });
 
   it('Google でログインボタンが表示されている', () => {
-    render(<LoginScreen />);
+    renderWithProviders(<LoginScreen />);
     expect(screen.getByRole('button', { name: 'Google でログイン' })).toBeTruthy();
   });
 
   it('新規登録へのリンクが表示されている', () => {
-    render(<LoginScreen />);
+    renderWithProviders(<LoginScreen />);
     const link = screen.getByRole('link', { name: '新規登録' });
     expect(link).toBeTruthy();
   });
 
   it('パスワードリセットへのリンクが表示されている', () => {
-    render(<LoginScreen />);
+    renderWithProviders(<LoginScreen />);
     const link = screen.getByRole('link', { name: 'パスワードをお忘れですか？' });
     expect(link).toBeTruthy();
   });
 
   it('メールアドレス入力フィールドが表示されている', () => {
-    render(<LoginScreen />);
+    renderWithProviders(<LoginScreen />);
     expect(screen.getByLabelText('メールアドレス')).toBeTruthy();
   });
 
   it('パスワード入力フィールドが表示されている', () => {
-    render(<LoginScreen />);
+    renderWithProviders(<LoginScreen />);
     expect(screen.getByLabelText('パスワード')).toBeTruthy();
   });
 
   it('新規登録リンクが正しいルートを指している', () => {
-    render(<LoginScreen />);
+    renderWithProviders(<LoginScreen />);
     const link = screen.getByRole('link', { name: '新規登録' });
     expect(link.props.testID).toBe(`link-${routes.register}`);
   });
 
   it('パスワードリセットリンクが正しいルートを指している', () => {
-    render(<LoginScreen />);
+    renderWithProviders(<LoginScreen />);
     const link = screen.getByRole('link', { name: 'パスワードをお忘れですか？' });
     expect(link.props.testID).toBe(`link-${routes.passwordReset}`);
   });

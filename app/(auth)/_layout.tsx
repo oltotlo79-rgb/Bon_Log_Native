@@ -26,6 +26,13 @@ export default function AuthLayout() {
         name="password-reset/confirm/index"
         options={{ headerShown: false }}
       />
+      <Stack.Screen
+        name="two-factor-verify/index"
+        options={{
+          title: '2 段階認証',
+          headerBackTitle: 'ログイン',
+        }}
+      />
     </Stack>
   );
 }

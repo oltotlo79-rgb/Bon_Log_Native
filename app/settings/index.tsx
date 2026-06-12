@@ -4,9 +4,11 @@ import {
   TouchableOpacity,
   ScrollView,
   StyleSheet,
+  Alert,
 } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useLogoutMutation } from '@/lib/queries/auth';
 import {
   colorBackground,
   colorSurface,
@@ -31,6 +33,7 @@ type SettingItem = {
   description?: string;
   onPress: () => void;
   destructive?: boolean;
+  disabled?: boolean;
 };
 
 type SettingGroup = {
@@ -38,6 +41,31 @@ type SettingGroup = {
 };
 
 export default function SettingsScreen() {
+  const { mutate: logout, isPending: isLoggingOut } = useLogoutMutation();
+
+  function handleLogout() {
+    Alert.alert(
+      'ログアウト',
+      'ログアウトしますか？',
+      [
+        { text: 'キャンセル', style: 'cancel' },
+        {
+          text: 'ログアウト',
+          style: 'destructive',
+          onPress: () => {
+            logout(undefined, {
+              onError: () => {
+                // サーバーエラーでもローカルのログアウトは完了するため通知不要
+                // AuthGuard がログイン画面へ誘導する
+              },
+            });
+            // ログアウト成功後は AuthGuard が login 画面へリダイレクトする
+          },
+        },
+      ]
+    );
+  }
+
   const settingGroups: SettingGroup[] = [
     {
       items: [
@@ -92,9 +120,10 @@ export default function SettingsScreen() {
     {
       items: [
         {
-          label: 'ログアウト',
-          onPress: () => {},
+          label: isLoggingOut ? 'ログアウト中...' : 'ログアウト',
+          onPress: handleLogout,
           destructive: true,
+          disabled: isLoggingOut,
         },
       ],
     },
@@ -130,6 +159,7 @@ export default function SettingsScreen() {
                   itemIndex < group.items.length - 1 && styles.itemBorder,
                 ]}
                 onPress={item.onPress}
+                disabled={item.disabled}
                 accessibilityRole="button"
                 accessibilityLabel={item.label}
               >
@@ -138,6 +168,7 @@ export default function SettingsScreen() {
                     style={[
                       styles.itemLabel,
                       item.destructive && styles.itemLabelDestructive,
+                      item.disabled && styles.itemLabelDisabled,
                     ]}
                   >
                     {item.label}
@@ -219,6 +250,9 @@ const styles = StyleSheet.create({
   },
   itemLabelDestructive: {
     color: colorError,
+  },
+  itemLabelDisabled: {
+    opacity: 0.5,
   },
   itemDescription: {
     ...textSm,

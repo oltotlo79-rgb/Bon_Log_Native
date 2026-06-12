@@ -10,6 +10,7 @@
 // expo-router のモック
 jest.mock('expo-router', () => ({
   useLocalSearchParams: jest.fn(() => ({})),
+  useSegments: jest.fn(() => [] as string[]),
   useRouter: jest.fn(() => ({
     push: jest.fn(),
     back: jest.fn(),
@@ -155,6 +156,17 @@ jest.mock('expo-secure-store', () => {
     _store: store,
   };
 });
+
+// lib/auth/use-auth のモック
+// LoginScreen 等が useAuth() を呼ぶため、テスト環境では安定したデフォルト値を返す
+jest.mock('@/lib/auth/use-auth', () => ({
+  useAuth: jest.fn(() => ({
+    status: 'signedOut' as const,
+    isSignedIn: false,
+    isLoading: false,
+    lastAuthFailureReason: null,
+  })),
+}));
 
 // expo-image のモック
 jest.mock('expo-image', () => {

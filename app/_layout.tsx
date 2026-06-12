@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Stack } from 'expo-router';
+import { Stack, router, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -10,6 +10,10 @@ import { createQueryClient } from '@/lib/queries/query-client';
 import { setupOnlineManager, setupFocusManager } from '@/lib/queries/managers';
 import { initSentry, captureException } from '@/lib/monitoring/sentry';
 import { ScreenError } from '@/components/common/ScreenError';
+import { ScreenLoading } from '@/components/common/ScreenLoading';
+import { initializeAuth } from '@/lib/auth';
+import { useAuth } from '@/lib/auth/use-auth';
+import { ROUTE_LOGIN, ROUTE_FEED } from '@/lib/constants/routes';
 
 // Sentry はモジュールロード時（アプリ起動最初期）に1回だけ初期化する
 initSentry();
@@ -38,12 +42,36 @@ export function ErrorBoundary({
 }
 
 // ---------------------------------------------------------------------------
+// AuthGuard — 認証状態に応じてルーティングを制御する
+// ---------------------------------------------------------------------------
+
+function AuthGuard() {
+  const { status } = useAuth();
+  const segments = useSegments();
+
+  useEffect(() => {
+    if (status === 'loading') return;
+
+    const inAuthGroup = segments[0] === '(auth)';
+
+    if (status === 'signedOut' && !inAuthGroup) {
+      router.replace(ROUTE_LOGIN);
+    } else if (status === 'signedIn' && inAuthGroup) {
+      router.replace(ROUTE_FEED);
+    }
+  }, [status, segments]);
+
+  return null;
+}
+
+// ---------------------------------------------------------------------------
 // Root Layout
 // ---------------------------------------------------------------------------
 
 export default function RootLayout() {
   // StrictMode の二重発火でも再生成されないよう lazy init で保持する
   const [queryClient] = useState<QueryClient>(() => createQueryClient());
+  const [authInitialized, setAuthInitialized] = useState(false);
 
   useEffect(() => {
     const cleanupOnline = setupOnlineManager();
@@ -54,10 +82,28 @@ export default function RootLayout() {
     };
   }, []);
 
+  useEffect(() => {
+    void initializeAuth({ queryClient }).then(() => {
+      setAuthInitialized(true);
+    });
+    // queryClient は lazy init で安定しているため依存配列から除外する
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  if (!authInitialized) {
+    return (
+      <SafeAreaProvider>
+        <ScreenLoading variant="spinner" accessibilityLabel="認証情報を確認中" />
+      </SafeAreaProvider>
+    );
+  }
+
   return (
     <QueryClientProvider client={queryClient}>
     <GestureHandlerRootView style={styles.root}>
       <SafeAreaProvider>
+        {/* AuthGuard は QueryClientProvider 配下で useAuth を使うため Stack と並置する */}
+        <AuthGuard />
         <Stack>
           <Stack.Screen name="index" options={{ headerShown: false }} />
           <Stack.Screen name="(auth)" options={{ headerShown: false }} />

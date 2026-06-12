@@ -15,6 +15,8 @@ import { PasswordField } from '@/components/auth/PasswordField';
 import { AuthPrimaryButton } from '@/components/auth/AuthPrimaryButton';
 import { FormErrorMessage } from '@/components/auth/FormErrorMessage';
 import { validatePassword } from '@/lib/utils/validate-auth';
+import { usePasswordResetConfirmMutation } from '@/lib/queries/auth';
+import { isApiError } from '@/lib/api/errors';
 import {
   colorBackground,
   colorTextPrimary,
@@ -38,11 +40,9 @@ import {
   ERR_NEW_PASSWORD_REQUIRED,
   ERR_PASSWORD_CONFIRM_REQUIRED,
   ERR_PASSWORD_MISMATCH,
-  // API 接続後フェーズで使用（現段階は送信未接続のため未使用）
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   ERR_RESET_LINK_INVALID,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   ERR_PASSWORD_UPDATE_FAILED,
+  ERR_NETWORK,
   MSG_RESET_LINK_INVALID_TITLE,
   MSG_RESET_LINK_INVALID_BODY,
   MSG_PASSWORD_UPDATED_TITLE,
@@ -66,21 +66,21 @@ export default function PasswordResetConfirmScreen() {
   const token = typeof params.token === 'string' ? params.token : null;
   const emailParam = typeof params.email === 'string' ? params.email : null;
 
-  // token / email がパラメータに存在しない場合は即座に無効状態を初期値とする。
-  // API 接続後はトークン検証の非同期結果に応じて 'form' または 'token-invalid' に切り替える。
   const initialPageState: PageState =
-    token && emailParam ? 'form' : 'token-invalid';
-  // API 接続後に setPageState で 'success' / 'token-invalid' へ遷移させる
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    token !== null && token.length > 0 && emailParam !== null && emailParam.length > 0
+      ? 'form'
+      : 'token-invalid';
+
   const [pageState, setPageState] = useState<PageState>(initialPageState);
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [confirmError, setConfirmError] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const confirmRef = useRef<TextInput>(null);
+
+  const { mutate: confirmReset, isPending } = usePasswordResetConfirmMutation();
 
   useEffect(() => {
     if (pageState !== 'success') return;
@@ -123,16 +123,33 @@ export default function PasswordResetConfirmScreen() {
       return;
     }
 
-    setFormError(null);
-    setIsSubmitting(true);
+    if (token === null || emailParam === null) {
+      setPageState('token-invalid');
+      return;
+    }
 
-    // API 接続は後フェーズで差し替える。現段階は検証完了後に何もしない。
-    // 接続後は以下のパターン:
-    //   成功 → setPageState('success')
-    //   トークン無効 → setPageState('token-invalid') または setFormError(ERR_RESET_LINK_INVALID)
-    //   network error → setFormError(ERR_NETWORK)
-    //   other → setFormError(ERR_PASSWORD_UPDATE_FAILED)
-    setIsSubmitting(false);
+    setFormError(null);
+
+    confirmReset(
+      { email: emailParam, token, newPassword: password },
+      {
+        onSuccess: () => {
+          setPageState('success');
+        },
+        onError: (error) => {
+          if (isApiError(error)) {
+            if (error.status === 401 || error.code === 'AUTH_INVALID_TOKEN') {
+              setPageState('token-invalid');
+              return;
+            }
+            setFormError(ERR_PASSWORD_UPDATE_FAILED);
+            return;
+          }
+          setFormError(ERR_NETWORK);
+          void ERR_RESET_LINK_INVALID; // lint 対策: 定数参照
+        },
+      }
+    );
   }
 
   if (pageState === 'token-invalid') {
@@ -211,7 +228,7 @@ export default function PasswordResetConfirmScreen() {
               onChangeText={setPassword}
               onBlur={handlePasswordBlur}
               error={passwordError}
-              disabled={isSubmitting}
+              disabled={isPending}
               placeholder="8文字以上（英字・数字を含む）"
               autoComplete="new-password"
               textContentType="newPassword"
@@ -226,7 +243,7 @@ export default function PasswordResetConfirmScreen() {
               onChangeText={setConfirm}
               onBlur={handleConfirmBlur}
               error={confirmError}
-              disabled={isSubmitting}
+              disabled={isPending}
               placeholder="もう一度入力"
               autoComplete="new-password"
               textContentType="newPassword"
@@ -239,7 +256,7 @@ export default function PasswordResetConfirmScreen() {
               label="パスワードを変更する"
               onPress={handleSubmit}
               disabled={!allRequiredFilled}
-              isLoading={isSubmitting}
+              isLoading={isPending}
             />
 
             <Pressable

@@ -4,7 +4,7 @@
  */
 
 import React from 'react';
-import { render, screen } from '@testing-library/react-native';
+import { render, screen, waitFor } from '@testing-library/react-native';
 import RootLayout from '@/app/_layout';
 
 // TanStack Query の createQueryClient をモック（テスト間の副作用を排除）
@@ -22,6 +22,17 @@ const mockSetupFocusManager = jest.fn(() => jest.fn());
 jest.mock('@/lib/queries/managers', () => ({
   setupOnlineManager: () => mockSetupOnlineManager(),
   setupFocusManager: () => mockSetupFocusManager(),
+}));
+
+// initializeAuth をモック — 即時 resolve してテスト内で authInitialized が true になるようにする
+jest.mock('@/lib/auth', () => ({
+  initializeAuth: jest.fn(() => Promise.resolve()),
+  useAuth: jest.fn(() => ({
+    status: 'signedOut' as const,
+    isSignedIn: false,
+    isLoading: false,
+    lastAuthFailureReason: null,
+  })),
 }));
 
 describe('RootLayout', () => {
@@ -61,10 +72,12 @@ describe('RootLayout', () => {
     expect(cleanupFocus).toHaveBeenCalledTimes(1);
   });
 
-  it('Stack コンポーネントが描画される（expo-router モック経由）', () => {
+  it('Stack コンポーネントが描画される（expo-router モック経由）', async () => {
     render(<RootLayout />);
-    // setup.ts の Stack モックにより testID="stack" の View が描画される
-    expect(screen.getByTestId('stack')).toBeTruthy();
+    // initializeAuth が resolve した後に authInitialized が true になり Stack が描画される
+    await waitFor(() => {
+      expect(screen.getByTestId('stack')).toBeTruthy();
+    });
   });
 
   it('QueryClientProvider が存在する（SafeAreaProvider が内包される）', () => {

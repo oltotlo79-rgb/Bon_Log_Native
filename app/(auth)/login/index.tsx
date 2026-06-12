@@ -9,7 +9,7 @@ import {
   StyleSheet,
   type TextInput,
 } from 'react-native';
-import { Link } from 'expo-router';
+import { Link, router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AuthTextField } from '@/components/auth/AuthTextField';
 import { PasswordField } from '@/components/auth/PasswordField';
@@ -18,6 +18,9 @@ import { AuthDivider } from '@/components/auth/AuthDivider';
 import { GoogleSignInButton } from '@/components/auth/GoogleSignInButton';
 import { FormErrorMessage } from '@/components/auth/FormErrorMessage';
 import { validateEmail } from '@/lib/utils/validate-auth';
+import { useLoginMutation } from '@/lib/queries/auth';
+import { useAuth } from '@/lib/auth/use-auth';
+import { isApiError } from '@/lib/api/errors';
 import {
   colorBackground,
   colorTextPrimary,
@@ -26,7 +29,11 @@ import {
   colorError,
   colorErrorBg,
   colorActionPrimary,
+  colorWarningBg,
+  colorWarning,
+  colorBorder,
   radiusLg,
+  radiusMd,
   spacing2,
   spacing3,
   spacing4,
@@ -41,15 +48,14 @@ import { routes } from '@/lib/constants/routes';
 import {
   ERR_EMAIL_REQUIRED,
   ERR_PASSWORD_REQUIRED,
-  // API 接続後フェーズで使用（現段階は送信未接続のため未使用）
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   ERR_LOGIN_INVALID_CREDENTIALS,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   ERR_EMAIL_NOT_VERIFIED,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   ERR_LOGIN_RATE_LIMITED,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   ERR_LOGIN_FAILED,
+  ERR_NETWORK,
+  ERR_SESSION_REUSE_DETECTED,
+  ERR_SESSION_EXPIRED,
+  messageForApiError,
 } from '@/lib/constants/errors';
 
 // ---------------------------------------------------------------------------
@@ -63,9 +69,11 @@ export default function LoginScreen() {
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [isEmailVerifiedError, setIsEmailVerifiedError] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const passwordRef = useRef<TextInput>(null);
+
+  const { mutate: login, isPending } = useLoginMutation();
+  const { lastAuthFailureReason } = useAuth();
 
   function validateEmailField(value: string): string | null {
     if (value.length === 0) return ERR_EMAIL_REQUIRED;
@@ -99,22 +107,57 @@ export default function LoginScreen() {
 
     setFormError(null);
     setIsEmailVerifiedError(false);
-    setIsSubmitting(true);
 
-    // API 接続は後フェーズで差し替える。現段階は検証完了後に何もしない。
-    // 接続後は以下のパターン:
-    //   成功 → queryClient.clear() → router.replace(routes.feed)
-    //   ERR_EMAIL_NOT_VERIFIED → setIsEmailVerifiedError(true), setFormError(ERR_EMAIL_NOT_VERIFIED)
-    //   ERR_LOGIN_INVALID_CREDENTIALS → setFormError(ERR_LOGIN_INVALID_CREDENTIALS)
-    //   429 → setFormError(ERR_LOGIN_RATE_LIMITED)
-    //   network error → setFormError(ERR_NETWORK)
-    //   other → setFormError(ERR_LOGIN_FAILED)
-    setIsSubmitting(false);
+    login(
+      { email, password },
+      {
+        onSuccess: (result) => {
+          if (result.requires2FA) {
+            router.push(`/(auth)/two-factor-verify`);
+          }
+          // requires2FA === false の場合は AuthGuard が feed へ流す
+        },
+        onError: (error) => {
+          if (isApiError(error)) {
+            if (error.code === 'EMAIL_NOT_VERIFIED') {
+              setIsEmailVerifiedError(true);
+              setFormError(ERR_EMAIL_NOT_VERIFIED);
+              return;
+            }
+            if (error.code === 'RATE_LIMITED') {
+              setFormError(ERR_LOGIN_RATE_LIMITED);
+              return;
+            }
+            if (
+              error.code === 'AUTH_INVALID_CREDENTIALS' ||
+              error.code === 'AUTH_REQUIRED'
+            ) {
+              setFormError(ERR_LOGIN_INVALID_CREDENTIALS);
+              return;
+            }
+            setFormError(messageForApiError(error.code));
+            return;
+          }
+          setFormError(ERR_NETWORK);
+          void ERR_LOGIN_FAILED; // lint 対策: 汎用フォールバック定数の参照
+        },
+      }
+    );
   }
 
   async function handleResendVerification() {
-    // API 接続後に実装する（再送 API → 成功で router.replace(routes.verifyEmailSent)）
+    // 再送 API は後フェーズで接続する
   }
+
+  // lastAuthFailureReason の警告バナー文言を決定する
+  const sessionWarning: string | null =
+    lastAuthFailureReason === null
+      ? null
+      : lastAuthFailureReason.kind === 'reuseDetected'
+        ? ERR_SESSION_REUSE_DETECTED
+        : lastAuthFailureReason.kind === 'sessionExpired'
+          ? ERR_SESSION_EXPIRED
+          : null;
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -139,6 +182,20 @@ export default function LoginScreen() {
             ログイン
           </Text>
 
+          {sessionWarning !== null && (
+            <View
+              style={[
+                styles.warningBanner,
+                lastAuthFailureReason?.kind === 'reuseDetected' &&
+                  styles.warningBannerAlert,
+              ]}
+              accessibilityRole="alert"
+              accessibilityLiveRegion="assertive"
+            >
+              <Text style={styles.warningBannerText}>{sessionWarning}</Text>
+            </View>
+          )}
+
           <View style={styles.form}>
             <AuthTextField
               label="メールアドレス"
@@ -146,7 +203,7 @@ export default function LoginScreen() {
               onChangeText={setEmail}
               onBlur={handleEmailBlur}
               error={emailError}
-              disabled={isSubmitting}
+              disabled={isPending}
               placeholder="mail@example.com"
               keyboardType="email-address"
               autoCapitalize="none"
@@ -165,7 +222,7 @@ export default function LoginScreen() {
               onChangeText={setPassword}
               onBlur={handlePasswordBlur}
               error={passwordError}
-              disabled={isSubmitting}
+              disabled={isPending}
               placeholder="8文字以上（英字・数字を含む）"
               autoComplete="current-password"
               textContentType="password"
@@ -182,12 +239,12 @@ export default function LoginScreen() {
                   pressed && styles.resendButtonPressed,
                 ]}
                 onPress={handleResendVerification}
-                disabled={isSubmitting}
+                disabled={isPending}
                 accessibilityRole="button"
                 accessibilityLabel="確認メールを再送する"
               >
                 <Text style={styles.resendButtonText}>
-                  {isSubmitting ? '送信中...' : '確認メールを再送する'}
+                  {isPending ? '送信中...' : '確認メールを再送する'}
                 </Text>
               </Pressable>
             )}
@@ -196,7 +253,7 @@ export default function LoginScreen() {
               label="ログイン"
               onPress={handleSubmit}
               disabled={!allRequiredFilled}
-              isLoading={isSubmitting}
+              isLoading={isPending}
             />
 
             <AuthDivider />
@@ -256,6 +313,23 @@ const styles = StyleSheet.create({
     color: colorTextPrimary,
     marginBottom: spacing6,
   },
+  warningBanner: {
+    backgroundColor: colorWarningBg,
+    borderLeftWidth: 3,
+    borderLeftColor: colorWarning,
+    borderRadius: radiusMd,
+    padding: spacing3,
+    marginBottom: spacing4,
+  },
+  warningBannerAlert: {
+    borderLeftColor: colorError,
+    backgroundColor: colorErrorBg,
+    borderColor: colorBorder,
+  },
+  warningBannerText: {
+    ...textBase,
+    color: colorTextPrimary,
+  },
   form: {
     gap: spacing4,
   },
@@ -302,4 +376,3 @@ const styles = StyleSheet.create({
     textDecorationLine: 'underline',
   },
 });
-

@@ -1,22 +1,80 @@
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
+import { useCurrentUserQuery } from '@/lib/queries/auth';
+import { ScreenLoading } from '@/components/common/ScreenLoading';
+import { ScreenError } from '@/components/common/ScreenError';
 import {
   colorBackground,
+  colorSurface,
   colorSurfaceWashi,
+  colorSurfaceMuted,
   colorTextPrimary,
   colorTextSecondary,
   colorBorderLight,
+  colorActionPrimary,
   spacing2,
+  spacing3,
   spacing4,
+  spacing6,
   textBase,
   textLg,
+  textSm,
   letterSpacingWidest,
+  radiusFull,
+  radiusMd,
+  radiusLg,
 } from '@/lib/constants/design-tokens';
+import { ERR_PROFILE_LOAD_FAILED } from '@/lib/constants/errors';
 import { routes } from '@/lib/constants/routes';
 
+// ---------------------------------------------------------------------------
+// 定数
+// ---------------------------------------------------------------------------
+
+const AVATAR_SIZE = 72;
+const PREMIUM_BADGE_SIZE = 20;
+
+// ---------------------------------------------------------------------------
+// Component
+// ---------------------------------------------------------------------------
+
 export default function ProfileScreen() {
+  const { data: user, isLoading, isError, refetch } = useCurrentUserQuery();
+
+  if (isLoading) {
+    return (
+      <SafeAreaView style={styles.safeArea} edges={['top']}>
+        <View style={styles.header}>
+          <Text style={styles.headerTitle} accessibilityRole="header">
+            プロフィール
+          </Text>
+          <View style={styles.settingsPlaceholder} />
+        </View>
+        <ScreenLoading variant="skeleton" skeletonCount={2} />
+      </SafeAreaView>
+    );
+  }
+
+  if (isError || user === undefined) {
+    return (
+      <SafeAreaView style={styles.safeArea} edges={['top']}>
+        <View style={styles.header}>
+          <Text style={styles.headerTitle} accessibilityRole="header">
+            プロフィール
+          </Text>
+          <View style={styles.settingsPlaceholder} />
+        </View>
+        <ScreenError
+          description={ERR_PROFILE_LOAD_FAILED}
+          onRetry={() => { void refetch(); }}
+        />
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
       <View style={styles.header}>
@@ -39,13 +97,65 @@ export default function ProfileScreen() {
           />
         </TouchableOpacity>
       </View>
+
       <View style={styles.content}>
-        <Text style={styles.placeholder}>
-          プロフィール画面（実装予定）
-        </Text>
-        <Text style={styles.description}>
-          自分の投稿・コメント・フォロー情報が表示されます。
-        </Text>
+        <View style={styles.profileCard}>
+          <View style={styles.avatarWrapper}>
+            {user.avatarUrl !== null && user.avatarUrl !== undefined && user.avatarUrl.length > 0 ? (
+              <Image
+                source={{ uri: user.avatarUrl }}
+                style={styles.avatar}
+                contentFit="cover"
+                accessibilityLabel={`${user.nickname} のアバター`}
+                accessibilityRole="image"
+              />
+            ) : (
+              <View style={styles.avatarPlaceholder}>
+                <Ionicons
+                  name="person-outline"
+                  size={36}
+                  color={colorTextSecondary}
+                  accessibilityElementsHidden
+                  importantForAccessibility="no"
+                />
+              </View>
+            )}
+
+            {user.isPremium && (
+              <View
+                style={styles.premiumBadge}
+                accessibilityLabel="プレミアム会員"
+                accessibilityRole="image"
+              >
+                <Ionicons
+                  name="star"
+                  size={PREMIUM_BADGE_SIZE * 0.6}
+                  color="#ffffff"
+                  accessibilityElementsHidden
+                  importantForAccessibility="no"
+                />
+              </View>
+            )}
+          </View>
+
+          <View style={styles.userInfo}>
+            <Text style={styles.nickname} accessibilityRole="text">
+              {user.nickname}
+            </Text>
+
+            {user.isPremium && (
+              <View style={styles.premiumLabel}>
+                <Text style={styles.premiumLabelText}>プレミアム</Text>
+              </View>
+            )}
+
+            {user.bio !== null && user.bio !== undefined && user.bio.length > 0 && (
+              <Text style={styles.bio} accessibilityRole="text">
+                {user.bio}
+              </Text>
+            )}
+          </View>
+        </View>
       </View>
     </SafeAreaView>
   );
@@ -81,20 +191,79 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  settingsPlaceholder: {
+    position: 'absolute',
+    right: spacing4,
+    height: 44,
+    width: 44,
+  },
   content: {
     flex: 1,
+    padding: spacing4,
+  },
+  profileCard: {
+    backgroundColor: colorSurface,
+    borderRadius: radiusLg,
+    padding: spacing4,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing4,
+  },
+  avatarWrapper: {
+    position: 'relative',
+  },
+  avatar: {
+    width: AVATAR_SIZE,
+    height: AVATAR_SIZE,
+    borderRadius: radiusFull,
+  },
+  avatarPlaceholder: {
+    width: AVATAR_SIZE,
+    height: AVATAR_SIZE,
+    borderRadius: radiusFull,
+    backgroundColor: colorSurfaceMuted,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: spacing4,
+  },
+  premiumBadge: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    width: PREMIUM_BADGE_SIZE,
+    height: PREMIUM_BADGE_SIZE,
+    borderRadius: radiusFull,
+    backgroundColor: colorActionPrimary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  userInfo: {
+    flex: 1,
     gap: spacing2,
+  },
+  nickname: {
+    ...textLg,
+    color: colorTextPrimary,
+  },
+  premiumLabel: {
+    alignSelf: 'flex-start',
+    backgroundColor: colorActionPrimary,
+    borderRadius: radiusMd,
+    paddingHorizontal: spacing3,
+    paddingVertical: spacing2,
+  },
+  premiumLabelText: {
+    ...textSm,
+    color: '#ffffff',
+    fontWeight: '600',
+  },
+  bio: {
+    ...textBase,
+    color: colorTextSecondary,
+    marginTop: spacing2,
   },
   placeholder: {
     ...textLg,
     color: colorTextPrimary,
-  },
-  description: {
-    ...textBase,
-    color: colorTextSecondary,
-    textAlign: 'center',
+    marginBottom: spacing6,
   },
 });

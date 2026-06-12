@@ -13,6 +13,8 @@ import { AuthTextField } from '@/components/auth/AuthTextField';
 import { AuthPrimaryButton } from '@/components/auth/AuthPrimaryButton';
 import { FormErrorMessage } from '@/components/auth/FormErrorMessage';
 import { validateEmail } from '@/lib/utils/validate-auth';
+import { usePasswordResetRequestMutation } from '@/lib/queries/auth';
+import { isApiError } from '@/lib/api/errors';
 import {
   colorBackground,
   colorTextPrimary,
@@ -33,11 +35,9 @@ import { routes } from '@/lib/constants/routes';
 import { router } from 'expo-router';
 import {
   ERR_EMAIL_REQUIRED,
-  // API 接続後フェーズで使用（現段階は送信未接続のため未使用）
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   ERR_PASSWORD_RESET_RATE_LIMITED,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   ERR_PASSWORD_RESET_SEND_FAILED,
+  ERR_NETWORK,
   MSG_PASSWORD_RESET_SENT_TITLE,
   MSG_PASSWORD_RESET_SENT_BODY,
   MSG_PASSWORD_RESET_SENT_HINT,
@@ -51,10 +51,9 @@ export default function PasswordResetScreen() {
   const [email, setEmail] = useState('');
   const [emailError, setEmailError] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  // API 接続後に setIsSuccess(true) で成功状態に切り替える
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [isSuccess, setIsSuccess] = useState(false);
+
+  const { mutate: requestReset, isPending } = usePasswordResetRequestMutation();
 
   function validateEmailField(value: string): string | null {
     if (value.length === 0) return ERR_EMAIL_REQUIRED;
@@ -76,15 +75,26 @@ export default function PasswordResetScreen() {
     }
 
     setFormError(null);
-    setIsSubmitting(true);
 
-    // API 接続は後フェーズで差し替える。現段階は検証完了後に何もしない。
-    // 接続後は以下のパターン:
-    //   成功（存在しないメールも200を返す設計）→ setIsSuccess(true)
-    //   429 → setFormError(ERR_PASSWORD_RESET_RATE_LIMITED)
-    //   5xx → setFormError(ERR_PASSWORD_RESET_SEND_FAILED)
-    //   network error → setFormError(ERR_NETWORK)
-    setIsSubmitting(false);
+    requestReset(
+      { email },
+      {
+        onSuccess: () => {
+          setIsSuccess(true);
+        },
+        onError: (error) => {
+          if (isApiError(error) && error.code === 'RATE_LIMITED') {
+            setFormError(ERR_PASSWORD_RESET_RATE_LIMITED);
+            return;
+          }
+          if (isApiError(error)) {
+            setFormError(ERR_PASSWORD_RESET_SEND_FAILED);
+            return;
+          }
+          setFormError(ERR_NETWORK);
+        },
+      }
+    );
   }
 
   if (isSuccess) {
@@ -140,7 +150,7 @@ export default function PasswordResetScreen() {
               onChangeText={setEmail}
               onBlur={handleEmailBlur}
               error={emailError}
-              disabled={isSubmitting}
+              disabled={isPending}
               placeholder="mail@example.com"
               keyboardType="email-address"
               autoCapitalize="none"
@@ -156,7 +166,7 @@ export default function PasswordResetScreen() {
               label="再設定メールを送信する"
               onPress={handleSubmit}
               disabled={!allRequiredFilled}
-              isLoading={isSubmitting}
+              isLoading={isPending}
             />
 
             <Pressable
