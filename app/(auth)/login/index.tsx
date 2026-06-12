@@ -138,8 +138,11 @@ export default function LoginScreen() {
             setFormError(messageForApiError(error.code));
             return;
           }
-          setFormError(ERR_NETWORK);
-          void ERR_LOGIN_FAILED; // lint 対策: 汎用フォールバック定数の参照
+          if (error instanceof TypeError) {
+            setFormError(ERR_NETWORK);
+          } else {
+            setFormError(ERR_LOGIN_FAILED);
+          }
         },
       }
     );
