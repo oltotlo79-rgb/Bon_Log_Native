@@ -25,6 +25,9 @@ export const ROUTE_PASSWORD_RESET = '/(auth)/password-reset' as const;
 /** パスワードリセット確認画面 */
 export const ROUTE_PASSWORD_RESET_CONFIRM = '/(auth)/password-reset/confirm' as const;
 
+/** 二段階認証（2FA）確認画面 */
+export const ROUTE_TWO_FACTOR_VERIFY = '/(auth)/two-factor-verify' as const;
+
 // ---------------------------------------------------------------------------
 // (tabs) — 認証後ボトムタブ
 // ---------------------------------------------------------------------------
@@ -140,6 +143,7 @@ export const routes = {
   verifyEmailSent: ROUTE_VERIFY_EMAIL_SENT,
   passwordReset: ROUTE_PASSWORD_RESET,
   passwordResetConfirm: ROUTE_PASSWORD_RESET_CONFIRM,
+  twoFactorVerify: ROUTE_TWO_FACTOR_VERIFY,
 
   // tabs
   feed: ROUTE_FEED,

@@ -10,6 +10,7 @@ import {
   routeSearchByQuery,
   routeSearchByGenre,
   routes,
+  ROUTE_TWO_FACTOR_VERIFY,
 } from '@/lib/constants/routes';
 
 describe('routePostDetail', () => {
@@ -53,6 +54,11 @@ describe('routes オブジェクト（静的パス）', () => {
 
   it('設定パスが正しい', () => {
     expect(routes.settings).toBe('/settings');
+  });
+
+  it('2FA 確認パスが正しい（ROUTE_TWO_FACTOR_VERIFY 定数と routes.twoFactorVerify が一致する）', () => {
+    expect(ROUTE_TWO_FACTOR_VERIFY).toBe('/(auth)/two-factor-verify');
+    expect(routes.twoFactorVerify).toBe(ROUTE_TWO_FACTOR_VERIFY);
   });
 });
 
