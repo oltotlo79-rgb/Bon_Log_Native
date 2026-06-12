@@ -33,9 +33,17 @@ const MOBILE_API_ERROR_CODES = [
   'SERVER_MISCONFIGURED',
 ] as const satisfies readonly MobileApiErrorCode[];
 
+/**
+ * readonly string union 配列に対して string 型の値が含まれるかを型安全に検査するヘルパー。
+ * Array.includes の型シグネチャが T を要求するため、as なしで string を渡せないことへの対処。
+ */
+function includesString<T extends string>(arr: readonly T[], value: string): value is T {
+  return arr.some((item) => item === value);
+}
+
 /** 文字列が MobileApiErrorCode の許容値かを判定する型ガード。 */
 export function isMobileApiErrorCode(value: string): value is MobileApiErrorCode {
-  return (MOBILE_API_ERROR_CODES as readonly string[]).includes(value);
+  return includesString(MOBILE_API_ERROR_CODES, value);
 }
 
 /**
