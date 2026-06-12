@@ -8,6 +8,7 @@ import {
   GC_TIME,
   RETRY_COUNT,
 } from '@/lib/constants/query';
+import { ApiError } from '@/lib/api/errors';
 
 describe('createQueryClient', () => {
   it('QueryClient インスタンスを返す', () => {
@@ -72,48 +73,48 @@ describe('createQueryClient', () => {
       expect(retryFn(RETRY_COUNT + 1, networkError)).toBe(false);
     });
 
-    it('4xx エラーはリトライしない（400）', () => {
-      const badRequest = Object.assign(new Error('Bad Request'), { status: 400 });
+    it('ApiError 4xx はリトライしない（400）', () => {
+      const badRequest = new ApiError({ code: 'VALIDATION_ERROR', status: 400, message: 'Bad Request' });
       expect(retryFn(0, badRequest)).toBe(false);
     });
 
-    it('4xx エラーはリトライしない（401）', () => {
-      const unauthorized = Object.assign(new Error('Unauthorized'), { status: 401 });
+    it('ApiError 4xx はリトライしない（401）', () => {
+      const unauthorized = new ApiError({ code: 'AUTH_TOKEN_EXPIRED', status: 401, message: 'Unauthorized' });
       expect(retryFn(0, unauthorized)).toBe(false);
     });
 
-    it('4xx エラーはリトライしない（403）', () => {
-      const forbidden = Object.assign(new Error('Forbidden'), { status: 403 });
+    it('ApiError 4xx はリトライしない（403）', () => {
+      const forbidden = new ApiError({ code: 'ACCOUNT_SUSPENDED', status: 403, message: 'Forbidden' });
       expect(retryFn(0, forbidden)).toBe(false);
     });
 
-    it('4xx エラーはリトライしない（404）', () => {
-      const notFound = Object.assign(new Error('Not Found'), { status: 404 });
+    it('ApiError 4xx はリトライしない（404）', () => {
+      const notFound = new ApiError({ code: 'NOT_FOUND', status: 404, message: 'Not Found' });
       expect(retryFn(0, notFound)).toBe(false);
     });
 
-    it('4xx エラーはリトライしない（429）', () => {
-      const rateLimit = Object.assign(new Error('Too Many Requests'), { status: 429 });
+    it('ApiError 4xx はリトライしない（429）', () => {
+      const rateLimit = new ApiError({ code: 'RATE_LIMITED', status: 429, message: 'Too Many Requests', retryAfter: 30 });
       expect(retryFn(0, rateLimit)).toBe(false);
     });
 
-    it('5xx エラーは RETRY_COUNT 未満であればリトライする', () => {
-      const serverError = Object.assign(new Error('Internal Server Error'), { status: 500 });
+    it('ApiError 5xx は RETRY_COUNT 未満であればリトライする', () => {
+      const serverError = new ApiError({ code: 'INTERNAL_ERROR', status: 500, message: 'Internal Server Error' });
       expect(retryFn(0, serverError)).toBe(true);
       expect(retryFn(1, serverError)).toBe(true);
     });
 
-    it('5xx エラーは RETRY_COUNT 以上でリトライしない', () => {
-      const serverError = Object.assign(new Error('Internal Server Error'), { status: 500 });
+    it('ApiError 5xx は RETRY_COUNT 以上でリトライしない', () => {
+      const serverError = new ApiError({ code: 'INTERNAL_ERROR', status: 500, message: 'Internal Server Error' });
       expect(retryFn(RETRY_COUNT, serverError)).toBe(false);
     });
 
-    it('status フィールドを持たない Error オブジェクトはリトライする', () => {
-      const error = new Error('Unknown error');
+    it('ApiError でない Error はリトライする（ネットワークエラー等）', () => {
+      const error = new Error('Network request failed');
       expect(retryFn(0, error)).toBe(true);
     });
 
-    it('status なし Error でも RETRY_COUNT 未満であればリトライする', () => {
+    it('ApiError でない Error でも RETRY_COUNT 未満であればリトライする', () => {
       expect(retryFn(0, new Error('plain error'))).toBe(true);
     });
   });

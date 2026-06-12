@@ -11,34 +11,21 @@ import {
   RETRY_COUNT,
   RETRY_DELAY_BASE_MS,
 } from '@/lib/constants/query';
+import { isApiError } from '@/lib/api/errors';
 
 /**
- * 4xx ステータスはリトライしない。
- * 将来 lib/api/ のエラー型 (ApiError 等) が確定したら、
- * `error instanceof ApiError && error.status >= 400 && error.status < 500`
- * のような判定に置き換える拡張点として、ここに集約している。
- *
- * TanStack Query の ShouldRetryFunction<Error> シグネチャに合わせて Error を受け取るが、
- * 実行時は status フィールドを持つ拡張 Error も流れてくるため isHttpError で動的に検査する。
+ * 4xx は仕様上リトライしない。
+ * 5xx・ネットワークエラーは RETRY_COUNT 回までリトライする。
+ * ApiError を使い型安全に判定する。
  */
 function shouldRetry(failureCount: number, error: Error): boolean {
   if (failureCount >= RETRY_COUNT) return false;
 
-  // HTTP ステータスを持つエラーオブジェクト（lib/api/ 実装後に型が確定）
-  if (isHttpError(error) && error.status >= 400 && error.status < 500) {
+  if (isApiError(error) && error.status >= 400 && error.status < 500) {
     return false;
   }
 
   return true;
-}
-
-/** HTTP ステータスを持つエラー判定の型ガード。 */
-function isHttpError(error: unknown): error is { status: number } {
-  if (typeof error !== 'object' || error === null || !('status' in error)) {
-    return false;
-  }
-  // 'status' in error を通過した時点で TypeScript は error.status へのアクセスを許可する
-  return typeof error.status === 'number';
 }
 
 /** QueryClient のリトライ遅延（指数バックオフ）。 */
