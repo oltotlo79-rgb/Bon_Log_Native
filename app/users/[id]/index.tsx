@@ -10,6 +10,7 @@ import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-nati
 import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
+import { Ionicons } from '@expo/vector-icons';
 import { useUserProfileQuery } from '@/lib/queries/users';
 import { useOnlineStatus } from '@/hooks/use-online-status';
 import { ScreenLoading } from '@/components/common/ScreenLoading';
@@ -27,6 +28,7 @@ import {
   spacing2,
   spacing3,
   spacing4,
+  spacing5,
   spacing6,
   spacing8,
   radiusFull,
@@ -230,7 +232,7 @@ function UserDetailContent({ userId, isOffline }: UserDetailContentProps) {
         accessibilityRole="button"
         accessibilityLabel="メニューを開く（ブロック・通報）"
       >
-        <Text style={styles.menuIcon}>⋮</Text>
+        <Ionicons name="ellipsis-vertical" size={spacing5} color={colorTextPrimary} />
       </TouchableOpacity>
     </View>
   );
@@ -342,10 +344,6 @@ const styles = StyleSheet.create({
   },
   menuPlaceholder: {
     minWidth: 44,
-  },
-  menuIcon: {
-    fontSize: 20,
-    color: colorTextPrimary,
   },
   scrollView: {
     flex: 1,

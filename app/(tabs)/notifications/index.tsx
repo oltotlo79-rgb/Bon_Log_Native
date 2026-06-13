@@ -65,8 +65,10 @@ function resolveNotificationRoute(notification: NotificationItemType): string | 
     case 'follow_request':
     case 'follow_request_approved':
       return actorId !== null ? routes.userDetail(actorId) : null;
-    case 'message':
     case 'subscription_expiring':
+      // notifications-screen.md §6.1 PM 決定: サブスクリプション設定画面へ遷移
+      return routes.settingsSubscription;
+    case 'message':
     case 'system':
     default:
       return null;
@@ -106,7 +108,7 @@ export default function NotificationsScreen() {
   const handleNotificationPress = useCallback((notification: NotificationItemType) => {
     const route = resolveNotificationRoute(notification);
     if (route !== null) {
-      router.push(route as Parameters<typeof router.push>[0]);
+      router.push(route);
     }
     // onMarkRead は cfw Batch 2b 接続後に実装する（no-op）
   }, []);

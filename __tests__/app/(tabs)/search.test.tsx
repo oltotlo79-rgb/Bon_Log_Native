@@ -14,12 +14,12 @@ jest.mock('@/hooks/use-online-status', () => ({
   useOnlineStatus: jest.fn(() => true),
 }));
 
-jest.mock('@/lib/auth/use-auth', () => ({
-  useAuth: jest.fn(() => ({
-    status: 'signedIn',
-    isSignedIn: true,
+jest.mock('@/lib/queries/auth', () => ({
+  ...jest.requireActual('@/lib/queries/auth'),
+  useCurrentUserQuery: jest.fn(() => ({
+    data: { id: 'test-user-id' },
     isLoading: false,
-    lastAuthFailureReason: null,
+    isError: false,
   })),
 }));
 

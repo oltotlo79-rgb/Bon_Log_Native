@@ -23,9 +23,9 @@ import { useSearchPostsQuery, useSearchUsersQuery, type SearchPostItem, type Sea
 import { useDebounce } from '@/hooks/use-debounce';
 import { useOnlineStatus } from '@/hooks/use-online-status';
 import { mapToPostCardProps } from '@/hooks/use-post-card-props';
-import { useAuth } from '@/lib/auth/use-auth';
+import { useCurrentUserQuery } from '@/lib/queries/auth';
 import { PostCard } from '@/components/post/PostCard';
-import { UserResultItem } from '@/components/user/UserResultItem';
+import { UserResultItem, ITEM_MIN_HEIGHT } from '@/components/user/UserResultItem';
 import { ScreenEmpty } from '@/components/common/ScreenEmpty';
 import { ScreenError } from '@/components/common/ScreenError';
 import { ScreenLoading } from '@/components/common/ScreenLoading';
@@ -50,6 +50,7 @@ import {
   textMd,
   textLg,
   textSm,
+  letterSpacingTight,
   letterSpacingWidest,
 } from '@/lib/constants/design-tokens';
 import { DEBOUNCE_SEARCH_MS } from '@/lib/constants/limits/ui';
@@ -361,8 +362,8 @@ function UserSearchResults({ query, isOffline }: UserSearchResultsProps) {
       maxToRenderPerBatch={10}
       keyboardDismissMode="on-drag"
       getItemLayout={(_data, index) => ({
-        length: 72 + spacing3,
-        offset: (72 + spacing3) * index,
+        length: ITEM_MIN_HEIGHT + spacing3,
+        offset: (ITEM_MIN_HEIGHT + spacing3) * index,
         index,
       })}
       onEndReachedThreshold={0.3}
@@ -393,8 +394,8 @@ function UserSearchResults({ query, isOffline }: UserSearchResultsProps) {
 // ---------------------------------------------------------------------------
 
 export default function SearchScreen() {
-  const { isSignedIn } = useAuth();
-  const currentUserId = isSignedIn ? undefined : undefined;
+  const { data: me } = useCurrentUserQuery();
+  const currentUserId = me?.id;
 
   const [inputValue, setInputValue] = useState('');
   const [activeSegment, setActiveSegment] = useState<SearchSegment>('posts');
@@ -561,7 +562,7 @@ const styles = StyleSheet.create({
   },
   segmentLabel: {
     ...textMd,
-    letterSpacing: 0.5,
+    letterSpacing: letterSpacingTight,
   },
   segmentLabelActive: {
     color: colorTextPrimary,
