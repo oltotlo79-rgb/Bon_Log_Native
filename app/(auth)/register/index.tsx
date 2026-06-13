@@ -8,7 +8,7 @@ import {
   StyleSheet,
   type TextInput,
 } from 'react-native';
-import { Link } from 'expo-router';
+import { Link, router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AuthTextField } from '@/components/auth/AuthTextField';
 import { PasswordField } from '@/components/auth/PasswordField';
@@ -38,14 +38,11 @@ import {
   ERR_PASSWORD_CONFIRM_REQUIRED,
   ERR_PASSWORD_MISMATCH,
   ERR_TERMS_AGREEMENT_REQUIRED,
-  // API 接続後フェーズで使用（現段階は送信未接続のため未使用）
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  ERR_EMAIL_ALREADY_REGISTERED,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  ERR_NICKNAME_RESERVED,
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  ERR_REGISTER_FAILED,
+  ERR_NETWORK,
+  messageForRegisterError,
 } from '@/lib/constants/errors';
+import { useRegisterMutation } from '@/lib/queries/auth';
+import { isApiError } from '@/lib/api/errors';
 
 // ---------------------------------------------------------------------------
 // Component
@@ -63,11 +60,12 @@ export default function RegisterScreen() {
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [confirmError, setConfirmError] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const emailRef = useRef<TextInput>(null);
   const passwordRef = useRef<TextInput>(null);
   const confirmRef = useRef<TextInput>(null);
+
+  const { mutate: register, isPending } = useRegisterMutation();
 
   function validateEmailField(value: string): string | null {
     if (value.length === 0) return ERR_EMAIL_REQUIRED;
@@ -132,16 +130,22 @@ export default function RegisterScreen() {
     }
 
     setFormError(null);
-    setIsSubmitting(true);
 
-    // API 接続は後フェーズで差し替える。現段階は検証完了後に何もしない。
-    // 接続後は以下のパターン:
-    //   成功 → router.replace(routes.verifyEmailSent)
-    //   ERR_EMAIL_ALREADY_REGISTERED → setFormError(ERR_EMAIL_ALREADY_REGISTERED)
-    //   ERR_NICKNAME_RESERVED → setFormError(ERR_NICKNAME_RESERVED)
-    //   network error → setFormError(ERR_NETWORK)
-    //   other → setFormError(ERR_REGISTER_FAILED)
-    setIsSubmitting(false);
+    register(
+      { nickname, email, password },
+      {
+        onSuccess: () => {
+          router.replace(routes.verifyEmailSent);
+        },
+        onError: (error) => {
+          if (isApiError(error)) {
+            setFormError(messageForRegisterError(error.code));
+          } else {
+            setFormError(ERR_NETWORK);
+          }
+        },
+      }
+    );
   }
 
   return (
@@ -165,7 +169,7 @@ export default function RegisterScreen() {
               onChangeText={setNickname}
               onBlur={handleNicknameBlur}
               error={nicknameError}
-              disabled={isSubmitting}
+              disabled={isPending}
               placeholder="表示名（50文字以内）"
               autoCapitalize="none"
               autoCorrect={false}
@@ -183,7 +187,7 @@ export default function RegisterScreen() {
               onChangeText={setEmail}
               onBlur={handleEmailBlur}
               error={emailError}
-              disabled={isSubmitting}
+              disabled={isPending}
               placeholder="mail@example.com"
               keyboardType="email-address"
               autoCapitalize="none"
@@ -201,7 +205,7 @@ export default function RegisterScreen() {
               onChangeText={setPassword}
               onBlur={handlePasswordBlur}
               error={passwordError}
-              disabled={isSubmitting}
+              disabled={isPending}
               placeholder="8文字以上（英字・数字を含む）"
               autoComplete="new-password"
               textContentType="newPassword"
@@ -216,7 +220,7 @@ export default function RegisterScreen() {
               onChangeText={setConfirm}
               onBlur={handleConfirmBlur}
               error={confirmError}
-              disabled={isSubmitting}
+              disabled={isPending}
               placeholder="もう一度入力"
               autoComplete="new-password"
               textContentType="newPassword"
@@ -226,7 +230,7 @@ export default function RegisterScreen() {
             <AuthTermsAgreement
               checked={termsChecked}
               onToggle={() => setTermsChecked((prev) => !prev)}
-              disabled={isSubmitting}
+              disabled={isPending}
             />
 
             <FormErrorMessage message={formError} />
@@ -235,7 +239,7 @@ export default function RegisterScreen() {
               label="新規登録"
               onPress={handleSubmit}
               disabled={!allRequiredFilled}
-              isLoading={isSubmitting}
+              isLoading={isPending}
             />
 
             <AuthDivider />

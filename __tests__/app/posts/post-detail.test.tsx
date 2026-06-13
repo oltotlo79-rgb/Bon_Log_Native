@@ -1,15 +1,56 @@
 /**
  * app/posts/[id] の画面テスト。
  * id パラメータの型ガードと、不正/空 id でのエラーメッセージ表示を検証する。
+ * usePostQuery / useCommentsQuery（TanStack Query）を使うため QueryClientProvider が必要。
  */
 
 import React from 'react';
-import { render, screen } from '@testing-library/react-native';
+import { screen } from '@testing-library/react-native';
 import PostDetailScreen from '@/app/posts/[id]/index';
 import { ERR_POST_NOT_FOUND } from '@/lib/constants/errors';
+import { renderWithProviders } from '@/__tests__/utils/test-utils';
 
 // useLocalSearchParams のモックを各テストで上書きするためのヘルパー
 const mockUseLocalSearchParams = jest.requireMock('expo-router').useLocalSearchParams;
+
+// usePostQuery と useCommentsQuery はネットワーク不要なモック
+jest.mock('@/lib/queries/posts', () => ({
+  usePostQuery: jest.fn(() => ({
+    data: undefined,
+    isLoading: true,
+    isError: false,
+    refetch: jest.fn(),
+  })),
+}));
+
+jest.mock('@/lib/queries/comments', () => ({
+  useCommentsQuery: jest.fn(() => ({
+    data: undefined,
+    isLoading: true,
+    isError: false,
+    fetchNextPage: jest.fn(),
+    hasNextPage: false,
+    isFetchingNextPage: false,
+    refetch: jest.fn(),
+  })),
+}));
+
+jest.mock('@/lib/queries/auth', () => ({
+  ...jest.requireActual('@/lib/queries/auth'),
+  useCurrentUserQuery: jest.fn(() => ({
+    data: undefined,
+    isLoading: false,
+    isError: false,
+  })),
+  useRegisterMutation: jest.fn(() => ({
+    mutate: jest.fn(),
+    isPending: false,
+  })),
+}));
+
+jest.mock('@/hooks/use-online-status', () => ({
+  useOnlineStatus: jest.fn(() => true),
+}));
 
 describe('PostDetailScreen', () => {
   describe('正常系（有効な id）', () => {
@@ -17,23 +58,13 @@ describe('PostDetailScreen', () => {
       mockUseLocalSearchParams.mockReturnValue({ id: 'post-abc-123' });
     });
 
-    it('投稿詳細画面が表示される', () => {
-      render(<PostDetailScreen />);
-      expect(screen.getByText('投稿詳細画面（実装予定）')).toBeTruthy();
-    });
-
-    it('投稿 ID が画面に表示される', () => {
-      render(<PostDetailScreen />);
-      expect(screen.getByText('投稿ID: post-abc-123')).toBeTruthy();
-    });
-
     it('ヘッダーに「投稿」と表示される', () => {
-      render(<PostDetailScreen />);
+      renderWithProviders(<PostDetailScreen />);
       expect(screen.getByRole('header', { name: '投稿' })).toBeTruthy();
     });
 
     it('戻るボタンが表示される', () => {
-      render(<PostDetailScreen />);
+      renderWithProviders(<PostDetailScreen />);
       expect(screen.getByRole('button', { name: '戻る' })).toBeTruthy();
     });
   });
@@ -41,26 +72,27 @@ describe('PostDetailScreen', () => {
   describe('異常系（不正な id）', () => {
     it('id が空文字の場合にエラーメッセージを表示する', () => {
       mockUseLocalSearchParams.mockReturnValue({ id: '' });
-      render(<PostDetailScreen />);
+      renderWithProviders(<PostDetailScreen />);
       expect(screen.getByText(ERR_POST_NOT_FOUND)).toBeTruthy();
     });
 
     it('id が配列の場合にエラーメッセージを表示する', () => {
       mockUseLocalSearchParams.mockReturnValue({ id: ['a', 'b'] });
-      render(<PostDetailScreen />);
+      renderWithProviders(<PostDetailScreen />);
       expect(screen.getByText(ERR_POST_NOT_FOUND)).toBeTruthy();
     });
 
     it('id が undefined の場合にエラーメッセージを表示する', () => {
       mockUseLocalSearchParams.mockReturnValue({});
-      render(<PostDetailScreen />);
+      renderWithProviders(<PostDetailScreen />);
       expect(screen.getByText(ERR_POST_NOT_FOUND)).toBeTruthy();
     });
 
     it('エラー時に戻るボタンが表示される', () => {
       mockUseLocalSearchParams.mockReturnValue({ id: '' });
-      render(<PostDetailScreen />);
-      expect(screen.getByRole('button', { name: '戻る' })).toBeTruthy();
+      renderWithProviders(<PostDetailScreen />);
+      // エラー時はヘッダーとフォールバックの2箇所に戻るボタンが存在する
+      expect(screen.getAllByRole('button', { name: '戻る' }).length).toBeGreaterThanOrEqual(1);
     });
   });
 });
