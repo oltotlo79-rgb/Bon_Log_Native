@@ -9,6 +9,7 @@ import { ApiError } from '@/lib/api/errors';
 import type { MobileApiErrorCode } from '@/lib/api/errors';
 import { createTestQueryClient } from '@/__tests__/utils/test-utils';
 import { useNotificationsQuery, useUnreadCountQuery } from '@/lib/queries/notifications';
+import { UNREAD_COUNT_REFETCH_INTERVAL_MS } from '@/lib/constants/query';
 
 const mockApiClientGet = jest.fn();
 
@@ -197,5 +198,21 @@ describe('useUnreadCountQuery', () => {
 
     await waitFor(() => expect(result.current.isError).toBe(true));
     expect(result.current.error).toBeInstanceOf(ApiError);
+  });
+
+  it('refetchInterval が経過すると自動 refetch される（ポーリング動作）', async () => {
+    jest.useFakeTimers();
+    mockApiClientGet.mockResolvedValue({ data: { count: 3 }, error: undefined });
+    const { Wrapper } = createWrapper();
+
+    const { result } = renderHook(() => useUnreadCountQuery(), { wrapper: Wrapper });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    const callCountAfterMount = mockApiClientGet.mock.calls.length;
+
+    jest.advanceTimersByTime(UNREAD_COUNT_REFETCH_INTERVAL_MS);
+    await waitFor(() => expect(mockApiClientGet.mock.calls.length).toBeGreaterThan(callCountAfterMount));
+
+    jest.useRealTimers();
   });
 });

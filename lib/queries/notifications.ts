@@ -7,7 +7,7 @@
 import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api/client';
 import { queryKeys } from '@/lib/queries/keys';
-import { STALE_TIME_REALTIME } from '@/lib/constants/query';
+import { STALE_TIME_REALTIME, UNREAD_COUNT_REFETCH_INTERVAL_MS } from '@/lib/constants/query';
 import { NOTIFICATIONS_PAGE_SIZE } from '@/lib/constants/limits/pagination';
 import type { components } from '@/lib/api/generated/schema.d.ts';
 
@@ -57,5 +57,6 @@ export function useUnreadCountQuery() {
       return data;
     },
     staleTime: STALE_TIME_REALTIME,
+    refetchInterval: UNREAD_COUNT_REFETCH_INTERVAL_MS,
   });
 }
