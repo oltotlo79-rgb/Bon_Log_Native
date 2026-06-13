@@ -58,6 +58,8 @@ export const queryKeys = {
     all: ['notifications'] as const,
     /** 通知一覧（無限スクロール） */
     list: () => ['notifications', 'list'] as const,
+    /** 未読件数 */
+    unreadCount: ['notifications', 'unreadCount'] as const,
   },
 
   /** 検索 */

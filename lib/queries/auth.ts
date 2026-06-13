@@ -17,6 +17,7 @@ import {
 } from '@/lib/auth/auth';
 import { queryKeys } from '@/lib/queries/keys';
 import { STALE_TIME_STANDARD } from '@/lib/constants/query';
+import type { components } from '@/lib/api/generated/schema.d.ts';
 
 // ---------------------------------------------------------------------------
 // useCurrentUserQuery
@@ -134,5 +135,47 @@ export function usePasswordResetConfirmMutation() {
 export function useGoogleSignInMutation() {
   return useMutation<void, Error, { idToken: string }>({
     mutationFn: ({ idToken }) => signInWithGoogle(idToken),
+  });
+}
+
+// ---------------------------------------------------------------------------
+// useRegisterMutation
+// ---------------------------------------------------------------------------
+
+/** register ミューテーションの引数型。termsAccepted は画面側で同意済みのため内部で true 固定。 */
+export type RegisterParams = {
+  nickname: string;
+  email: string;
+  password: string;
+};
+
+/** register 成功時の戻り値。201 { success: true } の確認のみ。 */
+export type RegisterResult = components['schemas']['SuccessResponse'];
+
+/**
+ * 新規ユーザー登録ミューテーション。
+ * termsAccepted は画面が同意チェック完了後に呼び出す前提のため true を内部で付与する。
+ * 成功（201）後は自動ログインしない（メール確認待ちのため）。
+ * frontend は onSuccess で verify-email-sent 画面へ遷移すること。
+ *
+ * エラー: 409 CONFLICT → メール重複 / 400 VALIDATION_ERROR → 入力形式不正 / 429 → レート制限。
+ * エラー文言変換は lib/constants/errors.ts の messageForRegisterError を使用する。
+ */
+export function useRegisterMutation() {
+  return useMutation<RegisterResult, Error, RegisterParams>({
+    mutationFn: async ({ nickname, email, password }) => {
+      const { data, error } = await apiClient.POST('/api/v1/auth/register', {
+        body: {
+          nickname,
+          email,
+          password,
+          termsAccepted: true,
+        },
+      });
+      if (error !== undefined || data === undefined) {
+        throw error ?? new Error('Unexpected error during registration');
+      }
+      return data;
+    },
   });
 }

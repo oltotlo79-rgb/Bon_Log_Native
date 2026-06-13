@@ -18,6 +18,7 @@ import {
   usePasswordResetConfirmMutation,
   useGoogleSignInMutation,
   useCurrentUserQuery,
+  useRegisterMutation,
 } from '@/lib/queries/auth';
 
 // ---------------------------------------------------------------------------
@@ -41,11 +42,12 @@ jest.mock('@/lib/auth/auth', () => ({
 }));
 
 const mockApiClientGet = jest.fn();
+const mockApiClientPost = jest.fn();
 
 jest.mock('@/lib/api/client', () => ({
   apiClient: {
     GET: (...args: unknown[]) => mockApiClientGet(...args),
-    POST: jest.fn(),
+    POST: (...args: unknown[]) => mockApiClientPost(...args),
   },
   configureAuthHooks: jest.fn(),
   // jest.mock ファクトリ内ではスコープ外変数参照不可のため require を使用する
@@ -77,6 +79,7 @@ function makeApiError(code: MobileApiErrorCode, status = 401): ApiError {
 
 beforeEach(() => {
   jest.clearAllMocks();
+  mockApiClientPost.mockReset();
 });
 
 // ---------------------------------------------------------------------------
@@ -296,6 +299,106 @@ describe('useGoogleSignInMutation', () => {
     });
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
+  });
+});
+
+// ---------------------------------------------------------------------------
+// useRegisterMutation
+// ---------------------------------------------------------------------------
+
+describe('useRegisterMutation', () => {
+  const validParams = {
+    nickname: 'テストユーザー',
+    email: 'new@example.com',
+    password: 'Pass1234',
+  };
+
+  it('成功（201）で { success: true } が返る', async () => {
+    mockApiClientPost.mockResolvedValue({ data: { success: true }, error: undefined });
+    const { Wrapper } = createWrapper();
+
+    const { result } = renderHook(() => useRegisterMutation(), { wrapper: Wrapper });
+
+    await act(async () => {
+      result.current.mutate(validParams);
+    });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(result.current.data).toEqual({ success: true });
+  });
+
+  it('成功時に termsAccepted: true を body に含めて POST する', async () => {
+    mockApiClientPost.mockResolvedValue({ data: { success: true }, error: undefined });
+    const { Wrapper } = createWrapper();
+
+    const { result } = renderHook(() => useRegisterMutation(), { wrapper: Wrapper });
+
+    await act(async () => {
+      result.current.mutate(validParams);
+    });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(mockApiClientPost).toHaveBeenCalledWith('/api/v1/auth/register', {
+      body: {
+        nickname: validParams.nickname,
+        email: validParams.email,
+        password: validParams.password,
+        termsAccepted: true,
+      },
+    });
+  });
+
+  it('409 CONFLICT でエラーが返る（メール重複）', async () => {
+    mockApiClientPost.mockResolvedValue({
+      data: undefined,
+      error: makeApiError('CONFLICT', 409),
+    });
+    const { Wrapper } = createWrapper();
+
+    const { result } = renderHook(() => useRegisterMutation(), { wrapper: Wrapper });
+
+    await act(async () => {
+      result.current.mutate(validParams);
+    });
+
+    await waitFor(() => expect(result.current.isError).toBe(true));
+    expect(result.current.error).toBeInstanceOf(ApiError);
+    expect((result.current.error as ApiError).code).toBe('CONFLICT');
+    expect((result.current.error as ApiError).status).toBe(409);
+  });
+
+  it('400 VALIDATION_ERROR でエラーが返る', async () => {
+    mockApiClientPost.mockResolvedValue({
+      data: undefined,
+      error: makeApiError('VALIDATION_ERROR', 400),
+    });
+    const { Wrapper } = createWrapper();
+
+    const { result } = renderHook(() => useRegisterMutation(), { wrapper: Wrapper });
+
+    await act(async () => {
+      result.current.mutate({ ...validParams, password: 'short' });
+    });
+
+    await waitFor(() => expect(result.current.isError).toBe(true));
+    expect((result.current.error as ApiError).code).toBe('VALIDATION_ERROR');
+  });
+
+  it('429 RATE_LIMITED でエラーが返る', async () => {
+    mockApiClientPost.mockResolvedValue({
+      data: undefined,
+      error: makeApiError('RATE_LIMITED', 429),
+    });
+    const { Wrapper } = createWrapper();
+
+    const { result } = renderHook(() => useRegisterMutation(), { wrapper: Wrapper });
+
+    await act(async () => {
+      result.current.mutate(validParams);
+    });
+
+    await waitFor(() => expect(result.current.isError).toBe(true));
+    expect((result.current.error as ApiError).code).toBe('RATE_LIMITED');
   });
 });
 

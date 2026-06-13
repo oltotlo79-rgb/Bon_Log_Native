@@ -13,6 +13,7 @@
 | パスワードリセット要求 | なし（状態変更なし） | — |
 | パスワードリセット確定 | なし（ログインし直すため、その後のログインで解決） | — |
 | Google サインイン | なし（ログイン成功と同等） | — |
+| 新規登録（register） | なし（201 = メール確認待ち。ログインしないため状態変更なし） | 成功後は verify-email-sent 画面へ遷移するのみ |
 
 ## フィード・投稿系
 
@@ -26,4 +27,19 @@
 | コメント削除 | `queryKeys.comments.byPost(postId)` / `queryKeys.posts.detail(postId)` | 同上 |
 | フォロー・フォロー解除 | 対象の `queryKeys.users.detail(targetId)` / `queryKeys.posts.feed()` | フォロワー数とフィード内容が変わるため |
 | プロフィール更新 | 自分の `queryKeys.users.detail(userId)` | 表示名・アバターを即時反映するため |
-| 通知既読 | `queryKeys.notifications.list()` | 未読バッジカウントを更新するため |
+| 通知既読（Batch 2b 実装予定） | `queryKeys.notifications.list()` / `queryKeys.notifications.unreadCount` | 既読状態と未読件数バッジを同期するため |
+
+## 読み取り系クエリの参照（lib/queries/ 各フック）
+
+無効化が必要な場面のために対応表を記録する。
+
+| クエリキー | フック | 無効化タイミング |
+|-----------|--------|----------------|
+| `queryKeys.posts.feed()` | `useFeedQuery` | 投稿作成・削除・フォロー変更時 |
+| `queryKeys.posts.detail(id)` | `usePostQuery` | 投稿更新・削除・いいね後の整合時 |
+| `queryKeys.comments.byPost(postId)` | `useCommentsQuery` | コメント作成・削除時 |
+| `queryKeys.users.detail(id)` | `useUserProfileQuery` | フォロー変更・プロフィール更新時 |
+| `queryKeys.search.posts(q)` | `useSearchPostsQuery` | 投稿削除・大幅更新時（検索キャッシュは低優先） |
+| `queryKeys.search.users(q)` | `useSearchUsersQuery` | ユーザー名変更・削除時（低優先） |
+| `queryKeys.notifications.list()` | `useNotificationsQuery` | 通知既読操作時（Batch 2b） |
+| `queryKeys.notifications.unreadCount` | `useUnreadCountQuery` | 通知既読操作・新規通知受信時（Batch 2b） |
