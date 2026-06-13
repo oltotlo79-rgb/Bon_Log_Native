@@ -54,7 +54,7 @@ import {
   letterSpacingWidest,
 } from '@/lib/constants/design-tokens';
 import { DEBOUNCE_SEARCH_MS } from '@/lib/constants/limits/ui';
-import { ERR_SEARCH_FAILED } from '@/lib/constants/errors';
+import { ERR_SEARCH_FAILED, ERR_OFFLINE_ACTION } from '@/lib/constants/errors';
 import { routes } from '@/lib/constants/routes';
 
 // ---------------------------------------------------------------------------
@@ -186,10 +186,9 @@ function SearchSegmentTabs({ activeSegment, onSelect }: SearchSegmentTabsProps) 
 type PostSearchResultsProps = {
   query: string;
   currentUserId: string | undefined;
-  isOffline: boolean;
 };
 
-function PostSearchResults({ query, currentUserId, isOffline }: PostSearchResultsProps) {
+function PostSearchResults({ query, currentUserId }: PostSearchResultsProps) {
   const {
     data,
     isLoading,
@@ -292,10 +291,9 @@ function PostSearchResults({ query, currentUserId, isOffline }: PostSearchResult
 
 type UserSearchResultsProps = {
   query: string;
-  isOffline: boolean;
 };
 
-function UserSearchResults({ query, isOffline }: UserSearchResultsProps) {
+function UserSearchResults({ query }: UserSearchResultsProps) {
   const {
     data,
     isLoading,
@@ -454,18 +452,22 @@ export default function SearchScreen() {
               onSelect={setActiveSegment}
             />
 
-            {activeQuery.length > 0 ? (
+            {isOffline ? (
+              <ScreenEmpty
+                iconName="cloud-offline-outline"
+                title="オフライン中"
+                description={ERR_OFFLINE_ACTION}
+              />
+            ) : activeQuery.length > 0 ? (
               <View style={styles.resultsContainer}>
                 {activeSegment === 'posts' ? (
                   <PostSearchResults
                     query={activeQuery}
                     currentUserId={currentUserId}
-                    isOffline={isOffline}
                   />
                 ) : (
                   <UserSearchResults
                     query={activeQuery}
-                    isOffline={isOffline}
                   />
                 )}
               </View>
