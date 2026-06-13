@@ -34,15 +34,33 @@ jest.mock('expo-router', () => ({
     return React.createElement(TouchableOpacity, { testID: `link-${href}`, accessibilityRole: 'link' }, children);
   },
   Tabs: Object.assign(
-    ({ children }: { children: React.ReactNode }) => {
+    ({ children, screenOptions: _screenOptions }: { children: React.ReactNode; screenOptions?: unknown }) => {
       const React = require('react');
       const { View } = require('react-native');
       return React.createElement(View, { testID: 'tabs' }, children);
     },
     {
-      Screen: ({ name }: { name: string }) => {
+      Screen: ({
+        name,
+        options,
+      }: {
+        name: string;
+        options?: {
+          tabBarLabel?: (props: { focused: boolean; color: string }) => React.ReactNode;
+          tabBarIcon?: (props: { color: string; focused: boolean; size: number }) => React.ReactNode;
+          [key: string]: unknown;
+        };
+      }) => {
         const React = require('react');
-        return React.createElement(React.Fragment, { key: name });
+        const { View } = require('react-native');
+        const labelEl = options?.tabBarLabel?.({ focused: false, color: '#000' }) ?? null;
+        const iconEl = options?.tabBarIcon?.({ color: '#000', focused: false, size: 20 }) ?? null;
+        return React.createElement(
+          View,
+          { testID: `tab-screen-${name}` },
+          labelEl,
+          iconEl
+        );
       },
     }
   ),

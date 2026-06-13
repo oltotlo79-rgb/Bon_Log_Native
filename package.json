@@ -74,6 +74,7 @@
       "node_modules/(?!((jest-)?react-native|@react-native(-community)?)|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@sentry/react-native|native-base|react-native-svg|openapi-fetch|openapi-typescript-helpers)"
     ],
     "collectCoverageFrom": [
+      "app/**/*.{ts,tsx}",
       "lib/**/*.{ts,tsx}",
       "hooks/**/*.{ts,tsx}",
       "components/**/*.{ts,tsx}",
