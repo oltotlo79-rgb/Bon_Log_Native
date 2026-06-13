@@ -22,12 +22,18 @@
 | 投稿作成 | `queryKeys.posts.feed()` / 自分の `queryKeys.users.detail(userId)` | フィードと自分のプロフィールの投稿カウントが変わるため |
 | 投稿更新 | `queryKeys.posts.detail(id)` / `queryKeys.posts.feed()` | 詳細とフィードの内容を同期するため |
 | 投稿削除 | `queryKeys.posts.all` / 自分の `queryKeys.users.detail(userId)` | 投稿系を一括 invalidate し、プロフィールのカウントも更新するため |
-| いいね・いいね取り消し | `queryKeys.posts.detail(id)` | 楽観更新後の整合のため（onSettled で invalidate） |
+| いいね・いいね取り消し（`useToggleLikeMutation`） | `queryKeys.posts.detail(id)` のみ（onSettled で invalidate） | フィード・検索は楽観更新 + onSuccess で setQueryData による確定反映を優先。フィード再取得は重いため invalidate しない |
 | コメント作成 | `queryKeys.comments.byPost(postId)` / `queryKeys.posts.detail(postId)` | コメント数カウントも投稿詳細に含まれるため |
 | コメント削除 | `queryKeys.comments.byPost(postId)` / `queryKeys.posts.detail(postId)` | 同上 |
-| フォロー・フォロー解除 | 対象の `queryKeys.users.detail(targetId)` / `queryKeys.posts.feed()` | フォロワー数とフィード内容が変わるため |
+| フォロー・フォロー解除（`useToggleFollowMutation`） | 対象の `queryKeys.users.detail(targetId)` / `queryKeys.posts.feed()`（onSettled で invalidate） | followersCount の楽観更新 + onSuccess で setQueryData（followersCount 確定値 + followState）。onSettled で profile と feed を invalidate |
 | プロフィール更新 | 自分の `queryKeys.users.detail(userId)` | 表示名・アバターを即時反映するため |
-| 通知既読（Batch 2b 実装予定） | `queryKeys.notifications.list()` / `queryKeys.notifications.unreadCount` | 既読状態と未読件数バッジを同期するため |
+| 通知既読（`useMarkNotificationsReadMutation`） | invalidate なし（setQueryData のみ） | onSuccess で通知一覧の isRead と unreadCount を setQueryData で即時反映。サーバーとの整合はリスト再フェッチ（pull-to-refresh・フォアグラウンド復帰）に委ねる |
+
+## Batch 2b 追加キー・専用管理
+
+| クエリキー | 管理方法 | 説明 |
+|-----------|---------|------|
+| `queryKeys.users.followState(userId)` | ミューテーション結果のみ（フェッチなし / staleTime: Infinity） | UserProfileResponse に following/requested が存在しないため専用キーで管理。useToggleFollowMutation の onSuccess でのみ更新される。frontend は useFollowStateQuery でフォローボタンの状態を取得すること |
 
 ## 読み取り系クエリの参照（lib/queries/ 各フック）
 

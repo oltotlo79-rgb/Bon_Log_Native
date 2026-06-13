@@ -50,6 +50,12 @@ export const queryKeys = {
     me: ['users', 'me'] as const,
     /** ユーザー詳細・プロフィール */
     detail: (id: string) => ['users', 'detail', id] as const,
+    /**
+     * フォロー状態（following/requested）の専用キー。
+     * UserProfileResponse に following/requested が含まれないため別管理する。
+     * useToggleFollowMutation の onSuccess で setQueryData により注入される。
+     */
+    followState: (id: string) => ['users', 'followState', id] as const,
   },
 
   /** 通知 */

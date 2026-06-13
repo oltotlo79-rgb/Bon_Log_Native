@@ -32,6 +32,7 @@ export function makeCommentItem(overrides?: Partial<CommentItem>): CommentItem {
       avatarUrl: null,
     },
     media: [],
+    mentionedUsers: [],
     ...overrides,
   };
 }
@@ -137,6 +138,7 @@ export function makeFeedItem(overrides?: Partial<FeedItemData>): FeedItemData {
     isReposted: false,
     quotePost: null,
     repostPost: null,
+    mentionedUsers: [],
     ...overrides,
   };
 }
