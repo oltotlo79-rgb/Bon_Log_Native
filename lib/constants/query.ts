@@ -17,7 +17,6 @@ export const STALE_TIME_REALTIME = 30 * 1000;
 /**
  * 検索結果の staleTime（1分）。
  * 入力キーワードが変わるたびに別クエリになるため、同一キーワードのキャッシュは短時間保持する。
- * Web の UserSearchResults と同値（search-screen.md §6.2 / §7.3）。
  */
 export const STALE_TIME_SEARCH = 60 * 1000;
 

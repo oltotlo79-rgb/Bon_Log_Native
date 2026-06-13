@@ -3,7 +3,7 @@
  * コメント一覧の無限スクロールクエリフック。
  */
 
-import { useInfiniteQuery } from '@tanstack/react-query';
+import { useInfiniteQuery, type InfiniteData } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api/client';
 import { queryKeys } from '@/lib/queries/keys';
 import { STALE_TIME_STANDARD } from '@/lib/constants/query';
@@ -12,12 +12,14 @@ import type { components } from '@/lib/api/generated/schema.d.ts';
 
 export type CommentItem = components['schemas']['CommentsListResponse']['items'][number];
 
+type CommentsListResponse = components['schemas']['CommentsListResponse'];
+
 /**
  * 投稿に対するコメント一覧の無限スクロールクエリ。
  * postId が空文字の場合はフェッチを行わない（enabled=false）。
  */
 export function useCommentsQuery(postId: string) {
-  return useInfiniteQuery({
+  return useInfiniteQuery<CommentsListResponse, Error, InfiniteData<CommentsListResponse>, ReturnType<typeof queryKeys.comments.byPost>, string | undefined>({
     queryKey: queryKeys.comments.byPost(postId),
     queryFn: async ({ pageParam }) => {
       const { data, error } = await apiClient.GET('/api/v1/posts/{id}/comments', {
@@ -34,7 +36,7 @@ export function useCommentsQuery(postId: string) {
       }
       return data;
     },
-    initialPageParam: undefined as string | undefined,
+    initialPageParam: undefined,
     getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
     staleTime: STALE_TIME_STANDARD,
     enabled: postId.length > 0,

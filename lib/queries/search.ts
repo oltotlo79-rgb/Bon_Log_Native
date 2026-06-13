@@ -3,15 +3,18 @@
  * 投稿・ユーザー検索の無限スクロールクエリフック。
  */
 
-import { useInfiniteQuery } from '@tanstack/react-query';
+import { useInfiniteQuery, type InfiniteData } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api/client';
 import { queryKeys } from '@/lib/queries/keys';
-import { STALE_TIME_STANDARD } from '@/lib/constants/query';
+import { STALE_TIME_SEARCH } from '@/lib/constants/query';
 import { FEED_PAGE_SIZE, USERS_PAGE_SIZE } from '@/lib/constants/limits/pagination';
 import type { components } from '@/lib/api/generated/schema.d.ts';
 
 export type SearchPostItem = components['schemas']['SearchPostsResponse']['items'][number];
 export type SearchUserItem = components['schemas']['SearchUsersResponse']['items'][number];
+
+type SearchPostsResponse = components['schemas']['SearchPostsResponse'];
+type SearchUsersResponse = components['schemas']['SearchUsersResponse'];
 
 /**
  * 投稿検索の無限スクロールクエリ。
@@ -19,7 +22,7 @@ export type SearchUserItem = components['schemas']['SearchUsersResponse']['items
  * ブロック済みユーザーの投稿はサーバー側で除外済み。
  */
 export function useSearchPostsQuery(q: string) {
-  return useInfiniteQuery({
+  return useInfiniteQuery<SearchPostsResponse, Error, InfiniteData<SearchPostsResponse>, ReturnType<typeof queryKeys.search.posts>, string | undefined>({
     queryKey: queryKeys.search.posts(q),
     queryFn: async ({ pageParam }) => {
       const { data, error } = await apiClient.GET('/api/v1/search/posts', {
@@ -36,9 +39,9 @@ export function useSearchPostsQuery(q: string) {
       }
       return data;
     },
-    initialPageParam: undefined as string | undefined,
+    initialPageParam: undefined,
     getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
-    staleTime: STALE_TIME_STANDARD,
+    staleTime: STALE_TIME_SEARCH,
     enabled: q.length > 0,
   });
 }
@@ -49,7 +52,7 @@ export function useSearchPostsQuery(q: string) {
  * ブロック済みユーザーはサーバー側で除外済み。
  */
 export function useSearchUsersQuery(q: string) {
-  return useInfiniteQuery({
+  return useInfiniteQuery<SearchUsersResponse, Error, InfiniteData<SearchUsersResponse>, ReturnType<typeof queryKeys.search.users>, string | undefined>({
     queryKey: queryKeys.search.users(q),
     queryFn: async ({ pageParam }) => {
       const { data, error } = await apiClient.GET('/api/v1/search/users', {
@@ -66,9 +69,9 @@ export function useSearchUsersQuery(q: string) {
       }
       return data;
     },
-    initialPageParam: undefined as string | undefined,
+    initialPageParam: undefined,
     getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
-    staleTime: STALE_TIME_STANDARD,
+    staleTime: STALE_TIME_SEARCH,
     enabled: q.length > 0,
   });
 }

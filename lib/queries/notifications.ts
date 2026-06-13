@@ -4,7 +4,7 @@
  * ゲストユーザーには 403 GUEST_NOT_ALLOWED を返すため、frontend で認証状態を確認してから使用すること。
  */
 
-import { useInfiniteQuery, useQuery } from '@tanstack/react-query';
+import { useInfiniteQuery, useQuery, type InfiniteData } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api/client';
 import { queryKeys } from '@/lib/queries/keys';
 import { STALE_TIME_REALTIME, UNREAD_COUNT_REFETCH_INTERVAL_MS } from '@/lib/constants/query';
@@ -14,13 +14,15 @@ import type { components } from '@/lib/api/generated/schema.d.ts';
 export type NotificationItem = components['schemas']['NotificationsListResponse']['items'][number];
 export type UnreadCount = components['schemas']['UnreadCountResponse'];
 
+type NotificationsListResponse = components['schemas']['NotificationsListResponse'];
+
 /**
  * 通知一覧の無限スクロールクエリ。
  * ミュート除外はサーバー側で実施済み。
  * ゲスト不可（403 GUEST_NOT_ALLOWED）— ApiError をそのまま throw する。
  */
 export function useNotificationsQuery() {
-  return useInfiniteQuery({
+  return useInfiniteQuery<NotificationsListResponse, Error, InfiniteData<NotificationsListResponse>, ReturnType<typeof queryKeys.notifications.list>, string | undefined>({
     queryKey: queryKeys.notifications.list(),
     queryFn: async ({ pageParam }) => {
       const { data, error } = await apiClient.GET('/api/v1/notifications', {
@@ -36,7 +38,7 @@ export function useNotificationsQuery() {
       }
       return data;
     },
-    initialPageParam: undefined as string | undefined,
+    initialPageParam: undefined,
     getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
     staleTime: STALE_TIME_REALTIME,
   });

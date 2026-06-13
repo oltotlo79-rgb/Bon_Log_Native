@@ -3,7 +3,7 @@
  * タイムラインフィードの無限スクロールクエリフック。
  */
 
-import { useInfiniteQuery } from '@tanstack/react-query';
+import { useInfiniteQuery, type InfiniteData } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api/client';
 import { queryKeys } from '@/lib/queries/keys';
 import { STALE_TIME_REALTIME } from '@/lib/constants/query';
@@ -11,6 +11,8 @@ import { FEED_PAGE_SIZE } from '@/lib/constants/limits/pagination';
 import type { components } from '@/lib/api/generated/schema.d.ts';
 
 export type FeedItem = components['schemas']['FeedResponse']['items'][number];
+
+type FeedResponse = components['schemas']['FeedResponse'];
 
 /**
  * フィードの無限スクロールクエリ。
@@ -21,7 +23,7 @@ export type FeedItem = components['schemas']['FeedResponse']['items'][number];
  * TanStack Query が hasNextPage: false を設定する。
  */
 export function useFeedQuery() {
-  return useInfiniteQuery({
+  return useInfiniteQuery<FeedResponse, Error, InfiniteData<FeedResponse>, ReturnType<typeof queryKeys.posts.feed>, string | undefined>({
     queryKey: queryKeys.posts.feed(),
     queryFn: async ({ pageParam }) => {
       const { data, error } = await apiClient.GET('/api/v1/feed', {
@@ -37,7 +39,7 @@ export function useFeedQuery() {
       }
       return data;
     },
-    initialPageParam: undefined as string | undefined,
+    initialPageParam: undefined,
     getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
     staleTime: STALE_TIME_REALTIME,
   });
