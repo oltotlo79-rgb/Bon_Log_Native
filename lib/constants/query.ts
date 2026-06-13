@@ -15,6 +15,13 @@
 export const STALE_TIME_REALTIME = 30 * 1000;
 
 /**
+ * 検索結果の staleTime（1分）。
+ * 入力キーワードが変わるたびに別クエリになるため、同一キーワードのキャッシュは短時間保持する。
+ * Web の UserSearchResults と同値（search-screen.md §6.2 / §7.3）。
+ */
+export const STALE_TIME_SEARCH = 60 * 1000;
+
+/**
  * 投稿詳細・ユーザープロフィールなど標準データの staleTime（5分）。
  * 参照頻度が高いが、秒単位の鮮度は不要なコンテンツに適用する。
  */
@@ -63,3 +70,14 @@ export const RETRY_DELAY_BASE_MS = 1000;
  * モバイル回線を考慮し、Web 版（5秒）より緩めに設定する。
  */
 export const REQUEST_TIMEOUT_MS = 10 * 1000;
+
+// ---------------------------------------------------------------------------
+// ポーリング間隔
+// ---------------------------------------------------------------------------
+
+/**
+ * 未読通知数のポーリング間隔（30秒）。
+ * Web の NotificationBadge と同値（notifications-screen.md §5.2 / §7.3）。
+ * Push 通知実装後は Push 受信時の invalidate に切り替えることで不要になり得る。
+ */
+export const UNREAD_COUNT_REFETCH_INTERVAL_MS = 30 * 1000;

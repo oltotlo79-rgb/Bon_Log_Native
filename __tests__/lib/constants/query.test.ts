@@ -7,10 +7,12 @@ import {
   STALE_TIME_REALTIME,
   STALE_TIME_STANDARD,
   STALE_TIME_MASTER,
+  STALE_TIME_SEARCH,
   GC_TIME,
   RETRY_COUNT,
   RETRY_DELAY_BASE_MS,
   REQUEST_TIMEOUT_MS,
+  UNREAD_COUNT_REFETCH_INTERVAL_MS,
 } from '@/lib/constants/query';
 
 describe('staleTime', () => {
@@ -26,8 +28,13 @@ describe('staleTime', () => {
     expect(STALE_TIME_MASTER).toBeGreaterThan(0);
   });
 
-  it('鮮度の順序: REALTIME < STANDARD < MASTER', () => {
-    expect(STALE_TIME_REALTIME).toBeLessThan(STALE_TIME_STANDARD);
+  it('STALE_TIME_SEARCH は正の値', () => {
+    expect(STALE_TIME_SEARCH).toBeGreaterThan(0);
+  });
+
+  it('鮮度の順序: REALTIME < SEARCH < STANDARD < MASTER', () => {
+    expect(STALE_TIME_REALTIME).toBeLessThan(STALE_TIME_SEARCH);
+    expect(STALE_TIME_SEARCH).toBeLessThan(STALE_TIME_STANDARD);
     expect(STALE_TIME_STANDARD).toBeLessThan(STALE_TIME_MASTER);
   });
 
@@ -75,5 +82,19 @@ describe('timeout', () => {
 
   it('REQUEST_TIMEOUT_MS は 30秒以内（UX 配慮）', () => {
     expect(REQUEST_TIMEOUT_MS).toBeLessThanOrEqual(30 * 1000);
+  });
+});
+
+describe('refetch interval', () => {
+  it('UNREAD_COUNT_REFETCH_INTERVAL_MS は正の値', () => {
+    expect(UNREAD_COUNT_REFETCH_INTERVAL_MS).toBeGreaterThan(0);
+  });
+
+  it('UNREAD_COUNT_REFETCH_INTERVAL_MS は 10秒以上（頻繁すぎる連打防止）', () => {
+    expect(UNREAD_COUNT_REFETCH_INTERVAL_MS).toBeGreaterThanOrEqual(10 * 1000);
+  });
+
+  it('UNREAD_COUNT_REFETCH_INTERVAL_MS は 60秒以内（通知の鮮度要件）', () => {
+    expect(UNREAD_COUNT_REFETCH_INTERVAL_MS).toBeLessThanOrEqual(60 * 1000);
   });
 });
