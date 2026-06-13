@@ -1,7 +1,8 @@
 import { Tabs } from 'expo-router';
-import { Platform, StyleSheet, Text } from 'react-native';
+import { Platform, StyleSheet, Text, View, type ColorValue } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { TabBarIcon } from '@/components/common/TabBarIcon';
+import { useUnreadCountQuery } from '@/lib/queries/notifications';
 import {
   colorNavBackground,
   colorNavIconActive,
@@ -9,11 +10,70 @@ import {
   colorNavLabel,
   colorNavLabelInactive,
   colorBorderLight,
+  colorError,
+  colorTextInverse,
   textXs,
   letterSpacingWidest,
+  radiusFull,
 } from '@/lib/constants/design-tokens';
+import { BADGE_OVERFLOW_THRESHOLD } from '@/lib/constants/limits/ui';
 
 const TAB_BAR_HEIGHT = 60;
+
+// ---------------------------------------------------------------------------
+// 未読バッジ（notifications-screen.md §7）
+// ---------------------------------------------------------------------------
+
+const BADGE_MIN_SIZE = 18;
+
+type UnreadBadgeProps = {
+  count: number;
+};
+
+function UnreadBadge({ count }: UnreadBadgeProps) {
+  if (count <= 0) return null;
+
+  const label = count > BADGE_OVERFLOW_THRESHOLD ? '99+' : String(count);
+
+  return (
+    <View
+      style={styles.badge}
+      accessibilityElementsHidden
+      importantForAccessibility="no"
+    >
+      <Text style={styles.badgeText}>{label}</Text>
+    </View>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// 通知タブアイコン（バッジ付き）
+// ---------------------------------------------------------------------------
+
+type NotificationTabIconProps = {
+  color: ColorValue;
+  focused: boolean;
+  size: number;
+};
+
+function NotificationTabIcon({ color, focused, size }: NotificationTabIconProps) {
+  const { data } = useUnreadCountQuery();
+  const unreadCount = data?.count ?? 0;
+
+  const accessibilityLabel =
+    unreadCount > 0 ? `未読通知 ${unreadCount} 件` : '通知';
+
+  return (
+    <View accessibilityLabel={accessibilityLabel}>
+      <TabBarIcon name="bell" color={color} focused={focused} size={size} />
+      <UnreadBadge count={unreadCount} />
+    </View>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// タブレイアウト
+// ---------------------------------------------------------------------------
 
 export default function TabsLayout() {
   const insets = useSafeAreaInsets();
@@ -32,7 +92,6 @@ export default function TabsLayout() {
         ],
         tabBarActiveTintColor: colorNavIconActive,
         tabBarInactiveTintColor: colorNavIconInactive,
-        tabBarLabelStyle: styles.tabBarLabel,
         tabBarItemStyle: styles.tabBarItem,
       }}
     >
@@ -70,7 +129,7 @@ export default function TabsLayout() {
             <TabLabel label="通知" focused={focused} />
           ),
           tabBarIcon: ({ color, focused }) => (
-            <TabBarIcon name="bell" color={color} focused={focused} size={20} />
+            <NotificationTabIcon color={color} focused={focused} size={20} />
           ),
           tabBarAccessibilityLabel: '通知',
         }}
@@ -119,11 +178,6 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: colorBorderLight,
   },
-  tabBarLabel: {
-    ...textXs,
-    letterSpacing: letterSpacingWidest,
-    marginTop: 4,
-  },
   tabBarItem: {
     flex: 1,
     height: TAB_BAR_HEIGHT,
@@ -134,5 +188,23 @@ const styles = StyleSheet.create({
     ...textXs,
     letterSpacing: letterSpacingWidest,
     marginTop: 4,
+  },
+  badge: {
+    position: 'absolute',
+    top: -4,
+    right: -4,
+    minWidth: BADGE_MIN_SIZE,
+    height: BADGE_MIN_SIZE,
+    borderRadius: radiusFull,
+    backgroundColor: colorError,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 3,
+  },
+  badgeText: {
+    ...textXs,
+    color: colorTextInverse,
+    fontWeight: '700',
+    lineHeight: BADGE_MIN_SIZE,
   },
 });

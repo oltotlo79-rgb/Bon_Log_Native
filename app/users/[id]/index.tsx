@@ -1,37 +1,193 @@
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+/**
+ * @module app/users/[id]/index
+ * 他者プロフィール画面（navigation-structure.md §4.3 準拠）。
+ * フォローボタンは 2b（フォロー API）まで非表示（PM 決定事項）。
+ * ブロック・通報メニューは骨格のみ（store-compliance.md 要件 — リリース前に必須だが本 Phase では未実装）。
+ */
+
+import React from 'react';
+import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Image } from 'expo-image';
+import { useUserProfileQuery } from '@/lib/queries/users';
+import { useOnlineStatus } from '@/hooks/use-online-status';
+import { ScreenLoading } from '@/components/common/ScreenLoading';
+import { ScreenError } from '@/components/common/ScreenError';
+import { OfflineBanner } from '@/components/common/OfflineBanner';
+import { isApiError } from '@/lib/api/errors';
 import {
   colorBackground,
+  colorSurface,
   colorSurfaceWashi,
+  colorSurfaceMuted,
   colorTextPrimary,
   colorTextSecondary,
   colorBorderLight,
   spacing2,
+  spacing3,
   spacing4,
+  spacing6,
+  spacing8,
+  radiusFull,
+  shadowWashi,
   textBase,
   textLg,
   textSm,
+  textXl,
   letterSpacingWidest,
 } from '@/lib/constants/design-tokens';
-import { ERR_USER_NOT_FOUND } from '@/lib/constants/errors';
+import {
+  ERR_USER_NOT_FOUND,
+  ERR_PROFILE_LOAD_FAILED,
+  ERR_NOT_FOUND,
+} from '@/lib/constants/errors';
+
+// ---------------------------------------------------------------------------
+// 定数
+// ---------------------------------------------------------------------------
+
+const AVATAR_SIZE = 64;
+const HEADER_IMAGE_HEIGHT = 120;
+
+// ---------------------------------------------------------------------------
+// プロフィールヘッダーコンポーネント
+// ---------------------------------------------------------------------------
+
+type ProfileHeaderProps = {
+  avatarUrl: string | null;
+  headerUrl: string | null;
+  nickname: string;
+  bio: string | null;
+  location: string | null;
+  bonsaiStartYear: number | null;
+  bonsaiStartMonth: number | null;
+  postsCount: number;
+  followersCount: number;
+  followingCount: number;
+};
+
+function ProfileHeader({
+  avatarUrl,
+  headerUrl,
+  nickname,
+  bio,
+  location,
+  bonsaiStartYear,
+  bonsaiStartMonth,
+  postsCount,
+  followersCount,
+  followingCount,
+}: ProfileHeaderProps) {
+  const bonsaiStartLabel =
+    bonsaiStartYear !== null
+      ? bonsaiStartMonth !== null
+        ? `${bonsaiStartYear}年${bonsaiStartMonth}月から盆栽`
+        : `${bonsaiStartYear}年から盆栽`
+      : null;
+
+  return (
+    <View style={styles.profileHeader}>
+      {/* カバー画像 */}
+      {headerUrl !== null ? (
+        <Image
+          source={{ uri: headerUrl }}
+          style={styles.headerImage}
+          contentFit="cover"
+          accessibilityLabel={`${nickname}のカバー画像`}
+          accessibilityRole="image"
+        />
+      ) : (
+        <View style={[styles.headerImage, styles.headerImageFallback]} />
+      )}
+
+      {/* アバター */}
+      <View style={styles.avatarRow}>
+        {avatarUrl !== null ? (
+          <Image
+            source={{ uri: avatarUrl }}
+            style={styles.avatar}
+            contentFit="cover"
+            accessibilityLabel={`${nickname}のプロフィール画像`}
+            accessibilityRole="image"
+          />
+        ) : (
+          <View style={[styles.avatar, styles.avatarFallback]}>
+            <Text style={styles.avatarFallbackText}>{nickname.charAt(0)}</Text>
+          </View>
+        )}
+      </View>
+
+      <View style={styles.profileInfo}>
+        <Text style={styles.nickname}>{nickname}</Text>
+
+        {bio !== null && bio.length > 0 && (
+          <Text style={styles.bio}>{bio}</Text>
+        )}
+
+        {location !== null && location.length > 0 && (
+          <Text style={styles.meta}>{location}</Text>
+        )}
+
+        {bonsaiStartLabel !== null && (
+          <Text style={styles.meta}>{bonsaiStartLabel}</Text>
+        )}
+
+        {/* フォロワー・フォロー数 */}
+        <View style={styles.statsRow}>
+          <View style={styles.statItem}>
+            <Text style={styles.statCount}>{postsCount}</Text>
+            <Text style={styles.statLabel}>投稿</Text>
+          </View>
+          <View style={styles.statItem}>
+            <Text style={styles.statCount}>{followersCount}</Text>
+            <Text style={styles.statLabel}>フォロワー</Text>
+          </View>
+          <View style={styles.statItem}>
+            <Text style={styles.statCount}>{followingCount}</Text>
+            <Text style={styles.statLabel}>フォロー中</Text>
+          </View>
+        </View>
+      </View>
+    </View>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// 画面本体
+// ---------------------------------------------------------------------------
 
 export default function UserDetailScreen() {
   const params = useLocalSearchParams();
   const rawId = params['id'];
+  const isOffline = !useOnlineStatus();
 
   if (typeof rawId !== 'string' || rawId.length === 0) {
     return (
       <SafeAreaView style={styles.safeArea} edges={['top']}>
+        <View style={styles.header}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => router.back()}
+            accessibilityRole="button"
+            accessibilityLabel="戻る"
+          >
+            <Text style={styles.backButtonText}>← 戻る</Text>
+          </TouchableOpacity>
+          <Text style={styles.headerTitle} accessibilityRole="header">
+            プロフィール
+          </Text>
+          <View style={styles.menuPlaceholder} />
+        </View>
         <View style={styles.errorContainer}>
           <Text style={styles.errorText}>{ERR_USER_NOT_FOUND}</Text>
           <TouchableOpacity
             onPress={() => router.back()}
             accessibilityRole="button"
             accessibilityLabel="戻る"
-            style={styles.backButton}
+            style={styles.backButtonAlt}
           >
-            <Text style={styles.backButtonText}>戻る</Text>
+            <Text style={styles.backButtonAltText}>戻る</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -40,38 +196,113 @@ export default function UserDetailScreen() {
 
   const userId = rawId;
 
+  return <UserDetailContent userId={userId} isOffline={isOffline} />;
+}
+
+// ---------------------------------------------------------------------------
+// データ取得コンポーネント（id が確定してから mount）
+// ---------------------------------------------------------------------------
+
+type UserDetailContentProps = {
+  userId: string;
+  isOffline: boolean;
+};
+
+function UserDetailContent({ userId, isOffline }: UserDetailContentProps) {
+  const { data, isLoading, isError, error, refetch } = useUserProfileQuery(userId);
+
+  const renderHeader = (title: string) => (
+    <View style={styles.header}>
+      <TouchableOpacity
+        style={styles.backButton}
+        onPress={() => router.back()}
+        accessibilityRole="button"
+        accessibilityLabel="戻る"
+      >
+        <Text style={styles.backButtonText}>← 戻る</Text>
+      </TouchableOpacity>
+      <Text style={styles.headerTitle} accessibilityRole="header">
+        {title}
+      </Text>
+      {/* ブロック・通報メニュー骨格（store-compliance.md 要件 — リリース前に実装必須）*/}
+      <TouchableOpacity
+        style={styles.menuButton}
+        accessibilityRole="button"
+        accessibilityLabel="メニューを開く（ブロック・通報）"
+      >
+        <Text style={styles.menuIcon}>⋮</Text>
+      </TouchableOpacity>
+    </View>
+  );
+
+  if (isLoading) {
+    return (
+      <SafeAreaView style={styles.safeArea} edges={['top']}>
+        {renderHeader('プロフィール')}
+        <ScreenLoading variant="skeleton" skeletonCount={2} />
+      </SafeAreaView>
+    );
+  }
+
+  if (isError) {
+    const isNotFound = isApiError(error) && error.code === 'NOT_FOUND';
+    const debugMsg = error instanceof Error ? error.message : undefined;
+    return (
+      <SafeAreaView style={styles.safeArea} edges={['top']}>
+        {renderHeader('プロフィール')}
+        <OfflineBanner isVisible={isOffline} />
+        <ScreenError
+          title={isNotFound ? 'ユーザーが見つかりません' : '読み込めませんでした'}
+          description={isNotFound ? ERR_NOT_FOUND : ERR_PROFILE_LOAD_FAILED}
+          onRetry={() => void refetch()}
+          debugMessage={debugMsg}
+        />
+      </SafeAreaView>
+    );
+  }
+
+  if (data === undefined) {
+    return (
+      <SafeAreaView style={styles.safeArea} edges={['top']}>
+        {renderHeader('プロフィール')}
+        <ScreenError
+          title="読み込めませんでした"
+          description={ERR_PROFILE_LOAD_FAILED}
+          onRetry={() => void refetch()}
+        />
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={() => router.back()}
-          accessibilityRole="button"
-          accessibilityLabel="戻る"
-        >
-          <Text style={styles.backButtonText}>← 戻る</Text>
-        </TouchableOpacity>
-        <Text style={styles.headerTitle} accessibilityRole="header">
-          プロフィール
-        </Text>
-        <TouchableOpacity
-          style={styles.menuButton}
-          accessibilityRole="button"
-          accessibilityLabel="メニューを開く（ブロック・通報）"
-        >
-          <Text style={styles.menuIcon}>⋮</Text>
-        </TouchableOpacity>
-      </View>
-      <View style={styles.content}>
-        <Text style={styles.placeholder}>ユーザープロフィール画面（実装予定）</Text>
-        <Text style={styles.description}>ユーザーID: {userId}</Text>
-        <Text style={styles.description}>
-          フォロー・ブロック・通報などのアクションが表示されます。
-        </Text>
-      </View>
+      <OfflineBanner isVisible={isOffline} />
+      {renderHeader(data.nickname)}
+
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+      >
+        <ProfileHeader
+          avatarUrl={data.avatarUrl}
+          headerUrl={data.headerUrl}
+          nickname={data.nickname}
+          bio={data.bio}
+          location={data.location}
+          bonsaiStartYear={data.bonsaiStartYear}
+          bonsaiStartMonth={data.bonsaiStartMonth}
+          postsCount={data.postsCount}
+          followersCount={data.followersCount}
+          followingCount={data.followingCount}
+        />
+      </ScrollView>
     </SafeAreaView>
   );
 }
+
+// ---------------------------------------------------------------------------
+// スタイル
+// ---------------------------------------------------------------------------
 
 const styles = StyleSheet.create({
   safeArea: {
@@ -109,25 +340,85 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
     justifyContent: 'center',
   },
+  menuPlaceholder: {
+    minWidth: 44,
+  },
   menuIcon: {
     fontSize: 20,
     color: colorTextPrimary,
   },
-  content: {
+  scrollView: {
     flex: 1,
+  },
+  scrollContent: {
+    paddingBottom: spacing8,
+  },
+  profileHeader: {
+    backgroundColor: colorSurface,
+    marginBottom: spacing4,
+    ...shadowWashi,
+  },
+  headerImage: {
+    width: '100%',
+    height: HEADER_IMAGE_HEIGHT,
+  },
+  headerImageFallback: {
+    backgroundColor: colorSurfaceMuted,
+  },
+  avatarRow: {
+    paddingHorizontal: spacing4,
+    marginTop: -(AVATAR_SIZE / 2),
+    marginBottom: spacing3,
+  },
+  avatar: {
+    width: AVATAR_SIZE,
+    height: AVATAR_SIZE,
+    borderRadius: radiusFull,
+    borderWidth: 2,
+    borderColor: colorBackground,
+  },
+  avatarFallback: {
+    backgroundColor: colorSurfaceMuted,
     alignItems: 'center',
     justifyContent: 'center',
-    padding: spacing4,
+  },
+  avatarFallbackText: {
+    ...textXl,
+    color: colorTextSecondary,
+  },
+  profileInfo: {
+    paddingHorizontal: spacing4,
+    paddingBottom: spacing4,
     gap: spacing2,
   },
-  placeholder: {
+  nickname: {
     ...textLg,
     color: colorTextPrimary,
   },
-  description: {
+  bio: {
+    ...textBase,
+    color: colorTextPrimary,
+  },
+  meta: {
     ...textSm,
     color: colorTextSecondary,
-    textAlign: 'center',
+  },
+  statsRow: {
+    flexDirection: 'row',
+    marginTop: spacing3,
+    gap: spacing6,
+  },
+  statItem: {
+    alignItems: 'center',
+  },
+  statCount: {
+    ...textBase,
+    color: colorTextPrimary,
+    fontWeight: '700',
+  },
+  statLabel: {
+    ...textSm,
+    color: colorTextSecondary,
   },
   errorContainer: {
     flex: 1,
@@ -140,5 +431,15 @@ const styles = StyleSheet.create({
     ...textBase,
     color: colorTextSecondary,
     textAlign: 'center',
+  },
+  backButtonAlt: {
+    minHeight: 44,
+    paddingHorizontal: spacing4,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  backButtonAltText: {
+    ...textBase,
+    color: colorTextPrimary,
   },
 });
