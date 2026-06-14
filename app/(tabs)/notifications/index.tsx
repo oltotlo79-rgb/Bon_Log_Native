@@ -1,10 +1,10 @@
 /**
  * @module app/(tabs)/notifications/index
  * 通知一覧画面（notifications-screen.md §2 準拠）。
- * 既読化 API（PATCH /api/v1/notifications）は cfw Batch 2b 未実装のため no-op で実装する。
+ * 既読化方式: 画面マウント時に自動全件既読化（§8.2）＋「すべて既読にする」ボタン（§8.3）。
  */
 
-import React, { useCallback } from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -17,9 +17,11 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, type Href } from 'expo-router';
-import { useNotificationsQuery, useUnreadCountQuery, type NotificationItem as NotificationItemType } from '@/lib/queries/notifications';
+import { useNotificationsQuery, useUnreadCountQuery, useMarkNotificationsReadMutation, type NotificationItem as NotificationItemType } from '@/lib/queries/notifications';
 import { useOnlineStatus } from '@/hooks/use-online-status';
+import { useToast } from '@/hooks/use-toast';
 import { NotificationItem } from '@/components/notification/NotificationItem';
+import { Toast } from '@/components/common/Toast';
 import { ScreenEmpty } from '@/components/common/ScreenEmpty';
 import { ScreenError } from '@/components/common/ScreenError';
 import { ScreenLoading } from '@/components/common/ScreenLoading';
@@ -42,6 +44,7 @@ import {
 import {
   ERR_NOTIFICATIONS_LOAD_FAILED,
   ERR_AUTH_REQUIRED,
+  ERR_NOTIFICATION_READ_FAILED,
 } from '@/lib/constants/errors';
 import { routes } from '@/lib/constants/routes';
 
@@ -97,7 +100,27 @@ export default function NotificationsScreen() {
   const { data: unreadCountData } = useUnreadCountQuery();
   const unreadCount = unreadCountData?.count ?? 0;
 
+  const markRead = useMarkNotificationsReadMutation();
+
+  const { toast, showToast, hideToast } = useToast();
+
+  // 自動全件既読化の多重発火防止フラグ（マウント後に一度だけ実行する）
+  const autoMarkReadCalledRef = useRef(false);
+
   const notifications = data?.pages.flatMap((page) => page.items) ?? [];
+
+  // §8.2: 画面マウント時、データ取得完了かつ未読がある場合のみ全件既読化を一度だけ呼ぶ。
+  // 失敗時はサイレント（トーストなし・未読スタイル維持）。
+  useEffect(() => {
+    if (autoMarkReadCalledRef.current) return;
+    if (data === undefined) return;
+    if (unreadCount <= 0) return;
+
+    autoMarkReadCalledRef.current = true;
+    markRead.mutate({});
+  // markRead.mutate は useMutation の安定参照のため依存配列には含めない
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data, unreadCount]);
 
   const handleLoadMore = useCallback(() => {
     if (hasNextPage === true && !isFetchingNextPage) {
@@ -110,8 +133,19 @@ export default function NotificationsScreen() {
     if (route !== null) {
       router.push(route);
     }
-    // onMarkRead は cfw Batch 2b 接続後に実装する（no-op）
   }, []);
+
+  // §8.3: 「すべて既読にする」ボタン。失敗時のみトーストを表示する。
+  const handleMarkAllRead = useCallback(() => {
+    markRead.mutate(
+      {},
+      {
+        onError: () => {
+          showToast(ERR_NOTIFICATION_READ_FAILED, 'error');
+        },
+      }
+    );
+  }, [markRead, showToast]);
 
   // ゲスト 403 のハンドリング（通常は AuthGuard 済みで到達しないが念のため）
   if (isError && isApiError(error) && error.code === 'GUEST_NOT_ALLOWED') {
@@ -163,9 +197,6 @@ export default function NotificationsScreen() {
     <NotificationItem
       notification={item}
       onPress={() => handleNotificationPress(item)}
-      onMarkRead={() => {
-        // cfw Batch 2b 接続後に既読化 API を呼び出す（現時点は no-op）
-      }}
     />
   );
 
@@ -184,11 +215,12 @@ export default function NotificationsScreen() {
             hitSlop={8}
             accessibilityRole="button"
             accessibilityLabel="すべての通知を既読にする"
-            onPress={() => {
-              // cfw Batch 2b 接続後に markAllAsRead を呼び出す（現時点は no-op）
-            }}
+            disabled={markRead.isPending}
+            onPress={handleMarkAllRead}
           >
-            <Text style={styles.markAllReadText}>すべて既読にする</Text>
+            <Text style={[styles.markAllReadText, markRead.isPending && styles.markAllReadTextDisabled]}>
+              すべて既読にする
+            </Text>
           </Pressable>
         )}
       </View>
@@ -228,6 +260,13 @@ export default function NotificationsScreen() {
           }
         />
       )}
+
+      <Toast
+        message={toast.message}
+        visible={toast.visible}
+        variant={toast.variant}
+        onHide={hideToast}
+      />
     </SafeAreaView>
   );
 }
@@ -267,6 +306,9 @@ const styles = StyleSheet.create({
   markAllReadText: {
     ...textSm,
     color: colorTextLink,
+  },
+  markAllReadTextDisabled: {
+    opacity: 0.4,
   },
   footerLoader: {
     flexDirection: 'row',

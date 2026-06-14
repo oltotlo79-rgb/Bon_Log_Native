@@ -20,10 +20,15 @@ jest.mock('@/hooks/use-online-status', () => ({
 
 const mockUseNotificationsQuery = jest.fn();
 const mockUseUnreadCountQuery = jest.fn();
+const mockMarkReadMutate = jest.fn();
 
 jest.mock('@/lib/queries/notifications', () => ({
   useNotificationsQuery: () => mockUseNotificationsQuery(),
   useUnreadCountQuery: () => mockUseUnreadCountQuery(),
+  useMarkNotificationsReadMutation: () => ({
+    mutate: mockMarkReadMutate,
+    isPending: false,
+  }),
 }));
 
 const defaultNotificationsState = {

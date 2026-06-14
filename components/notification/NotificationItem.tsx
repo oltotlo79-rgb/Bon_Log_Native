@@ -1,6 +1,7 @@
 /**
  * @module components/notification/NotificationItem
  * 通知一覧 1 件表示コンポーネント（notifications-screen.md §4 / §6）。
+ * 既読化はセルタップではなく画面マウント時の自動全件既読化（§8）で行うため、このコンポーネントは表示のみ担う。
  * FlatList 内での再レンダリング抑制のため React.memo でラップ。
  */
 
@@ -84,8 +85,6 @@ function getTypeConfig(type: string): NotificationTypeConfig {
 type NotificationItemProps = {
   notification: NotificationItemType;
   onPress: () => void;
-  /** Batch 2b で既読化 API 接続後に実装するコールバック（現時点は no-op）*/
-  onMarkRead: (id: string) => void;
 };
 
 // ---------------------------------------------------------------------------
@@ -215,7 +214,6 @@ function NotificationItemBase({ notification, onPress }: NotificationItemProps) 
   );
 }
 
-// onMarkRead は現時点 no-op のため比較対象から除外してよい
 export const NotificationItem = React.memo(NotificationItemBase);
 
 // ---------------------------------------------------------------------------

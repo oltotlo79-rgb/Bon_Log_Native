@@ -1,7 +1,9 @@
 /**
  * @module __tests__/components/notification/NotificationItem
  * NotificationItem コンポーネントのテスト。
- * type別アイコン・本文・未読表示・actor/post=null フォールバック・onMarkRead no-op を検証する。
+ * type別アイコン・本文・未読表示・actor/post=null フォールバックを検証する。
+ * 既読化はセルタップではなく画面マウント時の自動全件既読化で行うため、
+ * このコンポーネントは表示・遷移専用（onMarkRead prop は存在しない）。
  */
 
 import React from 'react';
@@ -27,7 +29,7 @@ describe('NotificationItem', () => {
         type: 'like',
         actor: { id: 'u-2', nickname: '盆栽花子', avatarUrl: null },
       });
-      render(<NotificationItem notification={notification} onPress={jest.fn()} onMarkRead={jest.fn()} />);
+      render(<NotificationItem notification={notification} onPress={jest.fn()} />);
       expect(screen.getByText(MSG_NOTIFICATION_LIKE('盆栽花子'))).toBeTruthy();
     });
 
@@ -36,7 +38,7 @@ describe('NotificationItem', () => {
         type: 'follow',
         actor: { id: 'u-2', nickname: '盆栽次郎', avatarUrl: null },
       });
-      render(<NotificationItem notification={notification} onPress={jest.fn()} onMarkRead={jest.fn()} />);
+      render(<NotificationItem notification={notification} onPress={jest.fn()} />);
       expect(screen.getByText(MSG_NOTIFICATION_FOLLOW('盆栽次郎'))).toBeTruthy();
     });
 
@@ -46,7 +48,7 @@ describe('NotificationItem', () => {
         actor: null,
         actorId: null,
       });
-      render(<NotificationItem notification={notification} onPress={jest.fn()} onMarkRead={jest.fn()} />);
+      render(<NotificationItem notification={notification} onPress={jest.fn()} />);
       expect(screen.getByText(MSG_NOTIFICATION_SYSTEM)).toBeTruthy();
     });
 
@@ -56,7 +58,7 @@ describe('NotificationItem', () => {
         actor: null,
         actorId: null,
       });
-      render(<NotificationItem notification={notification} onPress={jest.fn()} onMarkRead={jest.fn()} />);
+      render(<NotificationItem notification={notification} onPress={jest.fn()} />);
       expect(screen.getByText(MSG_NOTIFICATION_UNKNOWN)).toBeTruthy();
     });
 
@@ -66,7 +68,7 @@ describe('NotificationItem', () => {
         actor: null,
         actorId: null,
       });
-      render(<NotificationItem notification={notification} onPress={jest.fn()} onMarkRead={jest.fn()} />);
+      render(<NotificationItem notification={notification} onPress={jest.fn()} />);
       expect(screen.getByText(MSG_NOTIFICATION_UNKNOWN)).toBeTruthy();
     });
   });
@@ -74,7 +76,7 @@ describe('NotificationItem', () => {
   describe('未読の視覚差', () => {
     it('isRead=false のとき未読ドットが表示される（通知セル内に未読ドットを持つ）', () => {
       const notification = makeNotificationItem({ isRead: false });
-      render(<NotificationItem notification={notification} onPress={jest.fn()} onMarkRead={jest.fn()} />);
+      render(<NotificationItem notification={notification} onPress={jest.fn()} />);
       // 未読状態の accessibilityLabel に「未読」が含まれる
       const button = screen.getByRole('button');
       expect(button.props.accessibilityLabel).toContain('未読');
@@ -82,7 +84,7 @@ describe('NotificationItem', () => {
 
     it('isRead=true のとき accessibilityLabel に「既読」が含まれる', () => {
       const notification = makeNotificationItem({ isRead: true });
-      render(<NotificationItem notification={notification} onPress={jest.fn()} onMarkRead={jest.fn()} />);
+      render(<NotificationItem notification={notification} onPress={jest.fn()} />);
       const button = screen.getByRole('button');
       expect(button.props.accessibilityLabel).toContain('既読');
     });
@@ -96,7 +98,7 @@ describe('NotificationItem', () => {
         post: { id: 'post-1', content: '黒松の春管理です。' },
         comment: null,
       });
-      render(<NotificationItem notification={notification} onPress={jest.fn()} onMarkRead={jest.fn()} />);
+      render(<NotificationItem notification={notification} onPress={jest.fn()} />);
       expect(screen.getByText('黒松の春管理です。')).toBeTruthy();
     });
 
@@ -109,7 +111,7 @@ describe('NotificationItem', () => {
         comment: null,
         postId: null,
       });
-      render(<NotificationItem notification={notification} onPress={jest.fn()} onMarkRead={jest.fn()} />);
+      render(<NotificationItem notification={notification} onPress={jest.fn()} />);
       // system 通知に特有のコンテンツプレビューは存在しない
       // MSG_NOTIFICATION_SYSTEM のテキストのみ存在する
       expect(screen.getByText(MSG_NOTIFICATION_SYSTEM)).toBeTruthy();
@@ -120,27 +122,27 @@ describe('NotificationItem', () => {
     it('タップすると onPress が呼ばれる', () => {
       const onPress = jest.fn();
       const notification = makeNotificationItem();
-      render(<NotificationItem notification={notification} onPress={onPress} onMarkRead={jest.fn()} />);
+      render(<NotificationItem notification={notification} onPress={onPress} />);
       fireEvent.press(screen.getByRole('button'));
       expect(onPress).toHaveBeenCalledTimes(1);
     });
-  });
 
-  describe('onMarkRead が no-op であること', () => {
-    it('onMarkRead に任意の関数を渡してもタップ時に自動呼び出しされない（現時点の no-op 実装）', () => {
-      const onMarkRead = jest.fn();
-      const notification = makeNotificationItem();
-      render(<NotificationItem notification={notification} onPress={jest.fn()} onMarkRead={onMarkRead} />);
+    it('タップ時に既読化 API は呼ばれない（既読化は画面マウント時の自動全件処理に委譲）', () => {
+      // NotificationItem はタップ→遷移のみ担う。
+      // 既読化は NotificationsScreen の useEffect で行うため、
+      // ここでは onPress のみ検証し、それ以外の副作用がないことを確認する。
+      const onPress = jest.fn();
+      const notification = makeNotificationItem({ isRead: false });
+      render(<NotificationItem notification={notification} onPress={onPress} />);
       fireEvent.press(screen.getByRole('button'));
-      // NotificationItem は Batch 2b まで onMarkRead を直接呼び出さない
-      expect(onMarkRead).not.toHaveBeenCalled();
+      expect(onPress).toHaveBeenCalledTimes(1);
     });
   });
 
   describe('a11y', () => {
     it('accessibilityRole が "button" に設定される', () => {
       const notification = makeNotificationItem();
-      render(<NotificationItem notification={notification} onPress={jest.fn()} onMarkRead={jest.fn()} />);
+      render(<NotificationItem notification={notification} onPress={jest.fn()} />);
       expect(screen.getByRole('button')).toBeTruthy();
     });
 
@@ -149,7 +151,7 @@ describe('NotificationItem', () => {
         type: 'like',
         actor: { id: 'u-2', nickname: '花子', avatarUrl: null },
       });
-      render(<NotificationItem notification={notification} onPress={jest.fn()} onMarkRead={jest.fn()} />);
+      render(<NotificationItem notification={notification} onPress={jest.fn()} />);
       const button = screen.getByRole('button');
       expect(button.props.accessibilityLabel).toContain(MSG_NOTIFICATION_LIKE('花子'));
     });
