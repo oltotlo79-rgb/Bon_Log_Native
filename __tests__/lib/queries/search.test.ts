@@ -137,7 +137,10 @@ describe('useSearchPostsQuery', () => {
     const { result } = renderHook(() => useSearchPostsQuery('松'), { wrapper: Wrapper });
 
     await waitFor(() => expect(result.current.isError).toBe(true));
-    expect((result.current.error as ApiError).code).toBe('AUTH_REQUIRED');
+    expect(result.current.error).toBeInstanceOf(ApiError);
+    if (result.current.error instanceof ApiError) {
+      expect(result.current.error.code).toBe('AUTH_REQUIRED');
+    }
   });
 });
 

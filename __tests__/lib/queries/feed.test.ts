@@ -181,6 +181,9 @@ describe('useFeedQuery', () => {
     const { result } = renderHook(() => useFeedQuery(), { wrapper: Wrapper });
 
     await waitFor(() => expect(result.current.isError).toBe(true));
-    expect((result.current.error as ApiError).code).toBe('ACCOUNT_SUSPENDED');
+    expect(result.current.error).toBeInstanceOf(ApiError);
+    if (result.current.error instanceof ApiError) {
+      expect(result.current.error.code).toBe('ACCOUNT_SUSPENDED');
+    }
   });
 });

@@ -297,7 +297,9 @@ describe('useMarkNotificationsReadMutation', () => {
 
       await waitFor(() => expect(result.current.isError).toBe(true));
       expect(result.current.error).toBeInstanceOf(ApiError);
-      expect((result.current.error as ApiError).code).toBe('GUEST_NOT_ALLOWED');
+      if (result.current.error instanceof ApiError) {
+        expect(result.current.error.code).toBe('GUEST_NOT_ALLOWED');
+      }
     });
 
     it('400 VALIDATION_ERROR（100件超）で ApiError が throw される', async () => {
@@ -313,7 +315,9 @@ describe('useMarkNotificationsReadMutation', () => {
 
       await waitFor(() => expect(result.current.isError).toBe(true));
       expect(result.current.error).toBeInstanceOf(ApiError);
-      expect((result.current.error as ApiError).code).toBe('VALIDATION_ERROR');
+      if (result.current.error instanceof ApiError) {
+        expect(result.current.error.code).toBe('VALIDATION_ERROR');
+      }
     });
 
     it('429 RATE_LIMITED で ApiError が throw される', async () => {
@@ -329,7 +333,9 @@ describe('useMarkNotificationsReadMutation', () => {
 
       await waitFor(() => expect(result.current.isError).toBe(true));
       expect(result.current.error).toBeInstanceOf(ApiError);
-      expect((result.current.error as ApiError).code).toBe('RATE_LIMITED');
+      if (result.current.error instanceof ApiError) {
+        expect(result.current.error.code).toBe('RATE_LIMITED');
+      }
     });
   });
 });

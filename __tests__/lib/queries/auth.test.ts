@@ -159,7 +159,10 @@ describe('useVerifyTwoFactorMutation', () => {
     });
 
     await waitFor(() => expect(result.current.isError).toBe(true));
-    expect((result.current.error as ApiError).code).toBe('AUTH_2FA_INVALID_CODE');
+    expect(result.current.error).toBeInstanceOf(ApiError);
+    if (result.current.error instanceof ApiError) {
+      expect(result.current.error.code).toBe('AUTH_2FA_INVALID_CODE');
+    }
   });
 
   it('AUTH_2FA_TICKET_EXPIRED でエラーが返る', async () => {
@@ -173,7 +176,10 @@ describe('useVerifyTwoFactorMutation', () => {
     });
 
     await waitFor(() => expect(result.current.isError).toBe(true));
-    expect((result.current.error as ApiError).code).toBe('AUTH_2FA_TICKET_EXPIRED');
+    expect(result.current.error).toBeInstanceOf(ApiError);
+    if (result.current.error instanceof ApiError) {
+      expect(result.current.error.code).toBe('AUTH_2FA_TICKET_EXPIRED');
+    }
   });
 });
 
@@ -279,7 +285,10 @@ describe('usePasswordResetConfirmMutation', () => {
     });
 
     await waitFor(() => expect(result.current.isError).toBe(true));
-    expect((result.current.error as ApiError).code).toBe('AUTH_INVALID_CREDENTIALS');
+    expect(result.current.error).toBeInstanceOf(ApiError);
+    if (result.current.error instanceof ApiError) {
+      expect(result.current.error.code).toBe('AUTH_INVALID_CREDENTIALS');
+    }
   });
 });
 
@@ -363,8 +372,10 @@ describe('useRegisterMutation', () => {
 
     await waitFor(() => expect(result.current.isError).toBe(true));
     expect(result.current.error).toBeInstanceOf(ApiError);
-    expect((result.current.error as ApiError).code).toBe('CONFLICT');
-    expect((result.current.error as ApiError).status).toBe(409);
+    if (result.current.error instanceof ApiError) {
+      expect(result.current.error.code).toBe('CONFLICT');
+      expect(result.current.error.status).toBe(409);
+    }
   });
 
   it('400 VALIDATION_ERROR でエラーが返る', async () => {
@@ -381,7 +392,10 @@ describe('useRegisterMutation', () => {
     });
 
     await waitFor(() => expect(result.current.isError).toBe(true));
-    expect((result.current.error as ApiError).code).toBe('VALIDATION_ERROR');
+    expect(result.current.error).toBeInstanceOf(ApiError);
+    if (result.current.error instanceof ApiError) {
+      expect(result.current.error.code).toBe('VALIDATION_ERROR');
+    }
   });
 
   it('429 RATE_LIMITED でエラーが返る', async () => {
@@ -398,7 +412,10 @@ describe('useRegisterMutation', () => {
     });
 
     await waitFor(() => expect(result.current.isError).toBe(true));
-    expect((result.current.error as ApiError).code).toBe('RATE_LIMITED');
+    expect(result.current.error).toBeInstanceOf(ApiError);
+    if (result.current.error instanceof ApiError) {
+      expect(result.current.error.code).toBe('RATE_LIMITED');
+    }
   });
 });
 

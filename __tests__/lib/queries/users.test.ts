@@ -91,7 +91,10 @@ describe('useUserProfileQuery', () => {
     const { result } = renderHook(() => useUserProfileQuery('user-nonexistent'), { wrapper: Wrapper });
 
     await waitFor(() => expect(result.current.isError).toBe(true));
-    expect((result.current.error as ApiError).code).toBe('NOT_FOUND');
+    expect(result.current.error).toBeInstanceOf(ApiError);
+    if (result.current.error instanceof ApiError) {
+      expect(result.current.error.code).toBe('NOT_FOUND');
+    }
   });
 
   it('401 AUTH_REQUIRED で ApiError が throw される', async () => {

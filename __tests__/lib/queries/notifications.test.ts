@@ -132,7 +132,10 @@ describe('useNotificationsQuery', () => {
     const { result } = renderHook(() => useNotificationsQuery(), { wrapper: Wrapper });
 
     await waitFor(() => expect(result.current.isError).toBe(true));
-    expect((result.current.error as ApiError).code).toBe('GUEST_NOT_ALLOWED');
+    expect(result.current.error).toBeInstanceOf(ApiError);
+    if (result.current.error instanceof ApiError) {
+      expect(result.current.error.code).toBe('GUEST_NOT_ALLOWED');
+    }
   });
 
   it('401 AUTH_REQUIRED で ApiError が throw される', async () => {
@@ -184,7 +187,10 @@ describe('useUnreadCountQuery', () => {
     const { result } = renderHook(() => useUnreadCountQuery(), { wrapper: Wrapper });
 
     await waitFor(() => expect(result.current.isError).toBe(true));
-    expect((result.current.error as ApiError).code).toBe('GUEST_NOT_ALLOWED');
+    expect(result.current.error).toBeInstanceOf(ApiError);
+    if (result.current.error instanceof ApiError) {
+      expect(result.current.error.code).toBe('GUEST_NOT_ALLOWED');
+    }
   });
 
   it('401 AUTH_REQUIRED で ApiError が throw される', async () => {
