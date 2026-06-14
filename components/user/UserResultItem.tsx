@@ -8,6 +8,7 @@ import React from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { Image } from 'expo-image';
 import type { SearchUserItem } from '@/lib/queries/search';
+import { FollowButton } from '@/components/user/FollowButton';
 import {
   colorSurface,
   colorTextPrimary,
@@ -38,14 +39,18 @@ export const ITEM_MIN_HEIGHT = 72;
 type UserResultItemProps = {
   user: SearchUserItem;
   onPress: (userId: string) => void;
+  currentUserId: string | undefined;
 };
 
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
 
-function UserResultItemBase({ user, onPress }: UserResultItemProps) {
-  const { id, nickname, avatarUrl, bio, followersCount } = user;
+function UserResultItemBase({ user, onPress, currentUserId }: UserResultItemProps) {
+  const { id, nickname, avatarUrl, bio, followersCount, following, requested, isPublic } = user;
+
+  // 自分自身の行ではフォローボタンを出さない（設計 §2.5）
+  const isSelf = currentUserId !== undefined && currentUserId === id;
 
   const accessibilityLabel = [
     nickname,
@@ -103,6 +108,21 @@ function UserResultItemBase({ user, onPress }: UserResultItemProps) {
           {followersCount}フォロワー
         </Text>
       </View>
+
+      {/* 行全体の onPress（プロフィール遷移）と競合しないよう独立タップ領域に置く */}
+      {!isSelf && (
+        <View style={styles.followButtonWrapper}>
+          <FollowButton
+            targetUserId={id}
+            isPublic={isPublic}
+            following={following}
+            requested={requested}
+            currentUserId={currentUserId}
+            size="compact"
+            targetNickname={nickname}
+          />
+        </View>
+      )}
     </Pressable>
   );
 }
@@ -150,6 +170,9 @@ const styles = StyleSheet.create({
   info: {
     flex: 1,
     gap: spacing2,
+  },
+  followButtonWrapper: {
+    marginLeft: spacing3,
   },
   nickname: {
     ...textMd,

@@ -4,7 +4,7 @@
  * currentlyLiked が true → DELETE（解除）、false → POST（付与）の出し分けを行う。
  */
 
-import { useMutation, useQueryClient, type InfiniteData } from '@tanstack/react-query';
+import { useMutation, useQueryClient, type InfiniteData, type QueryKey } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api/client';
 import { queryKeys } from '@/lib/queries/keys';
 import type { components } from '@/lib/api/generated/schema.d.ts';
@@ -24,7 +24,7 @@ export type ToggleLikeParams = {
 type LikeSnapshot = {
   feedData: InfiniteData<FeedResponse> | undefined;
   detailData: PostResponse | undefined;
-  searchSnapshotMap: Map<string, InfiniteData<SearchPostsResponse>>;
+  searchSnapshot: [QueryKey, InfiniteData<SearchPostsResponse>][];
 };
 
 /**
@@ -71,16 +71,12 @@ export function useToggleLikeMutation() {
       const feedData = queryClient.getQueryData<InfiniteData<FeedResponse>>(queryKeys.posts.feed());
       const detailData = queryClient.getQueryData<PostResponse>(queryKeys.posts.detail(postId));
 
-      // 検索キャッシュは複数クエリキーが存在するため全て収集する
-      const searchSnapshotMap = new Map<string, InfiniteData<SearchPostsResponse>>();
-      const searchCache = queryClient.getQueriesData<InfiniteData<SearchPostsResponse>>({
+      // 検索キャッシュは複数クエリキーが存在するため search.all プレフィックスで全件収集する
+      const allSearchCache = queryClient.getQueriesData<InfiniteData<SearchPostsResponse>>({
         queryKey: queryKeys.search.all,
       });
-      for (const [key, data] of searchCache) {
-        if (data !== undefined) {
-          searchSnapshotMap.set(JSON.stringify(key), data);
-        }
-      }
+      const searchSnapshot: [QueryKey, InfiniteData<SearchPostsResponse>][] = allSearchCache
+        .filter((entry): entry is [QueryKey, InfiniteData<SearchPostsResponse>] => entry[1] !== undefined);
 
       const likedDelta = currentlyLiked ? -1 : 1;
 
@@ -109,23 +105,22 @@ export function useToggleLikeMutation() {
       }
 
       // 検索結果の楽観更新
-      for (const [key, data] of searchCache) {
-        if (data !== undefined) {
-          queryClient.setQueryData<InfiniteData<SearchPostsResponse>>(key, {
-            ...data,
-            pages: data.pages.map((page) => ({
-              ...page,
-              items: page.items.map((item) =>
-                item.id === postId
-                  ? { ...item, isLiked: !currentlyLiked, likeCount: item.likeCount + likedDelta }
-                  : item
-              ),
-            })),
-          });
-        }
+      for (const [key, data] of allSearchCache) {
+        if (data === undefined) continue;
+        queryClient.setQueryData<InfiniteData<SearchPostsResponse>>(key, {
+          ...data,
+          pages: data.pages.map((page) => ({
+            ...page,
+            items: page.items.map((item) =>
+              item.id === postId
+                ? { ...item, isLiked: !currentlyLiked, likeCount: item.likeCount + likedDelta }
+                : item
+            ),
+          })),
+        });
       }
 
-      return { feedData, detailData, searchSnapshotMap };
+      return { feedData, detailData, searchSnapshot };
     },
 
     onError: (_error, { postId }, snapshot) => {
@@ -137,8 +132,7 @@ export function useToggleLikeMutation() {
       if (snapshot.detailData !== undefined) {
         queryClient.setQueryData(queryKeys.posts.detail(postId), snapshot.detailData);
       }
-      for (const [keyStr, data] of snapshot.searchSnapshotMap) {
-        const key = JSON.parse(keyStr) as string[];
+      for (const [key, data] of snapshot.searchSnapshot) {
         queryClient.setQueryData(key, data);
       }
     },

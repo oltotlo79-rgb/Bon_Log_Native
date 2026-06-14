@@ -288,9 +288,10 @@ function PostSearchResults({ query, currentUserId }: PostSearchResultsProps) {
 
 type UserSearchResultsProps = {
   query: string;
+  currentUserId: string | undefined;
 };
 
-function UserSearchResults({ query }: UserSearchResultsProps) {
+function UserSearchResults({ query, currentUserId }: UserSearchResultsProps) {
   const {
     data,
     isLoading,
@@ -342,7 +343,7 @@ function UserSearchResults({ query }: UserSearchResultsProps) {
   }
 
   const renderItem = ({ item }: ListRenderItemInfo<SearchUserItem>) => (
-    <UserResultItem user={item} onPress={handleUserPress} />
+    <UserResultItem user={item} onPress={handleUserPress} currentUserId={currentUserId} />
   );
 
   const keyExtractor = (item: SearchUserItem) => item.id;
@@ -465,6 +466,7 @@ export default function SearchScreen() {
                 ) : (
                   <UserSearchResults
                     query={activeQuery}
+                    currentUserId={currentUserId}
                   />
                 )}
               </View>

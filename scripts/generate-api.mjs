@@ -13,7 +13,7 @@ const __dirname = fileURLToPath(new URL('.', import.meta.url));
 const projectRoot = resolve(__dirname, '..');
 
 const PRIMARY_SPEC = resolve(projectRoot, '..', 'Bon_Log_cfw', 'openapi', 'openapi.json');
-const FALLBACK_SPEC = resolve(projectRoot, 'docs', 'plans', 'openapi-v1.3.0-snapshot.json');
+const FALLBACK_SPEC = resolve(projectRoot, 'docs', 'plans', 'openapi-v1.4.0-snapshot.json');
 const OUTPUT = join(projectRoot, 'lib', 'api', 'generated', 'schema.d.ts');
 
 function resolveSpecPath() {

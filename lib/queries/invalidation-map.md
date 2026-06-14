@@ -25,15 +25,9 @@
 | いいね・いいね取り消し（`useToggleLikeMutation`） | `queryKeys.posts.detail(id)` のみ（onSettled で invalidate） | フィード・検索は楽観更新 + onSuccess で setQueryData による確定反映を優先。フィード再取得は重いため invalidate しない |
 | コメント作成 | `queryKeys.comments.byPost(postId)` / `queryKeys.posts.detail(postId)` | コメント数カウントも投稿詳細に含まれるため |
 | コメント削除 | `queryKeys.comments.byPost(postId)` / `queryKeys.posts.detail(postId)` | 同上 |
-| フォロー・フォロー解除（`useToggleFollowMutation`） | 対象の `queryKeys.users.detail(targetId)` / `queryKeys.posts.feed()`（onSettled で invalidate） | followersCount の楽観更新 + onSuccess で setQueryData（followersCount 確定値 + followState）。onSettled で profile と feed を invalidate |
+| フォロー・フォロー解除（`useToggleFollowMutation`） | 対象の `queryKeys.users.detail(targetId)` / `queryKeys.posts.feed()`（onSettled で invalidate） | onMutate で users.detail の following/requested/followersCount と search.users キャッシュ内の該当 item を楽観更新。onSuccess で FollowResponse 確定値（following/requested/followerCount）を users.detail と search.users item に書き込む。onSettled で users.detail と posts.feed を invalidate |
 | プロフィール更新 | 自分の `queryKeys.users.detail(userId)` | 表示名・アバターを即時反映するため |
 | 通知既読（`useMarkNotificationsReadMutation`） | invalidate なし（setQueryData のみ） | onSuccess で通知一覧の isRead と unreadCount を setQueryData で即時反映。サーバーとの整合はリスト再フェッチ（pull-to-refresh・フォアグラウンド復帰）に委ねる |
-
-## Batch 2b 追加キー・専用管理
-
-| クエリキー | 管理方法 | 説明 |
-|-----------|---------|------|
-| `queryKeys.users.followState(userId)` | ミューテーション結果のみ（フェッチなし / staleTime: Infinity） | UserProfileResponse に following/requested が存在しないため専用キーで管理。useToggleFollowMutation の onSuccess でのみ更新される。frontend は useFollowStateQuery でフォローボタンの状態を取得すること |
 
 ## 読み取り系クエリの参照（lib/queries/ 各フック）
 

@@ -2165,6 +2165,9 @@ export interface components {
             postsCount: number;
             followersCount: number;
             followingCount: number;
+            following: boolean;
+            requested: boolean;
+            isSelf: boolean;
         };
         /** @description 投稿検索結果レスポンス。 */
         SearchPostsResponse: {
@@ -2246,6 +2249,9 @@ export interface components {
                 bio: string | null;
                 followersCount: number;
                 followingCount: number;
+                following: boolean;
+                requested: boolean;
+                isPublic: boolean;
             }[];
             nextCursor: string | null;
         };

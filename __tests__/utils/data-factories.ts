@@ -51,6 +51,9 @@ export function makeSearchUserItem(overrides?: Partial<SearchUserItem>): SearchU
     bio: '盆栽歴20年。黒松専門。',
     followersCount: 150,
     followingCount: 80,
+    following: false,
+    requested: false,
+    isPublic: true,
     ...overrides,
   };
 }
@@ -106,6 +109,9 @@ export function makeUserProfile(overrides?: Partial<UserProfile>): UserProfile {
     postsCount: 42,
     followersCount: 100,
     followingCount: 50,
+    following: false,
+    requested: false,
+    isSelf: false,
     ...overrides,
   };
 }

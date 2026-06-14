@@ -1,7 +1,6 @@
 /**
  * @module app/users/[id]/index
  * 他者プロフィール画面（navigation-structure.md §4.3 準拠）。
- * フォローボタンは 2b（フォロー API）まで非表示（PM 決定事項）。
  * ブロック・通報メニューは骨格のみ（store-compliance.md 要件 — リリース前に必須だが本 Phase では未実装）。
  */
 
@@ -12,10 +11,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { useUserProfileQuery } from '@/lib/queries/users';
+import { useCurrentUserQuery } from '@/lib/queries/auth';
 import { useOnlineStatus } from '@/hooks/use-online-status';
 import { ScreenLoading } from '@/components/common/ScreenLoading';
 import { ScreenError } from '@/components/common/ScreenError';
 import { OfflineBanner } from '@/components/common/OfflineBanner';
+import { FollowButton } from '@/components/user/FollowButton';
 import { isApiError } from '@/lib/api/errors';
 import {
   colorBackground,
@@ -24,6 +25,8 @@ import {
   colorSurfaceMuted,
   colorTextPrimary,
   colorTextSecondary,
+  colorActionPrimary,
+  colorActionPrimaryText,
   colorBorderLight,
   spacing2,
   spacing3,
@@ -32,6 +35,7 @@ import {
   spacing6,
   spacing8,
   radiusFull,
+  radiusMd,
   shadowWashi,
   textBase,
   textLg,
@@ -44,6 +48,7 @@ import {
   ERR_PROFILE_LOAD_FAILED,
   ERR_NOT_FOUND,
 } from '@/lib/constants/errors';
+import { ROUTE_SETTINGS_PROFILE } from '@/lib/constants/routes';
 
 // ---------------------------------------------------------------------------
 // 定数
@@ -67,6 +72,12 @@ type ProfileHeaderProps = {
   postsCount: number;
   followersCount: number;
   followingCount: number;
+  isSelf: boolean;
+  following: boolean;
+  requested: boolean;
+  isPublic: boolean;
+  targetUserId: string;
+  currentUserId: string | undefined;
 };
 
 function ProfileHeader({
@@ -80,6 +91,12 @@ function ProfileHeader({
   postsCount,
   followersCount,
   followingCount,
+  isSelf,
+  following,
+  requested,
+  isPublic,
+  targetUserId,
+  currentUserId,
 }: ProfileHeaderProps) {
   const bonsaiStartLabel =
     bonsaiStartYear !== null
@@ -150,6 +167,30 @@ function ProfileHeader({
             <Text style={styles.statLabel}>フォロー中</Text>
           </View>
         </View>
+
+        {/* フォローボタン or 編集ボタン（自分のとき）— 設計 §2.5 / §4.1 */}
+        <View style={styles.actionRow}>
+          {isSelf ? (
+            <TouchableOpacity
+              style={styles.editButton}
+              onPress={() => router.push(ROUTE_SETTINGS_PROFILE)}
+              accessibilityRole="button"
+              accessibilityLabel="プロフィールを編集"
+            >
+              <Text style={styles.editButtonText}>プロフィールを編集</Text>
+            </TouchableOpacity>
+          ) : (
+            <FollowButton
+              targetUserId={targetUserId}
+              isPublic={isPublic}
+              following={following}
+              requested={requested}
+              currentUserId={currentUserId}
+              size="default"
+              targetNickname={nickname}
+            />
+          )}
+        </View>
       </View>
     </View>
   );
@@ -212,6 +253,8 @@ type UserDetailContentProps = {
 
 function UserDetailContent({ userId, isOffline }: UserDetailContentProps) {
   const { data, isLoading, isError, error, refetch } = useUserProfileQuery(userId);
+  const { data: me } = useCurrentUserQuery();
+  const currentUserId = me?.id;
 
   const renderHeader = (title: string) => (
     <View style={styles.header}>
@@ -296,6 +339,12 @@ function UserDetailContent({ userId, isOffline }: UserDetailContentProps) {
           postsCount={data.postsCount}
           followersCount={data.followersCount}
           followingCount={data.followingCount}
+          isSelf={data.isSelf}
+          following={data.following}
+          requested={data.requested}
+          isPublic={data.isPublic}
+          targetUserId={userId}
+          currentUserId={currentUserId}
         />
       </ScrollView>
     </SafeAreaView>
@@ -417,6 +466,24 @@ const styles = StyleSheet.create({
   statLabel: {
     ...textSm,
     color: colorTextSecondary,
+  },
+  actionRow: {
+    marginTop: spacing4,
+    flexDirection: 'row',
+  },
+  editButton: {
+    minWidth: 120,
+    height: 44,
+    borderRadius: radiusMd,
+    backgroundColor: colorActionPrimary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: spacing3,
+  },
+  editButtonText: {
+    ...textBase,
+    color: colorActionPrimaryText,
+    fontWeight: '600',
   },
   errorContainer: {
     flex: 1,

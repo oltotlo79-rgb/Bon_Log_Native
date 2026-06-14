@@ -1,6 +1,9 @@
 /**
  * lib/queries/follows のユニットテスト。
  * lib/api/client を mock 境界とし、ネットワークに出ない（testing.md 規約）。
+ *
+ * v1.4.0 以降: フォロー状態は users.detail と search.users キャッシュに直接保持する。
+ * useFollowStateQuery / FollowState / queryKeys.users.followState は存在しない。
  */
 
 import React from 'react';
@@ -8,8 +11,7 @@ import { renderHook, act, waitFor } from '@testing-library/react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ApiError } from '@/lib/api/errors';
 import type { MobileApiErrorCode } from '@/lib/api/errors';
-import { useToggleFollowMutation, useFollowStateQuery } from '@/lib/queries/follows';
-import type { FollowState } from '@/lib/queries/follows';
+import { useToggleFollowMutation } from '@/lib/queries/follows';
 import { queryKeys } from '@/lib/queries/keys';
 import type { components } from '@/lib/api/generated/schema.d.ts';
 
@@ -39,6 +41,7 @@ jest.mock('@/lib/api/client', () => ({
 // ---------------------------------------------------------------------------
 
 type UserProfileResponse = components['schemas']['UserProfileResponse'];
+type SearchUsersResponse = components['schemas']['SearchUsersResponse'];
 
 // ---------------------------------------------------------------------------
 // ヘルパー
@@ -78,6 +81,32 @@ function makeUserProfile(overrides?: Partial<UserProfileResponse>): UserProfileR
     postsCount: 10,
     followersCount: 50,
     followingCount: 30,
+    following: false,
+    requested: false,
+    isSelf: false,
+    ...overrides,
+  };
+}
+
+function makeSearchUsersPage(
+  items: SearchUsersResponse['items']
+): SearchUsersResponse {
+  return { items, nextCursor: null };
+}
+
+function makeSearchUserItem(
+  overrides?: Partial<SearchUsersResponse['items'][number]>
+): SearchUsersResponse['items'][number] {
+  return {
+    id: 'user-2',
+    nickname: '盆栽花子',
+    avatarUrl: null,
+    bio: null,
+    followersCount: 50,
+    followingCount: 30,
+    following: false,
+    requested: false,
+    isPublic: true,
     ...overrides,
   };
 }
@@ -106,7 +135,7 @@ describe('useToggleFollowMutation', () => {
       const { result } = renderHook(() => useToggleFollowMutation(), { wrapper: Wrapper });
 
       await act(async () => {
-        result.current.mutate({ userId: 'user-2', isActive: false });
+        result.current.mutate({ userId: 'user-2', isActive: false, isPublic: true });
       });
 
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
@@ -126,7 +155,7 @@ describe('useToggleFollowMutation', () => {
       const { result } = renderHook(() => useToggleFollowMutation(), { wrapper: Wrapper });
 
       await act(async () => {
-        result.current.mutate({ userId: 'user-2', isActive: true });
+        result.current.mutate({ userId: 'user-2', isActive: true, isPublic: true });
       });
 
       await waitFor(() => expect(result.current.isSuccess).toBe(true));
@@ -137,106 +166,174 @@ describe('useToggleFollowMutation', () => {
     });
   });
 
-  describe('公開/非公開アカウントの応答反映', () => {
-    it('公開アカウントへのフォローで following:true, requested:false が followState に保存される', async () => {
+  describe('楽観更新 — users.detail キャッシュ', () => {
+    it('公開アカウントへのフォロー: following:true/followersCount+1 が楽観更新される', async () => {
       mockApiClientPost.mockResolvedValue({
         data: { following: true, requested: false, followerCount: 51 },
         error: undefined,
       });
       const { Wrapper, queryClient } = createWrapper();
 
+      queryClient.setQueryData(
+        queryKeys.users.detail('user-2'),
+        makeUserProfile({ followersCount: 50, following: false, requested: false })
+      );
+
       const { result } = renderHook(() => useToggleFollowMutation(), { wrapper: Wrapper });
 
       act(() => {
-        result.current.mutate({ userId: 'user-2', isActive: false });
+        result.current.mutate({ userId: 'user-2', isActive: false, isPublic: true });
       });
 
-      // setQueryData が onSuccess で書き込まれるタイミングを待つ
       await waitFor(() => {
-        const state = queryClient.getQueryData<FollowState>(queryKeys.users.followState('user-2'));
-        expect(state).toEqual({ following: true, requested: false });
+        const profile = queryClient.getQueryData<UserProfileResponse>(
+          queryKeys.users.detail('user-2')
+        );
+        expect(profile?.following).toBe(true);
+        expect(profile?.requested).toBe(false);
+        expect(profile?.followersCount).toBe(51);
       });
     });
 
-    it('非公開アカウントへのフォローで following:false, requested:true が followState に保存される', async () => {
+    it('非公開アカウントへのフォロー: requested:true/followersCount据え置きが楽観更新される', async () => {
       mockApiClientPost.mockResolvedValue({
         data: { following: false, requested: true, followerCount: 50 },
         error: undefined,
       });
       const { Wrapper, queryClient } = createWrapper();
 
+      queryClient.setQueryData(
+        queryKeys.users.detail('user-2'),
+        makeUserProfile({ followersCount: 50, following: false, requested: false, isPublic: false })
+      );
+
       const { result } = renderHook(() => useToggleFollowMutation(), { wrapper: Wrapper });
 
       act(() => {
-        result.current.mutate({ userId: 'user-2', isActive: false });
+        result.current.mutate({ userId: 'user-2', isActive: false, isPublic: false });
       });
 
       await waitFor(() => {
-        const state = queryClient.getQueryData<FollowState>(queryKeys.users.followState('user-2'));
-        expect(state).toEqual({ following: false, requested: true });
+        const profile = queryClient.getQueryData<UserProfileResponse>(
+          queryKeys.users.detail('user-2')
+        );
+        expect(profile?.following).toBe(false);
+        expect(profile?.requested).toBe(true);
+        expect(profile?.followersCount).toBe(50);
       });
     });
 
-    it('フォロー解除後に following:false, requested:false が followState に保存される', async () => {
+    it('フォロー解除: following:false/followersCount-1 が楽観更新される', async () => {
       mockApiClientDelete.mockResolvedValue({
         data: { following: false, requested: false, followerCount: 49 },
         error: undefined,
       });
       const { Wrapper, queryClient } = createWrapper();
 
+      queryClient.setQueryData(
+        queryKeys.users.detail('user-2'),
+        makeUserProfile({ followersCount: 50, following: true, requested: false })
+      );
+
       const { result } = renderHook(() => useToggleFollowMutation(), { wrapper: Wrapper });
 
       act(() => {
-        result.current.mutate({ userId: 'user-2', isActive: true });
+        result.current.mutate({ userId: 'user-2', isActive: true, isPublic: true });
       });
 
       await waitFor(() => {
-        const state = queryClient.getQueryData<FollowState>(queryKeys.users.followState('user-2'));
-        expect(state).toEqual({ following: false, requested: false });
+        const profile = queryClient.getQueryData<UserProfileResponse>(
+          queryKeys.users.detail('user-2')
+        );
+        expect(profile?.following).toBe(false);
+        expect(profile?.requested).toBe(false);
+        expect(profile?.followersCount).toBe(49);
+      });
+    });
+
+    it('リクエスト取消: requested:false/followersCount据え置きが楽観更新される', async () => {
+      mockApiClientDelete.mockResolvedValue({
+        data: { following: false, requested: false, followerCount: 50 },
+        error: undefined,
+      });
+      const { Wrapper, queryClient } = createWrapper();
+
+      queryClient.setQueryData(
+        queryKeys.users.detail('user-2'),
+        makeUserProfile({ followersCount: 50, following: false, requested: true })
+      );
+
+      const { result } = renderHook(() => useToggleFollowMutation(), { wrapper: Wrapper });
+
+      act(() => {
+        result.current.mutate({ userId: 'user-2', isActive: true, isPublic: false });
+      });
+
+      await waitFor(() => {
+        const profile = queryClient.getQueryData<UserProfileResponse>(
+          queryKeys.users.detail('user-2')
+        );
+        expect(profile?.following).toBe(false);
+        expect(profile?.requested).toBe(false);
+        expect(profile?.followersCount).toBe(50);
       });
     });
   });
 
-  describe('楽観更新（followersCount のみ）', () => {
-    it('onMutate でプロフィールの followersCount が +1 される（フォロー時）', async () => {
+  describe('楽観更新 — 検索キャッシュ', () => {
+    it('公開アカウントへのフォロー: 検索キャッシュの該当 item の following が true になる', async () => {
       mockApiClientPost.mockResolvedValue({
         data: { following: true, requested: false, followerCount: 51 },
         error: undefined,
       });
       const { Wrapper, queryClient } = createWrapper();
 
-      queryClient.setQueryData(queryKeys.users.detail('user-2'), makeUserProfile({ followersCount: 50 }));
+      const searchKey = queryKeys.search.users('黒松');
+      const initialData = {
+        pages: [makeSearchUsersPage([makeSearchUserItem()])],
+        pageParams: [undefined],
+      };
+      queryClient.setQueryData(searchKey, initialData);
 
       const { result } = renderHook(() => useToggleFollowMutation(), { wrapper: Wrapper });
 
       act(() => {
-        result.current.mutate({ userId: 'user-2', isActive: false });
+        result.current.mutate({ userId: 'user-2', isActive: false, isPublic: true });
       });
 
       await waitFor(() => {
-        const profile = queryClient.getQueryData<UserProfileResponse>(queryKeys.users.detail('user-2'));
-        expect(profile?.followersCount).toBe(51);
+        const cached = queryClient.getQueryData<typeof initialData>(searchKey);
+        const item = cached?.pages[0]?.items[0];
+        expect(item?.following).toBe(true);
+        expect(item?.requested).toBe(false);
       });
     });
 
-    it('onMutate でプロフィールの followersCount が -1 される（解除時）', async () => {
+    it('フォロー解除: 検索キャッシュの該当 item の following が false になる', async () => {
       mockApiClientDelete.mockResolvedValue({
         data: { following: false, requested: false, followerCount: 49 },
         error: undefined,
       });
       const { Wrapper, queryClient } = createWrapper();
 
-      queryClient.setQueryData(queryKeys.users.detail('user-2'), makeUserProfile({ followersCount: 50 }));
+      const searchKey = queryKeys.search.users('黒松');
+      const initialData = {
+        pages: [makeSearchUsersPage([makeSearchUserItem({ following: true })])],
+        pageParams: [undefined],
+      };
+      queryClient.setQueryData(searchKey, initialData);
 
       const { result } = renderHook(() => useToggleFollowMutation(), { wrapper: Wrapper });
 
       act(() => {
-        result.current.mutate({ userId: 'user-2', isActive: true });
+        result.current.mutate({ userId: 'user-2', isActive: true, isPublic: true });
       });
 
       await waitFor(() => {
-        const profile = queryClient.getQueryData<UserProfileResponse>(queryKeys.users.detail('user-2'));
-        expect(profile?.followersCount).toBe(49);
+        const cached = queryClient.getQueryData<typeof initialData>(searchKey);
+        const item = cached?.pages[0]?.items[0];
+        expect(item?.following).toBe(false);
+        expect(item?.requested).toBe(false);
       });
     });
   });
@@ -247,17 +344,46 @@ describe('useToggleFollowMutation', () => {
       mockApiClientPost.mockResolvedValue({ data: undefined, error: err });
       const { Wrapper, queryClient } = createWrapper();
 
-      queryClient.setQueryData(queryKeys.users.detail('user-2'), makeUserProfile({ followersCount: 50 }));
+      queryClient.setQueryData(
+        queryKeys.users.detail('user-2'),
+        makeUserProfile({ followersCount: 50, following: false, requested: false })
+      );
 
       const { result } = renderHook(() => useToggleFollowMutation(), { wrapper: Wrapper });
 
       await act(async () => {
-        result.current.mutate({ userId: 'user-2', isActive: false });
+        result.current.mutate({ userId: 'user-2', isActive: false, isPublic: true });
       });
 
       await waitFor(() => expect(result.current.isError).toBe(true));
-      const profile = queryClient.getQueryData<UserProfileResponse>(queryKeys.users.detail('user-2'));
+      const profile = queryClient.getQueryData<UserProfileResponse>(
+        queryKeys.users.detail('user-2')
+      );
       expect(profile?.followersCount).toBe(50);
+      expect(profile?.following).toBe(false);
+    });
+
+    it('エラー時に検索キャッシュがロールバックされる', async () => {
+      const err = makeApiError('RATE_LIMITED', 429);
+      mockApiClientPost.mockResolvedValue({ data: undefined, error: err });
+      const { Wrapper, queryClient } = createWrapper();
+
+      const searchKey = queryKeys.search.users('黒松');
+      const initialData = {
+        pages: [makeSearchUsersPage([makeSearchUserItem({ following: false })])],
+        pageParams: [undefined],
+      };
+      queryClient.setQueryData(searchKey, initialData);
+
+      const { result } = renderHook(() => useToggleFollowMutation(), { wrapper: Wrapper });
+
+      await act(async () => {
+        result.current.mutate({ userId: 'user-2', isActive: false, isPublic: true });
+      });
+
+      await waitFor(() => expect(result.current.isError).toBe(true));
+      const cached = queryClient.getQueryData<typeof initialData>(searchKey);
+      expect(cached?.pages[0]?.items[0]?.following).toBe(false);
     });
   });
 
@@ -269,19 +395,51 @@ describe('useToggleFollowMutation', () => {
       });
       const { Wrapper, queryClient } = createWrapper();
 
-      queryClient.setQueryData(queryKeys.users.detail('user-2'), makeUserProfile({ followersCount: 50 }));
+      queryClient.setQueryData(
+        queryKeys.users.detail('user-2'),
+        makeUserProfile({ followersCount: 50, following: false, requested: false })
+      );
 
       const { result } = renderHook(() => useToggleFollowMutation(), { wrapper: Wrapper });
 
       act(() => {
-        result.current.mutate({ userId: 'user-2', isActive: false });
+        result.current.mutate({ userId: 'user-2', isActive: false, isPublic: true });
       });
 
-      // setQueryData が onSuccess で書き込まれるタイミングを待つ（invalidate より先）
       await waitFor(() => {
-        const profile = queryClient.getQueryData<UserProfileResponse>(queryKeys.users.detail('user-2'));
+        const profile = queryClient.getQueryData<UserProfileResponse>(
+          queryKeys.users.detail('user-2')
+        );
         expect(profile?.followersCount).toBe(55);
+        expect(profile?.following).toBe(true);
+        expect(profile?.requested).toBe(false);
       });
+    });
+
+    it('成功時に検索キャッシュも FollowResponse の確定値で上書きされる', async () => {
+      mockApiClientPost.mockResolvedValue({
+        data: { following: true, requested: false, followerCount: 51 },
+        error: undefined,
+      });
+      const { Wrapper, queryClient } = createWrapper();
+
+      const searchKey = queryKeys.search.users('黒松');
+      const initialData = {
+        pages: [makeSearchUsersPage([makeSearchUserItem({ following: false })])],
+        pageParams: [undefined],
+      };
+      queryClient.setQueryData(searchKey, initialData);
+
+      const { result } = renderHook(() => useToggleFollowMutation(), { wrapper: Wrapper });
+
+      act(() => {
+        result.current.mutate({ userId: 'user-2', isActive: false, isPublic: true });
+      });
+
+      await waitFor(() => result.current.isSuccess);
+      const cached = queryClient.getQueryData<typeof initialData>(searchKey);
+      expect(cached?.pages[0]?.items[0]?.following).toBe(true);
+      expect(cached?.pages[0]?.items[0]?.requested).toBe(false);
     });
   });
 
@@ -294,12 +452,14 @@ describe('useToggleFollowMutation', () => {
       const { result } = renderHook(() => useToggleFollowMutation(), { wrapper: Wrapper });
 
       await act(async () => {
-        result.current.mutate({ userId: 'self-user', isActive: false });
+        result.current.mutate({ userId: 'self-user', isActive: false, isPublic: true });
       });
 
       await waitFor(() => expect(result.current.isError).toBe(true));
       expect(result.current.error).toBeInstanceOf(ApiError);
-      expect((result.current.error as ApiError).code).toBe('VALIDATION_ERROR');
+      if (result.current.error instanceof ApiError) {
+        expect(result.current.error.code).toBe('VALIDATION_ERROR');
+      }
     });
 
     it('ブロック・不存在 404 NOT_FOUND で ApiError が throw される', async () => {
@@ -310,12 +470,14 @@ describe('useToggleFollowMutation', () => {
       const { result } = renderHook(() => useToggleFollowMutation(), { wrapper: Wrapper });
 
       await act(async () => {
-        result.current.mutate({ userId: 'user-2', isActive: false });
+        result.current.mutate({ userId: 'user-2', isActive: false, isPublic: true });
       });
 
       await waitFor(() => expect(result.current.isError).toBe(true));
       expect(result.current.error).toBeInstanceOf(ApiError);
-      expect((result.current.error as ApiError).code).toBe('NOT_FOUND');
+      if (result.current.error instanceof ApiError) {
+        expect(result.current.error.code).toBe('NOT_FOUND');
+      }
     });
 
     it('429 RATE_LIMITED で ApiError が throw される', async () => {
@@ -326,36 +488,32 @@ describe('useToggleFollowMutation', () => {
       const { result } = renderHook(() => useToggleFollowMutation(), { wrapper: Wrapper });
 
       await act(async () => {
-        result.current.mutate({ userId: 'user-2', isActive: false });
+        result.current.mutate({ userId: 'user-2', isActive: false, isPublic: true });
       });
 
       await waitFor(() => expect(result.current.isError).toBe(true));
       expect(result.current.error).toBeInstanceOf(ApiError);
-      expect((result.current.error as ApiError).code).toBe('RATE_LIMITED');
+      if (result.current.error instanceof ApiError) {
+        expect(result.current.error.code).toBe('RATE_LIMITED');
+      }
     });
-  });
-});
 
-// ---------------------------------------------------------------------------
-// useFollowStateQuery
-// ---------------------------------------------------------------------------
+    it('403 ACCOUNT_SUSPENDED で ApiError が throw される', async () => {
+      const err = makeApiError('ACCOUNT_SUSPENDED', 403);
+      mockApiClientPost.mockResolvedValue({ data: undefined, error: err });
+      const { Wrapper } = createWrapper();
 
-describe('useFollowStateQuery', () => {
-  it('初期状態で data が null（queryFn が null を返す）', async () => {
-    const { Wrapper } = createWrapper();
+      const { result } = renderHook(() => useToggleFollowMutation(), { wrapper: Wrapper });
 
-    const { result } = renderHook(() => useFollowStateQuery('user-2'), { wrapper: Wrapper });
+      await act(async () => {
+        result.current.mutate({ userId: 'user-2', isActive: false, isPublic: true });
+      });
 
-    // queryFn が null を返すため data は null になる
-    await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(result.current.data).toBeNull();
-  });
-
-  it('userId が空文字のとき enabled=false でフェッチしない', () => {
-    const { Wrapper } = createWrapper();
-
-    const { result } = renderHook(() => useFollowStateQuery(''), { wrapper: Wrapper });
-
-    expect(result.current.fetchStatus).toBe('idle');
+      await waitFor(() => expect(result.current.isError).toBe(true));
+      expect(result.current.error).toBeInstanceOf(ApiError);
+      if (result.current.error instanceof ApiError) {
+        expect(result.current.error.code).toBe('ACCOUNT_SUSPENDED');
+      }
+    });
   });
 });
