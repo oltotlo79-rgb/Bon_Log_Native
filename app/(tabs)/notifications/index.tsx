@@ -16,7 +16,7 @@ import {
   type ListRenderItemInfo,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
+import { router, type Href } from 'expo-router';
 import { useNotificationsQuery, useUnreadCountQuery, type NotificationItem as NotificationItemType } from '@/lib/queries/notifications';
 import { useOnlineStatus } from '@/hooks/use-online-status';
 import { NotificationItem } from '@/components/notification/NotificationItem';
@@ -49,7 +49,7 @@ import { routes } from '@/lib/constants/routes';
 // 通知 type → 遷移先（notifications-screen.md §6.1 / PM 決定事項に従う）
 // ---------------------------------------------------------------------------
 
-function resolveNotificationRoute(notification: NotificationItemType): string | null {
+function resolveNotificationRoute(notification: NotificationItemType): Href | null {
   const { type, postId, actorId } = notification;
 
   switch (type) {

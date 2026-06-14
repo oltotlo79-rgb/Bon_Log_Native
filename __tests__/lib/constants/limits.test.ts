@@ -53,6 +53,12 @@ import {
   MAX_PAGE_LIMIT,
 } from '@/lib/constants/limits/pagination';
 
+import {
+  DEBOUNCE_SEARCH_MS,
+  DEBOUNCE_DELAY_MS,
+  LIKE_DEBOUNCE_MS,
+} from '@/lib/constants/limits/ui';
+
 import * as limitsIndex from '@/lib/constants/limits';
 
 describe('limits/post — 投稿制限値', () => {
@@ -216,6 +222,24 @@ describe('limits/pagination — ページネーション制限値', () => {
   });
 });
 
+describe('limits/ui — UI タイミング定数', () => {
+  it('DEBOUNCE_SEARCH_MS は正の整数', () => {
+    expect(DEBOUNCE_SEARCH_MS).toBeGreaterThan(0);
+  });
+
+  it('DEBOUNCE_DELAY_MS は正の整数', () => {
+    expect(DEBOUNCE_DELAY_MS).toBeGreaterThan(0);
+  });
+
+  it('LIKE_DEBOUNCE_MS は 300（follow-and-engagement.md §3.2）', () => {
+    expect(LIKE_DEBOUNCE_MS).toBe(300);
+  });
+
+  it('LIKE_DEBOUNCE_MS は正の数', () => {
+    expect(LIKE_DEBOUNCE_MS).toBeGreaterThan(0);
+  });
+});
+
 describe('limits/index — barrel エクスポート', () => {
   it('post モジュールの定数が re-export されている', () => {
     expect(limitsIndex.MAX_POST_CONTENT_FREE).toBeDefined();
@@ -231,5 +255,10 @@ describe('limits/index — barrel エクスポート', () => {
   it('pagination モジュールの定数が re-export されている', () => {
     expect(limitsIndex.FEED_PAGE_SIZE).toBeDefined();
     expect(limitsIndex.MAX_PAGE_LIMIT).toBeDefined();
+  });
+
+  it('ui モジュールの定数が re-export されている', () => {
+    expect(limitsIndex.LIKE_DEBOUNCE_MS).toBeDefined();
+    expect(limitsIndex.DEBOUNCE_SEARCH_MS).toBeDefined();
   });
 });

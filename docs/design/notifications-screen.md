@@ -1,10 +1,11 @@
 # 通知一覧画面仕様 — Bon_Log Native
 
 作成日: 2026-06-13
+更新日: 2026-06-14（Batch 2b リリースに伴い §8 の既読化方針を確定。API エンドポイント名を修正）
 前提: `design-tokens.md` / `navigation-structure.md` / `common-states.md` / `post-card.md` に準拠
 Web 出典: `Bon_Log_cfw/components/notification/NotificationItem.tsx` / `NotificationList.tsx` / `NotificationBadge.tsx` / `types/notification.ts`
 API: `GET /api/v1/notifications`（カーソルベース）/ `GET /api/v1/notifications/unread-count`
-既読化 API: `PATCH /api/v1/notifications` — **cfw Batch 2b 未実装。UI 設計のみ先行策定し、接続は Batch 2b リリース後に行う。**
+既読化 API: `PATCH /api/v1/notifications/read`（Batch 2b で実装済み。本仕様 §8 で確定）
 
 ---
 
@@ -94,7 +95,6 @@ NotificationsScreen           ← 画面ルート。TanStack Query フック・u
 |------|-----|------|
 | `notification` | `NotificationItem` | API レスポンスの 1 件分（後述の型定義参照）|
 | `onPress` | `() => void` | セルタップ時のコールバック（画面側で遷移ロジックを持つ）|
-| `onMarkRead` | `(id: string) => void` | タップ時の既読化コールバック（後接続。Batch 2b 実装後に接続）|
 
 ### NotificationAvatar props 概要
 
@@ -119,14 +119,15 @@ NotificationsScreen           ← 画面ルート。TanStack Query フック・u
 - `refetchInterval`: `REFETCH_INTERVAL_MS`（30,000ms — Web の `NotificationBadge` と同値）
 - アプリがフォアグラウンドに戻ったとき `focusManager` 連携で refetch（`data-fetching.md` 準拠）
 
-### 5.3 既読化（後接続 — Batch 2b 実装後）
+### 5.3 既読化（Batch 2b 接続済み）
 
-- **UI 設計のみ先行策定。API 接続は cfw Batch 2b（`PATCH /api/v1/notifications`）リリース後。**
-- 接続前は `onMarkRead` コールバックを no-op として実装し、UI ロジックは完成させておく
-- 既読化 API 接続後は下記の方針で動作させる:
-  - 画面を開いた瞬間に全件既読化（Web の `NotificationList` と同一方針）
-  - `markAllAsRead` 成功後に `notifications` クエリと `unreadCount` クエリを両方 invalidate
-  - 「すべて既読にする」ボタンも同様に全件既読化を呼び出す
+**確定済み API: `PATCH /api/v1/notifications/read`**
+
+- リクエストボディ: `{ ids?: string[] }`（省略または空配列 = 全件既読化）
+- レスポンス: `{ success: true, unreadCount: number }`（`unreadCount` はミュートユーザーを除く操作後の未読数）
+- `ids` の最大件数: 100 件（`MAX_NOTIFICATION_READ_IDS`）
+
+既読化の呼び出しタイミングは §8 で確定。
 
 ### 5.4 通知アイテムの型定義
 
@@ -248,30 +249,83 @@ Web の `NotificationItem.tsx`（`getNotificationIcon` / `getNotificationMessage
 
 - アプリ起動時・フォアグラウンド復帰時に取得（`focusManager` 連携）
 - `refetchInterval: 30,000ms`（バックグラウンドポーリング。`REFETCH_INTERVAL_MS` 定数）
-- 通知一覧を開いて全件既読化した後: `unreadCount` クエリを invalidate して即時ゼロに更新
+- 既読化成功後: レスポンスの `unreadCount` を直接使ってバッジを即時更新する（`unreadCount` クエリを invalidate するか、ローカルで値を上書きするかは frontend の実装判断に委ねる）
 
 ---
 
-## 8. 既読化のタイミング方針
+## 8. 既読化のタイミング方針（確定）
 
-**Web に準拠: 通知一覧を開いた瞬間に全件既読化する。**
+**確定方式: (a) 画面表示時の自動全件既読化 + (c) 「すべて既読にする」ボタン の併用。(b) 個別タップ既読化は採用しない。**
 
-理由: 個別タップでの既読化より「一覧を見た = すべて確認済み」という単純なモデルのほうがユーザーの認知負荷が低い（Web の `useEffect` による自動 `markAllAsRead` と同一判断）。
+### 8.1 方式の比較と採用根拠
 
-実装フロー（Batch 2b 接続後）:
+| 方式 | 内容 | 採用 |
+|------|------|------|
+| (a) 画面を開いたら全件既読化（自動）| `PATCH /api/v1/notifications/read`（body 省略 = 全件）を画面マウント時に呼び出す | **採用（主方式）** |
+| (b) 個別タップで既読化 | 通知セルをタップした時点でその ID を既読化する | **不採用** |
+| (c) 「すべて既読にする」ボタン | ヘッダーボタンをタップした時点で全件既読化する | **採用（補助機能）** |
+
+**(a) を主方式とする根拠:**
+
+- Web 版（`NotificationList.tsx`）の `useEffect` が画面マウント時に `markAllAsRead()` を自動呼び出しする実装と同一判断。Web とトーンを揃える
+- 「一覧を開いた = すべて確認した意思がある」という単純なメンタルモデルがユーザーの認知負荷を最も下げる
+- サーバー API が `ids` 省略で全件既読化をサポートしているため、実装コストが低い
+
+**(b) を不採用とする根拠:**
+
+- 一覧を見ながら「どれが既読になったか」を管理させる必要が生じ、UX が複雑になる
+- スクロール位置や表示範囲の管理が必要になり、実装コストが高い
+- 「バッジが残り続ける」問題が起きやすく、ユーザーが混乱する
+
+**(c) を補助機能として残す根拠:**
+
+- 画面を開いた直後に API 呼び出しが失敗した場合（オフライン等）の手動トリガーになる
+- 「意識して全件既読にしたい」ユーザーの明示的な操作を受け付けるためのセーフティネット
+- Web 版と同じ「すべて既読にする」ボタンを配置することで Web との体験を揃える
+
+### 8.2 自動既読化の実装フロー
 
 ```
-画面マウント
-  → markAllAsRead() を呼び出す（PATCH /api/v1/notifications/read-all 相当）
-  → 成功後: notifications クエリ + unreadCount クエリを invalidate
-  → UI のセル未読スタイルが既読スタイルに切り替わる
+画面マウント（初回のみ / unreadCount > 0 の場合）
+  → PATCH /api/v1/notifications/read（body なし = 全件既読化）を呼び出す
+  → 成功:
+      レスポンスの unreadCount（= 0）でバッジを即時更新
+      notifications クエリを invalidate（セルの未読スタイルを既読スタイルに切り替え）
+  → 失敗（オフライン等）:
+      セルの未読スタイルは維持したまま（既読化はできていないため）
+      バッジも更新しない
+      「すべて既読にする」ボタンを活用してもらう（エラートーストは表示しない — 静かに失敗する）
 ```
 
-ただし、Batch 2b 接続前は既読化 API が存在しないため:
+`unreadCount === 0` の場合は API を呼び出さない（無駄な通信を避ける）。
 
-- セルの未読/既読スタイル表示は API が返す `isRead` フィールドをそのまま使う
-- 画面マウント時の自動既読化は `no-op`（空関数）として実装しておく
-- 「すべて既読にする」ボタンをタップしても API 未接続のためローカル状態のみ更新する（「後接続」の注記を実装コメントに残す。`comments.md` の WHY コメント規約に従う）
+### 8.3 「すべて既読にする」ボタンの挙動
+
+- 配置: ナビゲーションヘッダー右端（§2.1 参照）
+- 表示条件: `unreadCount > 0` の時のみ表示（§2.1 と同条件）
+- 確認ダイアログ: **不要**（全件既読化は可逆的でなく影響が大きいが、ボタンラベルが自明であり、誤タップのリスクより UX の滑らかさを優先する。Web 版も確認なし）
+- タップ時のフロー:
+
+```
+タップ
+  → ボタンを disabled にする
+  → PATCH /api/v1/notifications/read（body なし = 全件既読化）を呼び出す
+  → 成功:
+      レスポンスの unreadCount でバッジを更新（= 0 になる）
+      ボタンを非表示にする（unreadCount === 0）
+      notifications クエリを invalidate（セルスタイル更新）
+  → 失敗:
+      ボタンを re-enable する
+      エラートーストを表示:「既読にできませんでした。もう一度お試しください。」
+```
+
+### 8.4 タブバッジの即時反映
+
+既読化成功後のバッジ即時反映は、サーバーレスポンスの `unreadCount` フィールドを使う。
+
+- `PATCH /api/v1/notifications/read` のレスポンス: `{ success: true, unreadCount: number }`
+- この `unreadCount` をタブバッジの表示値として直接使用する
+- ポーリングを待たずに即時反映できる（Web の `invalidateTag('unread-count')` 相当の即時更新）
 
 ---
 
@@ -338,6 +392,7 @@ Web の `NotificationItem.tsx`（`getNotificationIcon` / `getNotificationMessage
 | 追加フェッチ中 | 「読み込み中...」（スピナーと併用）|
 | 終端 | 「これ以上通知はありません」|
 | ゲスト 403 | 「通知を表示するにはログインが必要です」|
+| 全件既読化ボタン失敗 | 「既読にできませんでした。もう一度お試しください。」|
 | type: `like` | 「**{nickname}** さんがあなたの投稿にいいねしました」|
 | type: `comment_like` | 「**{nickname}** さんがあなたのコメントにいいねしました」|
 | type: `comment` | 「**{nickname}** さんがあなたの投稿にコメントしました」|
@@ -418,14 +473,14 @@ Web の `NotificationItem.tsx`（`getNotificationIcon` / `getNotificationMessage
 | `getNotificationLink()` 関数 | §6.1 遷移先列として仕様に取り込む。`lib/push/` の通知→ルート対応表（`navigation-structure.md` §7）にも反映 |
 | `BADGE_OVERFLOW_THRESHOLD = 99` | §7.2 に踏襲。モバイルの `lib/constants/limits/` に同値で定義 |
 | `REFETCH_INTERVAL_MS = 30000` | §5.2 に踏襲。同値で定義 |
-| `NotificationList` の `useEffect` 自動全件既読化 | §8 に踏襲。Batch 2b 接続後に同方式で実装 |
+| `NotificationList` の `useEffect` 自動全件既読化 | §8 で確定。`unreadCount > 0` の場合のみ API を呼び出す点は Web に同じ判断 |
 | 未読セル背景 `bg-primary/5`（Web）| `colorSurface` + 左ボーダーに意匠変換。`bg-primary/5` の 5% 不透明は `#2e2e2e0d`（ほぼ白）のため視認性が低く、モバイルでは左ボーダーで視覚差を表現する |
 
 ---
 
 ## 16. 未確定事項・要判断
 
-- **既読化 API 接続タイミング:** cfw Batch 2b が完成したら frontend に接続実装を依頼。
 - **`follow_request` の遷移先:** MVP スコープにフォローリクエスト管理画面（`settings/follow-requests`）が含まれるか PM 判断が必要。含まれない場合は `users/{actorId}` への遷移で代替。
 - **`message` type の通知:** メッセージ機能が MVP スコープ外のため、タップ時は遷移なし（現状この仕様）。将来のメッセージ機能追加時に遷移先を追加する。core に要相談: `message` type の通知が実際に発生する API パスはあるか確認要。
-- **unread-count ポーリング vs Push:** 将来的に Push 通知受信時に `unreadCount` を invalidate するほうがポーリングより効率的。Push 実装（Batch 2b 以降）と合わせて検討。
+- **unread-count ポーリング vs Push:** 将来的に Push 通知受信時に `unreadCount` を invalidate するほうがポーリングより効率的。Push 実装（Batch 2c 以降）と合わせて検討。
+- **自動既読化の失敗時の沈黙方針:** 画面マウント時の自動既読化失敗をサイレントにする（エラートーストを出さない）判断をここで確定した。理由はユーザーが意図していない操作の失敗を前面に出すと混乱させるため。PM 追認が必要な場合はこの箇所を確認してほしい。

@@ -24,13 +24,13 @@ type PostLike = FeedItem | PostDetail;
 /**
  * API レスポンス（FeedItem または PostDetail）を PostCard の props へ変換する。
  * currentUserId は呼び出し側で useCurrentUserQuery または useAuth から取得して渡す。
- * onLike / onComment / onMenuPress は呼び出し側でバインドして渡す。
+ * onComment / onMenuPress は呼び出し側でバインドして渡す。
+ * いいねは LikeButton が内部で直接ミューテーションフックを呼ぶため、onLike は不要。
  */
 export function mapToPostCardProps(
   post: PostLike,
   currentUserId: string | undefined,
   callbacks: {
-    onLike: () => void;
     onComment: () => void;
     onMenuPress?: () => void;
   },
@@ -69,7 +69,6 @@ export function mapToPostCardProps(
     currentUserId,
     disableNavigation: options?.disableNavigation ?? false,
     mentionUsers: new Map(),
-    onLike: callbacks.onLike,
     onComment: callbacks.onComment,
     onMenuPress: callbacks.onMenuPress,
   };

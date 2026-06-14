@@ -20,7 +20,6 @@ import {
   ERR_POST_NOT_FOUND,
   ERR_POST_LOAD_FAILED,
 } from '@/lib/constants/errors';
-import { routePostDetail } from '@/lib/constants/routes';
 import { ScreenLoading } from '@/components/common/ScreenLoading';
 import { ScreenError } from '@/components/common/ScreenError';
 import { ScreenEmpty } from '@/components/common/ScreenEmpty';
@@ -109,19 +108,14 @@ function PostDetailContent({ postId }: PostDetailContentProps) {
     );
   }
 
-  // いいねミューテーションは 2b 待ち（PM 決定事項）。投稿詳細へフォールバック。
-  const handleLike = () => {
-    router.push(routePostDetail(post.id));
-  };
-
   const handleComment = () => {
-    // コメント入力は 2c 待ち。現状は no-op ではなく詳細ページ先頭へスクロール相当として何もしない
+    // コメント入力は 2c 待ち。現状は no-op
   };
 
   const postCardProps = mapToPostCardProps(
     post,
     currentUserId,
-    { onLike: handleLike, onComment: handleComment },
+    { onComment: handleComment },
     { disableNavigation: true }
   );
 

@@ -4,6 +4,7 @@
  */
 
 import {
+  easingBounceRN,
   colorBackground,
   colorSurface,
   colorSurfaceWashi,
@@ -227,5 +228,9 @@ describe('アニメーショントークン', () => {
   it('easing が文字列型で定義されている', () => {
     expect(typeof easingDefault).toBe('string');
     expect(typeof easingBounce).toBe('string');
+  });
+
+  it('easingBounceRN が RN Animated 用の関数型で定義されている', () => {
+    expect(typeof easingBounceRN).toBe('function');
   });
 });

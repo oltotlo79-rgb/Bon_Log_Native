@@ -240,9 +240,6 @@ function PostSearchResults({ query, currentUserId }: PostSearchResultsProps) {
       item,
       currentUserId,
       {
-        onLike: () => {
-          // B-1 同様、検索結果でのいいねは 2b 接続まで no-op
-        },
         onComment: () => {
           router.push(routes.postDetail(item.id));
         },

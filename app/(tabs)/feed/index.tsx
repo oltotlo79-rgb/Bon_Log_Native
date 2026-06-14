@@ -51,11 +51,6 @@ const FeedItemCell = React.memo(function FeedItemCell({
   currentUserId,
   onPressPost,
 }: FeedItemCellProps) {
-  const handleLike = useCallback(() => {
-    // いいねミューテーションは 2b 待ち（PM 決定事項）。投稿詳細へフォールバック。
-    onPressPost(item.id);
-  }, [item.id, onPressPost]);
-
   const handleComment = useCallback(() => {
     onPressPost(item.id);
   }, [item.id, onPressPost]);
@@ -65,7 +60,6 @@ const FeedItemCell = React.memo(function FeedItemCell({
   }, [item.id, onPressPost]);
 
   const props = mapToPostCardProps(item, currentUserId, {
-    onLike: handleLike,
     onComment: handleComment,
     onMenuPress: handleMenuPress,
   });

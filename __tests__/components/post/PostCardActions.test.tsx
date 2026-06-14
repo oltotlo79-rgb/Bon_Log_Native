@@ -1,33 +1,38 @@
 /**
  * components/post/PostCardActions のコンポーネントテスト。
- * いいね済み/未のアイコン切替、accessibilityLabel、カウント 0 時の表示を確認する。
+ * いいねは LikeButton に委譲されたため、PostCardActions はコメントボタンのみテストする。
+ * いいねボタンの挙動は LikeButton のテストで検証する（tester 管轄）。
+ * PostCardActions → LikeButton → useToggleLikeMutation の呼び出しがあるため
+ * renderWithProviders で QueryClientProvider を提供する。
  */
 
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react-native';
+import { screen, fireEvent } from '@testing-library/react-native';
 import { PostCardActions } from '@/components/post/PostCardActions';
+import { renderWithProviders } from '@/__tests__/utils/test-utils';
 
 function renderActions(overrides?: Partial<Parameters<typeof PostCardActions>[0]>) {
   const props = {
+    postId: 'post-1',
     likeCount: 0,
     commentCount: 0,
     isLiked: false,
-    onLike: jest.fn(),
+    currentUserId: undefined as string | undefined,
     onComment: jest.fn(),
     ...overrides,
   };
-  return render(<PostCardActions {...props} />);
+  return renderWithProviders(<PostCardActions {...props} />);
 }
 
 describe('PostCardActions', () => {
   describe('いいねボタン', () => {
     it('isLiked=false のとき accessibilityLabel に「いいねする」が含まれる', () => {
-      renderActions({ isLiked: false, likeCount: 5 });
+      renderActions({ isLiked: false, likeCount: 5, currentUserId: 'user-1' });
       expect(screen.getByRole('button', { name: 'いいねする。現在 5 件' })).toBeTruthy();
     });
 
     it('isLiked=true のとき accessibilityLabel に「いいねを取り消す」が含まれる', () => {
-      renderActions({ isLiked: true, likeCount: 3 });
+      renderActions({ isLiked: true, likeCount: 3, currentUserId: 'user-1' });
       expect(screen.getByRole('button', { name: 'いいねを取り消す。現在 3 件' })).toBeTruthy();
     });
 
@@ -44,19 +49,11 @@ describe('PostCardActions', () => {
         screen.getByTestId('icon-heart', { includeHiddenElements: true })
       ).toBeTruthy();
     });
-
-    it('タップすると onLike が呼ばれる', () => {
-      const onLike = jest.fn();
-      renderActions({ onLike });
-      fireEvent.press(screen.getByRole('button', { name: 'いいねする。現在 0 件' }));
-      expect(onLike).toHaveBeenCalledTimes(1);
-    });
   });
 
   describe('いいねカウント表示', () => {
     it('likeCount=0 のとき数値テキストが表示されない', () => {
       renderActions({ likeCount: 0 });
-      // カウント 0 は非表示（PostCardActions の実装: likeCount > 0 のときのみ表示）
       expect(screen.queryByText('0')).toBeNull();
     });
 

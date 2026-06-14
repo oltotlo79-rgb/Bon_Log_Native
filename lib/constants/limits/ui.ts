@@ -29,6 +29,10 @@ export const DEBOUNCE_SEARCH_MS = 300;
 /** デバウンス遅延・汎用（ms） */
 export const DEBOUNCE_DELAY_MS = 300;
 
+// 検索より高頻度なタップが想定されるため、いいねは独立した定数でチューニング余地を持たせる
+/** いいねボタン連打の API 呼び出しを束ねるデバウンス時間（ms）。設計 follow-and-engagement.md §3.2 */
+export const LIKE_DEBOUNCE_MS = 300;
+
 /** 残り文字数の警告しきい値（文字） */
 export const REMAINING_CHARS_WARNING_THRESHOLD = 50;
 

@@ -5,7 +5,8 @@
  * NativeWind 採否確定まで StyleSheet + 定数ベースで使用する。
  */
 
-import type { TextStyle, ViewStyle } from 'react-native';
+import { Easing } from 'react-native';
+import type { EasingFunction, TextStyle, ViewStyle } from 'react-native';
 
 // ---------------------------------------------------------------------------
 // カラー — 背景系
@@ -255,3 +256,10 @@ export const easingDefault = 'cubic-bezier(0.25, 0.46, 0.45, 0.94)';
 
 /** いいねバウンス（Web の animate-like-bounce 相当） */
 export const easingBounce = 'cubic-bezier(0.36, 0.07, 0.19, 0.97)';
+
+/**
+ * いいね等のスケールアニメ用バウンス easing（RN Animated 用）。
+ * CSS の easingBounce とは別物（あちらは Web 用 cubic-bezier 文字列）。
+ * elastic(1.5) の係数はここに集約し、コンポーネント内でのマジックナンバー化を防ぐ。
+ */
+export const easingBounceRN: EasingFunction = Easing.elastic(1.5);

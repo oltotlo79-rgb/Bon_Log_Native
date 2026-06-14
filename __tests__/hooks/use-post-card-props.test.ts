@@ -2,13 +2,13 @@
  * @module __tests__/hooks/use-post-card-props
  * mapToPostCardProps の変換ロジックテスト。
  * editedAt 判定・isPinned 固定・mentionUsers 空 Map・media type 変換を検証する。
+ * onLike は LikeButton に委譲されたため callbacks から除外済み。
  */
 
 import { mapToPostCardProps } from '@/hooks/use-post-card-props';
 import { makeFeedItem } from '@/__tests__/utils/data-factories';
 
 const baseCallbacks = {
-  onLike: jest.fn(),
   onComment: jest.fn(),
 };
 
@@ -95,17 +95,10 @@ describe('mapToPostCardProps', () => {
   });
 
   describe('callbacks', () => {
-    it('onLike が props に渡される', () => {
-      const onLike = jest.fn();
-      const post = makeFeedItem();
-      const props = mapToPostCardProps(post, undefined, { onLike, onComment: jest.fn() });
-      expect(props.onLike).toBe(onLike);
-    });
-
     it('onComment が props に渡される', () => {
       const onComment = jest.fn();
       const post = makeFeedItem();
-      const props = mapToPostCardProps(post, undefined, { onLike: jest.fn(), onComment });
+      const props = mapToPostCardProps(post, undefined, { onComment });
       expect(props.onComment).toBe(onComment);
     });
 
@@ -113,7 +106,6 @@ describe('mapToPostCardProps', () => {
       const onMenuPress = jest.fn();
       const post = makeFeedItem();
       const props = mapToPostCardProps(post, undefined, {
-        onLike: jest.fn(),
         onComment: jest.fn(),
         onMenuPress,
       });

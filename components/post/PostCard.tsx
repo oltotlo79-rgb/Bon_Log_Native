@@ -50,7 +50,6 @@ export type PostCardProps = {
   disableNavigation?: boolean;
   /** メンション解決用 Map（userId → 表示名）。仕様 §15 */
   mentionUsers: ReadonlyMap<string, string>;
-  onLike: () => void;
   onComment: () => void;
   onMenuPress?: () => void;
 };
@@ -71,9 +70,9 @@ function PostCardInner({
   likeCount,
   commentCount,
   isLiked,
+  currentUserId,
   disableNavigation = false,
   mentionUsers,
-  onLike,
   onComment,
   onMenuPress,
 }: PostCardProps) {
@@ -133,10 +132,11 @@ function PostCardInner({
 
       {/* アクション行（いいね・コメント）*/}
       <PostCardActions
+        postId={id}
         likeCount={likeCount}
         commentCount={commentCount}
         isLiked={isLiked}
-        onLike={onLike}
+        currentUserId={currentUserId}
         onComment={onComment}
       />
     </Pressable>
