@@ -11,7 +11,9 @@
     "@sentry/react-native": "~7.11.0",
     "@tanstack/react-query": "^5.101.0",
     "expo": "~56.0.11",
+    "expo-auth-session": "~56.0.14",
     "expo-constants": "~56.0.18",
+    "expo-crypto": "~56.0.4",
     "expo-device": "~56.0.4",
     "expo-font": "~56.0.6",
     "expo-image": "~56.0.11",
@@ -71,7 +73,7 @@
       "__tests__/setup\\.ts$"
     ],
     "transformIgnorePatterns": [
-      "node_modules/(?!((jest-)?react-native|@react-native(-community)?)|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@sentry/react-native|native-base|react-native-svg|openapi-fetch|openapi-typescript-helpers)"
+      "node_modules/(?!((jest-)?react-native|@react-native(-community)?)|expo(nent)?|@expo(nent)?/.*|@expo-google-fonts/.*|react-navigation|@react-navigation/.*|@sentry/react-native|native-base|react-native-svg|openapi-fetch|openapi-typescript-helpers|expo-auth-session|expo-crypto)"
     ],
     "collectCoverageFrom": [
       "app/**/*.{ts,tsx}",

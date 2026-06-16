@@ -13,6 +13,17 @@ import {
   ERR_LOGIN_INVALID_CREDENTIALS,
 } from '@/lib/constants/errors';
 
+// useGoogleAuth のモック（expo-auth-session の実コードが iosClientId 必須でエラーになるのを防ぐ）
+jest.mock('@/lib/auth', () => ({
+  ...jest.requireActual('@/lib/auth'),
+  useGoogleAuth: jest.fn(() => ({
+    signIn: jest.fn(),
+    isLoading: false,
+    isAvailable: false,
+    error: null,
+  })),
+}));
+
 describe('LoginScreen (詳細)', () => {
   describe('メールアドレスフィールドの blur 検証', () => {
     it('空のまま blur するとエラーが表示される', () => {

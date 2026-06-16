@@ -34,6 +34,17 @@ jest.mock('@/lib/queries/auth', () => ({
   }),
 }));
 
+// useGoogleAuth のモック（expo-auth-session の実コードが iosClientId 必須でエラーになるのを防ぐ）
+jest.mock('@/lib/auth', () => ({
+  ...jest.requireActual('@/lib/auth'),
+  useGoogleAuth: jest.fn(() => ({
+    signIn: jest.fn(),
+    isLoading: false,
+    isAvailable: false,
+    error: null,
+  })),
+}));
+
 // expo-router は setup.ts で一元モック済み。
 // router.push を個別に追跡するため上書きする。
 const mockRouterPush = jest.fn();

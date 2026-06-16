@@ -23,6 +23,17 @@ const mockRouter = jest.requireMock('expo-router').router;
 // useRegisterMutation は各テストで上書き可能なように jest.fn() で管理する
 const mockMutate = jest.fn();
 
+// useGoogleAuth のモック（expo-auth-session の実コードが iosClientId 必須でエラーになるのを防ぐ）
+jest.mock('@/lib/auth', () => ({
+  ...jest.requireActual('@/lib/auth'),
+  useGoogleAuth: jest.fn(() => ({
+    signIn: jest.fn(),
+    isLoading: false,
+    isAvailable: false,
+    error: null,
+  })),
+}));
+
 jest.mock('@/lib/queries/auth', () => ({
   ...jest.requireActual('@/lib/queries/auth'),
   useRegisterMutation: jest.fn(() => ({

@@ -42,6 +42,7 @@ import {
   messageForRegisterError,
 } from '@/lib/constants/errors';
 import { useRegisterMutation } from '@/lib/queries/auth';
+import { useGoogleAuth } from '@/lib/auth';
 import { isApiError } from '@/lib/api/errors';
 
 // ---------------------------------------------------------------------------
@@ -66,6 +67,7 @@ export default function RegisterScreen() {
   const confirmRef = useRef<TextInput>(null);
 
   const { mutate: register, isPending } = useRegisterMutation();
+  const { signIn: googleSignIn, isLoading: isGoogleLoading, isAvailable: isGoogleAvailable, error: googleError } = useGoogleAuth();
 
   function validateEmailField(value: string): string | null {
     if (value.length === 0) return ERR_EMAIL_REQUIRED;
@@ -246,8 +248,12 @@ export default function RegisterScreen() {
 
             <GoogleSignInButton
               label="Google で登録"
-              disabled
+              disabled={!isGoogleAvailable}
+              loading={isGoogleLoading}
+              onPress={googleSignIn}
             />
+
+            <FormErrorMessage message={googleError?.message ?? null} />
           </View>
 
           <View style={styles.footer}>

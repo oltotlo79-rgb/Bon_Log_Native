@@ -26,6 +26,17 @@ jest.mock('@/lib/queries/auth', () => ({
   })),
 }));
 
+// useGoogleAuth のモック（expo-auth-session の実コードが iosClientId 必須でエラーになるのを防ぐ）
+jest.mock('@/lib/auth', () => ({
+  ...jest.requireActual('@/lib/auth'),
+  useGoogleAuth: jest.fn(() => ({
+    signIn: jest.fn(),
+    isLoading: false,
+    isAvailable: false,
+    error: null,
+  })),
+}));
+
 describe('RegisterScreen', () => {
   it('新規登録タイトルが表示される', () => {
     renderWithProviders(<RegisterScreen />);

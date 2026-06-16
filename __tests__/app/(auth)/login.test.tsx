@@ -9,6 +9,17 @@ import { renderWithProviders } from '../../utils/test-utils';
 import LoginScreen from '@/app/(auth)/login/index';
 import { routes } from '@/lib/constants/routes';
 
+// useGoogleAuth のモック（expo-auth-session の実コードが iosClientId 必須でエラーになるのを防ぐ）
+jest.mock('@/lib/auth', () => ({
+  ...jest.requireActual('@/lib/auth'),
+  useGoogleAuth: jest.fn(() => ({
+    signIn: jest.fn(),
+    isLoading: false,
+    isAvailable: false,
+    error: null,
+  })),
+}));
+
 describe('LoginScreen', () => {
   it('ログインボタンが表示されている', () => {
     renderWithProviders(<LoginScreen />);

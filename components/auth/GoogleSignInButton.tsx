@@ -1,13 +1,12 @@
 /**
  * @module components/auth/GoogleSignInButton
  * Google ログイン / 登録ボタン。
- * 現フェーズは disabled。expo-auth-session 接続は後フェーズで行う（PM 決定事項）。
  * ブランドガイドライン要件: Google ロゴ改変禁止、テキストは「Google で〜」形式。
  * 仕様: docs/design/auth-forms.md §0.6
  */
 
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import {
   colorActionSecondaryText,
@@ -27,6 +26,8 @@ import {
 export type GoogleSignInButtonProps = {
   label: string;
   disabled?: boolean;
+  loading?: boolean;
+  onPress?: () => void;
 };
 
 // ---------------------------------------------------------------------------
@@ -43,26 +44,40 @@ const LOGO_SIZE = 20;
 export function GoogleSignInButton({
   label,
   disabled = false,
+  loading = false,
+  onPress,
 }: GoogleSignInButtonProps) {
+  const isDisabled = disabled || loading;
+
   return (
     <Pressable
-      style={[styles.button, disabled && styles.buttonDisabled]}
-      disabled={disabled}
+      style={[styles.button, isDisabled && styles.buttonDisabled]}
+      disabled={isDisabled}
+      onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={label}
-      accessibilityState={{ disabled }}
+      accessibilityState={{ disabled: isDisabled, busy: loading }}
     >
       <View style={styles.content}>
-        {/* Google ブランドロゴ代替: Ionicons のロゴアイコンを使用。
-            正式な4色 SVG は後フェーズで assets に追加する（PM への申し送り事項）。*/}
-        <Ionicons
-          name="logo-google"
-          size={LOGO_SIZE}
-          color={disabled ? colorBorder : colorGoogleBrand}
-          accessibilityElementsHidden
-          importantForAccessibility="no"
-        />
-        <Text style={[styles.label, disabled && styles.labelDisabled]}>
+        {loading ? (
+          <ActivityIndicator
+            size="small"
+            color={colorGoogleBrand}
+            accessibilityElementsHidden
+            importantForAccessibility="no"
+          />
+        ) : (
+          // Google ブランドロゴ代替: Ionicons のロゴアイコンを使用。
+          // 正式な4色 SVG は後フェーズで assets に追加する（PM への申し送り事項）。
+          <Ionicons
+            name="logo-google"
+            size={LOGO_SIZE}
+            color={disabled ? colorBorder : colorGoogleBrand}
+            accessibilityElementsHidden
+            importantForAccessibility="no"
+          />
+        )}
+        <Text style={[styles.label, isDisabled && styles.labelDisabled]}>
           {label}
         </Text>
       </View>
