@@ -1,10 +1,10 @@
 /**
  * @module app/users/[id]/index
  * 他者プロフィール画面（navigation-structure.md §4.3 準拠）。
- * ブロック・通報メニューは骨格のみ（store-compliance.md 要件 — リリース前に必須だが本 Phase では未実装）。
+ * store-compliance.md の UGC 要件として通報・ブロック・ミュートメニューを提供する。
  */
 
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -17,6 +17,7 @@ import { ScreenLoading } from '@/components/common/ScreenLoading';
 import { ScreenError } from '@/components/common/ScreenError';
 import { OfflineBanner } from '@/components/common/OfflineBanner';
 import { FollowButton } from '@/components/user/FollowButton';
+import { UserActionMenu } from '@/components/user/UserActionMenu';
 import { isApiError } from '@/lib/api/errors';
 import {
   colorBackground,
@@ -256,7 +257,9 @@ function UserDetailContent({ userId, isOffline }: UserDetailContentProps) {
   const { data: me } = useCurrentUserQuery();
   const currentUserId = me?.id;
 
-  const renderHeader = (title: string) => (
+  const [menuVisible, setMenuVisible] = useState(false);
+
+  const renderHeader = (title: string, showMenu: boolean, isSelf: boolean) => (
     <View style={styles.header}>
       <TouchableOpacity
         style={styles.backButton}
@@ -269,21 +272,25 @@ function UserDetailContent({ userId, isOffline }: UserDetailContentProps) {
       <Text style={styles.headerTitle} accessibilityRole="header">
         {title}
       </Text>
-      {/* ブロック・通報メニュー骨格（store-compliance.md 要件 — リリース前に実装必須）*/}
-      <TouchableOpacity
-        style={styles.menuButton}
-        accessibilityRole="button"
-        accessibilityLabel="メニューを開く（ブロック・通報）"
-      >
-        <Ionicons name="ellipsis-vertical" size={spacing5} color={colorTextPrimary} />
-      </TouchableOpacity>
+      {showMenu && !isSelf ? (
+        <TouchableOpacity
+          style={styles.menuButton}
+          onPress={() => setMenuVisible(true)}
+          accessibilityRole="button"
+          accessibilityLabel="メニューを開く"
+        >
+          <Ionicons name="ellipsis-vertical" size={spacing5} color={colorTextPrimary} />
+        </TouchableOpacity>
+      ) : (
+        <View style={styles.menuPlaceholder} />
+      )}
     </View>
   );
 
   if (isLoading) {
     return (
       <SafeAreaView style={styles.safeArea} edges={['top']}>
-        {renderHeader('プロフィール')}
+        {renderHeader('プロフィール', false, false)}
         <ScreenLoading variant="skeleton" skeletonCount={2} />
       </SafeAreaView>
     );
@@ -294,7 +301,7 @@ function UserDetailContent({ userId, isOffline }: UserDetailContentProps) {
     const debugMsg = error instanceof Error ? error.message : undefined;
     return (
       <SafeAreaView style={styles.safeArea} edges={['top']}>
-        {renderHeader('プロフィール')}
+        {renderHeader('プロフィール', false, false)}
         <OfflineBanner isVisible={isOffline} />
         <ScreenError
           title={isNotFound ? 'ユーザーが見つかりません' : '読み込めませんでした'}
@@ -309,7 +316,7 @@ function UserDetailContent({ userId, isOffline }: UserDetailContentProps) {
   if (data === undefined) {
     return (
       <SafeAreaView style={styles.safeArea} edges={['top']}>
-        {renderHeader('プロフィール')}
+        {renderHeader('プロフィール', false, false)}
         <ScreenError
           title="読み込めませんでした"
           description={ERR_PROFILE_LOAD_FAILED}
@@ -322,7 +329,7 @@ function UserDetailContent({ userId, isOffline }: UserDetailContentProps) {
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
       <OfflineBanner isVisible={isOffline} />
-      {renderHeader(data.nickname)}
+      {renderHeader(data.nickname, true, data.isSelf)}
 
       <ScrollView
         style={styles.scrollView}
@@ -347,6 +354,19 @@ function UserDetailContent({ userId, isOffline }: UserDetailContentProps) {
           currentUserId={currentUserId}
         />
       </ScrollView>
+
+      {menuVisible && !data.isSelf && (
+        <UserActionMenu
+          targetUserId={userId}
+          targetUserNickname={data.nickname}
+          isOwnContent={data.isSelf}
+          contentType="user"
+          contentId={userId}
+          isBlocked={data.isBlocked}
+          isMuted={data.isMuted}
+          onClose={() => setMenuVisible(false)}
+        />
+      )}
     </SafeAreaView>
   );
 }

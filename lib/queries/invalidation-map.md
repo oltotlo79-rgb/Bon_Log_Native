@@ -29,17 +29,29 @@
 | プロフィール更新 | 自分の `queryKeys.users.detail(userId)` | 表示名・アバターを即時反映するため |
 | 通知既読（`useMarkNotificationsReadMutation`） | invalidate なし（setQueryData のみ） | onSuccess で通知一覧の isRead と unreadCount を setQueryData で即時反映。サーバーとの整合はリスト再フェッチ（pull-to-refresh・フォアグラウンド復帰）に委ねる |
 
+## モデレーション系（lib/queries/moderation.ts）
+
+| ミューテーション | 無効化するキー | 備考 |
+|----------------|--------------|------|
+| ブロック（`useBlockUserMutation`） | `queryKeys.users.detail(userId)` / `queryKeys.posts.feed()` / `queryKeys.search.all` / `queryKeys.notifications.all` / `queryKeys.users.blocks`（onSettled）| onSuccess で users.detail の isBlocked=true / following=false / requested=false を setQueryData で即時反映。ブロック時に双方向フォロー解除されるため following/requested も楽観反映 |
+| ブロック解除（`useUnblockUserMutation`） | `queryKeys.users.blocks` / `queryKeys.posts.feed()` / `queryKeys.search.all`（onSettled） | onSuccess で users.detail の isBlocked=false を setQueryData で即時反映 |
+| ミュート（`useMuteUserMutation`） | `queryKeys.posts.feed()` / `queryKeys.notifications.all` / `queryKeys.search.all` / `queryKeys.users.mutes`（onSettled） | onSuccess で users.detail の isMuted=true を setQueryData で即時反映 |
+| ミュート解除（`useUnmuteUserMutation`） | `queryKeys.users.mutes` / `queryKeys.posts.feed()` / `queryKeys.notifications.all`（onSettled） | onSuccess で users.detail の isMuted=false を setQueryData で即時反映 |
+| 通報（`useReportMutation`） | なし（キャッシュ変更なし） | サーバー側でモデレーション処理される。成功トーストのみ表示 |
+
 ## 読み取り系クエリの参照（lib/queries/ 各フック）
 
 無効化が必要な場面のために対応表を記録する。
 
 | クエリキー | フック | 無効化タイミング |
 |-----------|--------|----------------|
-| `queryKeys.posts.feed()` | `useFeedQuery` | 投稿作成・削除・フォロー変更時 |
+| `queryKeys.posts.feed()` | `useFeedQuery` | 投稿作成・削除・フォロー変更・ブロック・ミュート時 |
 | `queryKeys.posts.detail(id)` | `usePostQuery` | 投稿更新・削除・いいね後の整合時 |
 | `queryKeys.comments.byPost(postId)` | `useCommentsQuery` | コメント作成・削除時 |
-| `queryKeys.users.detail(id)` | `useUserProfileQuery` | フォロー変更・プロフィール更新時 |
+| `queryKeys.users.detail(id)` | `useUserProfileQuery` | フォロー変更・プロフィール更新・ブロック・ミュート時 |
+| `queryKeys.users.blocks` | `useBlockedUsersQuery` | ブロック・ブロック解除時 |
+| `queryKeys.users.mutes` | `useMutedUsersQuery` | ミュート・ミュート解除時 |
 | `queryKeys.search.posts(q)` | `useSearchPostsQuery` | 投稿削除・大幅更新時（検索キャッシュは低優先） |
-| `queryKeys.search.users(q)` | `useSearchUsersQuery` | ユーザー名変更・削除時（低優先） |
-| `queryKeys.notifications.list()` | `useNotificationsQuery` | 通知既読操作時（Batch 2b） |
+| `queryKeys.search.users(q)` | `useSearchUsersQuery` | ユーザー名変更・削除・ブロック時（低優先） |
+| `queryKeys.notifications.list()` | `useNotificationsQuery` | 通知既読操作時（Batch 2b）・ブロック・ミュート時 |
 | `queryKeys.notifications.unreadCount` | `useUnreadCountQuery` | 通知既読操作・新規通知受信時（Batch 2b） |

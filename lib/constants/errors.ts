@@ -266,6 +266,33 @@ export const ERR_BLOCK_FAILED = 'ブロックに失敗しました。';
 /** ブロック解除失敗 */
 export const ERR_UNBLOCK_FAILED = 'ブロック解除に失敗しました。';
 
+/** ミュート失敗 */
+export const ERR_MUTE_FAILED = 'ミュートに失敗しました。もう一度お試しください。';
+
+/** ミュート解除失敗 */
+export const ERR_UNMUTE_FAILED = 'ミュートの解除に失敗しました。もう一度お試しください。';
+
+/** 通報送信失敗 */
+export const ERR_REPORT_FAILED = '通報に失敗しました。もう一度お試しください。';
+
+/** 重複通報（409 CONFLICT） */
+export const ERR_REPORT_DUPLICATE = 'この内容はすでに通報済みです。';
+
+/** 通報対象が存在しない（404 NOT_FOUND） */
+export const ERR_REPORT_TARGET_NOT_FOUND = '通報対象が見つかりませんでした。';
+
+/** 既にブロック済み（409 CONFLICT） */
+export const ERR_BLOCK_ALREADY_BLOCKED = 'すでにブロックしています。';
+
+/** 既にミュート済み（409 CONFLICT） */
+export const ERR_MUTE_ALREADY_MUTED = 'すでにミュートしています。';
+
+/** ブロックリスト読み込み失敗 */
+export const ERR_BLOCK_LIST_LOAD_FAILED = 'ブロックリストを読み込めませんでした。';
+
+/** ミュートリスト読み込み失敗 */
+export const ERR_MUTE_LIST_LOAD_FAILED = 'ミュートリストを読み込めませんでした。';
+
 /** アカウント削除失敗 */
 export const ERR_ACCOUNT_DELETE_FAILED = 'アカウントの削除に失敗しました。';
 

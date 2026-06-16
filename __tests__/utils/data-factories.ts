@@ -112,6 +112,8 @@ export function makeUserProfile(overrides?: Partial<UserProfile>): UserProfile {
     following: false,
     requested: false,
     isSelf: false,
+    isBlocked: false,
+    isMuted: false,
     ...overrides,
   };
 }

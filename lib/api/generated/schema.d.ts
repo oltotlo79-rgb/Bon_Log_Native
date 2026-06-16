@@ -1684,6 +1684,618 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/users/{id}/block": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * ユーザーをブロック（冪等）
+         * @description 対象ユーザーをブロックする。既にブロック済みでも 200 を返す（冪等設計）。
+         *
+         *     重要仕様:
+         *     - ブロック時に相互フォロー（両方向）をトランザクション内で解除する
+         *     - ブロック解除後にフォロー関係は復活しない（再フォローは別途操作が必要）
+         *     - 自己ブロックは 400 VALIDATION_ERROR
+         *     - 対象不在・停止ユーザーは 404 NOT_FOUND
+         *     - ゲストアカウントは 403 GUEST_NOT_ALLOWED
+         *     - レート制限: block_user（10/分）、超過時は 429 + Retry-After ヘッダー
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description ブロック対象ユーザー ID（cuid） */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description ブロック成功（既ブロックでも 200） */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["BlockResponse"];
+                    };
+                };
+                /** @description 自己ブロック (VALIDATION_ERROR) または不正 ID (VALIDATION_ERROR) */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description Bearer トークンなし (AUTH_REQUIRED) または期限切れ (AUTH_TOKEN_EXPIRED) */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description アカウント停止 (ACCOUNT_SUSPENDED) またはゲスト不可 (GUEST_NOT_ALLOWED) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description 対象ユーザーが存在しないか停止済み (NOT_FOUND) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description レート制限超過。Retry-After ヘッダー（秒）が返却される。自動リトライ禁止。 */
+                429: {
+                    headers: {
+                        /** @description 次のリクエストまでの待機秒数 */
+                        "Retry-After"?: number;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
+        /**
+         * ブロック解除（冪等）
+         * @description 対象ユーザーのブロックを解除する。ブロックしていなくても 200 を返す（冪等設計）。
+         *
+         *     重要仕様:
+         *     - ブロック解除後にフォロー関係は復活しない
+         *     - 自己操作は 400 VALIDATION_ERROR
+         *     - ゲストアカウントは 403 GUEST_NOT_ALLOWED
+         *     - レート制限: unblock_user（10/分）、超過時は 429 + Retry-After ヘッダー
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description ブロック解除対象ユーザー ID（cuid） */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description ブロック解除成功（未ブロックでも 200） */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["BlockResponse"];
+                    };
+                };
+                /** @description 自己操作 (VALIDATION_ERROR) または不正 ID (VALIDATION_ERROR) */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description Bearer トークンなし (AUTH_REQUIRED) または期限切れ (AUTH_TOKEN_EXPIRED) */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description アカウント停止 (ACCOUNT_SUSPENDED) またはゲスト不可 (GUEST_NOT_ALLOWED) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description レート制限超過。Retry-After ヘッダー（秒）が返却される。自動リトライ禁止。 */
+                429: {
+                    headers: {
+                        /** @description 次のリクエストまでの待機秒数 */
+                        "Retry-After"?: number;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/users/{id}/mute": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * ユーザーをミュート（冪等）
+         * @description 対象ユーザーをミュートする。既にミュート済みでも 200 を返す（冪等設計）。
+         *
+         *     重要仕様:
+         *     - ミュートはフォロー関係を変更しない
+         *     - ミュートは相手には通知されない（非公開機能）
+         *     - 自己ミュートは 400 VALIDATION_ERROR
+         *     - 対象不在・停止ユーザーは 404 NOT_FOUND
+         *     - ゲストアカウントは 403 GUEST_NOT_ALLOWED
+         *     - レート制限: mute_user（10/分）、超過時は 429 + Retry-After ヘッダー
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description ミュート対象ユーザー ID（cuid） */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description ミュート成功（既ミュートでも 200） */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["MuteResponse"];
+                    };
+                };
+                /** @description 自己ミュート (VALIDATION_ERROR) または不正 ID (VALIDATION_ERROR) */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description Bearer トークンなし (AUTH_REQUIRED) または期限切れ (AUTH_TOKEN_EXPIRED) */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description アカウント停止 (ACCOUNT_SUSPENDED) またはゲスト不可 (GUEST_NOT_ALLOWED) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description 対象ユーザーが存在しないか停止済み (NOT_FOUND) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description レート制限超過。Retry-After ヘッダー（秒）が返却される。自動リトライ禁止。 */
+                429: {
+                    headers: {
+                        /** @description 次のリクエストまでの待機秒数 */
+                        "Retry-After"?: number;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
+        /**
+         * ミュート解除（冪等）
+         * @description 対象ユーザーのミュートを解除する。ミュートしていなくても 200 を返す（冪等設計）。
+         *
+         *     重要仕様:
+         *     - 自己操作は 400 VALIDATION_ERROR
+         *     - ゲストアカウントは 403 GUEST_NOT_ALLOWED
+         *     - レート制限: unmute_user（10/分）、超過時は 429 + Retry-After ヘッダー
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description ミュート解除対象ユーザー ID（cuid） */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description ミュート解除成功（未ミュートでも 200） */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["MuteResponse"];
+                    };
+                };
+                /** @description 自己操作 (VALIDATION_ERROR) または不正 ID (VALIDATION_ERROR) */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description Bearer トークンなし (AUTH_REQUIRED) または期限切れ (AUTH_TOKEN_EXPIRED) */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description アカウント停止 (ACCOUNT_SUSPENDED) またはゲスト不可 (GUEST_NOT_ALLOWED) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description レート制限超過。Retry-After ヘッダー（秒）が返却される。自動リトライ禁止。 */
+                429: {
+                    headers: {
+                        /** @description 次のリクエストまでの待機秒数 */
+                        "Retry-After"?: number;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/users/me/blocks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * ブロック一覧取得
+         * @description 認証ユーザーがブロックしているユーザーの一覧をカーソルページネーションで返す。
+         *
+         *     ゲストアカウントは 403 GUEST_NOT_ALLOWED。
+         *     レート制限: api（60/分）。
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description カーソル（前回レスポンスの nextCursor 値） */
+                    cursor?: string;
+                    /** @description 1 回の取得上限件数（デフォルト 20、最大 100） */
+                    limit?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description ブロックしているユーザー一覧 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["UserMinimalListResponse"];
+                    };
+                };
+                /** @description バリデーションエラー (VALIDATION_ERROR) */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description Bearer トークンなし (AUTH_REQUIRED) または期限切れ (AUTH_TOKEN_EXPIRED) */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description アカウント停止 (ACCOUNT_SUSPENDED) またはゲスト不可 (GUEST_NOT_ALLOWED) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description レート制限超過。Retry-After ヘッダー（秒）が返却される。自動リトライ禁止。 */
+                429: {
+                    headers: {
+                        /** @description 次のリクエストまでの待機秒数 */
+                        "Retry-After"?: number;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/users/me/mutes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * ミュート一覧取得
+         * @description 認証ユーザーがミュートしているユーザーの一覧をカーソルページネーションで返す。
+         *
+         *     ゲストアカウントは 403 GUEST_NOT_ALLOWED。
+         *     レート制限: api（60/分）。
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description カーソル（前回レスポンスの nextCursor 値） */
+                    cursor?: string;
+                    /** @description 1 回の取得上限件数（デフォルト 20、最大 100） */
+                    limit?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description ミュートしているユーザー一覧 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["UserMinimalListResponse"];
+                    };
+                };
+                /** @description バリデーションエラー (VALIDATION_ERROR) */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description Bearer トークンなし (AUTH_REQUIRED) または期限切れ (AUTH_TOKEN_EXPIRED) */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description アカウント停止 (ACCOUNT_SUSPENDED) またはゲスト不可 (GUEST_NOT_ALLOWED) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description レート制限超過。Retry-After ヘッダー（秒）が返却される。自動リトライ禁止。 */
+                429: {
+                    headers: {
+                        /** @description 次のリクエストまでの待機秒数 */
+                        "Retry-After"?: number;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/reports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 通報を作成
+         * @description 投稿・コメント・ユーザー・イベント・盆栽園・レビューを通報する。
+         *
+         *     重要仕様:
+         *     - targetType は post / comment / event / shop / review / user のいずれか
+         *     - reason は spam / inappropriate / harassment / copyright / other のいずれか
+         *     - 自己通報（対象の所有者が自分）は 400 VALIDATION_ERROR
+         *     - 重複通報（同一 reporterId + targetType + targetId の組み合わせ）は 409 CONFLICT
+         *     - 対象が存在しない場合は 404 NOT_FOUND
+         *     - 同一対象の通報数が 10 件（AUTO_HIDE_THRESHOLD）に達すると自動非表示処理が発火する
+         *     - ゲストアカウントは 403 GUEST_NOT_ALLOWED
+         *     - レート制限: create_report（5/分）、超過時は 429 + Retry-After ヘッダー
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CreateReportRequest"];
+                };
+            };
+            responses: {
+                /** @description 通報成功 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["SuccessResponse"];
+                    };
+                };
+                /** @description バリデーションエラー (VALIDATION_ERROR) — 不正な targetType / reason / 自己通報 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description Bearer トークンなし (AUTH_REQUIRED) または期限切れ (AUTH_TOKEN_EXPIRED) */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description アカウント停止 (ACCOUNT_SUSPENDED) またはゲスト不可 (GUEST_NOT_ALLOWED) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description 通報対象が存在しない (NOT_FOUND) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description 既に通報済み (CONFLICT) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description レート制限超過。Retry-After ヘッダー（秒）が返却される。自動リトライ禁止。 */
+                429: {
+                    headers: {
+                        /** @description 次のリクエストまでの待機秒数 */
+                        "Retry-After"?: number;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/notifications/read": {
         parameters: {
             query?: never;
@@ -1944,6 +2556,40 @@ export interface components {
             /** @default  */
             q: string;
         };
+        /** @description ブロック操作後の状態。POST→true / DELETE→false。冪等: 既ブロック/未ブロックでも 200。 */
+        BlockResponse: {
+            blocked: boolean;
+        };
+        /** @description ミュート操作後の状態。POST→true / DELETE→false。冪等: 既ミュート/未ミュートでも 200。 */
+        MuteResponse: {
+            muted: boolean;
+        };
+        /** @description ブロック/ミュート一覧のユーザー項目（id, nickname, avatarUrl, bio）。 */
+        UserMinimalWithBio: {
+            id: string;
+            nickname: string;
+            avatarUrl: string | null;
+            bio: string | null;
+        };
+        /** @description ブロック/ミュート一覧レスポンス。カーソルページネーション形式。 */
+        UserMinimalListResponse: {
+            items: {
+                id: string;
+                nickname: string;
+                avatarUrl: string | null;
+                bio: string | null;
+            }[];
+            nextCursor: string | null;
+        };
+        /** @description 通報リクエスト。targetType と reason は enum 値のみ受け付ける。 */
+        CreateReportRequest: {
+            /** @enum {string} */
+            targetType: "post" | "comment" | "event" | "shop" | "review" | "user";
+            targetId: string;
+            /** @enum {string} */
+            reason: "spam" | "inappropriate" | "harassment" | "copyright" | "other";
+            description?: string;
+        };
         /** @description いいね操作後の最新状態。liked は操作後の状態、likeCount は操作後の総いいね数。 */
         LikeResponse: {
             liked: boolean;
@@ -2168,6 +2814,8 @@ export interface components {
             following: boolean;
             requested: boolean;
             isSelf: boolean;
+            isBlocked: boolean;
+            isMuted: boolean;
         };
         /** @description 投稿検索結果レスポンス。 */
         SearchPostsResponse: {

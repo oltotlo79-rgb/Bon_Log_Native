@@ -55,13 +55,8 @@ const FeedItemCell = React.memo(function FeedItemCell({
     onPressPost(item.id);
   }, [item.id, onPressPost]);
 
-  const handleMenuPress = useCallback(() => {
-    onPressPost(item.id);
-  }, [item.id, onPressPost]);
-
   const props = mapToPostCardProps(item, currentUserId, {
     onComment: handleComment,
-    onMenuPress: handleMenuPress,
   });
 
   return <PostCard {...props} />;

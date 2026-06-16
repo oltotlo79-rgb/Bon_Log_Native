@@ -4,11 +4,26 @@
  */
 
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react-native';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react-native';
+import { renderWithProviders } from '@/__tests__/utils/test-utils';
 import SettingsBlockedScreen from '@/app/settings/blocked/index';
 import SettingsMutedScreen from '@/app/settings/muted/index';
 import SettingsNotificationsScreen from '@/app/settings/notifications/index';
 import SettingsProfileScreen from '@/app/settings/profile/index';
+
+jest.mock('@/lib/api/client', () => ({
+  apiClient: {
+    GET: jest.fn(() => Promise.resolve({ data: { items: [], nextCursor: null }, error: undefined })),
+    POST: jest.fn(),
+    DELETE: jest.fn(),
+    PATCH: jest.fn(),
+  },
+  isApiError: (e: unknown) => e instanceof Error && (e as Error).name === 'ApiError',
+}));
+
+jest.mock('@/hooks/use-online-status', () => ({
+  useOnlineStatus: jest.fn(() => true),
+}));
 
 const mockRouterBack = jest.requireMock('expo-router').router.back;
 
@@ -18,24 +33,26 @@ describe('SettingsBlockedScreen', () => {
   });
 
   it('ヘッダーに「ブロックリスト」と表示される', () => {
-    render(<SettingsBlockedScreen />);
+    renderWithProviders(<SettingsBlockedScreen />);
     expect(screen.getByRole('header', { name: 'ブロックリスト' })).toBeTruthy();
   });
 
   it('戻るボタンが表示される', () => {
-    render(<SettingsBlockedScreen />);
+    renderWithProviders(<SettingsBlockedScreen />);
     expect(screen.getByRole('button', { name: '戻る' })).toBeTruthy();
   });
 
   it('戻るボタンを押すと router.back が呼ばれる', () => {
-    render(<SettingsBlockedScreen />);
+    renderWithProviders(<SettingsBlockedScreen />);
     fireEvent.press(screen.getByRole('button', { name: '戻る' }));
     expect(mockRouterBack).toHaveBeenCalledTimes(1);
   });
 
-  it('空状態のメッセージが表示される', () => {
-    render(<SettingsBlockedScreen />);
-    expect(screen.getByText('ブロック中のユーザーはいません。')).toBeTruthy();
+  it('空状態のメッセージが表示される', async () => {
+    renderWithProviders(<SettingsBlockedScreen />);
+    await waitFor(() => {
+      expect(screen.getByText('ブロック中のユーザーはいません')).toBeTruthy();
+    });
   });
 });
 
@@ -45,24 +62,26 @@ describe('SettingsMutedScreen', () => {
   });
 
   it('ヘッダーに「ミュートリスト」と表示される', () => {
-    render(<SettingsMutedScreen />);
+    renderWithProviders(<SettingsMutedScreen />);
     expect(screen.getByRole('header', { name: 'ミュートリスト' })).toBeTruthy();
   });
 
   it('戻るボタンが表示される', () => {
-    render(<SettingsMutedScreen />);
+    renderWithProviders(<SettingsMutedScreen />);
     expect(screen.getByRole('button', { name: '戻る' })).toBeTruthy();
   });
 
   it('戻るボタンを押すと router.back が呼ばれる', () => {
-    render(<SettingsMutedScreen />);
+    renderWithProviders(<SettingsMutedScreen />);
     fireEvent.press(screen.getByRole('button', { name: '戻る' }));
     expect(mockRouterBack).toHaveBeenCalledTimes(1);
   });
 
-  it('空状態のメッセージが表示される', () => {
-    render(<SettingsMutedScreen />);
-    expect(screen.getByText('ミュート中のユーザーはいません。')).toBeTruthy();
+  it('空状態のメッセージが表示される', async () => {
+    renderWithProviders(<SettingsMutedScreen />);
+    await waitFor(() => {
+      expect(screen.getByText('ミュート中のユーザーはいません')).toBeTruthy();
+    });
   });
 });
 

@@ -137,7 +137,7 @@ describe('UserDetailScreen - 拡張テスト', () => {
       mockUseUserProfileQuery.mockReturnValue({ ...defaultProfileState, data: profile });
       renderWithProviders(<UserDetailScreen />);
       expect(
-        screen.getByRole('button', { name: 'メニューを開く（ブロック・通報）' })
+        screen.getByRole('button', { name: 'メニューを開く' })
       ).toBeTruthy();
     });
 

@@ -9,6 +9,24 @@ import { screen } from '@testing-library/react-native';
 import UserDetailScreen from '@/app/users/[id]/index';
 import { ERR_USER_NOT_FOUND } from '@/lib/constants/errors';
 import { renderWithProviders } from '@/__tests__/utils/test-utils';
+import { makeUserProfile } from '@/__tests__/utils/data-factories';
+
+jest.mock('@/hooks/use-online-status', () => ({
+  useOnlineStatus: jest.fn(() => true),
+}));
+
+const mockUseUserProfileQuery = jest.fn();
+jest.mock('@/lib/queries/users', () => ({
+  useUserProfileQuery: () => mockUseUserProfileQuery(),
+}));
+
+const defaultProfileState = {
+  data: makeUserProfile({ isSelf: false }),
+  isLoading: false,
+  isError: false,
+  error: null,
+  refetch: jest.fn(),
+};
 
 const mockUseLocalSearchParams = jest.requireMock('expo-router').useLocalSearchParams;
 
@@ -16,6 +34,7 @@ describe('UserDetailScreen', () => {
   describe('正常系（有効な id）', () => {
     beforeEach(() => {
       mockUseLocalSearchParams.mockReturnValue({ id: 'user-xyz-456' });
+      mockUseUserProfileQuery.mockReturnValue(defaultProfileState);
     });
 
     it('ヘッダーに「プロフィール」またはニックネームが表示される', () => {
@@ -31,7 +50,7 @@ describe('UserDetailScreen', () => {
     it('ブロック・通報へのメニューボタンが表示される（UGC 審査要件）', () => {
       renderWithProviders(<UserDetailScreen />);
       expect(
-        screen.getByRole('button', { name: 'メニューを開く（ブロック・通報）' })
+        screen.getByRole('button', { name: 'メニューを開く' })
       ).toBeTruthy();
     });
   });

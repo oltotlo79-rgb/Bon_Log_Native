@@ -2,10 +2,11 @@
  * @module components/post/PostCard
  * フィード・プロフィール・投稿詳細で 1 件の投稿を表示するカードコンポーネント。
  * React.memo でラップし、FlatList 内での不要な再レンダリングを防ぐ。
+ * UserActionMenu を内包し、各画面が個別にメニューハンドラを持たない構造にする（ugc-safety.md §2.2）。
  * 仕様: docs/design/post-card.md
  */
 
-import React from 'react';
+import React, { useState, useCallback } from 'react';
 import { View, StyleSheet, Pressable } from 'react-native';
 import { router } from 'expo-router';
 import {
@@ -24,6 +25,7 @@ import { PostCardContent } from './PostCardContent';
 import { PostImageGallery } from './PostImageGallery';
 import { PostGenreTags } from './PostGenreTags';
 import { PostCardActions } from './PostCardActions';
+import { UserActionMenu } from '@/components/user/UserActionMenu';
 import type { PostCardHeaderUser } from './PostCardHeader';
 import type { PostImageMedia } from './PostImageGallery';
 import type { PostGenre } from './PostGenreTags';
@@ -76,70 +78,100 @@ function PostCardInner({
   onComment,
   onMenuPress,
 }: PostCardProps) {
-  function handlePressCard() {
+  const [menuVisible, setMenuVisible] = useState(false);
+
+  const isOwnPost = currentUserId !== undefined && currentUserId === user.id;
+
+  const handlePressCard = useCallback(() => {
     if (!disableNavigation) {
       router.push(routePostDetail(id));
     }
-  }
+  }, [id, disableNavigation]);
+
+  const handleMenuPress = useCallback(() => {
+    if (onMenuPress !== undefined) {
+      onMenuPress();
+    } else if (!isOwnPost && currentUserId !== undefined) {
+      setMenuVisible(true);
+    }
+  }, [onMenuPress, isOwnPost, currentUserId]);
 
   const cardAccessibilityLabel = `${user.nickname}の投稿。${(content ?? '').slice(0, 50)}`;
 
   return (
-    <Pressable
-      style={({ pressed }) => [
-        styles.card,
-        pressed && !disableNavigation && styles.cardPressed,
-      ]}
-      onPress={handlePressCard}
-      accessibilityRole={disableNavigation ? undefined : 'button'}
-      accessibilityLabel={disableNavigation ? undefined : cardAccessibilityLabel}
-      testID="post-card"
-    >
-      {/* ヘッダー: アバター / ユーザー名 / 日時 / 固定バッジ */}
-      <PostCardHeader
-        user={user}
-        createdAt={createdAt}
-        editedAt={editedAt}
-        isPinned={isPinned}
-        onMenuPress={onMenuPress}
-      />
-
-      {/* 本文（メンション・ハッシュタグ・続きを読む） */}
-      <View style={styles.contentArea}>
-        <PostCardContent
-          content={content}
-          disableNavigation={disableNavigation}
-          mentionUsers={mentionUsers}
+    <View>
+      <Pressable
+        style={({ pressed }) => [
+          styles.card,
+          pressed && !disableNavigation && styles.cardPressed,
+        ]}
+        onPress={handlePressCard}
+        accessibilityRole={disableNavigation ? undefined : 'button'}
+        accessibilityLabel={disableNavigation ? undefined : cardAccessibilityLabel}
+        testID="post-card"
+      >
+        {/* ヘッダー: アバター / ユーザー名 / 日時 / 固定バッジ */}
+        <PostCardHeader
+          user={user}
+          createdAt={createdAt}
+          editedAt={editedAt}
+          isPinned={isPinned}
+          onMenuPress={!isOwnPost && currentUserId !== undefined ? handleMenuPress : undefined}
         />
-      </View>
 
-      {/* 画像グリッド */}
-      {media.length > 0 && (
-        <View style={styles.galleryArea}>
-          <PostImageGallery
-            media={media}
-            authorNickname={user.nickname}
+        {/* 本文（メンション・ハッシュタグ・続きを読む） */}
+        <View style={styles.contentArea}>
+          <PostCardContent
+            content={content}
+            disableNavigation={disableNavigation}
+            mentionUsers={mentionUsers}
           />
         </View>
-      )}
 
-      {/* ジャンルタグ */}
-      {genres.length > 0 && (
-        <View style={styles.genreArea}>
-          <PostGenreTags genres={genres} />
-        </View>
-      )}
+        {/* 画像グリッド */}
+        {media.length > 0 && (
+          <View style={styles.galleryArea}>
+            <PostImageGallery
+              media={media}
+              authorNickname={user.nickname}
+            />
+          </View>
+        )}
 
-      {/* アクション行（いいね・コメント）*/}
-      <PostCardActions
-        postId={id}
-        likeCount={likeCount}
-        commentCount={commentCount}
-        isLiked={isLiked}
-        currentUserId={currentUserId}
-        onComment={onComment}
-      />
-    </Pressable>
+        {/* ジャンルタグ */}
+        {genres.length > 0 && (
+          <View style={styles.genreArea}>
+            <PostGenreTags genres={genres} />
+          </View>
+        )}
+
+        {/* アクション行（いいね・コメント）*/}
+        <PostCardActions
+          postId={id}
+          likeCount={likeCount}
+          commentCount={commentCount}
+          isLiked={isLiked}
+          currentUserId={currentUserId}
+          onComment={onComment}
+        />
+      </Pressable>
+
+      {/* 投稿の通報・ブロック・ミュートメニュー（ugc-safety.md §2.2）
+          投稿レスポンスに投稿者の isBlocked/isMuted が含まれないため false を渡す（サーバー未提供）。
+          サーバー側で PostResponse.user に isBlocked/isMuted を追加すれば本実装が可能。 */}
+      {menuVisible && (
+        <UserActionMenu
+          targetUserId={user.id}
+          targetUserNickname={user.nickname}
+          isOwnContent={isOwnPost}
+          contentType="post"
+          contentId={id}
+          isBlocked={false}
+          isMuted={false}
+          onClose={() => setMenuVisible(false)}
+        />
+      )}
+    </View>
   );
 }
 

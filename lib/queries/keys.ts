@@ -50,6 +50,10 @@ export const queryKeys = {
     me: ['users', 'me'] as const,
     /** ユーザー詳細・プロフィール */
     detail: (id: string) => ['users', 'detail', id] as const,
+    /** ブロックリスト（GET /api/v1/users/me/blocks） */
+    blocks: ['users', 'me', 'blocks'] as const,
+    /** ミュートリスト（GET /api/v1/users/me/mutes） */
+    mutes: ['users', 'me', 'mutes'] as const,
   },
 
   /** 通知 */

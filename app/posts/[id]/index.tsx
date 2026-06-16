@@ -44,10 +44,6 @@ function isValidPostId(value: unknown): value is string {
 // コメントリストアイテム（memo は CommentItem 内で実施）
 // ---------------------------------------------------------------------------
 
-const renderCommentItem = ({ item }: { item: CommentItemData }) => (
-  <CommentItem item={item} />
-);
-
 const keyExtractor = (item: CommentItemData) => item.id;
 
 // ---------------------------------------------------------------------------
@@ -80,6 +76,13 @@ function PostDetailContent({ postId }: PostDetailContentProps) {
 
   const { data: me } = useCurrentUserQuery();
   const currentUserId = me?.id;
+
+  const renderCommentItem = useCallback(
+    ({ item }: { item: CommentItemData }) => (
+      <CommentItem item={item} currentUserId={currentUserId} />
+    ),
+    [currentUserId]
+  );
 
   const comments = commentsData?.pages.flatMap((page) => page.items) ?? [];
 
