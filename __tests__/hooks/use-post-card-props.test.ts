@@ -152,7 +152,7 @@ describe('mapToPostCardProps', () => {
       const post = makeFeedItem({
         id: 'post-xyz',
         content: 'テスト投稿',
-        user: { id: 'u-1', nickname: '盆栽太郎', avatarUrl: 'https://example.com/avatar.jpg' },
+        user: { id: 'u-1', nickname: '盆栽太郎', avatarUrl: 'https://example.com/avatar.jpg', isBlocked: false, isMuted: false },
       });
       const props = mapToPostCardProps(post, undefined, baseCallbacks);
       expect(props.id).toBe('post-xyz');
@@ -168,6 +168,31 @@ describe('mapToPostCardProps', () => {
       expect(props.likeCount).toBe(10);
       expect(props.commentCount).toBe(3);
       expect(props.isLiked).toBe(true);
+    });
+
+    it('post.user.isBlocked=true が props.user.isBlocked に伝播する', () => {
+      const post = makeFeedItem({
+        user: { id: 'u-1', nickname: '盆栽太郎', avatarUrl: null, isBlocked: true, isMuted: false },
+      });
+      const props = mapToPostCardProps(post, undefined, baseCallbacks);
+      expect(props.user.isBlocked).toBe(true);
+    });
+
+    it('post.user.isMuted=true が props.user.isMuted に伝播する', () => {
+      const post = makeFeedItem({
+        user: { id: 'u-1', nickname: '盆栽太郎', avatarUrl: null, isBlocked: false, isMuted: true },
+      });
+      const props = mapToPostCardProps(post, undefined, baseCallbacks);
+      expect(props.user.isMuted).toBe(true);
+    });
+
+    it('post.user.isBlocked=false / isMuted=false のとき props.user に false が伝播する', () => {
+      const post = makeFeedItem({
+        user: { id: 'u-1', nickname: '盆栽太郎', avatarUrl: null, isBlocked: false, isMuted: false },
+      });
+      const props = mapToPostCardProps(post, undefined, baseCallbacks);
+      expect(props.user.isBlocked).toBe(false);
+      expect(props.user.isMuted).toBe(false);
     });
   });
 });

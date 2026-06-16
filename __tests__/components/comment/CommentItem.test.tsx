@@ -26,7 +26,7 @@ describe('CommentItem', () => {
     });
 
     it('ニックネームが表示される', () => {
-      const item = makeCommentItem({ user: { id: 'u-1', nickname: '盆栽太郎', avatarUrl: null } });
+      const item = makeCommentItem({ user: { id: 'u-1', nickname: '盆栽太郎', avatarUrl: null, isBlocked: false, isMuted: false } });
       render(<CommentItem item={item} currentUserId={undefined} />);
       expect(screen.getAllByText('盆栽太郎').length).toBeGreaterThan(0);
     });
@@ -38,7 +38,7 @@ describe('CommentItem', () => {
     });
 
     it('アバターボタンがアクセシビリティラベルを持つ', () => {
-      const item = makeCommentItem({ user: { id: 'u-1', nickname: '松の匠', avatarUrl: null } });
+      const item = makeCommentItem({ user: { id: 'u-1', nickname: '松の匠', avatarUrl: null, isBlocked: false, isMuted: false } });
       render(<CommentItem item={item} currentUserId={undefined} />);
       expect(
         screen.getByRole('imagebutton', { name: '松の匠のプロフィールを表示' })
@@ -46,7 +46,7 @@ describe('CommentItem', () => {
     });
 
     it('アバターボタンをタップするとプロフィールへ遷移する', () => {
-      const item = makeCommentItem({ user: { id: 'user-xyz', nickname: '松の匠', avatarUrl: null } });
+      const item = makeCommentItem({ user: { id: 'user-xyz', nickname: '松の匠', avatarUrl: null, isBlocked: false, isMuted: false } });
       render(<CommentItem item={item} currentUserId={undefined} />);
       fireEvent.press(screen.getByRole('imagebutton', { name: '松の匠のプロフィールを表示' }));
       expect(mockRouter.push).toHaveBeenCalledWith('/users/user-xyz');
@@ -78,7 +78,7 @@ describe('CommentItem', () => {
   describe('avatarUrl=null フォールバック', () => {
     it('avatarUrl が null のとき、ニックネームの頭文字がフォールバックとして表示される', () => {
       const item = makeCommentItem({
-        user: { id: 'u-1', nickname: '盆栽太郎', avatarUrl: null },
+        user: { id: 'u-1', nickname: '盆栽太郎', avatarUrl: null, isBlocked: false, isMuted: false },
       });
       render(<CommentItem item={item} currentUserId={undefined} />);
       // ニックネームの先頭1文字「盆」がフォールバックとして表示される
@@ -109,25 +109,25 @@ describe('CommentItem', () => {
 
   describe('currentUserId によるメニュー表示制御', () => {
     it('他人のコメント＋認証済みユーザーのとき「⋮」ボタンが表示される', () => {
-      const item = makeCommentItem({ userId: 'other-user', user: { id: 'other-user', nickname: '他のユーザー', avatarUrl: null } });
+      const item = makeCommentItem({ userId: 'other-user', user: { id: 'other-user', nickname: '他のユーザー', avatarUrl: null, isBlocked: false, isMuted: false } });
       render(<CommentItem item={item} currentUserId="current-user" />);
       expect(screen.getByRole('button', { name: 'コメントのオプションを開く' })).toBeTruthy();
     });
 
     it('自分のコメントのときは「⋮」ボタンが表示されない', () => {
-      const item = makeCommentItem({ userId: 'current-user', user: { id: 'current-user', nickname: '自分', avatarUrl: null } });
+      const item = makeCommentItem({ userId: 'current-user', user: { id: 'current-user', nickname: '自分', avatarUrl: null, isBlocked: false, isMuted: false } });
       render(<CommentItem item={item} currentUserId="current-user" />);
       expect(screen.queryByRole('button', { name: 'コメントのオプションを開く' })).toBeNull();
     });
 
     it('未認証（currentUserId=undefined）のときは「⋮」ボタンが表示されない', () => {
-      const item = makeCommentItem({ userId: 'other-user', user: { id: 'other-user', nickname: '他のユーザー', avatarUrl: null } });
+      const item = makeCommentItem({ userId: 'other-user', user: { id: 'other-user', nickname: '他のユーザー', avatarUrl: null, isBlocked: false, isMuted: false } });
       render(<CommentItem item={item} currentUserId={undefined} />);
       expect(screen.queryByRole('button', { name: 'コメントのオプションを開く' })).toBeNull();
     });
 
     it('isDeleted=true のコメントでは「⋮」ボタンが表示されない', () => {
-      const item = makeCommentItem({ userId: 'other-user', user: { id: 'other-user', nickname: '他のユーザー', avatarUrl: null }, isDeleted: true });
+      const item = makeCommentItem({ userId: 'other-user', user: { id: 'other-user', nickname: '他のユーザー', avatarUrl: null, isBlocked: false, isMuted: false }, isDeleted: true });
       render(<CommentItem item={item} currentUserId="current-user" />);
       expect(screen.queryByRole('button', { name: 'コメントのオプションを開く' })).toBeNull();
     });

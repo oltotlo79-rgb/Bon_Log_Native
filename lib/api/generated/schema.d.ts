@@ -2617,6 +2617,14 @@ export interface components {
             nickname: string;
             avatarUrl: string | null;
         };
+        /** @description トップレベル投稿者・コメント投稿者の情報（閲覧者視点の Block/Mute 状態付き）。quotePost / repostPost のネスト著者には適用されない。isBlocked/isMuted はゲスト・未ブロック・未ミュートの場合は false。 */
+        PostAuthorWithState: {
+            id: string;
+            nickname: string;
+            avatarUrl: string | null;
+            isBlocked: boolean;
+            isMuted: boolean;
+        };
         /** @description タイムライン取得レスポンス。各投稿に mentionedUsers が含まれる。 */
         FeedResponse: {
             items: {
@@ -2631,6 +2639,8 @@ export interface components {
                     id: string;
                     nickname: string;
                     avatarUrl: string | null;
+                    isBlocked: boolean;
+                    isMuted: boolean;
                 };
                 media: {
                     id: string;
@@ -2702,6 +2712,8 @@ export interface components {
                 id: string;
                 nickname: string;
                 avatarUrl: string | null;
+                isBlocked: boolean;
+                isMuted: boolean;
             };
             media: {
                 id: string;
@@ -2778,6 +2790,8 @@ export interface components {
                     id: string;
                     nickname: string;
                     avatarUrl: string | null;
+                    isBlocked: boolean;
+                    isMuted: boolean;
                 };
                 media: {
                     id: string;
@@ -2831,6 +2845,8 @@ export interface components {
                     id: string;
                     nickname: string;
                     avatarUrl: string | null;
+                    isBlocked: boolean;
+                    isMuted: boolean;
                 };
                 media: {
                     id: string;

@@ -51,6 +51,8 @@ export function mapToPostCardProps(
       id: post.user.id,
       nickname: post.user.nickname,
       avatarUrl: post.user.avatarUrl,
+      isBlocked: post.user.isBlocked,
+      isMuted: post.user.isMuted,
     },
     media: post.media.map((m): PostImageMedia => ({
       id: m.id,

@@ -43,6 +43,8 @@ export type PostCardHeaderUser = {
   id: string;
   nickname: string;
   avatarUrl: string | null | undefined;
+  isBlocked: boolean;
+  isMuted: boolean;
 };
 
 export type PostCardHeaderProps = {

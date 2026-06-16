@@ -200,8 +200,6 @@ function CommentItemInner({ item, currentUserId }: CommentItemProps) {
         </View>
       </View>
 
-      {/* コメント通報・ブロック・ミュートメニュー（ugc-safety.md §2.4）
-          コメントレスポンスに投稿者の isBlocked/isMuted が含まれないため false を渡す（サーバー未提供）。 */}
       {menuVisible && (
         <UserActionMenu
           targetUserId={item.user.id}
@@ -209,8 +207,8 @@ function CommentItemInner({ item, currentUserId }: CommentItemProps) {
           isOwnContent={isOwnComment}
           contentType="comment"
           contentId={item.id}
-          isBlocked={false}
-          isMuted={false}
+          isBlocked={item.user.isBlocked}
+          isMuted={item.user.isMuted}
           onClose={() => setMenuVisible(false)}
         />
       )}

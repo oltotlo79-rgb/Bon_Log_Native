@@ -14,6 +14,8 @@ export function makeUser(overrides?: Partial<PostCardHeaderUser>): PostCardHeade
     id: 'user-1',
     nickname: '松の匠',
     avatarUrl: null,
+    isBlocked: false,
+    isMuted: false,
     ...overrides,
   };
 }

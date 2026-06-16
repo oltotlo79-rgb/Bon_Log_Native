@@ -156,9 +156,6 @@ function PostCardInner({
         />
       </Pressable>
 
-      {/* 投稿の通報・ブロック・ミュートメニュー（ugc-safety.md §2.2）
-          投稿レスポンスに投稿者の isBlocked/isMuted が含まれないため false を渡す（サーバー未提供）。
-          サーバー側で PostResponse.user に isBlocked/isMuted を追加すれば本実装が可能。 */}
       {menuVisible && (
         <UserActionMenu
           targetUserId={user.id}
@@ -166,8 +163,8 @@ function PostCardInner({
           isOwnContent={isOwnPost}
           contentType="post"
           contentId={id}
-          isBlocked={false}
-          isMuted={false}
+          isBlocked={user.isBlocked}
+          isMuted={user.isMuted}
           onClose={() => setMenuVisible(false)}
         />
       )}
