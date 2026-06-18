@@ -25,6 +25,11 @@ jest.mock('@/hooks/use-online-status', () => ({
   useOnlineStatus: jest.fn(() => true),
 }));
 
+jest.mock('@/lib/push', () => ({
+  getPushPermissionStatus: jest.fn(async () => ({ granted: false, canAskAgain: true })),
+  registerDeviceForPushNotifications: jest.fn(async () => ({ granted: true })),
+}));
+
 const mockRouterBack = jest.requireMock('expo-router').router.back;
 
 describe('SettingsBlockedScreen', () => {
@@ -88,6 +93,11 @@ describe('SettingsMutedScreen', () => {
 describe('SettingsNotificationsScreen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    const mockPush = jest.requireMock('@/lib/push');
+    (mockPush.getPushPermissionStatus as jest.Mock).mockResolvedValue({
+      granted: false,
+      canAskAgain: true,
+    });
   });
 
   it('ヘッダーに「通知設定」と表示される', () => {
@@ -106,15 +116,15 @@ describe('SettingsNotificationsScreen', () => {
     expect(mockRouterBack).toHaveBeenCalledTimes(1);
   });
 
-  it('プレースホルダーテキストが表示される', () => {
+  it('カードに「プッシュ通知」という見出しが表示される', () => {
     render(<SettingsNotificationsScreen />);
-    expect(screen.getByText('通知設定（実装予定）')).toBeTruthy();
+    expect(screen.getByText('プッシュ通知')).toBeTruthy();
   });
 
-  it('説明文が表示される', () => {
+  it('通知の説明文が表示される', () => {
     render(<SettingsNotificationsScreen />);
     expect(
-      screen.getByText('いいね・コメント・フォローなどの通知を設定できます。')
+      screen.getByText('いいね・コメント・フォローなどの通知をお知らせします。')
     ).toBeTruthy();
   });
 });

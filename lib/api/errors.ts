@@ -31,6 +31,7 @@ const MOBILE_API_ERROR_CODES = [
   'CONFLICT',
   'INTERNAL_ERROR',
   'SERVER_MISCONFIGURED',
+  'PREMIUM_REQUIRED',
 ] as const satisfies readonly MobileApiErrorCode[];
 
 /**

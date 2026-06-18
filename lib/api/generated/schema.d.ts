@@ -752,10 +752,155 @@ export interface paths {
         };
         put?: never;
         post?: never;
-        delete?: never;
+        /**
+         * 認証ユーザーのアカウントを削除（不可逆）
+         * @description 自分のアカウントとすべての関連データを完全削除する。この操作は不可逆。
+         *
+         *     重要仕様:
+         *     - ゲストアカウントは 403 GUEST_NOT_ALLOWED
+         *     - 削除されるデータ: ユーザー情報・投稿・コメント・フォロー・いいね・通知・メッセージ・リフレッシュトークン等（Cascade）
+         *     - リフレッシュトークンは Cascade 削除により即時失効する
+         *       （アカウント削除後のトークンリフレッシュは 401 AUTH_INVALID_TOKEN で拒否される）
+         *     - パスワード再確認は不要（Bearer トークンのみで操作を認可する。Web と同等の認可レベル）
+         *     - Google Play ストアのデータ削除要件（DDA）に対応するエンドポイント
+         *     - レート制限: engagement（30/分）
+         *     - 成功レスポンス: 200 { success: true }
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description アカウント削除成功 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["SuccessResponse"];
+                    };
+                };
+                /** @description Bearer トークンなし (AUTH_REQUIRED) または期限切れ (AUTH_TOKEN_EXPIRED) */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description アカウント停止 (ACCOUNT_SUSPENDED) またはゲスト不可 (GUEST_NOT_ALLOWED) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description レート制限超過。Retry-After ヘッダー（秒）が返却される。自動リトライ禁止。 */
+                429: {
+                    headers: {
+                        /** @description 次のリクエストまでの待機秒数 */
+                        "Retry-After"?: number;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description 内部エラー — 削除処理失敗 (INTERNAL_ERROR) */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
         options?: never;
         head?: never;
-        patch?: never;
+        /**
+         * 認証ユーザーのプロフィールを部分更新
+         * @description 自分のプロフィールを部分更新する。省略したフィールドは現在値を維持する。
+         *
+         *     重要仕様:
+         *     - ゲストアカウントは 403 GUEST_NOT_ALLOWED
+         *     - avatarUrl / headerUrl は POST /api/v1/upload/image で取得した自社ストレージ URL を渡すこと
+         *       外部 URL は 400 VALIDATION_ERROR で拒否される（IP 漏洩・不正コンテンツ配信の防止）
+         *     - nickname は改行・< > を含めない（バリデーション不通過で 400 VALIDATION_ERROR）
+         *     - 予約済み nickname は 400 VALIDATION_ERROR
+         *     - 成功レスポンス: 200 + 更新後の全プロフィールフィールド（楽観更新に使用可）
+         *     - レート制限: engagement（30/分）
+         */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["UpdateProfileRequest"];
+                };
+            };
+            responses: {
+                /** @description プロフィール更新成功。更新後の全フィールドを返す */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["UsersMeFullResponse"];
+                    };
+                };
+                /** @description バリデーションエラー (VALIDATION_ERROR) — nickname 形式不正 / 予約済み / avatarUrl|headerUrl が自社ストレージ外 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description Bearer トークンなし (AUTH_REQUIRED) または期限切れ (AUTH_TOKEN_EXPIRED) */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description アカウント停止 (ACCOUNT_SUSPENDED) またはゲスト不可 (GUEST_NOT_ALLOWED) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description レート制限超過。Retry-After ヘッダー（秒）が返却される。自動リトライ禁止。 */
+                429: {
+                    headers: {
+                        /** @description 次のリクエストまでの待機秒数 */
+                        "Retry-After"?: number;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
         trace?: never;
     };
     "/api/v1/feed": {
@@ -921,10 +1066,185 @@ export interface paths {
         };
         put?: never;
         post?: never;
-        delete?: never;
+        /**
+         * 投稿を削除する（所有者のみ）
+         * @description 投稿を削除する。所有者のみ。R2 メディアのストレージ削除も実施（best-effort）。
+         *
+         *     重要仕様:
+         *     - 所有者でない場合は 403 PERMISSION_DENIED
+         *     - ゲストアカウントは 403 GUEST_NOT_ALLOWED
+         *     - レート制限: delete_post（5/分）
+         *     - 成功レスポンス: 200 { success: true }
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description 投稿 ID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 削除成功 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["SuccessResponse"];
+                    };
+                };
+                /** @description Bearer トークンなし (AUTH_REQUIRED) または期限切れ (AUTH_TOKEN_EXPIRED) */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description アカウント停止 (ACCOUNT_SUSPENDED) / ゲスト不可 (GUEST_NOT_ALLOWED) / 所有者でない (VALIDATION_ERROR) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description 投稿が存在しない (NOT_FOUND) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description レート制限超過。Retry-After ヘッダー（秒）が返却される。自動リトライ禁止。 */
+                429: {
+                    headers: {
+                        /** @description 次のリクエストまでの待機秒数 */
+                        "Retry-After"?: number;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description 内部エラー (INTERNAL_ERROR) */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
         options?: never;
         head?: never;
-        patch?: never;
+        /**
+         * 投稿を編集する（所有者のみ）
+         * @description 既存投稿の本文・ジャンル・メディアを編集する。所有者のみ。
+         *
+         *     重要仕様:
+         *     - 純粋リポストは編集不可（400 VALIDATION_ERROR）
+         *     - ジャンル・メディアは差し替え方式（既存を全て置換）
+         *     - 1 日投稿上限は消費しない
+         *     - editedAt が更新される（「編集済み」の表示に使用）
+         *     - 所有者でない場合は 403 PERMISSION_DENIED
+         *     - ゲストアカウントは 403 GUEST_NOT_ALLOWED
+         *     - レート制限: engagement（30/分）
+         *     - 成功レスポンス: 200 + 編集後の投稿詳細
+         */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description 投稿 ID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["UpdatePostRequest"];
+                };
+            };
+            responses: {
+                /** @description 編集成功。編集後の投稿詳細を返す */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["PostResponse"];
+                    };
+                };
+                /** @description バリデーションエラー (VALIDATION_ERROR) — 本文長超過・メディア枚数超過・ジャンル数超過・純粋リポスト編集等 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description Bearer トークンなし (AUTH_REQUIRED) または期限切れ (AUTH_TOKEN_EXPIRED) */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description アカウント停止 (ACCOUNT_SUSPENDED) / ゲスト不可 (GUEST_NOT_ALLOWED) / 所有者でない (VALIDATION_ERROR) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description 投稿が存在しない (NOT_FOUND) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description レート制限超過。Retry-After ヘッダー（秒）が返却される。自動リトライ禁止。 */
+                429: {
+                    headers: {
+                        /** @description 次のリクエストまでの待機秒数 */
+                        "Retry-After"?: number;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description 内部エラー (INTERNAL_ERROR) */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
         trace?: never;
     };
     "/api/v1/posts/{id}/comments": {
@@ -1016,7 +1336,104 @@ export interface paths {
             };
         };
         put?: never;
-        post?: never;
+        /**
+         * コメントを作成する
+         * @description 指定投稿にコメントを作成する。content または mediaUrls のどちらか一方は必須。
+         *
+         *     重要仕様:
+         *     - ゲストアカウントは 403 GUEST_NOT_ALLOWED
+         *     - 不可視投稿（非表示・非公開著者・停止著者）は 404 NOT_FOUND
+         *     - parentId 指定で返信コメント（スレッド参加者全員へ reply 通知）
+         *     - parentId なしで新規コメント（投稿オーナーへ comment 通知）
+         *     - 本文最大 500 文字
+         *     - 画像最大 2 枚。動画: 無料不可 / プレミアム 1 本
+         *     - 1 日コメント上限: 100 件（超過時は 429 RATE_LIMITED）
+         *     - レート制限: comment（5/分）
+         *     - 成功レスポンス: 201 + 作成後のコメント詳細（楽観挿入に使用可）
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description 投稿 ID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CreateCommentRequest"];
+                };
+            };
+            responses: {
+                /** @description コメント作成成功。作成後のコメント詳細を返す */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CommentResponse"];
+                    };
+                };
+                /** @description バリデーションエラー (VALIDATION_ERROR) — 本文超過・メディア枚数超過等 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description Bearer トークンなし (AUTH_REQUIRED) または期限切れ (AUTH_TOKEN_EXPIRED) */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description アカウント停止 (ACCOUNT_SUSPENDED) またはゲスト不可 (GUEST_NOT_ALLOWED) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description 投稿が存在しないか閲覧権限なし (NOT_FOUND) / 親コメントが不正 (NOT_FOUND) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description レート制限超過。Retry-After ヘッダー（秒）が返却される。自動リトライ禁止。 */
+                429: {
+                    headers: {
+                        /** @description 次のリクエストまでの待機秒数 */
+                        "Retry-After"?: number;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description 内部エラー (INTERNAL_ERROR) */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
         delete?: never;
         options?: never;
         head?: never;
@@ -2455,6 +2872,589 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/posts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 投稿を作成する
+         * @description 新規投稿を作成する。content または mediaUrls のどちらか一方は必須。
+         *
+         *     重要仕様:
+         *     - ゲストアカウントは 403 GUEST_NOT_ALLOWED
+         *     - content 上限: 無料 500 文字 / プレミアム 2000 文字
+         *     - 画像上限: 無料 4 枚 / プレミアム 6 枚
+         *     - 動画: 無料不可（400 VALIDATION_ERROR）/ プレミアム 1 本
+         *     - ジャンル最大 3 つ。超過時は 400 VALIDATION_ERROR
+         *     - 1 日投稿上限: 無料 20 件 / プレミアム 40 件。超過時は 429 RATE_LIMITED
+         *     - レート制限: post（3/分）
+         *     - 成功レスポンス: 201 + 作成後の投稿詳細（楽観挿入に使用可）
+         *     - bonsai 紐付け・アンケートは本バッチ対象外
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CreatePostRequest"];
+                };
+            };
+            responses: {
+                /** @description 投稿作成成功。作成後の投稿詳細を返す */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["PostResponse"];
+                    };
+                };
+                /** @description バリデーションエラー (VALIDATION_ERROR) — 本文長超過・メディア枚数超過・ジャンル数超過・純粋リポスト編集等 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description Bearer トークンなし (AUTH_REQUIRED) または期限切れ (AUTH_TOKEN_EXPIRED) */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description アカウント停止 (ACCOUNT_SUSPENDED) またはゲスト不可 (GUEST_NOT_ALLOWED) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description レート制限超過。Retry-After ヘッダー（秒）が返却される。自動リトライ禁止。 */
+                429: {
+                    headers: {
+                        /** @description 次のリクエストまでの待機秒数 */
+                        "Retry-After"?: number;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description 内部エラー (INTERNAL_ERROR) */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/posts/{id}/comments/{commentId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * コメントを削除する（コメント所有者または投稿所有者）
+         * @description コメントをソフトデリートする（deletedAt 設定）。
+         *     コメント所有者または投稿所有者が削除可能。
+         *
+         *     重要仕様:
+         *     - コメント所有者でも投稿所有者でもない場合は 403 PERMISSION_DENIED
+         *     - ゲストアカウントは 403 GUEST_NOT_ALLOWED
+         *     - レート制限: delete_comment（10/分）
+         *     - 成功レスポンス: 200 { success: true }
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description 投稿 ID */
+                    id: string;
+                    /** @description コメント ID */
+                    commentId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 削除成功 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["SuccessResponse"];
+                    };
+                };
+                /** @description Bearer トークンなし (AUTH_REQUIRED) または期限切れ (AUTH_TOKEN_EXPIRED) */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description アカウント停止 (ACCOUNT_SUSPENDED) / ゲスト不可 (GUEST_NOT_ALLOWED) / 所有者でない (VALIDATION_ERROR) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description コメントが存在しない (NOT_FOUND) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description レート制限超過。Retry-After ヘッダー（秒）が返却される。自動リトライ禁止。 */
+                429: {
+                    headers: {
+                        /** @description 次のリクエストまでの待機秒数 */
+                        "Retry-After"?: number;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/upload/presigned": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 動画 presigned PUT URL を取得（プレミアム限定）
+         * @description 動画を R2 へ直接アップロードするための presigned PUT URL を発行する。
+         *     クライアントはこの URL に PUT リクエストを送り、完了後に fileUrl を投稿 mediaUrls に使用する。
+         *
+         *     重要仕様:
+         *     - 動画アップロードはプレミアム会員限定（403 PREMIUM_REQUIRED）
+         *     - ゲストアカウントは 403 GUEST_NOT_ALLOWED
+         *     - PUT 時は Content-Type ヘッダーに requestBody と同じ contentType を指定すること
+         *     - PUT 時は Content-Length ヘッダーに requestBody と同じ fileSize を指定すること（Content-Length が署名対象のためサイズ迂回不可）
+         *     - presigned URL 有効期限: 3600 秒（1 時間）
+         *     - レート制限: upload（5/分）、日次上限あり（fail-closed）
+         *     - 取得した uploadUrl とトークンはログに出力しないこと（セキュリティ）
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["PresignedUploadRequest"];
+                };
+            };
+            responses: {
+                /** @description presigned PUT URL 発行成功 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["PresignedUploadResponse"];
+                    };
+                };
+                /** @description バリデーションエラー (VALIDATION_ERROR) — 不正な contentType / fileSize / folder */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description Bearer トークンなし (AUTH_REQUIRED) または期限切れ (AUTH_TOKEN_EXPIRED) */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description アカウント停止 (ACCOUNT_SUSPENDED) / ゲスト不可 (GUEST_NOT_ALLOWED) / プレミアム限定 (PREMIUM_REQUIRED) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description レート制限超過。Retry-After ヘッダー（秒）が返却される。自動リトライ禁止。 */
+                429: {
+                    headers: {
+                        /** @description 次のリクエストまでの待機秒数 */
+                        "Retry-After"?: number;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description 内部エラー — presigned URL 生成失敗 (INTERNAL_ERROR) */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description ストレージ未設定 (SERVER_MISCONFIGURED) */
+                503: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/upload/image": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 画像をアップロード（プレミアム不問）
+         * @description 画像ファイルを multipart/form-data で受け取り、EXIF/GPS/IPTC 除去後に R2 へ保存する。
+         *     レスポンスの url を投稿作成時の mediaUrls に使用する。
+         *
+         *     重要仕様:
+         *     - ゲストアカウントは 403 GUEST_NOT_ALLOWED
+         *     - 画像はプレミアム不問（枚数制限は POST /api/v1/posts 作成時に強制）
+         *     - form-data のキー名は "file"
+         *     - 対応形式: JPEG / PNG / WebP（マジックバイトで実 MIME を検証。申告 Content-Type 偽装は拒否）
+         *     - 最大サイズ: 4MB
+         *     - EXIF / GPS / IPTC は必ずサーバーで除去される（プライバシー保護）
+         *     - EXIF orientation は物理画素に焼き込んでから除去するため向きが保持される
+         *     - レート制限: upload（5/分）、日次上限あり（fail-closed）
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "multipart/form-data": {
+                        /**
+                         * Format: binary
+                         * @description アップロードする画像ファイル（JPEG / PNG / WebP、最大 4MB）
+                         */
+                        file: string;
+                    };
+                };
+            };
+            responses: {
+                /** @description 画像アップロード成功。url は EXIF/GPS 除去済みの公開 URL */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ImageUploadResponse"];
+                    };
+                };
+                /** @description バリデーションエラー (VALIDATION_ERROR) — ファイル未選択 / 形式不正 / サイズ超過 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description Bearer トークンなし (AUTH_REQUIRED) または期限切れ (AUTH_TOKEN_EXPIRED) */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description アカウント停止 (ACCOUNT_SUSPENDED) またはゲスト不可 (GUEST_NOT_ALLOWED) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description レート制限超過。Retry-After ヘッダー（秒）が返却される。自動リトライ禁止。 */
+                429: {
+                    headers: {
+                        /** @description 次のリクエストまでの待機秒数 */
+                        "Retry-After"?: number;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description 内部エラー — ストレージ保存失敗 (INTERNAL_ERROR) */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/devices": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Push 通知デバイストークンを登録（冪等な upsert）
+         * @description Expo / APNs / FCM の Push トークンを登録する。
+         *
+         *     重要仕様:
+         *     - 冪等設計: 同じ token を再度 POST しても 200 を返す（upsert）
+         *     - 既存トークンに別のユーザーが紐付いている場合は現所有者に付け替える（端末譲渡・再インストール対応）
+         *     - ゲストアカウントは 403 GUEST_NOT_ALLOWED
+         *     - レート制限: register_device（10/分）
+         *     - トークン文字列はログ・エラーメッセージに出力しない（秘匿扱い）
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["RegisterDeviceRequest"];
+                };
+            };
+            responses: {
+                /** @description 登録成功（既存トークンの upsert も含む） */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["SuccessResponse"];
+                    };
+                };
+                /** @description バリデーションエラー (VALIDATION_ERROR) — token 空文字・長さ超過・platform 値不正 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description Bearer トークンなし (AUTH_REQUIRED) または期限切れ (AUTH_TOKEN_EXPIRED) */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description アカウント停止 (ACCOUNT_SUSPENDED) またはゲスト不可 (GUEST_NOT_ALLOWED) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description レート制限超過。Retry-After ヘッダー（秒）が返却される。自動リトライ禁止。 */
+                429: {
+                    headers: {
+                        /** @description 次のリクエストまでの待機秒数 */
+                        "Retry-After"?: number;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/devices/{token}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Push 通知デバイストークンを解除（冪等・自分のトークンのみ）
+         * @description 指定した Push トークンの登録を解除する。
+         *
+         *     重要仕様:
+         *     - 冪等設計: 存在しないトークンを DELETE しても 200 を返す（fail-safe）
+         *     - 自分のトークンのみ削除可。他人のトークン ID を指定しても何も起きず 200 を返す（情報漏洩しない）
+         *     - Expo トークン（ExponentPushToken[...]）は [ ] を含むため URL エンコードが必要。
+         *       例: ExponentPushToken[abc123] → /api/v1/devices/ExponentPushToken%5Babc123%5D
+         *     - ゲストアカウントは 403 GUEST_NOT_ALLOWED
+         *     - レート制限: remove_device（10/分）
+         *     - トークン文字列はログ・エラーメッセージに出力しない（秘匿扱い）
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description Push トークン文字列（URL エンコード済み） */
+                    token: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 解除成功（存在しないトークン・他人のトークンも 200） */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["SuccessResponse"];
+                    };
+                };
+                /** @description バリデーションエラー (VALIDATION_ERROR) — token 長さ超過 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description Bearer トークンなし (AUTH_REQUIRED) または期限切れ (AUTH_TOKEN_EXPIRED) */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description アカウント停止 (ACCOUNT_SUSPENDED) またはゲスト不可 (GUEST_NOT_ALLOWED) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description レート制限超過。Retry-After ヘッダー（秒）が返却される。自動リトライ禁止。 */
+                429: {
+                    headers: {
+                        /** @description 次のリクエストまでの待機秒数 */
+                        "Retry-After"?: number;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -2486,11 +3486,46 @@ export interface components {
             bio: string | null;
             isPremium: boolean;
         };
+        /** @description PATCH /api/v1/users/me 成功時の更新後プロフィール全フィールド。 */
+        UsersMeFullResponse: {
+            id: string;
+            /** Format: email */
+            email: string;
+            nickname: string;
+            avatarUrl: string | null;
+            headerUrl: string | null;
+            bio: string | null;
+            location: string | null;
+            isPublic: boolean;
+            bonsaiStartYear: number | null;
+            bonsaiStartMonth: number | null;
+            birthDate: string | null;
+            isPremium: boolean;
+        };
+        /**
+         * @description プロフィール部分更新リクエスト。すべてのフィールドが optional。
+         *     省略したフィールドは現在値を維持する。
+         *     avatarUrl / headerUrl は POST /api/v1/upload/image で取得した自社ストレージ URL を渡すこと（外部 URL は 400 VALIDATION_ERROR）。
+         *     nickname は改行・< > を含めない。予約済みは 400 VALIDATION_ERROR。
+         */
+        UpdateProfileRequest: {
+            nickname?: string;
+            bio?: string | null;
+            location?: string | null;
+            bonsaiStartYear?: number | null;
+            bonsaiStartMonth?: number | null;
+            birthDate?: string | null;
+            isPublic?: boolean;
+            /** Format: uri */
+            avatarUrl?: string | null;
+            /** Format: uri */
+            headerUrl?: string | null;
+        };
         /** @description 全エンドポイント共通エラーレスポンス形式。 */
         ApiErrorResponse: {
             error: {
                 /** @enum {string} */
-                code: "AUTH_REQUIRED" | "AUTH_INVALID_TOKEN" | "AUTH_TOKEN_EXPIRED" | "AUTH_INVALID_CREDENTIALS" | "AUTH_2FA_REQUIRED" | "AUTH_2FA_INVALID_CODE" | "AUTH_2FA_TICKET_EXPIRED" | "AUTH_REFRESH_TOKEN_INVALID" | "AUTH_REFRESH_TOKEN_REUSE_DETECTED" | "ACCOUNT_SUSPENDED" | "GUEST_NOT_ALLOWED" | "EMAIL_NOT_VERIFIED" | "VALIDATION_ERROR" | "RATE_LIMITED" | "NOT_FOUND" | "CONFLICT" | "INTERNAL_ERROR" | "SERVER_MISCONFIGURED";
+                code: "AUTH_REQUIRED" | "AUTH_INVALID_TOKEN" | "AUTH_TOKEN_EXPIRED" | "AUTH_INVALID_CREDENTIALS" | "AUTH_2FA_REQUIRED" | "AUTH_2FA_INVALID_CODE" | "AUTH_2FA_TICKET_EXPIRED" | "AUTH_REFRESH_TOKEN_INVALID" | "AUTH_REFRESH_TOKEN_REUSE_DETECTED" | "ACCOUNT_SUSPENDED" | "GUEST_NOT_ALLOWED" | "EMAIL_NOT_VERIFIED" | "VALIDATION_ERROR" | "RATE_LIMITED" | "NOT_FOUND" | "CONFLICT" | "INTERNAL_ERROR" | "SERVER_MISCONFIGURED" | "PREMIUM_REQUIRED";
                 message: string;
                 status: number;
             };
@@ -2499,7 +3534,7 @@ export interface components {
          * @description エラーコード enum（18 値）。モバイル側はこの enum からコード→メッセージ対応表を導出できる。
          * @enum {string}
          */
-        MobileApiErrorCode: "AUTH_REQUIRED" | "AUTH_INVALID_TOKEN" | "AUTH_TOKEN_EXPIRED" | "AUTH_INVALID_CREDENTIALS" | "AUTH_2FA_REQUIRED" | "AUTH_2FA_INVALID_CODE" | "AUTH_2FA_TICKET_EXPIRED" | "AUTH_REFRESH_TOKEN_INVALID" | "AUTH_REFRESH_TOKEN_REUSE_DETECTED" | "ACCOUNT_SUSPENDED" | "GUEST_NOT_ALLOWED" | "EMAIL_NOT_VERIFIED" | "VALIDATION_ERROR" | "RATE_LIMITED" | "NOT_FOUND" | "CONFLICT" | "INTERNAL_ERROR" | "SERVER_MISCONFIGURED";
+        MobileApiErrorCode: "AUTH_REQUIRED" | "AUTH_INVALID_TOKEN" | "AUTH_TOKEN_EXPIRED" | "AUTH_INVALID_CREDENTIALS" | "AUTH_2FA_REQUIRED" | "AUTH_2FA_INVALID_CODE" | "AUTH_2FA_TICKET_EXPIRED" | "AUTH_REFRESH_TOKEN_INVALID" | "AUTH_REFRESH_TOKEN_REUSE_DETECTED" | "ACCOUNT_SUSPENDED" | "GUEST_NOT_ALLOWED" | "EMAIL_NOT_VERIFIED" | "VALIDATION_ERROR" | "RATE_LIMITED" | "NOT_FOUND" | "CONFLICT" | "INTERNAL_ERROR" | "SERVER_MISCONFIGURED" | "PREMIUM_REQUIRED";
         /** @description メール/パスワード認証のリクエスト。 */
         LoginRequest: {
             /** Format: email */
@@ -2604,6 +3639,85 @@ export interface components {
         /** @description 既読化する通知 ID の配列。省略または空配列の場合は全未読を既読化する。最大 100 件。 */
         NotificationReadRequest: {
             ids?: string[];
+        };
+        /**
+         * @description 投稿作成リクエスト。content / mediaUrls のどちらか一方は必須。
+         *     genreIds は最大 3 つ。mediaUrls と mediaTypes は同数で対応させること。
+         *     bonsai 紐付け・アンケートはモバイル MVP 外（将来別途追加）。
+         */
+        CreatePostRequest: {
+            /** @default  */
+            content: string;
+            /** @default [] */
+            genreIds: string[];
+            /** @default [] */
+            mediaUrls: string[];
+            /** @default [] */
+            mediaTypes: ("image" | "video")[];
+        };
+        /**
+         * @description 投稿編集リクエスト（所有者のみ）。ジャンル・メディアは差し替え方式。
+         *     純粋リポストは編集不可（400 VALIDATION_ERROR）。
+         *     1 日投稿上限は消費しない。editedAt が更新される。
+         */
+        UpdatePostRequest: {
+            /** @default  */
+            content: string;
+            /** @default [] */
+            genreIds: string[];
+            /** @default [] */
+            mediaUrls: string[];
+            /** @default [] */
+            mediaTypes: ("image" | "video")[];
+        };
+        /**
+         * @description コメント作成リクエスト。content / mediaUrls のどちらか一方は必須。
+         *     parentId を指定すると返信コメントになる（スレッド参加者全員へ reply 通知）。
+         *     本文最大 500 文字。画像最大 2 枚。動画はプレミアム会員のみ 1 本。
+         */
+        CreateCommentRequest: {
+            /** @default  */
+            content: string;
+            parentId?: string | null;
+            /** @default [] */
+            mediaUrls: string[];
+            /** @default [] */
+            mediaTypes: ("image" | "video")[];
+        };
+        /** @description 単一コメントのレスポンス（作成時に返却）。 */
+        CommentResponse: {
+            id: string;
+            postId: string;
+            userId: string;
+            parentId: string | null;
+            content: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            isDeleted: boolean;
+            isBlockedUser: boolean;
+            likeCount: number;
+            replyCount: number;
+            isLiked: boolean;
+            user: {
+                id: string;
+                nickname: string;
+                avatarUrl: string | null;
+                isBlocked: boolean;
+                isMuted: boolean;
+            };
+            media: {
+                id: string;
+                url: string;
+                type: string;
+                sortOrder: number;
+            }[];
+            mentionedUsers: {
+                id: string;
+                nickname: string;
+                avatarUrl: string | null;
+            }[];
         };
         /** @description 通知既読化後のレスポンス。unreadCount はミュートユーザーを除いた操作後の未読数。 */
         NotificationReadResponse: {
@@ -2949,6 +4063,55 @@ export interface components {
         /** @description 未読通知件数レスポンス。 */
         UnreadCountResponse: {
             count: number;
+        };
+        /**
+         * @description 動画 presigned PUT URL のリクエスト。
+         *     contentType は video/mp4, video/quicktime, video/webm のいずれか。
+         *     fileSize は正の整数（バイト）で MAX_VIDEO_SIZE（80MB）以下。
+         *     folder のデフォルトは post-videos。
+         */
+        PresignedUploadRequest: {
+            /** @enum {string} */
+            contentType: "video/mp4" | "video/quicktime" | "video/webm";
+            fileSize: number;
+            /**
+             * @default post-videos
+             * @enum {string}
+             */
+            folder: "posts" | "post-videos" | "avatars" | "headers";
+        };
+        /**
+         * @description 動画 presigned PUT URL のレスポンス。
+         *     uploadUrl に PUT リクエストを送る際は Content-Type と Content-Length をヘッダーに付与すること。
+         *     fileUrl は自社ストレージの公開 URL で、投稿作成時の mediaUrls にそのまま渡せる。
+         *     key は R2 オブジェクトキー（削除時などに参照）。
+         */
+        PresignedUploadResponse: {
+            /** Format: uri */
+            uploadUrl: string;
+            /** Format: uri */
+            fileUrl: string;
+            key: string;
+            contentLength: number;
+        };
+        /**
+         * @description 画像アップロード成功のレスポンス。
+         *     url は EXIF/GPS/IPTC を除去済みの自社ストレージ公開 URL。
+         *     投稿作成時の mediaUrls にそのまま渡せる。
+         */
+        ImageUploadResponse: {
+            /** Format: uri */
+            url: string;
+        };
+        /**
+         * @description Push 通知デバイストークン登録リクエスト。
+         *     token は Expo / APNs / FCM の Push トークン文字列。
+         *     platform は android または ios。
+         */
+        RegisterDeviceRequest: {
+            token: string;
+            /** @enum {string} */
+            platform: "android" | "ios";
         };
     };
     responses: never;

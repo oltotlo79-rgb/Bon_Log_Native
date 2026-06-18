@@ -19,6 +19,7 @@ import {
   setLastAuthFailureReason,
   toAuthFailureReason,
 } from '@/lib/auth/auth-store';
+import { unregisterDeviceForPushNotifications } from '@/lib/push/device-registration';
 
 // ---------------------------------------------------------------------------
 // 型定義
@@ -180,7 +181,6 @@ export async function verifyTwoFactor(code: string): Promise<void> {
 /**
  * ログアウト処理（fail-safe）。
  * サーバー呼び出しが失敗してもローカルのトークン削除と状態遷移は必ず実施する（auth-tokens.md）。
- * Push のデバイストークン登録解除は Phase 3 で追加予定（拡張点）。
  */
 export async function signOut(queryClient: QueryClient): Promise<void> {
   const refreshToken = await getRefreshToken();
@@ -194,6 +194,13 @@ export async function signOut(queryClient: QueryClient): Promise<void> {
     } catch {
       // サーバー呼び出し失敗は無視してローカルのクリーンアップを続行する
     }
+  }
+
+  // Push デバイストークンのサーバー解除とローカル削除（失敗しても後続処理を続行する）
+  try {
+    await unregisterDeviceForPushNotifications();
+  } catch {
+    // fail-safe: Push 解除失敗は無視してトークン削除・状態遷移を続行する
   }
 
   await deleteTokenPair();

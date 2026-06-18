@@ -14,6 +14,8 @@ import { ScreenLoading } from '@/components/common/ScreenLoading';
 import { initializeAuth } from '@/lib/auth';
 import { useAuth } from '@/lib/auth/use-auth';
 import { ROUTE_LOGIN, ROUTE_FEED } from '@/lib/constants/routes';
+import { setupPushNotifications } from '@/lib/push';
+import { usePushRegistration } from '@/hooks/use-push-registration';
 
 // Sentry はモジュールロード時（アプリ起動最初期）に1回だけ初期化する
 initSentry();
@@ -49,6 +51,8 @@ function AuthGuard() {
   const { status } = useAuth();
   const segments = useSegments();
 
+  usePushRegistration({ status });
+
   useEffect(() => {
     if (status === 'loading') return;
 
@@ -80,6 +84,11 @@ export default function RootLayout() {
       cleanupOnline();
       cleanupFocus();
     };
+  }, []);
+
+  useEffect(() => {
+    // 通知ハンドラと Android チャネルの初期化。例外でも起動を止めない。
+    void setupPushNotifications().catch(() => undefined);
   }, []);
 
   useEffect(() => {

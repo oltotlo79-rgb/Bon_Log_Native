@@ -49,6 +49,15 @@ jest.mock('expo-secure-store', () => ({
   deleteItemAsync: (...args: unknown[]) => mockDeleteItem(...args),
 }));
 
+// lib/auth/auth のテスト境界は lib/auth に留める。
+// signOut 内で呼ばれる unregisterDeviceForPushNotifications は
+// lib/push のテストで別途検証するためここではモックする。
+const mockUnregisterDevice = jest.fn().mockResolvedValue(undefined);
+jest.mock('@/lib/push/device-registration', () => ({
+  unregisterDeviceForPushNotifications: (...args: unknown[]) =>
+    mockUnregisterDevice(...args),
+}));
+
 // ---------------------------------------------------------------------------
 // ヘルパー
 // ---------------------------------------------------------------------------
@@ -82,6 +91,7 @@ beforeEach(() => {
   resetPending2FATicketForTest();
   mockSetItem.mockResolvedValue(undefined);
   mockDeleteItem.mockResolvedValue(undefined);
+  mockUnregisterDevice.mockResolvedValue(undefined);
 });
 
 // ---------------------------------------------------------------------------
@@ -278,6 +288,29 @@ describe('signOut', () => {
     await signOut(queryClient);
 
     expect(mockApiClientPost).not.toHaveBeenCalled();
+    expect(mockDeleteItem).toHaveBeenCalledTimes(2);
+    expect(queryClient.clear).toHaveBeenCalledTimes(1);
+    expect(getAuthStatus()).toBe('signedOut');
+  });
+
+  it('signOut は unregisterDeviceForPushNotifications を呼び出す', async () => {
+    mockGetItem.mockResolvedValue('refresh-token');
+    mockApiClientPost.mockResolvedValue({ data: { success: true as const }, error: undefined });
+
+    const queryClient = makeQueryClient();
+    await signOut(queryClient);
+
+    expect(mockUnregisterDevice).toHaveBeenCalledTimes(1);
+  });
+
+  it('Push 解除が失敗してもトークン削除・状態遷移は完了する（fail-safe）', async () => {
+    mockGetItem.mockResolvedValue('refresh-token');
+    mockApiClientPost.mockResolvedValue({ data: { success: true as const }, error: undefined });
+    mockUnregisterDevice.mockRejectedValue(new Error('Push unregister failed'));
+
+    const queryClient = makeQueryClient();
+    await signOut(queryClient);
+
     expect(mockDeleteItem).toHaveBeenCalledTimes(2);
     expect(queryClient.clear).toHaveBeenCalledTimes(1);
     expect(getAuthStatus()).toBe('signedOut');

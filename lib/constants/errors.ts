@@ -466,6 +466,8 @@ export function messageForApiError(code: MobileApiErrorCode): string {
       return ERR_SERVER;
     case 'SERVER_MISCONFIGURED':
       return ERR_SERVER;
+    case 'PREMIUM_REQUIRED':
+      return ERR_PREMIUM_ONLY;
     default:
       return ERR_GENERIC;
   }

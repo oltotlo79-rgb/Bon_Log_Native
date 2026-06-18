@@ -186,6 +186,67 @@ jest.mock('@/lib/auth/use-auth', () => ({
   })),
 }));
 
+// expo-notifications のモック
+// Push 通知の OS ダイアログ・ネイティブチャネル API をテスト環境で安全に代替する
+jest.mock('expo-notifications', () => ({
+  getPermissionsAsync: jest.fn(async () => ({
+    granted: false,
+    canAskAgain: true,
+    status: 'undetermined',
+  })),
+  requestPermissionsAsync: jest.fn(async () => ({
+    granted: false,
+    canAskAgain: false,
+    status: 'denied',
+  })),
+  getExpoPushTokenAsync: jest.fn(async () => ({
+    data: 'ExponentPushToken[test-token-xxx]',
+    type: 'expo',
+  })),
+  setNotificationHandler: jest.fn(),
+  setNotificationChannelAsync: jest.fn(async () => null),
+  addPushTokenListener: jest.fn(() => ({ remove: jest.fn() })),
+  AndroidImportance: {
+    HIGH: 4,
+    DEFAULT: 3,
+    LOW: 2,
+    MIN: 1,
+  },
+}));
+
+// expo-device のモック
+// デフォルトは物理デバイス（isDevice: true）として扱う。
+// エミュレータ動作を検証するテストでは mockExpoDeviceIsDevice ヘルパーを使い
+// jest.replaceProperty(require('expo-device'), 'isDevice', false) などで切り替える。
+// isDevice はゲッターとして定義し、_isDevice 変数経由で動的変更可能にする。
+jest.mock('expo-device', () => {
+  let _isDevice = true;
+  return {
+    get isDevice() {
+      return _isDevice;
+    },
+    set isDevice(value: boolean) {
+      _isDevice = value;
+    },
+    deviceName: 'Test Device',
+    osName: 'Android',
+    osVersion: '14.0',
+  };
+});
+
+// expo-constants のモック（projectId 解決用）
+jest.mock('expo-constants', () => ({
+  default: {
+    expoConfig: {
+      extra: {
+        eas: {
+          projectId: 'test-project-id',
+        },
+      },
+    },
+  },
+}));
+
 // expo-image のモック
 jest.mock('expo-image', () => {
   const React = require('react');
