@@ -134,31 +134,24 @@ describe('SettingsProfileScreen', () => {
     jest.clearAllMocks();
   });
 
-  it('ヘッダーに「プロフィール設定」と表示される', () => {
-    render(<SettingsProfileScreen />);
-    expect(screen.getByRole('header', { name: 'プロフィール設定' })).toBeTruthy();
+  it('ヘッダーに「プロフィールを編集」と表示される', () => {
+    renderWithProviders(<SettingsProfileScreen />);
+    expect(screen.getByRole('header', { name: 'プロフィールを編集' })).toBeTruthy();
   });
 
   it('戻るボタンが表示される', () => {
-    render(<SettingsProfileScreen />);
+    renderWithProviders(<SettingsProfileScreen />);
     expect(screen.getByRole('button', { name: '戻る' })).toBeTruthy();
   });
 
   it('戻るボタンを押すと router.back が呼ばれる', () => {
-    render(<SettingsProfileScreen />);
+    renderWithProviders(<SettingsProfileScreen />);
     fireEvent.press(screen.getByRole('button', { name: '戻る' }));
     expect(mockRouterBack).toHaveBeenCalledTimes(1);
   });
 
-  it('プレースホルダーテキストが表示される', () => {
-    render(<SettingsProfileScreen />);
-    expect(screen.getByText('プロフィール編集（実装予定）')).toBeTruthy();
-  });
-
-  it('説明文が表示される', () => {
-    render(<SettingsProfileScreen />);
-    expect(
-      screen.getByText('ニックネーム・アバター・自己紹介を編集できます。')
-    ).toBeTruthy();
+  it('プロフィール取得中または取得後に「プロフィールを編集」ヘッダーが表示される', () => {
+    renderWithProviders(<SettingsProfileScreen />);
+    expect(screen.getByRole('header', { name: 'プロフィールを編集' })).toBeTruthy();
   });
 });

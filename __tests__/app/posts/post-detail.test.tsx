@@ -21,6 +21,10 @@ jest.mock('@/lib/queries/posts', () => ({
     isError: false,
     refetch: jest.fn(),
   })),
+  useDeletePostMutation: jest.fn(() => ({
+    mutateAsync: jest.fn(),
+    isPending: false,
+  })),
 }));
 
 jest.mock('@/lib/queries/comments', () => ({
@@ -32,6 +36,14 @@ jest.mock('@/lib/queries/comments', () => ({
     hasNextPage: false,
     isFetchingNextPage: false,
     refetch: jest.fn(),
+  })),
+  useCreateCommentMutation: jest.fn(() => ({
+    mutateAsync: jest.fn(),
+    isPending: false,
+  })),
+  useDeleteCommentMutation: jest.fn(() => ({
+    mutateAsync: jest.fn(),
+    isPending: false,
   })),
 }));
 

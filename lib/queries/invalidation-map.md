@@ -19,15 +19,18 @@
 
 | ミューテーション | 無効化するキー | 備考 |
 |----------------|--------------|------|
-| 投稿作成 | `queryKeys.posts.feed()` / 自分の `queryKeys.users.detail(userId)` | フィードと自分のプロフィールの投稿カウントが変わるため |
-| 投稿更新 | `queryKeys.posts.detail(id)` / `queryKeys.posts.feed()` | 詳細とフィードの内容を同期するため |
-| 投稿削除 | `queryKeys.posts.all` / 自分の `queryKeys.users.detail(userId)` | 投稿系を一括 invalidate し、プロフィールのカウントも更新するため |
+| 投稿作成（`useCreatePostMutation`） | `queryKeys.posts.feed()` / 自分の `queryKeys.users.detail(currentUserId)`（onSettled） | フィードと自分のプロフィールの投稿カウントが変わるため。楽観更新なし |
+| 投稿更新（`useUpdatePostMutation`） | `queryKeys.posts.detail(id)` / `queryKeys.posts.feed()`（onSettled） | 詳細とフィードの内容を同期するため。楽観更新なし |
+| 投稿削除（`useDeletePostMutation`） | `queryKeys.posts.all` / 自分の `queryKeys.users.detail(currentUserId)`（onSettled） | 投稿系を一括 invalidate し、プロフィールのカウントも更新するため |
 | いいね・いいね取り消し（`useToggleLikeMutation`） | `queryKeys.posts.detail(id)` のみ（onSettled で invalidate） | フィード・検索は楽観更新 + onSuccess で setQueryData による確定反映を優先。フィード再取得は重いため invalidate しない |
-| コメント作成 | `queryKeys.comments.byPost(postId)` / `queryKeys.posts.detail(postId)` | コメント数カウントも投稿詳細に含まれるため |
-| コメント削除 | `queryKeys.comments.byPost(postId)` / `queryKeys.posts.detail(postId)` | 同上 |
+| コメント作成（`useCreateCommentMutation`） | `queryKeys.comments.byPost(postId)` / `queryKeys.posts.detail(postId)`（onSettled） | コメント数カウントも投稿詳細に含まれるため。楽観更新なし |
+| コメント削除（`useDeleteCommentMutation`） | `queryKeys.comments.byPost(postId)` / `queryKeys.posts.detail(postId)`（onSettled） | 同上 |
 | フォロー・フォロー解除（`useToggleFollowMutation`） | 対象の `queryKeys.users.detail(targetId)` / `queryKeys.posts.feed()`（onSettled で invalidate） | onMutate で users.detail の following/requested/followersCount と search.users キャッシュ内の該当 item を楽観更新。onSuccess で FollowResponse 確定値（following/requested/followerCount）を users.detail と search.users item に書き込む。onSettled で users.detail と posts.feed を invalidate |
-| プロフィール更新 | 自分の `queryKeys.users.detail(userId)` | 表示名・アバターを即時反映するため |
+| プロフィール更新（`useUpdateProfileMutation`） | `queryKeys.users.me` / `queryKeys.users.meProfile` / 自分の `queryKeys.users.detail(currentUserId)`（onSuccess で setQueryData + invalidate） | onSuccess で users.me（基本情報）・users.meProfile（全フィールド）・users.detail（プロフィール全体）を setQueryData で即時反映し、その後 invalidate で整合させる |
+| アカウント削除（`useDeleteAccountMutation`） | なし（onSettled で `signOut(queryClient)` を呼び、`queryClient.clear()` が全キャッシュを消去） | fail-safe: サーバー削除成功・失敗いずれの場合も signOut を実行してローカル撤収する |
 | 通知既読（`useMarkNotificationsReadMutation`） | invalidate なし（setQueryData のみ） | onSuccess で通知一覧の isRead と unreadCount を setQueryData で即時反映。サーバーとの整合はリスト再フェッチ（pull-to-refresh・フォアグラウンド復帰）に委ねる |
+| 画像アップロード（`useUploadImageMutation` / `uploadImage`） | なし（アップロードはキャッシュを持たない。投稿/プロフィール更新ミューテーションに URL を渡す） | — |
+| 動画アップロード（`useUploadVideoMutation` / `uploadVideo`） | なし（同上） | — |
 
 ## モデレーション系（lib/queries/moderation.ts）
 
@@ -48,6 +51,7 @@
 | `queryKeys.posts.feed()` | `useFeedQuery` | 投稿作成・削除・フォロー変更・ブロック・ミュート時 |
 | `queryKeys.posts.detail(id)` | `usePostQuery` | 投稿更新・削除・いいね後の整合時 |
 | `queryKeys.comments.byPost(postId)` | `useCommentsQuery` | コメント作成・削除時 |
+| `queryKeys.users.meProfile` | `useCurrentUserProfileQuery` | プロフィール更新成功時（useUpdateProfileMutation の onSuccess で setQueryData + invalidate） |
 | `queryKeys.users.detail(id)` | `useUserProfileQuery` | フォロー変更・プロフィール更新・ブロック・ミュート時 |
 | `queryKeys.users.blocks` | `useBlockedUsersQuery` | ブロック・ブロック解除時 |
 | `queryKeys.users.mutes` | `useMutedUsersQuery` | ミュート・ミュート解除時 |

@@ -48,6 +48,13 @@ export const queryKeys = {
     all: ['users'] as const,
     /** 認証中ユーザー自身の基本情報（GET /api/v1/users/me） */
     me: ['users', 'me'] as const,
+    /**
+     * プロフィール編集フォーム用の全フィールドキャッシュ。
+     * PATCH /api/v1/users/me 成功時に useUpdateProfileMutation が setQueryData で書き込む。
+     * GET /api/v1/users/me は UsersMeResponse（部分型）しか返さないため、
+     * このキーは読み取り専用クエリ（queryFn なし）として useCurrentUserProfileQuery が使用する。
+     */
+    meProfile: ['users', 'me', 'profile'] as const,
     /** ユーザー詳細・プロフィール */
     detail: (id: string) => ['users', 'detail', id] as const,
     /** ブロックリスト（GET /api/v1/users/me/blocks） */

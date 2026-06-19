@@ -1,72 +1,105 @@
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { router, useLocalSearchParams } from 'expo-router';
+import { View, StyleSheet } from 'react-native';
+import { useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import {
-  colorBackground,
-  colorSurfaceWashi,
-  colorTextPrimary,
-  colorTextSecondary,
-  colorBorderLight,
-  spacing2,
-  spacing4,
-  textBase,
-  textLg,
-  textSm,
-  letterSpacingWidest,
-} from '@/lib/constants/design-tokens';
-import { ERR_POST_NOT_FOUND } from '@/lib/constants/errors';
+import { colorBackground } from '@/lib/constants/design-tokens';
+import { ERR_POST_NOT_FOUND, ERR_POST_LOAD_FAILED, ERR_AUTH_REQUIRED } from '@/lib/constants/errors';
+import { ScreenLoading } from '@/components/common/ScreenLoading';
+import { ScreenError } from '@/components/common/ScreenError';
+import { PostComposer } from '@/components/post/PostComposer';
+import { usePostQuery } from '@/lib/queries/posts';
+import { useCurrentUserQuery } from '@/lib/queries/auth';
+
+// ---------------------------------------------------------------------------
+// 型ガード: useLocalSearchParams の値を string に絞る
+// ---------------------------------------------------------------------------
+
+function isValidPostId(value: unknown): value is string {
+  return typeof value === 'string' && value.length > 0;
+}
 
 export default function PostEditScreen() {
   const params = useLocalSearchParams();
   const rawId = params['id'];
 
-  if (typeof rawId !== 'string' || rawId.length === 0) {
+  const { data: me, isLoading: isMeLoading, isError: isMeError, refetch: refetchMe } = useCurrentUserQuery();
+
+  const postId = isValidPostId(rawId) ? rawId : '';
+
+  const {
+    data: post,
+    isLoading: isPostLoading,
+    isError: isPostError,
+    refetch: refetchPost,
+  } = usePostQuery(postId);
+
+  if (!isValidPostId(rawId)) {
     return (
       <SafeAreaView style={styles.safeArea} edges={['top']}>
-        <View style={styles.errorContainer}>
-          <Text style={styles.errorText}>{ERR_POST_NOT_FOUND}</Text>
-          <TouchableOpacity
-            onPress={() => router.back()}
-            accessibilityRole="button"
-            accessibilityLabel="戻る"
-            style={styles.cancelButton}
-          >
-            <Text style={styles.cancelButtonText}>戻る</Text>
-          </TouchableOpacity>
-        </View>
+        <ScreenError
+          title="投稿が見つかりません"
+          description={ERR_POST_NOT_FOUND}
+          onRetry={() => {}}
+        />
       </SafeAreaView>
     );
   }
 
-  const postId = rawId;
+  if (isMeLoading || isPostLoading) {
+    return (
+      <SafeAreaView style={styles.safeArea} edges={['top']}>
+        <ScreenLoading variant="spinner" />
+      </SafeAreaView>
+    );
+  }
+
+  if (isMeError || me === undefined) {
+    return (
+      <SafeAreaView style={styles.safeArea} edges={['top']}>
+        <ScreenError
+          title="ログインが必要です"
+          description={ERR_AUTH_REQUIRED}
+          onRetry={() => void refetchMe()}
+        />
+      </SafeAreaView>
+    );
+  }
+
+  if (isPostError || post === undefined) {
+    return (
+      <SafeAreaView style={styles.safeArea} edges={['top']}>
+        <ScreenError
+          title="投稿が見つかりません"
+          description={ERR_POST_LOAD_FAILED}
+          onRetry={() => void refetchPost()}
+        />
+      </SafeAreaView>
+    );
+  }
+
+  // 既存メディアを初期値に変換する
+  const initialImageUris = post.media
+    .filter((m) => m.type === 'image')
+    .sort((a, b) => a.sortOrder - b.sortOrder)
+    .map((m) => m.url);
+
+  const initialVideoUri =
+    post.media.find((m) => m.type === 'video')?.url ?? null;
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top']}>
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.cancelButton}
-          onPress={() => router.back()}
-          accessibilityRole="button"
-          accessibilityLabel="キャンセル"
-        >
-          <Text style={styles.cancelButtonText}>キャンセル</Text>
-        </TouchableOpacity>
-        <Text style={styles.headerTitle} accessibilityRole="header">
-          投稿を編集
-        </Text>
-        <TouchableOpacity
-          style={styles.submitButton}
-          accessibilityRole="button"
-          accessibilityLabel="更新する"
-        >
-          <Text style={styles.submitButtonText}>更新</Text>
-        </TouchableOpacity>
-      </View>
-      <View style={styles.content}>
-        <Text style={styles.placeholder}>投稿編集画面（実装予定）</Text>
-        <Text style={styles.description}>投稿ID: {postId}</Text>
-      </View>
-    </SafeAreaView>
+    <View style={styles.container}>
+      <PostComposer
+        mode="edit"
+        currentUserId={me.id}
+        isPremium={me.isPremium}
+        postId={post.id}
+        initialValues={{
+          content: post.content ?? '',
+          genreIds: post.genres.map((g) => g.name),
+          imageUris: initialImageUris,
+          videoUri: initialVideoUri,
+        }}
+      />
+    </View>
   );
 }
 
@@ -75,68 +108,8 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colorBackground,
   },
-  header: {
-    height: 48,
-    backgroundColor: colorSurfaceWashi,
-    borderBottomWidth: 1,
-    borderBottomColor: colorBorderLight,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: spacing4,
-  },
-  headerTitle: {
-    ...textLg,
-    color: colorTextPrimary,
-    letterSpacing: letterSpacingWidest,
+  container: {
     flex: 1,
-    textAlign: 'center',
-  },
-  cancelButton: {
-    minWidth: 44,
-    height: 44,
-    justifyContent: 'center',
-  },
-  cancelButtonText: {
-    ...textBase,
-    color: colorTextPrimary,
-  },
-  submitButton: {
-    minWidth: 44,
-    height: 44,
-    justifyContent: 'center',
-    alignItems: 'flex-end',
-  },
-  submitButtonText: {
-    ...textBase,
-    color: colorTextPrimary,
-    fontWeight: '600',
-  },
-  content: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: spacing4,
-    gap: spacing2,
-  },
-  placeholder: {
-    ...textLg,
-    color: colorTextPrimary,
-  },
-  description: {
-    ...textSm,
-    color: colorTextSecondary,
-    textAlign: 'center',
-  },
-  errorContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: spacing4,
-    gap: spacing4,
-  },
-  errorText: {
-    ...textBase,
-    color: colorTextSecondary,
-    textAlign: 'center',
+    backgroundColor: colorBackground,
   },
 });

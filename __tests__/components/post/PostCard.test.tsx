@@ -8,7 +8,7 @@
 import React from 'react';
 import { screen, fireEvent } from '@testing-library/react-native';
 import { PostCard } from '@/components/post/PostCard';
-import { makePostCardProps, makeMedia, makeGenre } from '@/__tests__/utils/post-card-factory';
+import { makePostCardProps, makeMedia, makeGenre, makeUser } from '@/__tests__/utils/post-card-factory';
 import { renderWithProviders } from '@/__tests__/utils/test-utils';
 
 const mockRouter = jest.requireMock('expo-router').router;
@@ -93,6 +93,94 @@ describe('PostCard', () => {
       // PostGenreTags 内の Pressable が「松柏類で検索」ラベルを持つ
       const tagButtons = screen.getAllByRole('button', { name: '松柏類で検索' });
       expect(tagButtons.length).toBeGreaterThan(0);
+    });
+  });
+
+  describe('メニューボタン（onMenuPress / isOwnPost）', () => {
+    it('他人の投稿でログイン済み（currentUserId あり）のとき 3点メニューボタンが表示される', () => {
+      renderWithProviders(
+        <PostCard
+          {...makePostCardProps({
+            user: makeUser({ id: 'other-user' }),
+            currentUserId: 'viewer-user',
+          })}
+        />
+      );
+      // 同一ラベルの要素が複数ある場合も存在確認は getAllByRole で行う
+      const menuButtons = screen.getAllByRole('button', { name: '投稿のオプションを開く' });
+      expect(menuButtons.length).toBeGreaterThan(0);
+    });
+
+    it('未認証（currentUserId=undefined）のとき 3点メニューボタンが表示されない', () => {
+      renderWithProviders(
+        <PostCard
+          {...makePostCardProps({
+            user: makeUser({ id: 'other-user' }),
+            currentUserId: undefined,
+          })}
+        />
+      );
+      expect(screen.queryByRole('button', { name: '投稿のオプションを開く' })).toBeNull();
+    });
+
+    it('自分の投稿（isOwnPost=true）で onMenuPress なしのとき 3点メニューボタンが表示されない', () => {
+      renderWithProviders(
+        <PostCard
+          {...makePostCardProps({
+            user: makeUser({ id: 'viewer-user' }),
+            currentUserId: 'viewer-user',
+          })}
+        />
+      );
+      expect(screen.queryByRole('button', { name: '投稿のオプションを開く' })).toBeNull();
+    });
+
+    it('自分の投稿（isOwnPost=true）で onMenuPress が渡されると 3点メニューボタンが表示される', () => {
+      const onMenuPress = jest.fn();
+      renderWithProviders(
+        <PostCard
+          {...makePostCardProps({
+            user: makeUser({ id: 'viewer-user' }),
+            currentUserId: 'viewer-user',
+            onMenuPress,
+          })}
+        />
+      );
+      const menuButtons = screen.getAllByRole('button', { name: '投稿のオプションを開く' });
+      expect(menuButtons.length).toBeGreaterThan(0);
+    });
+
+    it('自分の投稿で onMenuPress が渡されたとき 3点ボタンを押すと onMenuPress が呼ばれる', () => {
+      const onMenuPress = jest.fn();
+      renderWithProviders(
+        <PostCard
+          {...makePostCardProps({
+            user: makeUser({ id: 'viewer-user' }),
+            currentUserId: 'viewer-user',
+            onMenuPress,
+          })}
+        />
+      );
+      // RNTL は親 Pressable も同ラベルでヒットするため末尾が実際のメニューボタン
+      const menuButtons = screen.getAllByRole('button', { name: '投稿のオプションを開く' });
+      fireEvent.press(menuButtons[menuButtons.length - 1]);
+      expect(onMenuPress).toHaveBeenCalledTimes(1);
+    });
+
+    it('他人の投稿で onMenuPress が渡されたとき 3点ボタンを押すと onMenuPress が呼ばれる', () => {
+      const onMenuPress = jest.fn();
+      renderWithProviders(
+        <PostCard
+          {...makePostCardProps({
+            user: makeUser({ id: 'other-user' }),
+            currentUserId: 'viewer-user',
+            onMenuPress,
+          })}
+        />
+      );
+      const menuButtons = screen.getAllByRole('button', { name: '投稿のオプションを開く' });
+      fireEvent.press(menuButtons[menuButtons.length - 1]);
+      expect(onMenuPress).toHaveBeenCalledTimes(1);
     });
   });
 

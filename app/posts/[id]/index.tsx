@@ -1,36 +1,66 @@
-import React, { useCallback } from 'react';
-import { FlatList, View, StyleSheet, Pressable, RefreshControl } from 'react-native';
+import React, { useCallback, useRef, useState } from 'react';
+import {
+  FlatList,
+  View,
+  StyleSheet,
+  Pressable,
+  RefreshControl,
+  KeyboardAvoidingView,
+  Platform,
+  Alert,
+  Modal,
+} from 'react-native';
 import { Text } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import {
   colorBackground,
+  colorSurface,
+  colorSurfaceMuted,
   colorSurfaceWashi,
   colorTextPrimary,
   colorTextSecondary,
   colorBorderLight,
+  colorError,
   colorActionPrimary,
   spacing2,
   spacing4,
+  spacing6,
+  radius2xl,
+  radiusFull,
+  shadowWashiLg,
   textBase,
   textLg,
+  textMd,
+  textSm,
   letterSpacingWidest,
 } from '@/lib/constants/design-tokens';
 import {
   ERR_POST_NOT_FOUND,
   ERR_POST_LOAD_FAILED,
+  ERR_POST_DELETE_FAILED,
+  ERR_COMMENT_DELETE_FAILED,
+  ERR_OFFLINE_ACTION,
 } from '@/lib/constants/errors';
+import { ROUTE_FEED, routePostEdit } from '@/lib/constants/routes';
 import { ScreenLoading } from '@/components/common/ScreenLoading';
 import { ScreenError } from '@/components/common/ScreenError';
 import { ScreenEmpty } from '@/components/common/ScreenEmpty';
 import { OfflineBanner } from '@/components/common/OfflineBanner';
+import { Toast } from '@/components/common/Toast';
 import { PostCard } from '@/components/post/PostCard';
 import { CommentItem } from '@/components/comment/CommentItem';
+import { CommentInput } from '@/components/comment/CommentInput';
+import { ComposerFormError } from '@/components/post/ComposerFormError';
 import { useOnlineStatus } from '@/hooks/use-online-status';
-import { usePostQuery } from '@/lib/queries/posts';
-import { useCommentsQuery, type CommentItem as CommentItemData } from '@/lib/queries/comments';
+import { useToast } from '@/hooks/use-toast';
+import { usePostQuery, useDeletePostMutation } from '@/lib/queries/posts';
+import { useCommentsQuery, useCreateCommentMutation, useDeleteCommentMutation, type CommentItem as CommentItemData } from '@/lib/queries/comments';
 import { useCurrentUserQuery } from '@/lib/queries/auth';
 import { mapToPostCardProps } from '@/hooks/use-post-card-props';
+import type { ReplyTarget } from '@/components/comment/CommentItem';
+import type { CommentSubmitParams } from '@/components/comment/CommentInput';
 
 // ---------------------------------------------------------------------------
 // 型ガード: useLocalSearchParams の値を string に絞る
@@ -41,10 +71,84 @@ function isValidPostId(value: unknown): value is string {
 }
 
 // ---------------------------------------------------------------------------
-// コメントリストアイテム（memo は CommentItem 内で実施）
+// FlatList keyExtractor（安定した ID を使用）
 // ---------------------------------------------------------------------------
 
 const keyExtractor = (item: CommentItemData) => item.id;
+
+// ---------------------------------------------------------------------------
+// 投稿メニューシート（自分の投稿: 編集・削除）
+// ---------------------------------------------------------------------------
+
+type OwnPostMenuProps = {
+  onEdit: () => void;
+  onDelete: () => void;
+  onClose: () => void;
+  isDeleting: boolean;
+};
+
+function OwnPostMenu({ onEdit, onDelete, onClose, isDeleting }: OwnPostMenuProps) {
+  if (Platform.OS === 'ios') {
+    return null;
+  }
+
+  return (
+    <Modal
+      visible
+      transparent
+      animationType="slide"
+      onRequestClose={onClose}
+      accessibilityViewIsModal
+    >
+      <Pressable style={menuStyles.backdrop} onPress={onClose} />
+      <View style={menuStyles.sheet}>
+        <View style={menuStyles.handle} />
+        <Pressable
+          style={({ pressed }) => [menuStyles.item, pressed && menuStyles.itemPressed]}
+          onPress={onEdit}
+          disabled={isDeleting}
+          accessibilityRole="button"
+          accessibilityLabel="投稿を編集"
+        >
+          <Ionicons
+            name="create-outline"
+            size={20}
+            color={colorTextPrimary}
+            accessibilityElementsHidden
+            importantForAccessibility="no"
+          />
+          <Text style={menuStyles.itemText}>編集</Text>
+        </Pressable>
+        <View style={menuStyles.divider} />
+        <Pressable
+          style={({ pressed }) => [menuStyles.item, pressed && menuStyles.itemPressed]}
+          onPress={onDelete}
+          disabled={isDeleting}
+          accessibilityRole="button"
+          accessibilityLabel="投稿を削除"
+        >
+          <Ionicons
+            name="trash-outline"
+            size={20}
+            color={colorError}
+            accessibilityElementsHidden
+            importantForAccessibility="no"
+          />
+          <Text style={[menuStyles.itemText, menuStyles.itemTextDestructive]}>削除</Text>
+        </Pressable>
+        <View style={menuStyles.divider} />
+        <Pressable
+          style={({ pressed }) => [menuStyles.item, pressed && menuStyles.itemPressed]}
+          onPress={onClose}
+          accessibilityRole="button"
+          accessibilityLabel="キャンセル"
+        >
+          <Text style={menuStyles.itemTextCancel}>キャンセル</Text>
+        </Pressable>
+      </View>
+    </Modal>
+  );
+}
 
 // ---------------------------------------------------------------------------
 // 投稿詳細コンテンツ（有効な id があるときのみ描画）
@@ -56,6 +160,8 @@ type PostDetailContentProps = {
 
 function PostDetailContent({ postId }: PostDetailContentProps) {
   const isOnline = useOnlineStatus();
+  const { toast, showToast, hideToast } = useToast();
+  const flatListRef = useRef<FlatList>(null);
 
   const {
     data: post,
@@ -77,14 +183,19 @@ function PostDetailContent({ postId }: PostDetailContentProps) {
   const { data: me } = useCurrentUserQuery();
   const currentUserId = me?.id;
 
-  const renderCommentItem = useCallback(
-    ({ item }: { item: CommentItemData }) => (
-      <CommentItem item={item} currentUserId={currentUserId} />
-    ),
-    [currentUserId]
-  );
+  const createCommentMutation = useCreateCommentMutation();
+  const deleteCommentMutation = useDeleteCommentMutation();
+  const deletePostMutation = useDeletePostMutation(currentUserId ?? '');
 
-  const comments = commentsData?.pages.flatMap((page) => page.items) ?? [];
+  const [replyTarget, setReplyTarget] = useState<ReplyTarget | null>(null);
+  const [commentError, setCommentError] = useState<string | null>(null);
+  const [deletingCommentId, setDeletingCommentId] = useState<string | null>(null);
+  const [ownPostMenuVisible, setOwnPostMenuVisible] = useState(false);
+
+  const isOwnPost =
+    currentUserId !== undefined &&
+    post !== undefined &&
+    currentUserId === post.user.id;
 
   const handleEndReached = useCallback(() => {
     if (hasNextPage && !isFetchingNextPage) {
@@ -97,28 +208,186 @@ function PostDetailContent({ postId }: PostDetailContentProps) {
     void refetchComments();
   }, [refetchPost, refetchComments]);
 
+  const handleReply = useCallback((target: ReplyTarget) => {
+    setReplyTarget(target);
+  }, []);
+
+  const handleCancelReply = useCallback(() => {
+    setReplyTarget(null);
+  }, []);
+
+  const handleSubmitComment = useCallback(
+    ({ content, parentId }: CommentSubmitParams) => {
+      if (!isOnline) {
+        setCommentError(ERR_OFFLINE_ACTION);
+        return;
+      }
+      setCommentError(null);
+      createCommentMutation.mutate(
+        {
+          postId,
+          content,
+          parentId,
+          mediaUrls: [],
+          mediaTypes: [],
+        },
+        {
+          onSuccess: () => {
+            setReplyTarget(null);
+            flatListRef.current?.scrollToEnd({ animated: true });
+          },
+          onError: () => {
+            setCommentError(ERR_COMMENT_DELETE_FAILED);
+          },
+        }
+      );
+    },
+    [isOnline, postId, createCommentMutation]
+  );
+
+  const handleDeleteComment = useCallback(
+    (commentId: string) => {
+      if (!isOnline) {
+        showToast(ERR_OFFLINE_ACTION, 'warning');
+        return;
+      }
+      setDeletingCommentId(commentId);
+      deleteCommentMutation.mutate(
+        { postId, commentId },
+        {
+          onSettled: () => {
+            setDeletingCommentId(null);
+          },
+          onError: () => {
+            showToast(ERR_COMMENT_DELETE_FAILED, 'error');
+          },
+        }
+      );
+    },
+    [isOnline, postId, deleteCommentMutation, showToast]
+  );
+
+  const handlePressMenuPost = useCallback(() => {
+    if (!isOwnPost) return;
+    if (Platform.OS === 'ios') {
+      Alert.alert('投稿の操作', undefined, [
+        {
+          text: '編集',
+          onPress: () => router.push(routePostEdit(postId)),
+        },
+        {
+          text: '削除',
+          style: 'destructive',
+          onPress: () => {
+            Alert.alert('投稿を削除しますか？', 'この操作は取り消せません。', [
+              { text: 'キャンセル', style: 'cancel' },
+              {
+                text: '削除する',
+                style: 'destructive',
+                onPress: () => {
+                  if (!isOnline) {
+                    showToast(ERR_OFFLINE_ACTION, 'warning');
+                    return;
+                  }
+                  deletePostMutation.mutate(
+                    { id: postId },
+                    {
+                      onSuccess: () => {
+                        router.replace(ROUTE_FEED);
+                      },
+                      onError: () => {
+                        showToast(ERR_POST_DELETE_FAILED, 'error');
+                      },
+                    }
+                  );
+                },
+              },
+            ]);
+          },
+        },
+        { text: 'キャンセル', style: 'cancel' },
+      ]);
+    } else {
+      setOwnPostMenuVisible(true);
+    }
+  }, [isOwnPost, postId, isOnline, deletePostMutation, showToast]);
+
+  const handleAndroidDeletePost = useCallback(() => {
+    setOwnPostMenuVisible(false);
+    Alert.alert('投稿を削除しますか？', 'この操作は取り消せません。', [
+      { text: 'キャンセル', style: 'cancel' },
+      {
+        text: '削除する',
+        onPress: () => {
+          if (!isOnline) {
+            showToast(ERR_OFFLINE_ACTION, 'warning');
+            return;
+          }
+          deletePostMutation.mutate(
+            { id: postId },
+            {
+              onSuccess: () => {
+                router.replace(ROUTE_FEED);
+              },
+              onError: () => {
+                showToast(ERR_POST_DELETE_FAILED, 'error');
+              },
+            }
+          );
+        },
+      },
+    ]);
+  }, [isOnline, postId, deletePostMutation, showToast]);
+
+  const renderCommentItem = useCallback(
+    ({ item }: { item: CommentItemData }) => (
+      <CommentItem
+        item={item}
+        currentUserId={currentUserId}
+        onReply={handleReply}
+        onDelete={handleDeleteComment}
+        deletingId={deletingCommentId ?? undefined}
+      />
+    ),
+    [currentUserId, handleReply, handleDeleteComment, deletingCommentId]
+  );
+
+  const comments = commentsData?.pages.flatMap((page) => page.items) ?? [];
+
+  // コメント入力バーの高さ分 FlatList の下端パディングを確保
+  const COMMENT_INPUT_APPROX_HEIGHT = 80;
+
   if (isPostLoading) {
-    return <ScreenLoading variant="skeleton" skeletonCount={2} />;
+    return (
+      <View style={styles.content}>
+        <ScreenLoading variant="skeleton" skeletonCount={2} />
+      </View>
+    );
   }
 
   if (isPostError || post === undefined) {
     return (
-      <ScreenError
-        title="読み込めませんでした"
-        description={ERR_POST_LOAD_FAILED}
-        onRetry={refetchPost}
-      />
+      <View style={styles.content}>
+        <ScreenError
+          title="読み込めませんでした"
+          description={ERR_POST_LOAD_FAILED}
+          onRetry={refetchPost}
+        />
+      </View>
     );
   }
 
   const handleComment = () => {
-    // コメント入力は 2c 待ち。現状は no-op
+    // CommentInput へのフォーカスは CommentInput 自体が管理
   };
 
   const postCardProps = mapToPostCardProps(
     post,
     currentUserId,
-    { onComment: handleComment },
+    {
+      onComment: handleComment,
+      onMenuPress: isOwnPost ? handlePressMenuPost : undefined,
+    },
     { disableNavigation: true }
   );
 
@@ -126,50 +395,99 @@ function PostDetailContent({ postId }: PostDetailContentProps) {
     <View style={styles.content}>
       <OfflineBanner isVisible={!isOnline} />
 
-      <FlatList
-        data={comments}
-        keyExtractor={keyExtractor}
-        renderItem={renderCommentItem}
-        onEndReached={handleEndReached}
-        onEndReachedThreshold={0.5}
-        refreshControl={
-          <RefreshControl
-            refreshing={false}
-            onRefresh={handleRefetch}
-            tintColor={colorActionPrimary}
-          />
-        }
-        ListHeaderComponent={
-          <View style={styles.postCardWrapper}>
-            <PostCard {...postCardProps} />
-            <View style={styles.commentsDivider} />
-          </View>
-        }
-        ListEmptyComponent={
-          isCommentsLoading ? (
-            <ScreenLoading variant="skeleton" skeletonCount={2} />
-          ) : isCommentsError ? (
-            <ScreenError
-              title="読み込めませんでした"
-              description={ERR_POST_LOAD_FAILED}
-              onRetry={refetchComments}
+      <KeyboardAvoidingView
+        style={styles.keyboardAvoidingView}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={0}
+      >
+        <FlatList
+          ref={flatListRef}
+          data={comments}
+          keyExtractor={keyExtractor}
+          renderItem={renderCommentItem}
+          onEndReached={handleEndReached}
+          onEndReachedThreshold={0.5}
+          refreshControl={
+            <RefreshControl
+              refreshing={false}
+              onRefresh={handleRefetch}
+              tintColor={colorActionPrimary}
             />
-          ) : (
-            <ScreenEmpty
-              iconName="chatbubble-outline"
-              title="まだコメントはありません"
-              description="最初のコメントをしてみましょう"
-            />
-          )
-        }
-        ListFooterComponent={
-          isFetchingNextPage ? (
-            <View style={styles.footerLoading}>
-              <ScreenLoading variant="spinner" />
+          }
+          ListHeaderComponent={
+            <View style={styles.postCardWrapper}>
+              <PostCard {...postCardProps} />
+              <View style={styles.commentsDivider} />
+              {/* コメントエラーバナー */}
+              {commentError !== null && (
+                <View style={styles.commentErrorWrapper}>
+                  <ComposerFormError message={commentError} />
+                </View>
+              )}
             </View>
-          ) : null
-        }
-        testID="comments-list"
+          }
+          ListEmptyComponent={
+            isCommentsLoading ? (
+              <ScreenLoading variant="skeleton" skeletonCount={2} />
+            ) : isCommentsError ? (
+              <ScreenError
+                title="読み込めませんでした"
+                description={ERR_POST_LOAD_FAILED}
+                onRetry={refetchComments}
+              />
+            ) : (
+              <ScreenEmpty
+                iconName="chatbubble-outline"
+                title="まだコメントはありません"
+                description="最初のコメントをしてみましょう"
+              />
+            )
+          }
+          ListFooterComponent={
+            isFetchingNextPage ? (
+              <View style={styles.footerLoading}>
+                <ScreenLoading variant="spinner" />
+              </View>
+            ) : comments.length > 0 ? (
+              <View style={styles.footerEnd}>
+                <Text style={styles.footerEndText}>これ以上コメントはありません</Text>
+              </View>
+            ) : null
+          }
+          contentContainerStyle={{
+            paddingBottom: COMMENT_INPUT_APPROX_HEIGHT,
+          }}
+          testID="comments-list"
+        />
+
+        {/* 固定コメント入力バー */}
+        <CommentInput
+          replyTarget={replyTarget}
+          onCancelReply={handleCancelReply}
+          onSubmit={handleSubmitComment}
+          isSubmitting={createCommentMutation.isPending}
+          isPremium={me?.isPremium ?? false}
+        />
+      </KeyboardAvoidingView>
+
+      {/* 自分の投稿メニュー（Android） */}
+      {ownPostMenuVisible && (
+        <OwnPostMenu
+          onEdit={() => {
+            setOwnPostMenuVisible(false);
+            router.push(routePostEdit(postId));
+          }}
+          onDelete={handleAndroidDeletePost}
+          onClose={() => setOwnPostMenuVisible(false)}
+          isDeleting={deletePostMutation.isPending}
+        />
+      )}
+
+      <Toast
+        message={toast.message}
+        visible={toast.visible}
+        variant={toast.variant}
+        onHide={hideToast}
       />
     </View>
   );
@@ -218,7 +536,7 @@ export default function PostDetailScreen() {
   const postId = rawId;
 
   return (
-    <SafeAreaView style={styles.safeArea} edges={['top']}>
+    <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
       <View style={styles.header}>
         <Pressable
           style={styles.backButton}
@@ -240,7 +558,66 @@ export default function PostDetailScreen() {
 }
 
 // ---------------------------------------------------------------------------
-// スタイル
+// メニューシートのスタイル
+// ---------------------------------------------------------------------------
+
+const MENU_ITEM_HEIGHT = 56;
+
+const menuStyles = StyleSheet.create({
+  backdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+  },
+  sheet: {
+    backgroundColor: colorSurface,
+    borderTopLeftRadius: radius2xl,
+    borderTopRightRadius: radius2xl,
+    paddingBottom: spacing6,
+    ...shadowWashiLg,
+    alignItems: 'center',
+  },
+  handle: {
+    width: 36,
+    height: 4,
+    borderRadius: radiusFull,
+    backgroundColor: colorBorderLight,
+    marginTop: spacing2,
+    marginBottom: spacing2,
+  },
+  item: {
+    width: '100%',
+    height: MENU_ITEM_HEIGHT,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing4,
+    gap: spacing4,
+  },
+  itemPressed: {
+    backgroundColor: colorSurfaceMuted,
+  },
+  itemText: {
+    ...textMd,
+    color: colorTextPrimary,
+    flex: 1,
+  },
+  itemTextDestructive: {
+    color: colorError,
+  },
+  itemTextCancel: {
+    ...textSm,
+    color: colorTextSecondary,
+    flex: 1,
+    textAlign: 'center',
+  },
+  divider: {
+    height: 1,
+    backgroundColor: colorBorderLight,
+    width: '90%',
+  },
+});
+
+// ---------------------------------------------------------------------------
+// メインスタイル
 // ---------------------------------------------------------------------------
 
 const styles = StyleSheet.create({
@@ -279,6 +656,9 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
   },
+  keyboardAvoidingView: {
+    flex: 1,
+  },
   postCardWrapper: {
     paddingHorizontal: spacing4,
     paddingTop: spacing4,
@@ -288,8 +668,19 @@ const styles = StyleSheet.create({
     backgroundColor: colorBorderLight,
     marginTop: spacing2,
   },
+  commentErrorWrapper: {
+    marginTop: spacing2,
+  },
   footerLoading: {
     height: 60,
+  },
+  footerEnd: {
+    paddingVertical: spacing4,
+    alignItems: 'center',
+  },
+  footerEndText: {
+    ...textSm,
+    color: colorTextSecondary,
   },
   errorContainer: {
     flex: 1,

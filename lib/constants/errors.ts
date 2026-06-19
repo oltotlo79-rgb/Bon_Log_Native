@@ -172,6 +172,12 @@ export const ERR_BIO_TOO_LONG = (max: number) => `自己紹介は${max}文字以
 /** 居住地域長すぎ（テンプレート） */
 export const ERR_LOCATION_TOO_LONG = (max: number) => `居住地域は${max}文字以内で入力してください。`;
 
+/** 盆栽歴の開始年が不正（整数4桁・USER_BONSAI_START_MIN_YEAR〜現在年の範囲外） */
+export const ERR_BONSAI_YEAR_INVALID = '有効な年を入力してください（例: 2020）';
+
+/** 盆栽歴の開始月が不正（1〜12 の整数以外） */
+export const ERR_BONSAI_MONTH_INVALID = '月は1から12の数字を入力してください';
+
 /** パスワード未入力 */
 export const ERR_PASSWORD_REQUIRED = 'パスワードを入力してください。';
 

@@ -36,10 +36,22 @@ const mockUseCommentsQuery = jest.fn();
 
 jest.mock('@/lib/queries/posts', () => ({
   usePostQuery: () => mockUsePostQuery(),
+  useDeletePostMutation: jest.fn(() => ({
+    mutateAsync: jest.fn(),
+    isPending: false,
+  })),
 }));
 
 jest.mock('@/lib/queries/comments', () => ({
   useCommentsQuery: () => mockUseCommentsQuery(),
+  useCreateCommentMutation: jest.fn(() => ({
+    mutateAsync: jest.fn(),
+    isPending: false,
+  })),
+  useDeleteCommentMutation: jest.fn(() => ({
+    mutateAsync: jest.fn(),
+    isPending: false,
+  })),
 }));
 
 const defaultPostState = {

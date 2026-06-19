@@ -17,6 +17,13 @@ jest.mock('expo-router', () => ({
     replace: jest.fn(),
     navigate: jest.fn(),
   })),
+  useNavigation: jest.fn(() => ({
+    addListener: jest.fn(() => jest.fn()),
+    navigate: jest.fn(),
+    goBack: jest.fn(),
+    dispatch: jest.fn(),
+    canGoBack: jest.fn(() => true),
+  })),
   router: {
     push: jest.fn(),
     back: jest.fn(),

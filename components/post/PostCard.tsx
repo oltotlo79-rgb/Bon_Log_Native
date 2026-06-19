@@ -90,6 +90,7 @@ function PostCardInner({
 
   const handleMenuPress = useCallback(() => {
     if (onMenuPress !== undefined) {
+      // 呼び出し元（投稿詳細画面等）が自前のメニュー処理を渡している場合はそちらに委ねる
       onMenuPress();
     } else if (!isOwnPost && currentUserId !== undefined) {
       setMenuVisible(true);
@@ -116,7 +117,13 @@ function PostCardInner({
           createdAt={createdAt}
           editedAt={editedAt}
           isPinned={isPinned}
-          onMenuPress={!isOwnPost && currentUserId !== undefined ? handleMenuPress : undefined}
+          onMenuPress={
+            // onMenuPress が渡されている（詳細画面の自分の投稿メニュー）か、
+            // 他人の投稿でログイン済み（UserActionMenu を開く）場合にボタンを表示する
+            onMenuPress !== undefined || (!isOwnPost && currentUserId !== undefined)
+              ? handleMenuPress
+              : undefined
+          }
         />
 
         {/* 本文（メンション・ハッシュタグ・続きを読む） */}

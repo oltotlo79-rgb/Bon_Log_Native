@@ -67,3 +67,26 @@ export const ALLOWED_PROFILE_IMAGE_TYPES = [
 
 /** AllowedProfileImageType の union 型 */
 export type AllowedProfileImageType = (typeof ALLOWED_PROFILE_IMAGE_TYPES)[number];
+
+// ---------------------------------------------------------------------------
+// 圧縮品質（0〜1 の JPEG 品質。目標サイズが大きいほど高品質で出力する）
+// ---------------------------------------------------------------------------
+
+/**
+ * 目標サイズ判定のしきい値（バイト）。
+ * AVATAR_COMPRESSION_MAX_SIZE_MB / HEADER_COMPRESSION_MAX_SIZE_MB のバイト換算値と
+ * 比較し、このしきい値を超える場合は高品質、以下の場合は低品質を使う。
+ */
+export const COMPRESSION_QUALITY_THRESHOLD_BYTES = 500 * 1024;
+
+/** アバター圧縮: 目標サイズが COMPRESSION_QUALITY_THRESHOLD_BYTES 超の場合の品質 */
+export const AVATAR_COMPRESSION_QUALITY_HIGH = 0.9;
+
+/** アバター圧縮: 目標サイズが COMPRESSION_QUALITY_THRESHOLD_BYTES 以下の場合の品質 */
+export const AVATAR_COMPRESSION_QUALITY_LOW = 0.75;
+
+/** ヘッダー圧縮: 目標サイズが COMPRESSION_QUALITY_THRESHOLD_BYTES 超の場合の品質 */
+export const HEADER_COMPRESSION_QUALITY_HIGH = 0.85;
+
+/** ヘッダー圧縮: 目標サイズが COMPRESSION_QUALITY_THRESHOLD_BYTES 以下の場合の品質 */
+export const HEADER_COMPRESSION_QUALITY_LOW = 0.7;

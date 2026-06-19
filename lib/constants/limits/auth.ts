@@ -31,3 +31,12 @@ export const MAX_LOCATION_LENGTH = 100;
 
 /** 盆栽歴の開始年の最小値 */
 export const USER_BONSAI_START_MIN_YEAR = 1900;
+
+/** 盆栽歴の開始年の桁数（4桁固定） */
+export const USER_BONSAI_START_YEAR_DIGITS = 4;
+
+/** 盆栽歴の開始月の最小値 */
+export const USER_BONSAI_START_MIN_MONTH = 1;
+
+/** 盆栽歴の開始月の最大値 */
+export const USER_BONSAI_START_MAX_MONTH = 12;

@@ -3,12 +3,13 @@
  * 投稿詳細画面のコメント一覧で 1 件のコメントを表示するコンポーネント。
  * isDeleted は「削除されたコメント」プレースホルダーを表示する。
  * isBlockedUser のコメントはブロックしたユーザーのため非表示にする。
- * コメント追加（投稿）は 2c 待ちのため表示のみ（入力欄なし）。
+ * 自分のコメントには「⋮」メニューから削除導線を提供する。
  * 他人のコメントには「⋮」ボタンから通報・ブロック・ミュートを提供する（ugc-safety.md §2.4）。
+ * 返信ボタンで親コンポーネントに返信モードを通知する。
  */
 
 import React, { useMemo, useState, useCallback } from 'react';
-import { View, Text, StyleSheet, Pressable } from 'react-native';
+import { View, Text, StyleSheet, Pressable, Alert, Platform, Modal } from 'react-native';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -20,11 +21,16 @@ import {
   colorTextPrimary,
   colorTextSecondary,
   colorTextTertiary,
+  colorError,
+  colorBackground,
   spacing2,
   spacing3,
   spacing4,
+  spacing6,
   radiusFull,
   radiusMd,
+  radius2xl,
+  shadowWashiLg,
   textBase,
   textSm,
   textMd,
@@ -43,22 +49,41 @@ import type { CommentItem as CommentItemData } from '@/lib/queries/comments';
 const AVATAR_SIZE = 36;
 const COMMENT_MENU_BUTTON_SIZE = 44;
 const COMMENT_MENU_ICON_SIZE = 18;
+const ACTION_BUTTON_HEIGHT = 36;
+const DELETE_SHEET_ITEM_HEIGHT = 56;
 
 // ---------------------------------------------------------------------------
 // Props
 // ---------------------------------------------------------------------------
 
+export type ReplyTarget = {
+  parentId: string;
+  nickname: string;
+};
+
 type CommentItemProps = {
   item: CommentItemData;
   /** 閲覧者のユーザー ID（未認証は undefined）。自分のコメント判定と通報導線の表示制御に使用する。 */
   currentUserId: string | undefined;
+  /** 「返信する」ボタンのコールバック（返信モードを親が管理する） */
+  onReply?: (target: ReplyTarget) => void;
+  /** 削除コールバック（自分のコメントのみ）*/
+  onDelete?: (commentId: string) => void;
+  /** 削除処理中のコメント ID（グレーアウト表示） */
+  deletingId?: string;
 };
 
 // ---------------------------------------------------------------------------
 // Component（React.memo で FlatList 内の不要な再レンダリングを防ぐ）
 // ---------------------------------------------------------------------------
 
-function CommentItemInner({ item, currentUserId }: CommentItemProps) {
+function CommentItemInner({
+  item,
+  currentUserId,
+  onReply,
+  onDelete,
+  deletingId,
+}: CommentItemProps) {
   const relativeTime = useMemo(
     () => formatRelativeTime(item.createdAt),
     [item.createdAt]
@@ -75,24 +100,58 @@ function CommentItemInner({ item, currentUserId }: CommentItemProps) {
   );
 
   const [menuVisible, setMenuVisible] = useState(false);
+  const [deleteSheetVisible, setDeleteSheetVisible] = useState(false);
 
   const isOwnComment = currentUserId !== undefined && currentUserId === item.user.id;
-  const canShowMenu = currentUserId !== undefined && !isOwnComment && !item.isDeleted;
+  const canShowOthersMenu = currentUserId !== undefined && !isOwnComment && !item.isDeleted;
+  const isDeleting = deletingId === item.id;
 
   const handlePressAvatar = useCallback(() => {
     router.push(routeUserDetail(item.user.id));
   }, [item.user.id]);
 
   const handleMenuOpen = useCallback(() => {
-    setMenuVisible(true);
-  }, []);
+    if (isOwnComment) {
+      setDeleteSheetVisible(true);
+    } else {
+      setMenuVisible(true);
+    }
+  }, [isOwnComment]);
+
+  const handlePressReply = useCallback(() => {
+    if (onReply !== undefined) {
+      onReply({ parentId: item.id, nickname: item.user.nickname });
+    }
+  }, [onReply, item.id, item.user.nickname]);
+
+  const handleConfirmDelete = useCallback(() => {
+    if (Platform.OS === 'ios') {
+      setDeleteSheetVisible(false);
+      Alert.alert('コメントを削除しますか？', 'この操作は取り消せません。', [
+        { text: 'キャンセル', style: 'cancel' },
+        {
+          text: '削除する',
+          style: 'destructive',
+          onPress: () => {
+            if (onDelete !== undefined) onDelete(item.id);
+          },
+        },
+      ]);
+    } else {
+      setDeleteSheetVisible(false);
+      if (onDelete !== undefined) onDelete(item.id);
+    }
+  }, [onDelete, item.id]);
 
   if (item.isBlockedUser) {
     return null;
   }
 
   return (
-    <View testID="comment-item">
+    <View
+      testID="comment-item"
+      style={isDeleting ? styles.containerDeleting : undefined}
+    >
       <View style={styles.container}>
         {/* アバター */}
         <Pressable
@@ -139,7 +198,8 @@ function CommentItemInner({ item, currentUserId }: CommentItemProps) {
               {relativeTime}
             </Text>
 
-            {canShowMenu && (
+            {/* 自分のコメント または 他人のコメント（認証済み）にメニューを表示 */}
+            {(isOwnComment || canShowOthersMenu) && !item.isDeleted && (
               <Pressable
                 style={({ pressed }) => [
                   styles.menuButton,
@@ -197,9 +257,25 @@ function CommentItemInner({ item, currentUserId }: CommentItemProps) {
               })}
             </Text>
           )}
+
+          {/* アクション行（返信ボタン）*/}
+          {!item.isDeleted && onReply !== undefined && (
+            <View style={styles.actionsRow}>
+              <Pressable
+                style={styles.actionButton}
+                onPress={handlePressReply}
+                accessibilityRole="button"
+                accessibilityLabel={`${item.user.nickname}のコメントに返信する`}
+                hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
+              >
+                <Text style={styles.actionButtonText}>返信する</Text>
+              </Pressable>
+            </View>
+          )}
         </View>
       </View>
 
+      {/* 他人のコメントの通報・ブロック・ミュートメニュー */}
       {menuVisible && (
         <UserActionMenu
           targetUserId={item.user.id}
@@ -211,6 +287,55 @@ function CommentItemInner({ item, currentUserId }: CommentItemProps) {
           isMuted={item.user.isMuted}
           onClose={() => setMenuVisible(false)}
         />
+      )}
+
+      {/* 自分のコメントの削除メニュー（Android: カスタムシート） */}
+      {deleteSheetVisible && Platform.OS !== 'ios' && (
+        <Modal
+          visible={deleteSheetVisible}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setDeleteSheetVisible(false)}
+          accessibilityViewIsModal
+        >
+          <Pressable
+            style={styles.deleteSheetBackdrop}
+            onPress={() => setDeleteSheetVisible(false)}
+          />
+          <View style={styles.deleteSheet}>
+            <View style={styles.deleteSheetHandle} />
+            <Pressable
+              style={({ pressed }) => [
+                styles.deleteSheetItem,
+                pressed && styles.deleteSheetItemPressed,
+              ]}
+              onPress={handleConfirmDelete}
+              accessibilityRole="button"
+              accessibilityLabel="コメントを削除"
+            >
+              <Ionicons
+                name="trash-outline"
+                size={20}
+                color={colorError}
+                accessibilityElementsHidden
+                importantForAccessibility="no"
+              />
+              <Text style={styles.deleteSheetItemText}>削除</Text>
+            </Pressable>
+            <View style={styles.deleteSheetDivider} />
+            <Pressable
+              style={({ pressed }) => [
+                styles.deleteSheetItem,
+                pressed && styles.deleteSheetItemPressed,
+              ]}
+              onPress={() => setDeleteSheetVisible(false)}
+              accessibilityRole="button"
+              accessibilityLabel="キャンセル"
+            >
+              <Text style={styles.deleteSheetCancelText}>キャンセル</Text>
+            </Pressable>
+          </View>
+        </Modal>
       )}
     </View>
   );
@@ -309,5 +434,69 @@ const styles = StyleSheet.create({
     ...textSm,
     color: colorTextTertiary,
     fontStyle: 'italic',
+  },
+  containerDeleting: {
+    opacity: 0.4,
+  },
+  actionsRow: {
+    flexDirection: 'row',
+    gap: spacing3,
+    marginTop: spacing2,
+  },
+  actionButton: {
+    height: ACTION_BUTTON_HEIGHT,
+    justifyContent: 'center',
+    paddingRight: spacing3,
+  },
+  actionButtonText: {
+    ...textSm,
+    color: colorTextSecondary,
+  },
+  deleteSheetBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+  },
+  deleteSheet: {
+    backgroundColor: colorBackground,
+    borderTopLeftRadius: radius2xl,
+    borderTopRightRadius: radius2xl,
+    paddingBottom: spacing6,
+    ...shadowWashiLg,
+    alignItems: 'center',
+  },
+  deleteSheetHandle: {
+    width: 36,
+    height: 4,
+    borderRadius: radiusFull,
+    backgroundColor: colorBorderLight,
+    marginTop: spacing2,
+    marginBottom: spacing2,
+  },
+  deleteSheetItem: {
+    width: '100%',
+    height: DELETE_SHEET_ITEM_HEIGHT,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing4,
+    gap: spacing4,
+  },
+  deleteSheetItemPressed: {
+    backgroundColor: colorSurfaceMuted,
+  },
+  deleteSheetItemText: {
+    ...textMd,
+    color: colorError,
+    flex: 1,
+  },
+  deleteSheetDivider: {
+    height: 1,
+    backgroundColor: colorBorderLight,
+    width: '90%',
+  },
+  deleteSheetCancelText: {
+    ...textMd,
+    color: colorTextSecondary,
+    flex: 1,
+    textAlign: 'center',
   },
 });

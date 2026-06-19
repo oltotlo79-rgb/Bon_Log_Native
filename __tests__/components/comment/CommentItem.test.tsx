@@ -114,10 +114,10 @@ describe('CommentItem', () => {
       expect(screen.getByRole('button', { name: 'コメントのオプションを開く' })).toBeTruthy();
     });
 
-    it('自分のコメントのときは「⋮」ボタンが表示されない', () => {
+    it('自分のコメントのときも「⋮」ボタンが表示される（削除シートを開くため）', () => {
       const item = makeCommentItem({ userId: 'current-user', user: { id: 'current-user', nickname: '自分', avatarUrl: null, isBlocked: false, isMuted: false } });
       render(<CommentItem item={item} currentUserId="current-user" />);
-      expect(screen.queryByRole('button', { name: 'コメントのオプションを開く' })).toBeNull();
+      expect(screen.getByRole('button', { name: 'コメントのオプションを開く' })).toBeTruthy();
     });
 
     it('未認証（currentUserId=undefined）のときは「⋮」ボタンが表示されない', () => {
