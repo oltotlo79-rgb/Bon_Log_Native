@@ -12,6 +12,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { AuthTextField } from '@/components/auth/AuthTextField';
 import { AuthPrimaryButton } from '@/components/auth/AuthPrimaryButton';
 import { FormErrorMessage } from '@/components/auth/FormErrorMessage';
+import { AuthBrandHeader } from '@/components/auth/AuthBrandHeader';
+import { AuthScreenBackground } from '@/components/auth/AuthScreenBackground';
 import { validateEmail } from '@/lib/utils/validate-auth';
 import { usePasswordResetRequestMutation } from '@/lib/queries/auth';
 import { isApiError } from '@/lib/api/errors';
@@ -100,74 +102,20 @@ export default function PasswordResetScreen() {
   if (isSuccess) {
     return (
       <SafeAreaView style={styles.safeArea}>
-        <View style={styles.scrollContent}>
-          <Text style={styles.title} accessibilityRole="header">
-            パスワードの再設定
-          </Text>
+        <AuthScreenBackground style={styles.background}>
+          <View style={styles.scrollContent}>
+            <AuthBrandHeader />
 
-          <View style={styles.successBanner}>
-            <Text style={styles.successTitle}>{MSG_PASSWORD_RESET_SENT_TITLE}</Text>
-            <Text style={styles.successBody}>{MSG_PASSWORD_RESET_SENT_BODY}</Text>
-          </View>
+            <Text style={styles.title} accessibilityRole="header">
+              パスワードの再設定
+            </Text>
 
-          <Text style={styles.hint}>{MSG_PASSWORD_RESET_SENT_HINT}</Text>
+            <View style={styles.successBanner}>
+              <Text style={styles.successTitle}>{MSG_PASSWORD_RESET_SENT_TITLE}</Text>
+              <Text style={styles.successBody}>{MSG_PASSWORD_RESET_SENT_BODY}</Text>
+            </View>
 
-          <Pressable
-            onPress={() => router.replace(routes.login)}
-            style={({ pressed }) => [styles.link, pressed && styles.linkPressed]}
-            accessibilityRole="link"
-            accessibilityLabel="ログインページへ戻る"
-          >
-            <Text style={styles.linkText}>← ログインページへ戻る</Text>
-          </Pressable>
-        </View>
-      </SafeAreaView>
-    );
-  }
-
-  return (
-    <SafeAreaView style={styles.safeArea}>
-      <KeyboardAvoidingView
-        style={styles.keyboardAvoid}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      >
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="handled"
-        >
-          <Text style={styles.title} accessibilityRole="header">
-            パスワードの再設定
-          </Text>
-
-          <Text style={styles.description}>
-            登録したメールアドレスを入力してください。パスワード再設定用のリンクをお送りします。
-          </Text>
-
-          <View style={styles.form}>
-            <AuthTextField
-              label="メールアドレス"
-              value={email}
-              onChangeText={setEmail}
-              onBlur={handleEmailBlur}
-              error={emailError}
-              disabled={isPending}
-              placeholder="mail@example.com"
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoCorrect={false}
-              autoComplete="email"
-              textContentType="emailAddress"
-              returnKeyType="done"
-            />
-
-            <FormErrorMessage message={formError} />
-
-            <AuthPrimaryButton
-              label="再設定メールを送信する"
-              onPress={handleSubmit}
-              disabled={!allRequiredFilled}
-              isLoading={isPending}
-            />
+            <Text style={styles.hint}>{MSG_PASSWORD_RESET_SENT_HINT}</Text>
 
             <Pressable
               onPress={() => router.replace(routes.login)}
@@ -178,8 +126,70 @@ export default function PasswordResetScreen() {
               <Text style={styles.linkText}>← ログインページへ戻る</Text>
             </Pressable>
           </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
+        </AuthScreenBackground>
+      </SafeAreaView>
+    );
+  }
+
+  return (
+    <SafeAreaView style={styles.safeArea}>
+      <AuthScreenBackground style={styles.background}>
+        <KeyboardAvoidingView
+          style={styles.keyboardAvoid}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
+          <ScrollView
+            contentContainerStyle={styles.scrollContent}
+            keyboardShouldPersistTaps="handled"
+          >
+            <AuthBrandHeader />
+
+            <Text style={styles.title} accessibilityRole="header">
+              パスワードの再設定
+            </Text>
+
+            <Text style={styles.description}>
+              登録したメールアドレスを入力してください。パスワード再設定用のリンクをお送りします。
+            </Text>
+
+            <View style={styles.form}>
+              <AuthTextField
+                label="メールアドレス"
+                value={email}
+                onChangeText={setEmail}
+                onBlur={handleEmailBlur}
+                error={emailError}
+                disabled={isPending}
+                placeholder="mail@example.com"
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoCorrect={false}
+                autoComplete="email"
+                textContentType="emailAddress"
+                returnKeyType="done"
+              />
+
+              <FormErrorMessage message={formError} />
+
+              <AuthPrimaryButton
+                label="再設定メールを送信する"
+                onPress={handleSubmit}
+                disabled={!allRequiredFilled}
+                isLoading={isPending}
+              />
+
+              <Pressable
+                onPress={() => router.replace(routes.login)}
+                style={({ pressed }) => [styles.link, pressed && styles.linkPressed]}
+                accessibilityRole="link"
+                accessibilityLabel="ログインページへ戻る"
+              >
+                <Text style={styles.linkText}>← ログインページへ戻る</Text>
+              </Pressable>
+            </View>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </AuthScreenBackground>
     </SafeAreaView>
   );
 }
@@ -188,6 +198,9 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: colorBackground,
+  },
+  background: {
+    flex: 1,
   },
   keyboardAvoid: {
     flex: 1,

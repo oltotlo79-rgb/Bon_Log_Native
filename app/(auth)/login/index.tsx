@@ -17,6 +17,8 @@ import { AuthPrimaryButton } from '@/components/auth/AuthPrimaryButton';
 import { AuthDivider } from '@/components/auth/AuthDivider';
 import { GoogleSignInButton } from '@/components/auth/GoogleSignInButton';
 import { FormErrorMessage } from '@/components/auth/FormErrorMessage';
+import { AuthBrandHeader } from '@/components/auth/AuthBrandHeader';
+import { AuthScreenBackground } from '@/components/auth/AuthScreenBackground';
 import { validateEmail } from '@/lib/utils/validate-auth';
 import { useLoginMutation } from '@/lib/queries/auth';
 import { useAuth } from '@/lib/auth/use-auth';
@@ -42,8 +44,6 @@ import {
   spacing8,
   textBase,
   textXl,
-  text2xl,
-  letterSpacingWidest,
 } from '@/lib/constants/design-tokens';
 import { routes } from '@/lib/constants/routes';
 import {
@@ -166,126 +166,121 @@ export default function LoginScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <KeyboardAvoidingView
-        style={styles.keyboardAvoid}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      >
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="handled"
+      <AuthScreenBackground style={styles.background}>
+        <KeyboardAvoidingView
+          style={styles.keyboardAvoid}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         >
-          <View
-            style={styles.header}
-            accessibilityRole="header"
-            accessibilityLabel="BON-LOG 盆栽SNS"
+          <ScrollView
+            contentContainerStyle={styles.scrollContent}
+            keyboardShouldPersistTaps="handled"
           >
-            <Text style={styles.logo}>BON-LOG</Text>
-            <Text style={styles.tagline}>盆栽SNS</Text>
-          </View>
+            <AuthBrandHeader />
 
-          <Text style={styles.title} accessibilityRole="header">
-            ログイン
-          </Text>
+            <Text style={styles.title} accessibilityRole="header">
+              ログイン
+            </Text>
 
-          {sessionWarning !== null && (
-            <View
-              style={[
-                styles.warningBanner,
-                lastAuthFailureReason?.kind === 'reuseDetected' &&
-                  styles.warningBannerAlert,
-              ]}
-              accessibilityRole="alert"
-              accessibilityLiveRegion="assertive"
-            >
-              <Text style={styles.warningBannerText}>{sessionWarning}</Text>
-            </View>
-          )}
-
-          <View style={styles.form}>
-            <AuthTextField
-              label="メールアドレス"
-              value={email}
-              onChangeText={setEmail}
-              onBlur={handleEmailBlur}
-              error={emailError}
-              disabled={isPending}
-              placeholder="mail@example.com"
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoCorrect={false}
-              autoComplete="email"
-              textContentType="emailAddress"
-              returnKeyType="next"
-              onSubmitEditing={() => passwordRef.current?.focus()}
-              accessibilityHint="メールアドレスを入力してください"
-            />
-
-            <PasswordField
-              ref={passwordRef}
-              label="パスワード"
-              value={password}
-              onChangeText={setPassword}
-              onBlur={handlePasswordBlur}
-              error={passwordError}
-              disabled={isPending}
-              placeholder="8文字以上（英字・数字を含む）"
-              autoComplete="current-password"
-              textContentType="password"
-              returnKeyType="done"
-              accessibilityHint="8文字以上の英字と数字を含むパスワード"
-            />
-
-            <FormErrorMessage message={formError} />
-
-            {isEmailVerifiedError && (
-              <Pressable
-                style={({ pressed }) => [
-                  styles.resendButton,
-                  pressed && styles.resendButtonPressed,
+            {sessionWarning !== null && (
+              <View
+                style={[
+                  styles.warningBanner,
+                  lastAuthFailureReason?.kind === 'reuseDetected' &&
+                    styles.warningBannerAlert,
                 ]}
-                onPress={handleResendVerification}
-                disabled={isPending}
-                accessibilityRole="button"
-                accessibilityLabel="確認メールを再送する"
+                accessibilityRole="alert"
+                accessibilityLiveRegion="assertive"
               >
-                <Text style={styles.resendButtonText}>
-                  {isPending ? '送信中...' : '確認メールを再送する'}
-                </Text>
-              </Pressable>
+                <Text style={styles.warningBannerText}>{sessionWarning}</Text>
+              </View>
             )}
 
-            <AuthPrimaryButton
-              label="ログイン"
-              onPress={handleSubmit}
-              disabled={!allRequiredFilled}
-              isLoading={isPending}
-            />
+            <View style={styles.form}>
+              <AuthTextField
+                label="メールアドレス"
+                value={email}
+                onChangeText={setEmail}
+                onBlur={handleEmailBlur}
+                error={emailError}
+                disabled={isPending}
+                placeholder="mail@example.com"
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoCorrect={false}
+                autoComplete="email"
+                textContentType="emailAddress"
+                returnKeyType="next"
+                onSubmitEditing={() => passwordRef.current?.focus()}
+                accessibilityHint="メールアドレスを入力してください"
+              />
 
-            <AuthDivider />
+              <PasswordField
+                ref={passwordRef}
+                label="パスワード"
+                value={password}
+                onChangeText={setPassword}
+                onBlur={handlePasswordBlur}
+                error={passwordError}
+                disabled={isPending}
+                placeholder="8文字以上（英字・数字を含む）"
+                autoComplete="current-password"
+                textContentType="password"
+                returnKeyType="done"
+                accessibilityHint="8文字以上の英字と数字を含むパスワード"
+              />
 
-            <GoogleSignInButton
-              label="Google でログイン"
-              disabled={!isGoogleAvailable}
-              loading={isGoogleLoading}
-              onPress={googleSignIn}
-            />
+              <FormErrorMessage message={formError} />
 
-            <FormErrorMessage message={googleError?.message ?? null} />
-          </View>
+              {isEmailVerifiedError && (
+                <Pressable
+                  style={({ pressed }) => [
+                    styles.resendButton,
+                    pressed && styles.resendButtonPressed,
+                  ]}
+                  onPress={handleResendVerification}
+                  disabled={isPending}
+                  accessibilityRole="button"
+                  accessibilityLabel="確認メールを再送する"
+                >
+                  <Text style={styles.resendButtonText}>
+                    {isPending ? '送信中...' : '確認メールを再送する'}
+                  </Text>
+                </Pressable>
+              )}
 
-          <View style={styles.footer}>
-            <Link href={routes.passwordReset} accessibilityRole="link">
-              <Text style={styles.link}>パスワードをお忘れですか？</Text>
-            </Link>
-            <View style={styles.footerRow}>
-              <Text style={styles.footerText}>アカウントをお持ちでない方は</Text>
-              <Link href={routes.register} accessibilityRole="link">
-                <Text style={styles.footerLink}>新規登録</Text>
-              </Link>
+              <AuthPrimaryButton
+                label="ログイン"
+                onPress={handleSubmit}
+                disabled={!allRequiredFilled}
+                isLoading={isPending}
+              />
+
+              <AuthDivider />
+
+              <GoogleSignInButton
+                label="Google でログイン"
+                disabled={!isGoogleAvailable}
+                loading={isGoogleLoading}
+                onPress={googleSignIn}
+              />
+
+              <FormErrorMessage message={googleError?.message ?? null} />
             </View>
-          </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
+
+            <View style={styles.footer}>
+              <Link href={routes.passwordReset} accessibilityRole="link">
+                <Text style={styles.link}>パスワードをお忘れですか？</Text>
+              </Link>
+              <View style={styles.footerRow}>
+                <Text style={styles.footerText}>アカウントをお持ちでない方は</Text>
+                <Link href={routes.register} accessibilityRole="link">
+                  <Text style={styles.footerLink}>新規登録</Text>
+                </Link>
+              </View>
+            </View>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </AuthScreenBackground>
     </SafeAreaView>
   );
 }
@@ -295,6 +290,9 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colorBackground,
   },
+  background: {
+    flex: 1,
+  },
   keyboardAvoid: {
     flex: 1,
   },
@@ -302,20 +300,6 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     paddingHorizontal: spacing4,
     paddingVertical: spacing8,
-  },
-  header: {
-    alignItems: 'center',
-    marginBottom: spacing8,
-  },
-  logo: {
-    ...text2xl,
-    color: colorTextPrimary,
-    letterSpacing: letterSpacingWidest,
-  },
-  tagline: {
-    ...textBase,
-    color: colorTextSecondary,
-    marginTop: spacing2,
   },
   title: {
     ...textXl,

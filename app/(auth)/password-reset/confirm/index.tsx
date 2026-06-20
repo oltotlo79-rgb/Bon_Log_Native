@@ -14,6 +14,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { PasswordField } from '@/components/auth/PasswordField';
 import { AuthPrimaryButton } from '@/components/auth/AuthPrimaryButton';
 import { FormErrorMessage } from '@/components/auth/FormErrorMessage';
+import { AuthBrandHeader } from '@/components/auth/AuthBrandHeader';
+import { AuthScreenBackground } from '@/components/auth/AuthScreenBackground';
 import { validatePassword } from '@/lib/utils/validate-auth';
 import { usePasswordResetConfirmMutation } from '@/lib/queries/auth';
 import { isApiError } from '@/lib/api/errors';
@@ -155,109 +157,23 @@ export default function PasswordResetConfirmScreen() {
   if (pageState === 'token-invalid') {
     return (
       <SafeAreaView style={styles.safeArea}>
-        <View style={styles.scrollContent}>
-          <View style={styles.errorBanner}>
-            <Text style={styles.errorBannerTitle}>{MSG_RESET_LINK_INVALID_TITLE}</Text>
-            <Text style={styles.errorBannerBody}>{MSG_RESET_LINK_INVALID_BODY}</Text>
-          </View>
+        <AuthScreenBackground style={styles.background}>
+          <View style={styles.scrollContent}>
+            <AuthBrandHeader />
 
-          <Pressable
-            onPress={() => router.replace(routes.passwordReset)}
-            style={({ pressed }) => [styles.link, pressed && styles.linkPressed]}
-            accessibilityRole="link"
-            accessibilityLabel="パスワードリセットを再度リクエスト"
-          >
-            <Text style={styles.linkText}>パスワードリセットを再度リクエスト</Text>
-          </Pressable>
+            <View style={styles.errorBanner}>
+              <Text style={styles.errorBannerTitle}>{MSG_RESET_LINK_INVALID_TITLE}</Text>
+              <Text style={styles.errorBannerBody}>{MSG_RESET_LINK_INVALID_BODY}</Text>
+            </View>
 
-          <Pressable
-            onPress={() => router.replace(routes.login)}
-            style={({ pressed }) => [styles.link, pressed && styles.linkPressed]}
-            accessibilityRole="link"
-            accessibilityLabel="ログインページへ戻る"
-          >
-            <Text style={styles.linkText}>ログインページへ戻る</Text>
-          </Pressable>
-        </View>
-      </SafeAreaView>
-    );
-  }
-
-  if (pageState === 'success') {
-    return (
-      <SafeAreaView style={styles.safeArea}>
-        <View style={styles.scrollContent}>
-          <View style={styles.successBanner}>
-            <Text style={styles.successTitle}>{MSG_PASSWORD_UPDATED_TITLE}</Text>
-            <Text style={styles.successBody}>{MSG_PASSWORD_UPDATED_BODY}</Text>
-          </View>
-
-          <Pressable
-            onPress={() => router.replace(routes.login)}
-            style={({ pressed }) => [styles.link, pressed && styles.linkPressed]}
-            accessibilityRole="link"
-            accessibilityLabel="今すぐログインする"
-          >
-            <Text style={styles.linkText}>今すぐログインする</Text>
-          </Pressable>
-        </View>
-      </SafeAreaView>
-    );
-  }
-
-  return (
-    <SafeAreaView style={styles.safeArea}>
-      <KeyboardAvoidingView
-        style={styles.keyboardAvoid}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      >
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="handled"
-        >
-          <Text style={styles.title} accessibilityRole="header">
-            新しいパスワードを設定
-          </Text>
-
-          <Text style={styles.description}>新しいパスワードを入力してください。</Text>
-
-          <View style={styles.form}>
-            <PasswordField
-              label="新しいパスワード"
-              value={password}
-              onChangeText={setPassword}
-              onBlur={handlePasswordBlur}
-              error={passwordError}
-              disabled={isPending}
-              placeholder="8文字以上（英字・数字を含む）"
-              autoComplete="new-password"
-              textContentType="newPassword"
-              returnKeyType="next"
-              onSubmitEditing={() => confirmRef.current?.focus()}
-            />
-
-            <PasswordField
-              ref={confirmRef}
-              label="新しいパスワード（確認）"
-              value={confirm}
-              onChangeText={setConfirm}
-              onBlur={handleConfirmBlur}
-              error={confirmError}
-              disabled={isPending}
-              placeholder="もう一度入力"
-              autoComplete="new-password"
-              textContentType="newPassword"
-              returnKeyType="done"
-            />
-
-            <FormErrorMessage message={formError} />
-
-            <AuthPrimaryButton
-              label="パスワードを変更する"
-              onPress={handleSubmit}
-              disabled={!allRequiredFilled}
-              isLoading={isPending}
-            />
+            <Pressable
+              onPress={() => router.replace(routes.passwordReset)}
+              style={({ pressed }) => [styles.link, pressed && styles.linkPressed]}
+              accessibilityRole="link"
+              accessibilityLabel="パスワードリセットを再度リクエスト"
+            >
+              <Text style={styles.linkText}>パスワードリセットを再度リクエスト</Text>
+            </Pressable>
 
             <Pressable
               onPress={() => router.replace(routes.login)}
@@ -268,8 +184,106 @@ export default function PasswordResetConfirmScreen() {
               <Text style={styles.linkText}>ログインページへ戻る</Text>
             </Pressable>
           </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
+        </AuthScreenBackground>
+      </SafeAreaView>
+    );
+  }
+
+  if (pageState === 'success') {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <AuthScreenBackground style={styles.background}>
+          <View style={styles.scrollContent}>
+            <AuthBrandHeader />
+
+            <View style={styles.successBanner}>
+              <Text style={styles.successTitle}>{MSG_PASSWORD_UPDATED_TITLE}</Text>
+              <Text style={styles.successBody}>{MSG_PASSWORD_UPDATED_BODY}</Text>
+            </View>
+
+            <Pressable
+              onPress={() => router.replace(routes.login)}
+              style={({ pressed }) => [styles.link, pressed && styles.linkPressed]}
+              accessibilityRole="link"
+              accessibilityLabel="今すぐログインする"
+            >
+              <Text style={styles.linkText}>今すぐログインする</Text>
+            </Pressable>
+          </View>
+        </AuthScreenBackground>
+      </SafeAreaView>
+    );
+  }
+
+  return (
+    <SafeAreaView style={styles.safeArea}>
+      <AuthScreenBackground style={styles.background}>
+        <KeyboardAvoidingView
+          style={styles.keyboardAvoid}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        >
+          <ScrollView
+            contentContainerStyle={styles.scrollContent}
+            keyboardShouldPersistTaps="handled"
+          >
+            <AuthBrandHeader />
+
+            <Text style={styles.title} accessibilityRole="header">
+              新しいパスワードを設定
+            </Text>
+
+            <Text style={styles.description}>新しいパスワードを入力してください。</Text>
+
+            <View style={styles.form}>
+              <PasswordField
+                label="新しいパスワード"
+                value={password}
+                onChangeText={setPassword}
+                onBlur={handlePasswordBlur}
+                error={passwordError}
+                disabled={isPending}
+                placeholder="8文字以上（英字・数字を含む）"
+                autoComplete="new-password"
+                textContentType="newPassword"
+                returnKeyType="next"
+                onSubmitEditing={() => confirmRef.current?.focus()}
+              />
+
+              <PasswordField
+                ref={confirmRef}
+                label="新しいパスワード（確認）"
+                value={confirm}
+                onChangeText={setConfirm}
+                onBlur={handleConfirmBlur}
+                error={confirmError}
+                disabled={isPending}
+                placeholder="もう一度入力"
+                autoComplete="new-password"
+                textContentType="newPassword"
+                returnKeyType="done"
+              />
+
+              <FormErrorMessage message={formError} />
+
+              <AuthPrimaryButton
+                label="パスワードを変更する"
+                onPress={handleSubmit}
+                disabled={!allRequiredFilled}
+                isLoading={isPending}
+              />
+
+              <Pressable
+                onPress={() => router.replace(routes.login)}
+                style={({ pressed }) => [styles.link, pressed && styles.linkPressed]}
+                accessibilityRole="link"
+                accessibilityLabel="ログインページへ戻る"
+              >
+                <Text style={styles.linkText}>ログインページへ戻る</Text>
+              </Pressable>
+            </View>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </AuthScreenBackground>
     </SafeAreaView>
   );
 }
@@ -278,6 +292,9 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: colorBackground,
+  },
+  background: {
+    flex: 1,
   },
   keyboardAvoid: {
     flex: 1,

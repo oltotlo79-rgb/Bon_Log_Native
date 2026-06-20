@@ -17,6 +17,8 @@ import { AuthDivider } from '@/components/auth/AuthDivider';
 import { GoogleSignInButton } from '@/components/auth/GoogleSignInButton';
 import { FormErrorMessage } from '@/components/auth/FormErrorMessage';
 import { AuthTermsAgreement } from '@/components/auth/AuthTermsAgreement';
+import { AuthBrandHeader } from '@/components/auth/AuthBrandHeader';
+import { AuthScreenBackground } from '@/components/auth/AuthScreenBackground';
 import { validateEmail, validatePassword, validateNickname } from '@/lib/utils/validate-auth';
 import { MAX_NICKNAME_LENGTH } from '@/lib/constants/limits/auth';
 import {
@@ -152,120 +154,124 @@ export default function RegisterScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <KeyboardAvoidingView
-        style={styles.keyboardAvoid}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      >
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="handled"
+      <AuthScreenBackground style={styles.background}>
+        <KeyboardAvoidingView
+          style={styles.keyboardAvoid}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         >
-          <Text style={styles.title} accessibilityRole="header">
-            新規登録
-          </Text>
+          <ScrollView
+            contentContainerStyle={styles.scrollContent}
+            keyboardShouldPersistTaps="handled"
+          >
+            <AuthBrandHeader />
 
-          <View style={styles.form}>
-            <AuthTextField
-              label="ニックネーム"
-              value={nickname}
-              onChangeText={setNickname}
-              onBlur={handleNicknameBlur}
-              error={nicknameError}
-              disabled={isPending}
-              placeholder="表示名（50文字以内）"
-              autoCapitalize="none"
-              autoCorrect={false}
-              autoComplete="username"
-              textContentType="username"
-              maxLength={MAX_NICKNAME_LENGTH}
-              returnKeyType="next"
-              onSubmitEditing={() => emailRef.current?.focus()}
-            />
+            <Text style={styles.title} accessibilityRole="header">
+              新規登録
+            </Text>
 
-            <AuthTextField
-              ref={emailRef}
-              label="メールアドレス"
-              value={email}
-              onChangeText={setEmail}
-              onBlur={handleEmailBlur}
-              error={emailError}
-              disabled={isPending}
-              placeholder="mail@example.com"
-              keyboardType="email-address"
-              autoCapitalize="none"
-              autoCorrect={false}
-              autoComplete="email"
-              textContentType="emailAddress"
-              returnKeyType="next"
-              onSubmitEditing={() => passwordRef.current?.focus()}
-            />
+            <View style={styles.form}>
+              <AuthTextField
+                label="ニックネーム"
+                value={nickname}
+                onChangeText={setNickname}
+                onBlur={handleNicknameBlur}
+                error={nicknameError}
+                disabled={isPending}
+                placeholder="表示名（50文字以内）"
+                autoCapitalize="none"
+                autoCorrect={false}
+                autoComplete="username"
+                textContentType="username"
+                maxLength={MAX_NICKNAME_LENGTH}
+                returnKeyType="next"
+                onSubmitEditing={() => emailRef.current?.focus()}
+              />
 
-            <PasswordField
-              ref={passwordRef}
-              label="パスワード"
-              value={password}
-              onChangeText={setPassword}
-              onBlur={handlePasswordBlur}
-              error={passwordError}
-              disabled={isPending}
-              placeholder="8文字以上（英字・数字を含む）"
-              autoComplete="new-password"
-              textContentType="newPassword"
-              returnKeyType="next"
-              onSubmitEditing={() => confirmRef.current?.focus()}
-            />
+              <AuthTextField
+                ref={emailRef}
+                label="メールアドレス"
+                value={email}
+                onChangeText={setEmail}
+                onBlur={handleEmailBlur}
+                error={emailError}
+                disabled={isPending}
+                placeholder="mail@example.com"
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoCorrect={false}
+                autoComplete="email"
+                textContentType="emailAddress"
+                returnKeyType="next"
+                onSubmitEditing={() => passwordRef.current?.focus()}
+              />
 
-            <PasswordField
-              ref={confirmRef}
-              label="パスワード（確認）"
-              value={confirm}
-              onChangeText={setConfirm}
-              onBlur={handleConfirmBlur}
-              error={confirmError}
-              disabled={isPending}
-              placeholder="もう一度入力"
-              autoComplete="new-password"
-              textContentType="newPassword"
-              returnKeyType="done"
-            />
+              <PasswordField
+                ref={passwordRef}
+                label="パスワード"
+                value={password}
+                onChangeText={setPassword}
+                onBlur={handlePasswordBlur}
+                error={passwordError}
+                disabled={isPending}
+                placeholder="8文字以上（英字・数字を含む）"
+                autoComplete="new-password"
+                textContentType="newPassword"
+                returnKeyType="next"
+                onSubmitEditing={() => confirmRef.current?.focus()}
+              />
 
-            <AuthTermsAgreement
-              checked={termsChecked}
-              onToggle={() => setTermsChecked((prev) => !prev)}
-              disabled={isPending}
-            />
+              <PasswordField
+                ref={confirmRef}
+                label="パスワード（確認）"
+                value={confirm}
+                onChangeText={setConfirm}
+                onBlur={handleConfirmBlur}
+                error={confirmError}
+                disabled={isPending}
+                placeholder="もう一度入力"
+                autoComplete="new-password"
+                textContentType="newPassword"
+                returnKeyType="done"
+              />
 
-            <FormErrorMessage message={formError} />
+              <AuthTermsAgreement
+                checked={termsChecked}
+                onToggle={() => setTermsChecked((prev) => !prev)}
+                disabled={isPending}
+              />
 
-            <AuthPrimaryButton
-              label="新規登録"
-              onPress={handleSubmit}
-              disabled={!allRequiredFilled}
-              isLoading={isPending}
-            />
+              <FormErrorMessage message={formError} />
 
-            <AuthDivider />
+              <AuthPrimaryButton
+                label="新規登録"
+                onPress={handleSubmit}
+                disabled={!allRequiredFilled}
+                isLoading={isPending}
+              />
 
-            <GoogleSignInButton
-              label="Google で登録"
-              disabled={!isGoogleAvailable}
-              loading={isGoogleLoading}
-              onPress={googleSignIn}
-            />
+              <AuthDivider />
 
-            <FormErrorMessage message={googleError?.message ?? null} />
-          </View>
+              <GoogleSignInButton
+                label="Google で登録"
+                disabled={!isGoogleAvailable}
+                loading={isGoogleLoading}
+                onPress={googleSignIn}
+              />
 
-          <View style={styles.footer}>
-            <View style={styles.footerRow}>
-              <Text style={styles.footerText}>既にアカウントをお持ちの方は</Text>
-              <Link href={routes.login} accessibilityRole="link">
-                <Text style={styles.footerLink}>ログイン</Text>
-              </Link>
+              <FormErrorMessage message={googleError?.message ?? null} />
             </View>
-          </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
+
+            <View style={styles.footer}>
+              <View style={styles.footerRow}>
+                <Text style={styles.footerText}>既にアカウントをお持ちの方は</Text>
+                <Link href={routes.login} accessibilityRole="link">
+                  <Text style={styles.footerLink}>ログイン</Text>
+                </Link>
+              </View>
+            </View>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </AuthScreenBackground>
     </SafeAreaView>
   );
 }
@@ -274,6 +280,9 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: colorBackground,
+  },
+  background: {
+    flex: 1,
   },
   keyboardAvoid: {
     flex: 1,

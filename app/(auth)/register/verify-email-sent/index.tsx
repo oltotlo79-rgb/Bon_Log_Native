@@ -4,6 +4,7 @@ import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { AuthPrimaryButton } from '@/components/auth/AuthPrimaryButton';
+import { AuthScreenBackground } from '@/components/auth/AuthScreenBackground';
 import {
   colorBackground,
   colorTextPrimary,
@@ -39,6 +40,7 @@ export default function VerifyEmailSentScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
+      <AuthScreenBackground style={styles.background}>
       <View style={styles.container}>
         <View style={styles.iconCircle}>
           <Ionicons
@@ -68,6 +70,7 @@ export default function VerifyEmailSentScreen() {
           accessibilityLabel="ログイン画面へ戻る"
         />
       </View>
+      </AuthScreenBackground>
     </SafeAreaView>
   );
 }
@@ -76,6 +79,9 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: colorBackground,
+  },
+  background: {
+    flex: 1,
   },
   container: {
     flex: 1,

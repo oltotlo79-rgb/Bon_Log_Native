@@ -17,6 +17,7 @@ import { TwoFactorCodeField } from '@/components/auth/TwoFactorCodeField';
 import type { TwoFactorCodeFieldMode } from '@/components/auth/TwoFactorCodeField';
 import { AuthPrimaryButton } from '@/components/auth/AuthPrimaryButton';
 import { FormErrorMessage } from '@/components/auth/FormErrorMessage';
+import { AuthScreenBackground } from '@/components/auth/AuthScreenBackground';
 import { useVerifyTwoFactorMutation } from '@/lib/queries/auth';
 import { isApiError } from '@/lib/api/errors';
 import {
@@ -135,105 +136,107 @@ export default function TwoFactorVerifyScreen() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <KeyboardAvoidingView
-        style={styles.keyboardAvoid}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      >
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          keyboardShouldPersistTaps="handled"
+      <AuthScreenBackground style={styles.background}>
+        <KeyboardAvoidingView
+          style={styles.keyboardAvoid}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         >
-          <View style={styles.iconCircle}>
-            <Ionicons
-              name="shield-checkmark-outline"
-              size={SHIELD_ICON_SIZE}
-              color={colorTextPrimary}
-              accessibilityRole="image"
-              accessibilityLabel="セキュリティ"
-            />
-          </View>
+          <ScrollView
+            contentContainerStyle={styles.scrollContent}
+            keyboardShouldPersistTaps="handled"
+          >
+            <View style={styles.iconCircle}>
+              <Ionicons
+                name="shield-checkmark-outline"
+                size={SHIELD_ICON_SIZE}
+                color={colorTextPrimary}
+                accessibilityRole="image"
+                accessibilityLabel="セキュリティ"
+              />
+            </View>
 
-          <Text style={styles.title} accessibilityRole="header">
-            2 段階認証
-          </Text>
+            <Text style={styles.title} accessibilityRole="header">
+              2 段階認証
+            </Text>
 
-          <Text style={styles.description}>
-            {mode === 'totp' ? totpDescription : backupDescription}
-          </Text>
+            <Text style={styles.description}>
+              {mode === 'totp' ? totpDescription : backupDescription}
+            </Text>
 
-          <View style={styles.form}>
-            <TwoFactorCodeField
-              ref={codeFieldRef}
-              mode={mode}
-              value={code}
-              onChangeText={setCode}
-              onSubmitEditing={handleSubmit}
-              hasError={formError !== null}
-              disabled={isFormDisabled}
-            />
+            <View style={styles.form}>
+              <TwoFactorCodeField
+                ref={codeFieldRef}
+                mode={mode}
+                value={code}
+                onChangeText={setCode}
+                onSubmitEditing={handleSubmit}
+                hasError={formError !== null}
+                disabled={isFormDisabled}
+              />
 
-            <FormErrorMessage message={formError} />
+              <FormErrorMessage message={formError} />
 
-            {errorKind === 'ticket-consumed' && (
+              {errorKind === 'ticket-consumed' && (
+                <Pressable
+                  style={({ pressed }) => [
+                    styles.returnButton,
+                    pressed && styles.returnButtonPressed,
+                  ]}
+                  onPress={() => router.replace(routes.login)}
+                  accessibilityRole="button"
+                  accessibilityLabel="ログイン画面へ戻る"
+                >
+                  <Text style={styles.returnButtonText}>ログイン画面へ戻る</Text>
+                </Pressable>
+              )}
+
+              <AuthPrimaryButton
+                label="確認する"
+                onPress={handleSubmit}
+                disabled={!canSubmit}
+                isLoading={isPending}
+              />
+
+              {errorKind !== 'ticket-consumed' && (
+                <Pressable
+                  style={({ pressed }) => [
+                    styles.switchLink,
+                    pressed && styles.switchLinkPressed,
+                  ]}
+                  onPress={() =>
+                    handleModeSwitch(mode === 'totp' ? 'backup' : 'totp')
+                  }
+                  disabled={isFormDisabled}
+                  accessibilityRole="button"
+                  accessibilityLabel={
+                    mode === 'totp'
+                      ? 'バックアップコードを使用する'
+                      : '認証アプリのコードを使用する'
+                  }
+                >
+                  <Text style={styles.switchLinkText}>
+                    {mode === 'totp'
+                      ? 'バックアップコードを使用する'
+                      : '認証アプリのコードを使用する'}
+                  </Text>
+                </Pressable>
+              )}
+
               <Pressable
                 style={({ pressed }) => [
-                  styles.returnButton,
-                  pressed && styles.returnButtonPressed,
+                  styles.backLink,
+                  pressed && styles.backLinkPressed,
                 ]}
                 onPress={() => router.replace(routes.login)}
                 accessibilityRole="button"
-                accessibilityLabel="ログイン画面へ戻る"
+                accessibilityLabel="ログイン画面に戻る"
               >
-                <Text style={styles.returnButtonText}>ログイン画面へ戻る</Text>
+                <Text style={styles.backLinkText}>ログイン画面に戻る</Text>
               </Pressable>
-            )}
-
-            <AuthPrimaryButton
-              label="確認する"
-              onPress={handleSubmit}
-              disabled={!canSubmit}
-              isLoading={isPending}
-            />
-
-            {errorKind !== 'ticket-consumed' && (
-              <Pressable
-                style={({ pressed }) => [
-                  styles.switchLink,
-                  pressed && styles.switchLinkPressed,
-                ]}
-                onPress={() =>
-                  handleModeSwitch(mode === 'totp' ? 'backup' : 'totp')
-                }
-                disabled={isFormDisabled}
-                accessibilityRole="button"
-                accessibilityLabel={
-                  mode === 'totp'
-                    ? 'バックアップコードを使用する'
-                    : '認証アプリのコードを使用する'
-                }
-              >
-                <Text style={styles.switchLinkText}>
-                  {mode === 'totp'
-                    ? 'バックアップコードを使用する'
-                    : '認証アプリのコードを使用する'}
-                </Text>
-              </Pressable>
-            )}
-
-            <Pressable
-              style={({ pressed }) => [
-                styles.backLink,
-                pressed && styles.backLinkPressed,
-              ]}
-              onPress={() => router.replace(routes.login)}
-              accessibilityRole="button"
-              accessibilityLabel="ログイン画面に戻る"
-            >
-              <Text style={styles.backLinkText}>ログイン画面に戻る</Text>
-            </Pressable>
-          </View>
-        </ScrollView>
-      </KeyboardAvoidingView>
+            </View>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </AuthScreenBackground>
     </SafeAreaView>
   );
 }
@@ -242,6 +245,9 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: colorBackground,
+  },
+  background: {
+    flex: 1,
   },
   keyboardAvoid: {
     flex: 1,
