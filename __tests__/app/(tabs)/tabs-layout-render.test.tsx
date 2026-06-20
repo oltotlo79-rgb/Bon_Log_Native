@@ -1,6 +1,7 @@
 /**
  * app/(tabs)/_layout.tsx のレンダリングテスト。
  * TabsLayout コンポーネント、UnreadBadge、NotificationTabIcon のレンダリングを検証する。
+ * 5タブ構成（ホーム/検索/通知/プロフィール/もっと見る）をすべて確認する。
  * ロジック単体テストは tabs-layout.test.tsx を参照。
  */
 
@@ -48,5 +49,46 @@ describe('TabsLayout', () => {
     mockUseUnreadCountQuery.mockReturnValue({ data: undefined });
     renderWithProviders(<TabsLayout />);
     expect(screen.getByTestId('tabs')).toBeTruthy();
+  });
+
+  describe('5タブ構成のレンダリング確認', () => {
+    it('feed/index タブスクリーンが存在する', () => {
+      renderWithProviders(<TabsLayout />);
+      expect(screen.getByTestId('tab-screen-feed/index')).toBeTruthy();
+    });
+
+    it('search/index タブスクリーンが存在する', () => {
+      renderWithProviders(<TabsLayout />);
+      expect(screen.getByTestId('tab-screen-search/index')).toBeTruthy();
+    });
+
+    it('notifications/index タブスクリーンが存在する', () => {
+      renderWithProviders(<TabsLayout />);
+      expect(screen.getByTestId('tab-screen-notifications/index')).toBeTruthy();
+    });
+
+    it('profile/index タブスクリーンが存在する', () => {
+      renderWithProviders(<TabsLayout />);
+      expect(screen.getByTestId('tab-screen-profile/index')).toBeTruthy();
+    });
+
+    it('more/index タブスクリーンが存在する（5タブ目）', () => {
+      renderWithProviders(<TabsLayout />);
+      expect(screen.getByTestId('tab-screen-more/index')).toBeTruthy();
+    });
+
+    it('5つすべてのタブスクリーンが同時にレンダリングされる', () => {
+      renderWithProviders(<TabsLayout />);
+      const tabScreenNames = [
+        'feed/index',
+        'search/index',
+        'notifications/index',
+        'profile/index',
+        'more/index',
+      ];
+      for (const name of tabScreenNames) {
+        expect(screen.getByTestId(`tab-screen-${name}`)).toBeTruthy();
+      }
+    });
   });
 });

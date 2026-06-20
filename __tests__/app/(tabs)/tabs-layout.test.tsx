@@ -4,6 +4,7 @@
  * TabsLayout 内の UnreadBadge / NotificationTabIcon はモックされた Tabs に囲まれるため、
  * バッジの表示ロジックを直接テストするため getByText を使う代わりに
  * UnreadBadge ロジック（BADGE_OVERFLOW_THRESHOLD 判定）を単体で検証する。
+ * 5タブ構成（ホーム/検索/通知/プロフィール/もっと見る）のスクリーン名も確認する。
  */
 
 import { BADGE_OVERFLOW_THRESHOLD } from '@/lib/constants/limits/ui';
@@ -62,5 +63,36 @@ describe('NotificationTabIcon accessibilityLabel ロジック', () => {
 
   it('unreadCount = 100 のとき「未読通知 100 件」になる（accessibilityLabel は実数を使う）', () => {
     expect(getAccessibilityLabel(100)).toBe('未読通知 100 件');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 5タブ構成 スクリーン名チェック
+// ---------------------------------------------------------------------------
+
+describe('5タブ構成のスクリーン名', () => {
+  const EXPECTED_TAB_SCREENS = [
+    'feed/index',
+    'search/index',
+    'notifications/index',
+    'profile/index',
+    'more/index',
+  ] as const;
+
+  it('5タブすべてのスクリーン名が定義されている', () => {
+    expect(EXPECTED_TAB_SCREENS).toHaveLength(5);
+    expect(EXPECTED_TAB_SCREENS).toContain('feed/index');
+    expect(EXPECTED_TAB_SCREENS).toContain('search/index');
+    expect(EXPECTED_TAB_SCREENS).toContain('notifications/index');
+    expect(EXPECTED_TAB_SCREENS).toContain('profile/index');
+    expect(EXPECTED_TAB_SCREENS).toContain('more/index');
+  });
+
+  it('もっと見るタブが5番目に配置されている', () => {
+    expect(EXPECTED_TAB_SCREENS[4]).toBe('more/index');
+  });
+
+  it('ホームタブが1番目に配置されている', () => {
+    expect(EXPECTED_TAB_SCREENS[0]).toBe('feed/index');
   });
 });

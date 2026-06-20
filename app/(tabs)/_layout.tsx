@@ -147,6 +147,19 @@ export default function TabsLayout() {
           tabBarAccessibilityLabel: 'プロフィール',
         }}
       />
+      <Tabs.Screen
+        name="more/index"
+        options={{
+          title: 'もっと見る',
+          tabBarLabel: ({ focused }) => (
+            <TabLabel label="もっと見る" focused={focused} />
+          ),
+          tabBarIcon: ({ color, focused }) => (
+            <TabBarIcon name="more" color={color} focused={focused} size={20} />
+          ),
+          tabBarAccessibilityLabel: 'もっと見る',
+        }}
+      />
     </Tabs>
   );
 }

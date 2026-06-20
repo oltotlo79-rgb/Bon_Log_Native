@@ -112,17 +112,15 @@ export async function signInWithPassword(
   email: string,
   password: string
 ): Promise<SignInResult> {
-  const response = await apiClient.POST('/api/v1/auth/login', {
+  const { data, error } = await apiClient.POST('/api/v1/auth/login', {
     body: { email, password },
   });
 
-  if (response.error !== undefined) {
-    throw response.error;
+  if (error !== undefined || data === undefined) {
+    throw error ?? new Error('Unexpected error during sign-in');
   }
 
   // openapi-fetch はステータスコードで型を絞れないため、data の形状で判別する
-  const data = response.data;
-
   if ('requires2FA' in data && data.requires2FA === true) {
     pending2FATicket = data.ticket;
     return { requires2FA: true };

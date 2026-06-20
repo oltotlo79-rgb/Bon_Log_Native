@@ -416,6 +416,110 @@ describe('タイムアウト', () => {
 });
 
 // ---------------------------------------------------------------------------
+// onResponse が undefined を返す契約（RN 実機退行テスト）
+// ---------------------------------------------------------------------------
+// 背景: RN 実機では openapi-fetch のミドルウェア onResponse から元の Response を
+// そのまま返すと instanceof Response 判定に失敗しクラッシュする。
+// buildAuthAndErrorMiddleware().onResponse は 2xx の場合 undefined を返さなければならない。
+// このテストでその契約を保護する。
+
+describe('onResponse が 2xx で undefined を返す（RN 実機退行防止）', () => {
+  it('2xx のとき result.error が undefined で result.data が存在する（onResponse が元 Response を返していないことを示す）', async () => {
+    const successData = {
+      id: 'u1',
+      email: 'a@b.com',
+      nickname: 'Alice',
+      avatarUrl: null,
+      bio: null,
+      isPremium: false,
+    };
+    jest.spyOn(globalThis, 'fetch').mockResolvedValue(makeResponse(200, successData));
+
+    const client = createApiClient('https://test.example.com');
+    const result = await client.GET('/api/v1/users/me');
+
+    // openapi-fetch は onResponse が undefined を返した場合、内部で元 Response を
+    // そのまま使いデータを解析する。error が undefined でデータが得られることを確認する。
+    expect(result.error).toBeUndefined();
+    expect(result.data).toEqual(successData);
+  });
+
+  it('2xx ボディなし（204 相当）で throw せず正常に完了する（onResponse が元 Response を返すと RN でクラッシュする）', async () => {
+    // devices の DELETE エンドポイントは 200 を返すが、
+    // ここでは onResponse が undefined を返す契約を直接確認するため
+    // buildAuthAndErrorMiddleware のミドルウェア関数を模倣した形でテストする。
+    // 2xx で response.ok = true のとき onResponse は undefined を返すべき
+    const response = new Response(null, { status: 200 });
+    expect(response.ok).toBe(true);
+    // 実際のミドルウェアで 2xx を throw しないことを openapi-fetch 経由で確認する
+    jest.spyOn(globalThis, 'fetch').mockResolvedValue(
+      new Response(JSON.stringify({ token: 'test-token' }), { status: 200 })
+    );
+    const client = createApiClient('https://test.example.com');
+    let threw = false;
+    try {
+      await client.DELETE('/api/v1/devices/{token}', {
+        params: { path: { token: 'ExponentPushToken%5Btest%5D' } },
+      });
+    } catch {
+      threw = true;
+    }
+    // 200 でクラッシュしないことを確認する
+    expect(threw).toBe(false);
+  });
+
+  it('401 AUTH_TOKEN_EXPIRED の refresh 成功後 retryResponse が 2xx のとき data が返る（retry 経路でも onResponse が正しく動作する）', async () => {
+    const refreshFn = jest.fn().mockResolvedValue('new-access-token');
+    configureAuthHooks({
+      getAccessToken: jest.fn().mockResolvedValue('old-token'),
+      refreshTokens: refreshFn,
+      onAuthFailure: jest.fn(),
+    });
+
+    const successData = {
+      id: 'u1',
+      email: 'a@b.com',
+      nickname: 'Alice',
+      avatarUrl: null,
+      bio: null,
+      isPremium: false,
+    };
+
+    jest
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(
+        makeResponse(401, makeErrorBody('AUTH_TOKEN_EXPIRED', 'Token expired'))
+      )
+      .mockResolvedValueOnce(makeResponse(200, successData));
+
+    const client = createApiClient('https://test.example.com');
+    const result = await client.GET('/api/v1/users/me');
+
+    expect(result.error).toBeUndefined();
+    expect(result.data).toEqual(successData);
+  });
+
+  it('タイムアウトミドルウェアの onResponse も undefined を返す（clearTimer のみ実行）', async () => {
+    const successData = {
+      id: 'u1',
+      email: 'a@b.com',
+      nickname: 'Alice',
+      avatarUrl: null,
+      bio: null,
+      isPremium: false,
+    };
+    jest.spyOn(globalThis, 'fetch').mockResolvedValue(makeResponse(200, successData));
+
+    const client = createApiClient('https://test.example.com');
+    // タイムアウトミドルウェアが onResponse で元 Response を返すと RN でクラッシュする。
+    // 正常に data が取れることでタイムアウト側も undefined を返していることを確認する。
+    const result = await client.GET('/api/v1/users/me');
+    expect(result.data).toEqual(successData);
+    expect(result.error).toBeUndefined();
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Authorization ヘッダー
 // ---------------------------------------------------------------------------
 

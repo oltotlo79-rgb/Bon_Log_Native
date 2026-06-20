@@ -117,15 +117,20 @@ function buildAuthAndErrorMiddleware(): Middleware {
   return {
     async onRequest({ request }) {
       const token = await authHooks.getAccessToken();
-      if (token !== null) {
-        request.headers.set('Authorization', `Bearer ${token}`);
+      if (token === null) {
+        // トークンが無い場合はヘッダを変更しないため undefined を返す
+        // （openapi-fetch の契約: 変更時のみ Request/Response を返す）
+        return;
       }
+      request.headers.set('Authorization', `Bearer ${token}`);
       return request;
     },
 
     async onResponse({ response, request }) {
       if (response.ok) {
-        return response;
+        // 変更しない場合は undefined を返す（元の response を返すと
+        // RN 環境で instanceof Response 判定に失敗し openapi-fetch がエラーを投げる）
+        return;
       }
 
       if (response.status === 401) {
@@ -196,9 +201,10 @@ function buildTimeoutMiddleware(): Middleware {
       return new Request(request, { signal: controller.signal });
     },
 
-    async onResponse({ response, id }) {
+    async onResponse({ id }) {
       clearTimer(id);
-      return response;
+      // response を変更しないため undefined を返す（元の response を返すと
+      // RN 環境で instanceof Response 判定に失敗し openapi-fetch がエラーを投げる）
     },
 
     async onError({ id }) {

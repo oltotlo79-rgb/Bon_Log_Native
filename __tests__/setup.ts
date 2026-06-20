@@ -254,6 +254,15 @@ jest.mock('expo-constants', () => ({
   },
 }));
 
+// expo-web-browser のモック
+// openBrowserAsync はアプリ内ブラウザを起動するネイティブ API。テスト環境では no-op にする。
+jest.mock('expo-web-browser', () => ({
+  openBrowserAsync: jest.fn(async () => ({ type: 'opened' })),
+  dismissBrowser: jest.fn(),
+  maybeCompleteAuthSession: jest.fn(),
+  openAuthSessionAsync: jest.fn(async () => ({ type: 'dismiss' })),
+}));
+
 // expo-image のモック
 jest.mock('expo-image', () => {
   const React = require('react');

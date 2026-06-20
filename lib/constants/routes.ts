@@ -44,6 +44,9 @@ export const ROUTE_NOTIFICATIONS = '/(tabs)/notifications' as const;
 /** 自分のプロフィール */
 export const ROUTE_PROFILE = '/(tabs)/profile' as const;
 
+/** もっと見る（設定・法的情報・ヘルプ等へのハブ画面） */
+export const ROUTE_MORE = '/(tabs)/more' as const;
+
 // ---------------------------------------------------------------------------
 // タブ外スタック画面
 // ---------------------------------------------------------------------------
@@ -150,6 +153,7 @@ export const routes = {
   search: ROUTE_SEARCH,
   notifications: ROUTE_NOTIFICATIONS,
   profile: ROUTE_PROFILE,
+  more: ROUTE_MORE,
 
   // stack
   postNew: ROUTE_POST_NEW,
