@@ -24,3 +24,18 @@ export const TRENDING_HASHTAGS_LIMIT = 10;
 
 /** ページネーション limit パラメータの最大値 */
 export const MAX_PAGE_LIMIT = 100;
+
+/** 辞典一覧のページ取得件数 */
+export const DICTIONARY_PAGE_SIZE = 20;
+
+/** 病害虫一覧のページ取得件数 */
+export const DISEASE_PESTS_PAGE_SIZE = 20;
+
+/** 農薬製品一覧のページ取得件数 */
+export const PESTICIDE_PRODUCTS_PAGE_SIZE = 20;
+
+/** 有効成分一覧のページ取得件数 */
+export const PESTICIDE_INGREDIENTS_PAGE_SIZE = 20;
+
+/** トレンドジャンルの取得件数 */
+export const TRENDING_GENRES_LIMIT = 10;

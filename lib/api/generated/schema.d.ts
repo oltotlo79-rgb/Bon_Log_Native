@@ -3455,6 +3455,4683 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/posts/{id}/bookmark": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 投稿をブックマークに追加する（冪等）
+         * @description 指定した投稿をブックマークに追加する。
+         *
+         *     重要仕様:
+         *     - 冪等設計: 既にブックマーク済みでも 200 を返す
+         *     - 不存在・不可視（非公開著者・停止著者・isHidden=true）の投稿は 404 NOT_FOUND
+         *     - ゲストアカウントは 403 GUEST_NOT_ALLOWED
+         *     - レート制限: engagement（30/分）
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description 投稿 ID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description ブックマーク追加成功（冪等: 既ブックマークでも 200） */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["BookmarkResponse"];
+                    };
+                };
+                /** @description バリデーションエラー (VALIDATION_ERROR) — id 形式不正 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description Bearer トークンなし (AUTH_REQUIRED) または期限切れ (AUTH_TOKEN_EXPIRED) */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description アカウント停止 (ACCOUNT_SUSPENDED) またはゲスト不可 (GUEST_NOT_ALLOWED) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description 投稿が存在しないまたは閲覧不可 (NOT_FOUND) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description レート制限超過。Retry-After ヘッダー（秒）が返却される。自動リトライ禁止。 */
+                429: {
+                    headers: {
+                        /** @description 次のリクエストまでの待機秒数 */
+                        "Retry-After"?: number;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
+        /**
+         * 投稿のブックマークを解除する（冪等）
+         * @description 指定した投稿のブックマークを解除する。
+         *
+         *     重要仕様:
+         *     - 冪等設計: 未ブックマーク状態でも 200 を返す
+         *     - 不存在・不可視（非公開著者・停止著者・isHidden=true）の投稿は 404 NOT_FOUND
+         *     - ゲストアカウントは 403 GUEST_NOT_ALLOWED
+         *     - レート制限: engagement（30/分）
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description 投稿 ID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description ブックマーク解除成功（冪等: 未ブックマークでも 200） */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["BookmarkResponse"];
+                    };
+                };
+                /** @description バリデーションエラー (VALIDATION_ERROR) — id 形式不正 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description Bearer トークンなし (AUTH_REQUIRED) または期限切れ (AUTH_TOKEN_EXPIRED) */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description アカウント停止 (ACCOUNT_SUSPENDED) またはゲスト不可 (GUEST_NOT_ALLOWED) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description 投稿が存在しないまたは閲覧不可 (NOT_FOUND) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description レート制限超過。Retry-After ヘッダー（秒）が返却される。自動リトライ禁止。 */
+                429: {
+                    headers: {
+                        /** @description 次のリクエストまでの待機秒数 */
+                        "Retry-After"?: number;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/users/me/bookmarks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * ブックマーク投稿一覧を取得する（カーソルページネーション）
+         * @description ログインユーザーがブックマークした投稿を新しい順（ブックマーク日時降順）で返す。
+         *
+         *     重要仕様:
+         *     - カーソルキー: Bookmark.id（ブックマーク操作順）
+         *     - 可視性フィルタ: ブックマーク後に非公開化・停止・isHidden になった投稿は除外
+         *     - items は feed と同等の投稿形式（mentionedUsers / isBlocked / isMuted / isBookmarked=true 付き）
+         *     - ゲストアカウントは 403 GUEST_NOT_ALLOWED
+         *     - レート制限: read（60/分）
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description 前回レスポンスの nextCursor 値 */
+                    cursor?: string;
+                    /** @description 取得件数（1〜100、デフォルト 20） */
+                    limit?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description ブックマーク投稿一覧取得成功 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["BookmarksListResponse"];
+                    };
+                };
+                /** @description バリデーションエラー (VALIDATION_ERROR) — cursor/limit 形式不正 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description Bearer トークンなし (AUTH_REQUIRED) または期限切れ (AUTH_TOKEN_EXPIRED) */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description アカウント停止 (ACCOUNT_SUSPENDED) またはゲスト不可 (GUEST_NOT_ALLOWED) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description レート制限超過。Retry-After ヘッダー（秒）が返却される。自動リトライ禁止。 */
+                429: {
+                    headers: {
+                        /** @description 次のリクエストまでの待機秒数 */
+                        "Retry-After"?: number;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/explore/trending-hashtags": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * トレンドハッシュタグ一覧を取得する
+         * @description 使用数（count）降順でハッシュタグ一覧を返す。
+         *
+         *     重要仕様:
+         *     - count は Hashtag テーブルの累計投稿数（PostHashtag の行数に基づく）
+         *     - count=0 のハッシュタグは除外する
+         *     - ゲスト可（Bearer 認証は必須だがゲストトークンで呼び出し可）
+         *     - レート制限: read（60/分）
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description 取得件数（1〜100、デフォルト 10） */
+                    limit?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description トレンドハッシュタグ一覧取得成功 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["TrendingHashtagsResponse"];
+                    };
+                };
+                /** @description バリデーションエラー (VALIDATION_ERROR) — limit 形式不正 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description Bearer トークンなし (AUTH_REQUIRED) または期限切れ (AUTH_TOKEN_EXPIRED) */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description アカウント停止 (ACCOUNT_SUSPENDED) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description レート制限超過。Retry-After ヘッダー（秒）が返却される。自動リトライ禁止。 */
+                429: {
+                    headers: {
+                        /** @description 次のリクエストまでの待機秒数 */
+                        "Retry-After"?: number;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/explore/trending-genres": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * トレンドジャンル一覧を取得する
+         * @description 直近 48 時間の投稿数（postCount）降順でジャンルを返す。
+         *
+         *     重要仕様:
+         *     - postCount は直近 48 時間の公開投稿数（非表示・非公開著者・停止著者を除外）
+         *     - postCount=0 のジャンルは除外される（投稿がないジャンルは含まれない）
+         *     - 結果は unstable_cache（TTL: CACHE_TTL_TRENDING 秒）でキャッシュされる
+         *     - ゲスト可（Bearer 認証は必須だがゲストトークンで呼び出し可）
+         *     - レート制限: read（60/分）
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description 取得件数（1〜100、デフォルト 10） */
+                    limit?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description トレンドジャンル一覧取得成功 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["TrendingGenresResponse"];
+                    };
+                };
+                /** @description バリデーションエラー (VALIDATION_ERROR) — limit 形式不正 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description Bearer トークンなし (AUTH_REQUIRED) または期限切れ (AUTH_TOKEN_EXPIRED) */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description アカウント停止 (ACCOUNT_SUSPENDED) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description レート制限超過。Retry-After ヘッダー（秒）が返却される。自動リトライ禁止。 */
+                429: {
+                    headers: {
+                        /** @description 次のリクエストまでの待機秒数 */
+                        "Retry-After"?: number;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/explore/recommended-users": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * おすすめユーザー一覧を取得する
+         * @description フォロワー数降順でおすすめユーザーを返す。
+         *
+         *     重要仕様:
+         *     - 除外対象: 自分自身・既フォロー中・双方向ブロック・非公開アカウント・停止ユーザー・ゲストユーザー
+         *     - ゲストトークンでは空配列を返す（フォロー状態が計算できないため）
+         *     - following / requested は閲覧者のフォロー状態。following と requested は同時に true にならない
+         *     - isPublic は常に true（非公開アカウントは除外済み）だが明示的に返す
+         *     - レート制限: read（60/分）
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description 取得件数（1〜100、デフォルト 10） */
+                    limit?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description おすすめユーザー一覧取得成功（ゲスト時は空配列） */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["RecommendedUsersResponse"];
+                    };
+                };
+                /** @description バリデーションエラー (VALIDATION_ERROR) — limit 形式不正 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description Bearer トークンなし (AUTH_REQUIRED) または期限切れ (AUTH_TOKEN_EXPIRED) */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description アカウント停止 (ACCOUNT_SUSPENDED) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description レート制限超過。Retry-After ヘッダー（秒）が返却される。自動リトライ禁止。 */
+                429: {
+                    headers: {
+                        /** @description 次のリクエストまでの待機秒数 */
+                        "Retry-After"?: number;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/dictionary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 盆栽用語辞典一覧
+         * @description 盆栽用語をカーソルページネーションで返す。reading ASC / sortOrder ASC 順。
+         *
+         *     重要仕様:
+         *     - search: term / reading / description の部分一致（contains 検索）
+         *     - category: 7 固定カテゴリ（DictionaryCategory enum）でフィルタ
+         *     - row: 五十音行（KanaRow enum、10 行）でフィルタ。in-memory 適用のためカーソルと組み合わせると挙動が変わる
+         *     - row 指定時はカーソルなし全件返却（最大 limit 件）
+         *     - ゲスト可（Bearer 認証は必須だがゲストトークンで呼び出し可）
+         *     - レート制限: read（60/分）
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description 前回レスポンスの nextCursor 値（slug） */
+                    cursor?: string;
+                    /** @description 取得件数（デフォルト 20、最大 100） */
+                    limit?: number;
+                    /** @description 検索キーワード（term / reading / description 部分一致） */
+                    search?: string;
+                    /** @description 辞典カテゴリフィルタ（DictionaryCategory enum） */
+                    category?: string;
+                    /** @description 五十音行フィルタ（KanaRow enum: あ行〜わ行） */
+                    row?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 用語一覧取得成功 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["DictionaryListResponse"];
+                    };
+                };
+                /** @description バリデーションエラー (VALIDATION_ERROR) — 不正な category / row / limit */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description Bearer トークンなし (AUTH_REQUIRED) または期限切れ (AUTH_TOKEN_EXPIRED) */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description アカウント停止 (ACCOUNT_SUSPENDED) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description レート制限超過。Retry-After ヘッダー（秒）が返却される。自動リトライ禁止。 */
+                429: {
+                    headers: {
+                        /** @description 次のリクエストまでの待機秒数 */
+                        "Retry-After"?: number;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/dictionary/{slug}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 盆栽用語辞典詳細
+         * @description 指定 slug の用語詳細を返す。prev / next / related（同カテゴリ最大 6 件）を含む。
+         *
+         *     重要仕様:
+         *     - slug 不存在は 404 NOT_FOUND
+         *     - prev / next は同カテゴリ内の reading ASC 順での前後
+         *     - related は同カテゴリの他の用語（最大 6 件、reading ASC 順）
+         *     - ゲスト可（Bearer 認証は必須だがゲストトークンで呼び出し可）
+         *     - レート制限: read（60/分）
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description 用語の slug */
+                    slug: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 用語詳細取得成功 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["DictionaryDetailResponse"];
+                    };
+                };
+                /** @description バリデーションエラー (VALIDATION_ERROR) — slug 形式不正 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description Bearer トークンなし (AUTH_REQUIRED) または期限切れ (AUTH_TOKEN_EXPIRED) */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description アカウント停止 (ACCOUNT_SUSPENDED) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description 用語が存在しない (NOT_FOUND) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description レート制限超過。Retry-After ヘッダー（秒）が返却される。自動リトライ禁止。 */
+                429: {
+                    headers: {
+                        /** @description 次のリクエストまでの待機秒数 */
+                        "Retry-After"?: number;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/fertilizers/nutrients": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 栄養素一覧
+         * @description 肥料栄養素の一覧を全件返却する（件数が少ないためカーソル不要）。
+         *
+         *     重要仕様:
+         *     - category: NutrientCategory enum（primary / secondary / trace）でフィルタ
+         *     - sortOrder ASC / name ASC 順
+         *     - ゲスト可（Bearer 認証は必須だがゲストトークンで呼び出し可）
+         *     - レート制限: read（60/分）
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description NutrientCategory enum でフィルタ（省略で全件） */
+                    category?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 栄養素一覧取得成功 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            id: string;
+                            name: string;
+                            symbol: string;
+                            category: string;
+                            description: string | null;
+                            bonsaiRole: string | null;
+                            slug: string;
+                        }[];
+                    };
+                };
+                /** @description バリデーションエラー (VALIDATION_ERROR) — 不正な category */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description Bearer トークンなし (AUTH_REQUIRED) または期限切れ (AUTH_TOKEN_EXPIRED) */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description アカウント停止 (ACCOUNT_SUSPENDED) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description レート制限超過。Retry-After ヘッダー（秒）が返却される。自動リトライ禁止。 */
+                429: {
+                    headers: {
+                        /** @description 次のリクエストまでの待機秒数 */
+                        "Retry-After"?: number;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/fertilizers/nutrients/{slug}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 栄養素詳細
+         * @description 指定 slug の栄養素詳細を返す。deficiencySymptoms / excessSymptoms / foodSources を含む。
+         *
+         *     重要仕様:
+         *     - slug 不存在は 404 NOT_FOUND
+         *     - ゲスト可（Bearer 認証は必須だがゲストトークンで呼び出し可）
+         *     - レート制限: read（60/分）
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description 栄養素の slug */
+                    slug: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 栄養素詳細取得成功 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["NutrientDetail"];
+                    };
+                };
+                /** @description バリデーションエラー (VALIDATION_ERROR) — slug 形式不正 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description Bearer トークンなし (AUTH_REQUIRED) または期限切れ (AUTH_TOKEN_EXPIRED) */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description アカウント停止 (ACCOUNT_SUSPENDED) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description 栄養素が存在しない (NOT_FOUND) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description レート制限超過。Retry-After ヘッダー（秒）が返却される。自動リトライ禁止。 */
+                429: {
+                    headers: {
+                        /** @description 次のリクエストまでの待機秒数 */
+                        "Retry-After"?: number;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/fertilizers/categories": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 肥料カテゴリ一覧
+         * @description 肥料カテゴリの一覧を全件返却する（sortOrder ASC 順）。
+         *
+         *     重要仕様:
+         *     - フィルタなし（全件返却）
+         *     - ゲスト可（Bearer 認証は必須だがゲストトークンで呼び出し可）
+         *     - レート制限: read（60/分）
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 肥料カテゴリ一覧取得成功 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            code: string;
+                            name: string;
+                            description: string | null;
+                            merit: string | null;
+                            demerit: string | null;
+                            bonsaiUsage: string | null;
+                            slug: string;
+                        }[];
+                    };
+                };
+                /** @description Bearer トークンなし (AUTH_REQUIRED) または期限切れ (AUTH_TOKEN_EXPIRED) */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description アカウント停止 (ACCOUNT_SUSPENDED) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description レート制限超過。Retry-After ヘッダー（秒）が返却される。自動リトライ禁止。 */
+                429: {
+                    headers: {
+                        /** @description 次のリクエストまでの待機秒数 */
+                        "Retry-After"?: number;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/fertilizers/tree-species": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 樹種一覧
+         * @description 樹種の一覧を全件返却する（sortOrder ASC / name ASC 順）。
+         *
+         *     重要仕様:
+         *     - category: TreeCategory enum（conifer / deciduous / flowering / fruiting / grass / evergreen）でフィルタ
+         *     - ゲスト可（Bearer 認証は必須だがゲストトークンで呼び出し可）
+         *     - レート制限: read（60/分）
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description TreeCategory enum でフィルタ（省略で全件） */
+                    category?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 樹種一覧取得成功 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            id: string;
+                            name: string;
+                            category: string;
+                            fertilizingPolicy: string | null;
+                            slug: string;
+                        }[];
+                    };
+                };
+                /** @description バリデーションエラー (VALIDATION_ERROR) — 不正な category */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description Bearer トークンなし (AUTH_REQUIRED) または期限切れ (AUTH_TOKEN_EXPIRED) */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description アカウント停止 (ACCOUNT_SUSPENDED) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description レート制限超過。Retry-After ヘッダー（秒）が返却される。自動リトライ禁止。 */
+                429: {
+                    headers: {
+                        /** @description 次のリクエストまでの待機秒数 */
+                        "Retry-After"?: number;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/fertilizers/tree-species/{slug}/schedule": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 樹種別施肥スケジュール
+         * @description 指定 slug の樹種に対する月別施肥スケジュールを返す（month 1〜12 の昇順）。
+         *
+         *     重要仕様:
+         *     - slug 不存在は 404 NOT_FOUND
+         *     - months の件数はデータ次第（最大 12）。登録がない月は含まれない
+         *     - ゲスト可（Bearer 認証は必須だがゲストトークンで呼び出し可）
+         *     - レート制限: read（60/分）
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description 樹種の slug */
+                    slug: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 施肥スケジュール取得成功 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["FertilizationScheduleResponse"];
+                    };
+                };
+                /** @description バリデーションエラー (VALIDATION_ERROR) — slug 形式不正 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description Bearer トークンなし (AUTH_REQUIRED) または期限切れ (AUTH_TOKEN_EXPIRED) */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description アカウント停止 (ACCOUNT_SUSPENDED) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description 樹種が存在しない (NOT_FOUND) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description レート制限超過。Retry-After ヘッダー（秒）が返却される。自動リトライ禁止。 */
+                429: {
+                    headers: {
+                        /** @description 次のリクエストまでの待機秒数 */
+                        "Retry-After"?: number;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/hormones": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 植物ホルモン一覧
+         * @description 植物ホルモンの一覧を全件返却する（sortOrder ASC / name ASC 順）。
+         *
+         *     重要仕様:
+         *     - category: HormoneCategory enum（major / secondary）でフィルタ
+         *     - ゲスト可（Bearer 認証は必須だがゲストトークンで呼び出し可）
+         *     - レート制限: read（60/分）
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description HormoneCategory enum でフィルタ（省略で全件） */
+                    category?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description ホルモン一覧取得成功 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            id: string;
+                            name: string;
+                            nameEn: string | null;
+                            slug: string;
+                            category: string;
+                            chemicalFormula: string | null;
+                            description: string | null;
+                        }[];
+                    };
+                };
+                /** @description バリデーションエラー (VALIDATION_ERROR) — 不正な category */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description Bearer トークンなし (AUTH_REQUIRED) または期限切れ (AUTH_TOKEN_EXPIRED) */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description アカウント停止 (ACCOUNT_SUSPENDED) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description レート制限超過。Retry-After ヘッダー（秒）が返却される。自動リトライ禁止。 */
+                429: {
+                    headers: {
+                        /** @description 次のリクエストまでの待機秒数 */
+                        "Retry-After"?: number;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/hormones/{slug}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 植物ホルモン詳細
+         * @description 指定 slug のホルモン詳細を返す。effects / seasonalLevels を含む。
+         *
+         *     重要仕様:
+         *     - slug 不存在は 404 NOT_FOUND
+         *     - effects は isPromoting による促進/抑制効果の一覧（sortOrder ASC）
+         *     - seasonalLevels は月別活性レベル（month 1〜12 ASC）
+         *     - interactions（ホルモン間相互作用）/ techniques（技法マッピング）は本バッチ対象外
+         *     - ゲスト可（Bearer 認証は必須だがゲストトークンで呼び出し可）
+         *     - レート制限: read（60/分）
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description ホルモンの slug */
+                    slug: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description ホルモン詳細取得成功 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["HormoneDetail"];
+                    };
+                };
+                /** @description バリデーションエラー (VALIDATION_ERROR) — slug 形式不正 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description Bearer トークンなし (AUTH_REQUIRED) または期限切れ (AUTH_TOKEN_EXPIRED) */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description アカウント停止 (ACCOUNT_SUSPENDED) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description ホルモンが存在しない (NOT_FOUND) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description レート制限超過。Retry-After ヘッダー（秒）が返却される。自動リトライ禁止。 */
+                429: {
+                    headers: {
+                        /** @description 次のリクエストまでの待機秒数 */
+                        "Retry-After"?: number;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pesticides/disease-pests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 病害虫一覧
+         * @description 病害虫・病害・益虫の一覧をカーソルページネーションで返す。sortOrder ASC / name ASC 順。
+         *
+         *     重要仕様:
+         *     - category: DiseasePestCategory enum（disease / pest / beneficial_insect）でフィルタ
+         *     - search: name / nameKana / description の部分一致
+         *     - bodySizeMm: 体長（mm）で害虫・益虫のみを絞り込む（disease には適用されない）
+         *     - ゲスト可（Bearer 認証は必須だがゲストトークンで呼び出し可）
+         *     - レート制限: read（60/分）
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description 前回レスポンスの nextCursor 値（slug） */
+                    cursor?: string;
+                    /** @description 取得件数（デフォルト 20、最大 100） */
+                    limit?: number;
+                    /** @description DiseasePestCategory enum でフィルタ（省略で全件） */
+                    category?: string;
+                    /** @description 検索キーワード（name / nameKana / description 部分一致） */
+                    search?: string;
+                    /** @description 体長（mm）フィルタ。害虫・益虫のみ対象 */
+                    bodySizeMm?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 病害虫一覧取得成功 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["DiseasePestListResponse"];
+                    };
+                };
+                /** @description バリデーションエラー (VALIDATION_ERROR) — 不正な category / limit / bodySizeMm */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description Bearer トークンなし (AUTH_REQUIRED) または期限切れ (AUTH_TOKEN_EXPIRED) */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description アカウント停止 (ACCOUNT_SUSPENDED) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description レート制限超過。Retry-After ヘッダー（秒）が返却される。自動リトライ禁止。 */
+                429: {
+                    headers: {
+                        /** @description 次のリクエストまでの待機秒数 */
+                        "Retry-After"?: number;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pesticides/disease-pests/{slug}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 病害虫詳細
+         * @description 指定 slug の病害虫詳細を返す。effects（有効農薬一覧）を含む。
+         *
+         *     重要仕様:
+         *     - slug 不存在は 404 NOT_FOUND
+         *     - effects は pesticide.name ASC 順
+         *     - ゲスト可（Bearer 認証は必須だがゲストトークンで呼び出し可）
+         *     - レート制限: read（60/分）
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description 病害虫の slug */
+                    slug: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 病害虫詳細取得成功 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            id: string;
+                            name: string;
+                            nameKana: string | null;
+                            /** @enum {string} */
+                            category: "disease" | "pest" | "beneficial_insect";
+                            description: string | null;
+                            imageUrl: string | null;
+                            slug: string;
+                            effects: {
+                                pesticide: {
+                                    id: string;
+                                    name: string;
+                                    slug: string;
+                                    /** @enum {string} */
+                                    pesticideType: "fungicide" | "insecticide" | "acaricide" | "compound" | "other";
+                                };
+                                rating: {
+                                    /** @enum {string|null} */
+                                    preventionLevel: "excellent" | "good" | "fair" | "poor" | "none" | null;
+                                    /** @enum {string|null} */
+                                    treatmentLevel: "excellent" | "good" | "fair" | "poor" | "none" | null;
+                                    /** @enum {string|null} */
+                                    efficacyLevel: "excellent" | "good" | "fair" | "poor" | "none" | null;
+                                    /** @enum {string|null} */
+                                    persistenceLevel: "excellent" | "good" | "fair" | "poor" | "none" | null;
+                                };
+                            }[];
+                        };
+                    };
+                };
+                /** @description バリデーションエラー (VALIDATION_ERROR) — slug 形式不正 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description Bearer トークンなし (AUTH_REQUIRED) または期限切れ (AUTH_TOKEN_EXPIRED) */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description アカウント停止 (ACCOUNT_SUSPENDED) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description 病害虫が存在しない (NOT_FOUND) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description レート制限超過。Retry-After ヘッダー（秒）が返却される。自動リトライ禁止。 */
+                429: {
+                    headers: {
+                        /** @description 次のリクエストまでの待機秒数 */
+                        "Retry-After"?: number;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pesticides/products": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 農薬製品一覧
+         * @description 農薬製品の一覧をカーソルページネーションで返す。name ASC 順。
+         *
+         *     重要仕様:
+         *     - search: name / registrationNumber の部分一致
+         *     - type: PesticideType enum（fungicide / insecticide / acaricide / compound / other）でフィルタ。herbicide は other に正規化される
+         *     - diseasePestId: 指定した病害虫に効果がある農薬のみ返す
+         *     - formulationTypeCode: 剤型コードでフィルタ
+         *     - ゲスト可（Bearer 認証は必須だがゲストトークンで呼び出し可）
+         *     - レート制限: read（60/分）
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description 前回レスポンスの nextCursor 値（slug） */
+                    cursor?: string;
+                    /** @description 取得件数（デフォルト 20、最大 100） */
+                    limit?: number;
+                    /** @description 検索キーワード（name / registrationNumber 部分一致） */
+                    search?: string;
+                    /** @description PesticideType enum でフィルタ。herbicide は other に正規化 */
+                    type?: string;
+                    /** @description 病害虫 ID。この病害虫に効果がある農薬のみ返す */
+                    diseasePestId?: string;
+                    /** @description 剤型コードでフィルタ */
+                    formulationTypeCode?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 農薬製品一覧取得成功 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["PesticideListResponse"];
+                    };
+                };
+                /** @description バリデーションエラー (VALIDATION_ERROR) — 不正な limit */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description Bearer トークンなし (AUTH_REQUIRED) または期限切れ (AUTH_TOKEN_EXPIRED) */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description アカウント停止 (ACCOUNT_SUSPENDED) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description レート制限超過。Retry-After ヘッダー（秒）が返却される。自動リトライ禁止。 */
+                429: {
+                    headers: {
+                        /** @description 次のリクエストまでの待機秒数 */
+                        "Retry-After"?: number;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pesticides/products/{slug}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 農薬製品詳細
+         * @description 指定 slug の農薬製品詳細を返す。formulationType / activeIngredients / effects / incompatibilities を含む。
+         *
+         *     重要仕様:
+         *     - slug 不存在は 404 NOT_FOUND
+         *     - effects は diseasePest.name ASC 順
+         *     - incompatibilities は incompatibleWith.name ASC 順
+         *     - ゲスト可（Bearer 認証は必須だがゲストトークンで呼び出し可）
+         *     - レート制限: read（60/分）
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description 農薬製品の slug */
+                    slug: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 農薬製品詳細取得成功 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            id: string;
+                            name: string;
+                            registrationNumber: string | null;
+                            /** @enum {string} */
+                            pesticideType: "fungicide" | "insecticide" | "acaricide" | "compound" | "other";
+                            description: string | null;
+                            slug: string;
+                            formulationType: {
+                                name: string;
+                                code: string;
+                            } | null;
+                            activeIngredients: {
+                                id: string;
+                                name: string;
+                                fracCode: string | null;
+                                iracCode: string | null;
+                                /** @enum {string|null} */
+                                resistanceRisk: "low" | "medium" | "high" | null;
+                                slug: string;
+                            }[];
+                            effects: {
+                                diseasePest: {
+                                    id: string;
+                                    name: string;
+                                    slug: string;
+                                };
+                                rating: {
+                                    /** @enum {string|null} */
+                                    preventionLevel: "excellent" | "good" | "fair" | "poor" | "none" | null;
+                                    /** @enum {string|null} */
+                                    treatmentLevel: "excellent" | "good" | "fair" | "poor" | "none" | null;
+                                    /** @enum {string|null} */
+                                    efficacyLevel: "excellent" | "good" | "fair" | "poor" | "none" | null;
+                                    /** @enum {string|null} */
+                                    persistenceLevel: "excellent" | "good" | "fair" | "poor" | "none" | null;
+                                };
+                            }[];
+                            incompatibilities: {
+                                id: string;
+                                name: string;
+                                slug: string;
+                                formulationTypeName: string | null;
+                            }[];
+                        };
+                    };
+                };
+                /** @description バリデーションエラー (VALIDATION_ERROR) — slug 形式不正 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description Bearer トークンなし (AUTH_REQUIRED) または期限切れ (AUTH_TOKEN_EXPIRED) */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description アカウント停止 (ACCOUNT_SUSPENDED) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description 農薬製品が存在しない (NOT_FOUND) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description レート制限超過。Retry-After ヘッダー（秒）が返却される。自動リトライ禁止。 */
+                429: {
+                    headers: {
+                        /** @description 次のリクエストまでの待機秒数 */
+                        "Retry-After"?: number;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pesticides/ingredients": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 有効成分一覧
+         * @description 農薬有効成分の一覧をカーソルページネーションで返す。name ASC 順。
+         *
+         *     重要仕様:
+         *     - search: name / nameEn / fracCode / iracCode の部分一致
+         *     - ゲスト可（Bearer 認証は必須だがゲストトークンで呼び出し可）
+         *     - レート制限: read（60/分）
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description 前回レスポンスの nextCursor 値（slug） */
+                    cursor?: string;
+                    /** @description 取得件数（デフォルト 20、最大 100） */
+                    limit?: number;
+                    /** @description 検索キーワード（name / nameEn / fracCode / iracCode 部分一致） */
+                    search?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 有効成分一覧取得成功 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["IngredientListResponse"];
+                    };
+                };
+                /** @description バリデーションエラー (VALIDATION_ERROR) — 不正な limit */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description Bearer トークンなし (AUTH_REQUIRED) または期限切れ (AUTH_TOKEN_EXPIRED) */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description アカウント停止 (ACCOUNT_SUSPENDED) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description レート制限超過。Retry-After ヘッダー（秒）が返却される。自動リトライ禁止。 */
+                429: {
+                    headers: {
+                        /** @description 次のリクエストまでの待機秒数 */
+                        "Retry-After"?: number;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pesticides/ingredients/{slug}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 有効成分詳細
+         * @description 指定 slug の有効成分詳細を返す。ingredientGroup / description / pesticides（使用農薬一覧）を含む。
+         *
+         *     重要仕様:
+         *     - slug 不存在は 404 NOT_FOUND
+         *     - ゲスト可（Bearer 認証は必須だがゲストトークンで呼び出し可）
+         *     - レート制限: read（60/分）
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description 有効成分の slug */
+                    slug: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 有効成分詳細取得成功 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["IngredientDetail"];
+                    };
+                };
+                /** @description バリデーションエラー (VALIDATION_ERROR) — slug 形式不正 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description Bearer トークンなし (AUTH_REQUIRED) または期限切れ (AUTH_TOKEN_EXPIRED) */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description アカウント停止 (ACCOUNT_SUSPENDED) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description 有効成分が存在しない (NOT_FOUND) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description レート制限超過。Retry-After ヘッダー（秒）が返却される。自動リトライ禁止。 */
+                429: {
+                    headers: {
+                        /** @description 次のリクエストまでの待機秒数 */
+                        "Retry-After"?: number;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/bonsai": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * マイ盆栽一覧取得
+         * @description 認証ユーザーが所有する盆栽の一覧をカーソルページネーションで返す。
+         *     各盆栽には最新の成長記録 1 件とサムネイル画像が含まれる。
+         *
+         *     重要仕様:
+         *     - ゲストアカウントは 403 GUEST_NOT_ALLOWED
+         *     - レート制限: read（60/分）
+         *     - 最大取得件数: 200 件（MAX_BONSAI_LIST_LIMIT）
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description カーソル（前回レスポンスの nextCursor 値） */
+                    cursor?: string;
+                    /** @description 1 回の取得上限件数（デフォルト 20、最大 100） */
+                    limit?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 盆栽一覧取得成功 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["BonsaiListResponse"];
+                    };
+                };
+                /** @description バリデーションエラー (VALIDATION_ERROR) */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description Bearer トークンなし (AUTH_REQUIRED) または期限切れ (AUTH_TOKEN_EXPIRED) */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description アカウント停止 (ACCOUNT_SUSPENDED) またはゲスト不可 (GUEST_NOT_ALLOWED) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description レート制限超過。Retry-After ヘッダー（秒）が返却される。自動リトライ禁止。 */
+                429: {
+                    headers: {
+                        /** @description 次のリクエストまでの待機秒数 */
+                        "Retry-After"?: number;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /**
+         * 盆栽を作成する
+         * @description 新規盆栽を作成する。name は必須。
+         *
+         *     重要仕様:
+         *     - ゲストアカウントは 403 GUEST_NOT_ALLOWED
+         *     - レート制限: create_bonsai（3/分）
+         *     - 成功レスポンス: 201 + 作成後の盆栽詳細
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CreateBonsaiRequest"];
+                };
+            };
+            responses: {
+                /** @description 盆栽作成成功 */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["BonsaiDetail"];
+                    };
+                };
+                /** @description バリデーションエラー (VALIDATION_ERROR) — name 未指定・文字数超過等 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description Bearer トークンなし (AUTH_REQUIRED) または期限切れ (AUTH_TOKEN_EXPIRED) */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description アカウント停止 (ACCOUNT_SUSPENDED) またはゲスト不可 (GUEST_NOT_ALLOWED) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description レート制限超過。Retry-After ヘッダー（秒）が返却される。自動リトライ禁止。 */
+                429: {
+                    headers: {
+                        /** @description 次のリクエストまでの待機秒数 */
+                        "Retry-After"?: number;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description 内部エラー (INTERNAL_ERROR) */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/bonsai/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 盆栽詳細取得（所有者のみ）
+         * @description 指定 ID の盆栽詳細を返す。所有者以外・不存在は 404（存在を秘匿）。
+         *
+         *     重要仕様:
+         *     - 他ユーザーの盆栽も不存在も同一の 404 NOT_FOUND で返す（IDOR 防御）
+         *     - ゲストアカウントは 403 GUEST_NOT_ALLOWED
+         *     - レート制限: read（60/分）
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description 盆栽 ID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 盆栽詳細取得成功 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["BonsaiDetail"];
+                    };
+                };
+                /** @description Bearer トークンなし (AUTH_REQUIRED) または期限切れ (AUTH_TOKEN_EXPIRED) */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description アカウント停止 (ACCOUNT_SUSPENDED) またはゲスト不可 (GUEST_NOT_ALLOWED) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description 盆栽が存在しないか閲覧権限なし (NOT_FOUND) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description レート制限超過。Retry-After ヘッダー（秒）が返却される。自動リトライ禁止。 */
+                429: {
+                    headers: {
+                        /** @description 次のリクエストまでの待機秒数 */
+                        "Retry-After"?: number;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        /**
+         * 盆栽を削除する（所有者のみ）
+         * @description 盆栽とその全成長記録・画像を削除する。ストレージ実体も best-effort で削除。
+         *
+         *     重要仕様:
+         *     - 所有者以外・不存在は 404（存在を秘匿）
+         *     - ゲストアカウントは 403 GUEST_NOT_ALLOWED
+         *     - レート制限: delete_bonsai（5/分）
+         *     - 成功レスポンス: 200 { success: true }
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description 盆栽 ID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 削除成功 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["SuccessResponse"];
+                    };
+                };
+                /** @description Bearer トークンなし (AUTH_REQUIRED) または期限切れ (AUTH_TOKEN_EXPIRED) */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description アカウント停止 (ACCOUNT_SUSPENDED) またはゲスト不可 (GUEST_NOT_ALLOWED) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description 盆栽が存在しないか閲覧権限なし (NOT_FOUND) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description レート制限超過。Retry-After ヘッダー（秒）が返却される。自動リトライ禁止。 */
+                429: {
+                    headers: {
+                        /** @description 次のリクエストまでの待機秒数 */
+                        "Retry-After"?: number;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description 内部エラー (INTERNAL_ERROR) */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        /**
+         * 盆栽を更新する（所有者のみ）
+         * @description 盆栽情報を部分更新する。全フィールドが optional。
+         *
+         *     重要仕様:
+         *     - 所有者以外・不存在は 404（存在を秘匿）
+         *     - acquiredAt に null を渡すと取得日をクリア
+         *     - ゲストアカウントは 403 GUEST_NOT_ALLOWED
+         *     - レート制限: update_bonsai（5/分）
+         */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description 盆栽 ID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["UpdateBonsaiRequest"];
+                };
+            };
+            responses: {
+                /** @description 盆栽更新成功。更新後の盆栽詳細を返す */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["BonsaiDetail"];
+                    };
+                };
+                /** @description バリデーションエラー (VALIDATION_ERROR) */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description Bearer トークンなし (AUTH_REQUIRED) または期限切れ (AUTH_TOKEN_EXPIRED) */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description アカウント停止 (ACCOUNT_SUSPENDED) またはゲスト不可 (GUEST_NOT_ALLOWED) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description 盆栽が存在しないか閲覧権限なし (NOT_FOUND) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description レート制限超過。Retry-After ヘッダー（秒）が返却される。自動リトライ禁止。 */
+                429: {
+                    headers: {
+                        /** @description 次のリクエストまでの待機秒数 */
+                        "Retry-After"?: number;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description 内部エラー (INTERNAL_ERROR) */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/api/v1/bonsai/{id}/records": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 成長記録一覧取得（所有者のみ）
+         * @description 指定盆栽の成長記録をカーソルページネーションで返す（recordAt 降順）。
+         *     所有者以外・盆栽不存在は 404。
+         *
+         *     重要仕様:
+         *     - ゲストアカウントは 403 GUEST_NOT_ALLOWED
+         *     - レート制限: read（60/分）
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description カーソル（前回レスポンスの nextCursor 値） */
+                    cursor?: string;
+                    /** @description 1 回の取得上限件数（デフォルト 20、最大 100） */
+                    limit?: number;
+                };
+                header?: never;
+                path: {
+                    /** @description 盆栽 ID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 成長記録一覧取得成功 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["BonsaiRecordListResponse"];
+                    };
+                };
+                /** @description バリデーションエラー (VALIDATION_ERROR) */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description Bearer トークンなし (AUTH_REQUIRED) または期限切れ (AUTH_TOKEN_EXPIRED) */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description アカウント停止 (ACCOUNT_SUSPENDED) またはゲスト不可 (GUEST_NOT_ALLOWED) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description 盆栽が存在しないか閲覧権限なし (NOT_FOUND) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description レート制限超過。Retry-After ヘッダー（秒）が返却される。自動リトライ禁止。 */
+                429: {
+                    headers: {
+                        /** @description 次のリクエストまでの待機秒数 */
+                        "Retry-After"?: number;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /**
+         * 成長記録を追加する（所有者のみ）
+         * @description 指定盆栽に成長記録を追加する。recordAt は必須。
+         *
+         *     重要仕様:
+         *     - 所有者以外・盆栽不存在は 404
+         *     - mediaUrls は POST /api/v1/upload/image で取得した自社ストレージ URL のみ（外部 URL は 400 VALIDATION_ERROR）
+         *     - 画像最大 4 枚（MAX_BONSAI_RECORD_IMAGES）
+         *     - ゲストアカウントは 403 GUEST_NOT_ALLOWED
+         *     - レート制限: create_bonsai_record（5/分）
+         *     - 成功レスポンス: 201 + 作成後の成長記録
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description 盆栽 ID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CreateBonsaiRecordRequest"];
+                };
+            };
+            responses: {
+                /** @description 成長記録作成成功 */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["BonsaiDetail"];
+                    };
+                };
+                /** @description バリデーションエラー (VALIDATION_ERROR) — recordAt 未指定・mediaUrls が外部 URL 等 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description Bearer トークンなし (AUTH_REQUIRED) または期限切れ (AUTH_TOKEN_EXPIRED) */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description アカウント停止 (ACCOUNT_SUSPENDED) またはゲスト不可 (GUEST_NOT_ALLOWED) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description 盆栽が存在しないか閲覧権限なし (NOT_FOUND) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description レート制限超過。Retry-After ヘッダー（秒）が返却される。自動リトライ禁止。 */
+                429: {
+                    headers: {
+                        /** @description 次のリクエストまでの待機秒数 */
+                        "Retry-After"?: number;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description 内部エラー (INTERNAL_ERROR) */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/bonsai/{id}/records/{recordId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * 成長記録を削除する（所有者のみ）
+         * @description 成長記録とその画像を削除する。ストレージ実体も best-effort で削除。
+         *
+         *     重要仕様:
+         *     - 所有者以外・記録不存在・盆栽 ID 不一致は 404（存在を秘匿）
+         *     - ゲストアカウントは 403 GUEST_NOT_ALLOWED
+         *     - レート制限: delete_bonsai（5/分）
+         *     - 成功レスポンス: 200 { success: true }
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description 盆栽 ID */
+                    id: string;
+                    /** @description 成長記録 ID */
+                    recordId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 削除成功 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["SuccessResponse"];
+                    };
+                };
+                /** @description Bearer トークンなし (AUTH_REQUIRED) または期限切れ (AUTH_TOKEN_EXPIRED) */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description アカウント停止 (ACCOUNT_SUSPENDED) またはゲスト不可 (GUEST_NOT_ALLOWED) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description 記録または盆栽が存在しないか閲覧権限なし (NOT_FOUND) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description レート制限超過。Retry-After ヘッダー（秒）が返却される。自動リトライ禁止。 */
+                429: {
+                    headers: {
+                        /** @description 次のリクエストまでの待機秒数 */
+                        "Retry-After"?: number;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description 内部エラー (INTERNAL_ERROR) */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        /**
+         * 成長記録を更新する（所有者のみ）
+         * @description 成長記録を部分更新する。mediaUrls 指定時は既存画像を全て置換する。
+         *
+         *     重要仕様:
+         *     - 所有者以外・記録不存在・盆栽 ID 不一致は 404（存在を秘匿）
+         *     - mediaUrls は自社ストレージ URL のみ（外部 URL は 400 VALIDATION_ERROR）
+         *     - ゲストアカウントは 403 GUEST_NOT_ALLOWED
+         *     - レート制限: update_bonsai（5/分）
+         */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description 盆栽 ID */
+                    id: string;
+                    /** @description 成長記録 ID */
+                    recordId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["UpdateBonsaiRecordRequest"];
+                };
+            };
+            responses: {
+                /** @description 成長記録更新成功。更新後の成長記録を返す */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["BonsaiDetail"];
+                    };
+                };
+                /** @description バリデーションエラー (VALIDATION_ERROR) */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description Bearer トークンなし (AUTH_REQUIRED) または期限切れ (AUTH_TOKEN_EXPIRED) */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description アカウント停止 (ACCOUNT_SUSPENDED) またはゲスト不可 (GUEST_NOT_ALLOWED) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description 記録または盆栽が存在しないか閲覧権限なし (NOT_FOUND) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description レート制限超過。Retry-After ヘッダー（秒）が返却される。自動リトライ禁止。 */
+                429: {
+                    headers: {
+                        /** @description 次のリクエストまでの待機秒数 */
+                        "Retry-After"?: number;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description 内部エラー (INTERNAL_ERROR) */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/api/v1/events": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * イベント一覧取得
+         * @description イベントをカーソルページネーションで取得する。ゲスト可。
+         *
+         *     フィルタ仕様:
+         *     - region: 地方ブロック名（北海道・東北 / 関東 / 中部 / 近畿 / 中国 / 四国 / 九州・沖縄）
+         *     - prefecture: 都道府県名（日本語）。region と同時指定した場合は prefecture が優先
+         *     - showPast=true: 過去イベントを含む（デフォルト: 今日以降のみ）
+         *     - year + month（0-11）: 指定月の開始日が含まれるイベントを取得。showPast より優先
+         *
+         *     isHidden=true のイベントは除外される。並び順は startDate 昇順。
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description カーソル（前回レスポンスの nextCursor 値） */
+                    cursor?: string;
+                    /** @description 1 回の取得上限件数（デフォルト 20、最大 100） */
+                    limit?: number;
+                    /** @description 地方ブロック名でフィルタ（例: 関東 / 九州・沖縄）。prefecture と同時指定した場合は prefecture 優先 */
+                    region?: string;
+                    /** @description 都道府県名でフィルタ（例: 東京都）。region より細かい単位で絞り込む */
+                    prefecture?: string;
+                    /** @description true のとき過去イベントを含む（デフォルト false）。year/month 指定時は無視される */
+                    showPast?: "true" | "false";
+                    /** @description 取得対象の年（month と対で指定） */
+                    year?: number;
+                    /** @description 取得対象の月（0-11。month と year は対で指定） */
+                    month?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description イベント一覧取得成功 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["EventListResponse"];
+                    };
+                };
+                /** @description バリデーションエラー (VALIDATION_ERROR) — 不正な region/prefecture/month/year */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description Bearer トークンなし (AUTH_REQUIRED) または期限切れ (AUTH_TOKEN_EXPIRED) */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description アカウント停止 (ACCOUNT_SUSPENDED) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description レート制限超過。Retry-After ヘッダー（秒）が返却される。自動リトライ禁止。 */
+                429: {
+                    headers: {
+                        /** @description 次のリクエストまでの待機秒数 */
+                        "Retry-After"?: number;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /**
+         * イベントを作成する
+         * @description 新規イベントを作成する。認証必須・ゲスト不可。
+         *
+         *     重要仕様:
+         *     - title / startDate は必須
+         *     - startDate / endDate は ISO 8601 形式の日付文字列（例: "2025-07-01"）
+         *     - endDate < startDate の場合は 400 VALIDATION_ERROR
+         *     - externalUrl は https:// を含む完全 URL 形式
+         *     - 作成後のイベント詳細（creator 付き）を 201 で返す
+         *     - レート制限: create_event（3/分）
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CreateEventRequest"];
+                };
+            };
+            responses: {
+                /** @description イベント作成成功。作成後のイベント詳細を返す */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["EventItemCreate"];
+                    };
+                };
+                /** @description バリデーションエラー (VALIDATION_ERROR) — title/startDate 必須・日付形式不正・終了日 < 開始日・URL 形式不正 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description Bearer トークンなし (AUTH_REQUIRED) または期限切れ (AUTH_TOKEN_EXPIRED) */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description アカウント停止 (ACCOUNT_SUSPENDED) またはゲスト不可 (GUEST_NOT_ALLOWED) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description レート制限超過。Retry-After ヘッダー（秒）が返却される。自動リトライ禁止。 */
+                429: {
+                    headers: {
+                        /** @description 次のリクエストまでの待機秒数 */
+                        "Retry-After"?: number;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description 内部エラー (INTERNAL_ERROR) */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/events/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * イベント詳細取得
+         * @description 指定 ID のイベント詳細を取得する。ゲスト可。
+         *     isHidden=true / 不存在の場合は 404 を返す。
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description イベント ID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description イベント詳細 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["EventItemDetail"];
+                    };
+                };
+                /** @description Bearer トークンなし (AUTH_REQUIRED) または期限切れ (AUTH_TOKEN_EXPIRED) */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description アカウント停止 (ACCOUNT_SUSPENDED) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description イベントが存在しないか非表示 (NOT_FOUND) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description レート制限超過。Retry-After ヘッダー（秒）が返却される。自動リトライ禁止。 */
+                429: {
+                    headers: {
+                        /** @description 次のリクエストまでの待機秒数 */
+                        "Retry-After"?: number;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        /**
+         * イベントを削除する（作成者のみ）
+         * @description イベントを完全削除する。作成者のみ実行可能。
+         *
+         *     重要仕様:
+         *     - 作成者でない場合は 403 を返す（他人のイベントと不存在の区別なし）
+         *     - ゲストアカウントは 403 GUEST_NOT_ALLOWED
+         *     - レート制限: delete_event（5/分）
+         *     - 成功レスポンス: 204 No Content
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description イベント ID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 削除成功（レスポンスボディなし） */
+                204: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content?: never;
+                };
+                /** @description Bearer トークンなし (AUTH_REQUIRED) または期限切れ (AUTH_TOKEN_EXPIRED) */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description アカウント停止 (ACCOUNT_SUSPENDED) / ゲスト不可 (GUEST_NOT_ALLOWED) / 作成者でない */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description イベントが存在しないか非表示 (NOT_FOUND) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description レート制限超過。Retry-After ヘッダー（秒）が返却される。自動リトライ禁止。 */
+                429: {
+                    headers: {
+                        /** @description 次のリクエストまでの待機秒数 */
+                        "Retry-After"?: number;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description 内部エラー (INTERNAL_ERROR) */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        /**
+         * イベントを部分更新する（作成者のみ）
+         * @description 既存イベントを部分更新する。作成者のみ実行可能。
+         *
+         *     重要仕様:
+         *     - 省略したフィールドは既存値を維持する
+         *     - null を渡すと該当フィールドをクリアする
+         *     - 更新後の日付整合性（endDate >= startDate）を検証する
+         *     - 作成者でない場合は 403 を返す（他人のイベントと不存在の区別なし）
+         *     - レート制限: update_event（5/分）
+         */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description イベント ID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["UpdateEventRequest"];
+                };
+            };
+            responses: {
+                /** @description 更新成功。更新後のイベント詳細を返す */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["EventItemUpdate"];
+                    };
+                };
+                /** @description バリデーションエラー (VALIDATION_ERROR) — 日付形式不正・終了日 < 開始日・URL 形式不正 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description Bearer トークンなし (AUTH_REQUIRED) または期限切れ (AUTH_TOKEN_EXPIRED) */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description アカウント停止 (ACCOUNT_SUSPENDED) / ゲスト不可 (GUEST_NOT_ALLOWED) / 作成者でない */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description イベントが存在しないか非表示 (NOT_FOUND) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description レート制限超過。Retry-After ヘッダー（秒）が返却される。自動リトライ禁止。 */
+                429: {
+                    headers: {
+                        /** @description 次のリクエストまでの待機秒数 */
+                        "Retry-After"?: number;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description 内部エラー (INTERNAL_ERROR) */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/api/v1/shops": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 盆栽園一覧を取得する（ゲスト可）
+         * @description 盆栽園をフィルタ・ソート条件付きでカーソルページネーションで返す。
+         *
+         *     重要仕様:
+         *     - isHidden=true の盆栽園は除外される
+         *     - sortBy=rating はメモリソート（DB 集計困難なため）。他は DB 側ソート
+         *     - cursor は BonsaiShop.id の lt フィルタとして機能する
+         *     - latitude / longitude は Decimal から変換済みの number（null の場合は座標未登録）
+         *     - ゲスト可（Bearer 認証は必須だがゲストトークンで呼び出し可）
+         *     - レート制限: read（60/分）
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description 前回レスポンスの nextCursor 値（BonsaiShop.id） */
+                    cursor?: string;
+                    /** @description 取得件数（デフォルト 20、最大 100） */
+                    limit?: number;
+                    /** @description 名称・住所の部分一致検索 */
+                    search?: string;
+                    /** @description ジャンル ID でフィルタ（type=shop のジャンルのみ有効） */
+                    genreId?: string;
+                    /** @description 都道府県でフィルタ（住所の前方一致） */
+                    prefecture?: string;
+                    /** @description ソート順: rating / name / newest / location（デフォルト: location） */
+                    sortBy?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 盆栽園一覧取得成功 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ShopListResponse"];
+                    };
+                };
+                /** @description バリデーションエラー (VALIDATION_ERROR) — 不正な sortBy / prefecture / limit */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description Bearer トークンなし (AUTH_REQUIRED) または期限切れ (AUTH_TOKEN_EXPIRED) */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description アカウント停止 (ACCOUNT_SUSPENDED) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description レート制限超過。Retry-After ヘッダー（秒）が返却される。自動リトライ禁止。 */
+                429: {
+                    headers: {
+                        /** @description 次のリクエストまでの待機秒数 */
+                        "Retry-After"?: number;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /**
+         * 盆栽園を登録する（認証必須・ゲスト不可）
+         * @description 新しい盆栽園を登録する。同一住所の重複チェックあり（409 CONFLICT）。
+         *
+         *     重要仕様:
+         *     - ゲストアカウントは 403 GUEST_NOT_ALLOWED
+         *     - 同一住所が既に登録済みの場合は 409 CONFLICT
+         *     - latitude / longitude は省略可（地図表示なし状態で登録される）
+         *     - genreIds は GET /api/v1/genres?type=shop で取得したジャンル ID（最大 5 件）
+         *     - レート制限: create_shop（3/分）
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CreateShopRequest"];
+                };
+            };
+            responses: {
+                /** @description 盆栽園登録成功。id を返す */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ShopCreatedResponse"];
+                    };
+                };
+                /** @description バリデーションエラー (VALIDATION_ERROR) — 必須フィールド欠落・URL 形式不正 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description Bearer トークンなし (AUTH_REQUIRED) または期限切れ (AUTH_TOKEN_EXPIRED) */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description アカウント停止 (ACCOUNT_SUSPENDED) またはゲスト不可 (GUEST_NOT_ALLOWED) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description 同一住所が既に登録済み (CONFLICT) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description レート制限超過。Retry-After ヘッダー（秒）が返却される。自動リトライ禁止。 */
+                429: {
+                    headers: {
+                        /** @description 次のリクエストまでの待機秒数 */
+                        "Retry-After"?: number;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description 内部エラー (INTERNAL_ERROR) */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/shops/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 盆栽園詳細を取得する（ゲスト可）
+         * @description 指定 id の盆栽園詳細を返す。レビューは GET /api/v1/shops/{id}/reviews で別取得する。
+         *
+         *     重要仕様:
+         *     - isHidden=true または不存在は 404 NOT_FOUND
+         *     - latitude / longitude は Decimal から変換済みの number（null の場合は座標未登録）
+         *     - averageRating はレビューがない場合 null
+         *     - isOwner は閲覧者が作成者なら true（ゲスト時は false）
+         *     - ゲスト可（Bearer 認証は必須だがゲストトークンで呼び出し可）
+         *     - レート制限: read（60/分）
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description 盆栽園 ID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 盆栽園詳細取得成功 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ShopItem"];
+                    };
+                };
+                /** @description バリデーションエラー (VALIDATION_ERROR) — id 形式不正 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description Bearer トークンなし (AUTH_REQUIRED) または期限切れ (AUTH_TOKEN_EXPIRED) */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description アカウント停止 (ACCOUNT_SUSPENDED) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description 盆栽園が存在しないか非表示 (NOT_FOUND) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description レート制限超過。Retry-After ヘッダー（秒）が返却される。自動リトライ禁止。 */
+                429: {
+                    headers: {
+                        /** @description 次のリクエストまでの待機秒数 */
+                        "Retry-After"?: number;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * 盆栽園を編集する（作成者または admin）
+         * @description 盆栽園情報を部分更新する。作成者または管理者のみ実行可能。
+         *
+         *     重要仕様:
+         *     - 作成者でも管理者でもない場合は 403
+         *     - 不存在または isHidden=true の場合は 404 NOT_FOUND
+         *     - genreIds を指定した場合は既存ジャンルを全て置換する（省略時は変更なし）
+         *     - ゲストアカウントは 403 GUEST_NOT_ALLOWED
+         *     - レート制限: update_shop（5/分）
+         */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description 盆栽園 ID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["UpdateShopRequest"];
+                };
+            };
+            responses: {
+                /** @description 更新成功 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @enum {boolean} */
+                            success: true;
+                        };
+                    };
+                };
+                /** @description バリデーションエラー (VALIDATION_ERROR) — URL 形式不正・ジャンル上限超過 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description Bearer トークンなし (AUTH_REQUIRED) または期限切れ (AUTH_TOKEN_EXPIRED) */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description アカウント停止 (ACCOUNT_SUSPENDED) / ゲスト不可 (GUEST_NOT_ALLOWED) / 権限なし */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description 盆栽園が存在しないか非表示 (NOT_FOUND) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description レート制限超過。Retry-After ヘッダー（秒）が返却される。自動リトライ禁止。 */
+                429: {
+                    headers: {
+                        /** @description 次のリクエストまでの待機秒数 */
+                        "Retry-After"?: number;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description 内部エラー (INTERNAL_ERROR) */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/api/v1/shops/{id}/reviews": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * レビュー一覧を取得する（ゲスト可）
+         * @description 盆栽園のレビューをカーソルページネーションで返す。createdAt 降順。
+         *
+         *     重要仕様:
+         *     - ゲスト可（Bearer 認証は必須だがゲストトークンで呼び出し可）
+         *     - レート制限: read（60/分）
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description 前回レスポンスの nextCursor 値（ShopReview.id） */
+                    cursor?: string;
+                    /** @description 取得件数（デフォルト 20、最大 100） */
+                    limit?: number;
+                };
+                header?: never;
+                path: {
+                    /** @description 盆栽園 ID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description レビュー一覧取得成功 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ReviewListResponse"];
+                    };
+                };
+                /** @description バリデーションエラー (VALIDATION_ERROR) — id / limit 形式不正 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description Bearer トークンなし (AUTH_REQUIRED) または期限切れ (AUTH_TOKEN_EXPIRED) */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description アカウント停止 (ACCOUNT_SUSPENDED) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description レート制限超過。Retry-After ヘッダー（秒）が返却される。自動リトライ禁止。 */
+                429: {
+                    headers: {
+                        /** @description 次のリクエストまでの待機秒数 */
+                        "Retry-After"?: number;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /**
+         * レビューを投稿する（認証必須・ゲスト不可）
+         * @description 盆栽園にレビューを投稿する。1 盆栽園につき 1 ユーザー 1 件まで。
+         *
+         *     重要仕様:
+         *     - @@unique([shopId, userId]) の二重投稿は 409 CONFLICT
+         *     - mediaUrls は POST /api/v1/upload/image で取得した自社ストレージ URL のみ許可（外部 URL は 400）
+         *     - mediaUrls は最大 3 件（ShopReviewImage として保存される）
+         *     - ゲストアカウントは 403 GUEST_NOT_ALLOWED
+         *     - 盆栽園が存在しないか isHidden=true の場合は 404
+         *     - レート制限: create_review（3/分）
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description 盆栽園 ID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CreateReviewRequest"];
+                };
+            };
+            responses: {
+                /** @description レビュー投稿成功。投稿したレビューを返す */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ReviewItem"];
+                    };
+                };
+                /** @description バリデーションエラー (VALIDATION_ERROR) — rating 範囲外・mediaUrls 上限超過・外部 URL */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description Bearer トークンなし (AUTH_REQUIRED) または期限切れ (AUTH_TOKEN_EXPIRED) */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description アカウント停止 (ACCOUNT_SUSPENDED) またはゲスト不可 (GUEST_NOT_ALLOWED) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description 盆栽園が存在しないか非表示 (NOT_FOUND) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description 同一ユーザーによる二重投稿 (CONFLICT) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description レート制限超過。Retry-After ヘッダー（秒）が返却される。自動リトライ禁止。 */
+                429: {
+                    headers: {
+                        /** @description 次のリクエストまでの待機秒数 */
+                        "Retry-After"?: number;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description 内部エラー (INTERNAL_ERROR) */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/genres": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * ジャンル一覧を取得する（ゲスト可）
+         * @description type クエリで盆栽園用（shop）または投稿用（post）のジャンルを取得する。
+         *
+         *     重要仕様:
+         *     - type=shop（デフォルト）: 盆栽園タグ用ジャンル
+         *     - type=post: 投稿タグ用ジャンル
+         *     - sortOrder / category ASC で返す
+         *     - ゲスト可（Bearer 認証は必須だがゲストトークンで呼び出し可）
+         *     - レート制限: read（60/分）
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description ジャンル種別: shop（デフォルト）または post */
+                    type?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description ジャンル一覧取得成功 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["GenreListResponse"];
+                    };
+                };
+                /** @description バリデーションエラー (VALIDATION_ERROR) — 不正な type */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description Bearer トークンなし (AUTH_REQUIRED) または期限切れ (AUTH_TOKEN_EXPIRED) */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description アカウント停止 (ACCOUNT_SUSPENDED) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description レート制限超過。Retry-After ヘッダー（秒）が返却される。自動リトライ禁止。 */
+                429: {
+                    headers: {
+                        /** @description 次のリクエストまでの待機秒数 */
+                        "Retry-After"?: number;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/scheduled-posts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 予約投稿一覧を取得する（プレミアム限定）
+         * @description 自分の予約投稿をカーソルページネーションで取得する。
+         *
+         *     重要仕様:
+         *     - プレミアム非会員は 403 PREMIUM_REQUIRED
+         *     - ゲストアカウントは 403 GUEST_NOT_ALLOWED
+         *     - scheduledAt 昇順で返す
+         *     - レート制限: read（60/分）
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description カーソル（前回レスポンスの nextCursor 値） */
+                    cursor?: string;
+                    /** @description 1 回の取得上限件数（デフォルト 20） */
+                    limit?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 予約投稿一覧取得成功 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ScheduledPostListResponse"];
+                    };
+                };
+                /** @description バリデーションエラー (VALIDATION_ERROR) */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description Bearer トークンなし (AUTH_REQUIRED) または期限切れ (AUTH_TOKEN_EXPIRED) */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description アカウント停止 (ACCOUNT_SUSPENDED)、ゲスト不可 (GUEST_NOT_ALLOWED)、またはプレミアム限定 (PREMIUM_REQUIRED) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description レート制限超過。Retry-After ヘッダー（秒）が返却される。自動リトライ禁止。 */
+                429: {
+                    headers: {
+                        /** @description 次のリクエストまでの待機秒数 */
+                        "Retry-After"?: number;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /**
+         * 予約投稿を作成する（プレミアム限定）
+         * @description 予約投稿を新規作成する。
+         *
+         *     重要仕様:
+         *     - プレミアム非会員は 403 PREMIUM_REQUIRED
+         *     - ゲストアカウントは 403 GUEST_NOT_ALLOWED
+         *     - scheduledAt は未来かつ 30 日以内
+         *     - pending 件数が 10 件に達している場合は 400
+         *     - content / mediaUrls のどちらか一方は必須
+         *     - mediaUrls は自社ストレージ URL のみ許可（外部 URL は 400 VALIDATION_ERROR）
+         *     - レート制限: create_scheduled_post（3/分）
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CreateScheduledPostRequest"];
+                };
+            };
+            responses: {
+                /** @description 予約投稿作成成功。作成した予約投稿の id を返す */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ScheduledPostCreatedResponse"];
+                    };
+                };
+                /** @description バリデーションエラー (VALIDATION_ERROR) — scheduledAt 未来必須・30 日超過・pending 上限・content 不足・mediaUrls 外部 URL */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description Bearer トークンなし (AUTH_REQUIRED) または期限切れ (AUTH_TOKEN_EXPIRED) */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description アカウント停止 (ACCOUNT_SUSPENDED)、ゲスト不可 (GUEST_NOT_ALLOWED)、またはプレミアム限定 (PREMIUM_REQUIRED) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description レート制限超過。Retry-After ヘッダー（秒）が返却される。自動リトライ禁止。 */
+                429: {
+                    headers: {
+                        /** @description 次のリクエストまでの待機秒数 */
+                        "Retry-After"?: number;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/scheduled-posts/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 予約投稿詳細を取得する（所有者のみ・プレミアム限定）
+         * @description 指定 ID の予約投稿を取得する。
+         *
+         *     重要仕様:
+         *     - 所有者以外（他人・不存在）は 404 で統一（アクセス有無を秘匿）
+         *     - プレミアム非会員は 403 PREMIUM_REQUIRED
+         *     - ゲストアカウントは 403 GUEST_NOT_ALLOWED
+         *     - レート制限: read（60/分）
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description 予約投稿 ID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 予約投稿詳細取得成功 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ScheduledPostItem"];
+                    };
+                };
+                /** @description Bearer トークンなし (AUTH_REQUIRED) または期限切れ (AUTH_TOKEN_EXPIRED) */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description アカウント停止 (ACCOUNT_SUSPENDED)、ゲスト不可 (GUEST_NOT_ALLOWED)、またはプレミアム限定 (PREMIUM_REQUIRED) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description 予約投稿が存在しないか所有者でない (NOT_FOUND) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description レート制限超過。Retry-After ヘッダー（秒）が返却される。自動リトライ禁止。 */
+                429: {
+                    headers: {
+                        /** @description 次のリクエストまでの待機秒数 */
+                        "Retry-After"?: number;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        /**
+         * 予約投稿をハード削除する（published 不可）
+         * @description 予約投稿と添付メディアを完全削除する。
+         *
+         *     重要仕様:
+         *     - published 状態は 400 VALIDATION_ERROR（公開済み投稿は削除不可）
+         *     - pending / cancelled / failed は削除可能
+         *     - 所有者以外（他人・不存在）は 404 で統一
+         *     - ゲストアカウントは 403 GUEST_NOT_ALLOWED
+         *     - 添付メディアのストレージ実体は best-effort で削除される（DB カスケード後）
+         *     - レート制限: engagement（30/分）
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description 予約投稿 ID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description ハード削除成功 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @enum {boolean} */
+                            success: true;
+                        };
+                    };
+                };
+                /** @description バリデーションエラー (VALIDATION_ERROR) — published は削除不可 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description Bearer トークンなし (AUTH_REQUIRED) または期限切れ (AUTH_TOKEN_EXPIRED) */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description アカウント停止 (ACCOUNT_SUSPENDED) またはゲスト不可 (GUEST_NOT_ALLOWED) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description 予約投稿が存在しないか所有者でない (NOT_FOUND) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description レート制限超過。Retry-After ヘッダー（秒）が返却される。自動リトライ禁止。 */
+                429: {
+                    headers: {
+                        /** @description 次のリクエストまでの待機秒数 */
+                        "Retry-After"?: number;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        /**
+         * 予約投稿を更新する（pending のみ・プレミアム限定）
+         * @description pending 状態の予約投稿を更新する。
+         *
+         *     重要仕様:
+         *     - pending 以外（published / cancelled / failed）は 400 VALIDATION_ERROR
+         *     - 所有者以外（他人・不存在）は 404 で統一
+         *     - プレミアム非会員は 403 PREMIUM_REQUIRED
+         *     - ゲストアカウントは 403 GUEST_NOT_ALLOWED
+         *     - フィールド構成は POST と同一（差し替え方式）
+         *     - レート制限: update_scheduled_post（5/分）
+         */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description 予約投稿 ID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["UpdateScheduledPostRequest"];
+                };
+            };
+            responses: {
+                /** @description 予約投稿更新成功 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @enum {boolean} */
+                            success: true;
+                        };
+                    };
+                };
+                /** @description バリデーションエラー (VALIDATION_ERROR) — pending 以外の編集・scheduledAt 不正・content 不足・mediaUrls 外部 URL */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description Bearer トークンなし (AUTH_REQUIRED) または期限切れ (AUTH_TOKEN_EXPIRED) */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description アカウント停止 (ACCOUNT_SUSPENDED)、ゲスト不可 (GUEST_NOT_ALLOWED)、またはプレミアム限定 (PREMIUM_REQUIRED) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description 予約投稿が存在しないか所有者でない (NOT_FOUND) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description レート制限超過。Retry-After ヘッダー（秒）が返却される。自動リトライ禁止。 */
+                429: {
+                    headers: {
+                        /** @description 次のリクエストまでの待機秒数 */
+                        "Retry-After"?: number;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
+    "/api/v1/scheduled-posts/{id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 予約投稿をキャンセルする（ソフトキャンセル・pending のみ）
+         * @description 予約投稿のステータスを cancelled に変更する（ハード削除は DELETE を使用）。
+         *
+         *     重要仕様:
+         *     - cancelled にした投稿は DELETE エンドポイントで後からハード削除できる
+         *     - pending 以外は 400 VALIDATION_ERROR
+         *     - 所有者以外（他人・不存在）は 404 で統一
+         *     - ゲストアカウントは 403 GUEST_NOT_ALLOWED
+         *     - プレミアム判定は行わない（cancelled 済みを持っている場合も操作可能）
+         *     - レート制限: engagement（30/分）
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description 予約投稿 ID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description キャンセル成功 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @enum {boolean} */
+                            success: true;
+                        };
+                    };
+                };
+                /** @description バリデーションエラー (VALIDATION_ERROR) — pending 以外のキャンセル */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description Bearer トークンなし (AUTH_REQUIRED) または期限切れ (AUTH_TOKEN_EXPIRED) */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description アカウント停止 (ACCOUNT_SUSPENDED) またはゲスト不可 (GUEST_NOT_ALLOWED) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description 予約投稿が存在しないか所有者でない (NOT_FOUND) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description レート制限超過。Retry-After ヘッダー（秒）が返却される。自動リトライ禁止。 */
+                429: {
+                    headers: {
+                        /** @description 次のリクエストまでの待機秒数 */
+                        "Retry-After"?: number;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/legal": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 利用可能な法的文章一覧を取得
+         * @description 取得可能な法的文章の slug / title / updatedAt 一覧を返す。
+         *
+         *     現在の slug: tokushoho（特定商取引法に基づく表記）/ terms（利用規約）/ privacy（プライバシーポリシー）
+         *
+         *     ゲストアカウントでも利用可能。
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 法的文章一覧取得成功 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["LegalListResponse"];
+                    };
+                };
+                /** @description Bearer トークンなし (AUTH_REQUIRED) または期限切れ (AUTH_TOKEN_EXPIRED) */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description アカウント停止 (ACCOUNT_SUSPENDED) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description レート制限超過。Retry-After ヘッダー（秒）が返却される。自動リトライ禁止。 */
+                429: {
+                    headers: {
+                        /** @description 次のリクエストまでの待機秒数 */
+                        "Retry-After"?: number;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/legal/{slug}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 法的文章を slug で取得
+         * @description 指定した slug の法的文章を sections 形式（[{ heading, body }]）で返す。
+         *
+         *     許可済み slug:
+         *     - tokushoho — 特定商取引法に基づく表記
+         *     - terms — 利用規約
+         *     - privacy — プライバシーポリシー
+         *
+         *     許可リスト外の slug は 400 VALIDATION_ERROR を返す（404 ではない）。
+         *     ゲストアカウントでも利用可能。
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description 法的文章の識別子。tokushoho / terms / privacy のいずれか。 */
+                    slug: "tokushoho" | "terms" | "privacy";
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 法的文章詳細取得成功 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["LegalDocumentResponse"];
+                    };
+                };
+                /** @description slug が許可リスト外 (VALIDATION_ERROR) */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description Bearer トークンなし (AUTH_REQUIRED) または期限切れ (AUTH_TOKEN_EXPIRED) */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description アカウント停止 (ACCOUNT_SUSPENDED) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description レート制限超過。Retry-After ヘッダー（秒）が返却される。自動リトライ禁止。 */
+                429: {
+                    headers: {
+                        /** @description 次のリクエストまでの待機秒数 */
+                        "Retry-After"?: number;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/analytics/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 自分の投稿分析サマリを取得する
+         * @description 認証ユーザー自身の投稿・フォロワー・エンゲージメントのサマリを返す。
+         *
+         *     重要仕様:
+         *     - Bearer 必須・ゲストアカウントは 403 GUEST_NOT_ALLOWED
+         *     - プレミアム会員限定: 非プレミアムは 403 PREMIUM_REQUIRED
+         *     - 自分のデータのみ（他ユーザーの分析は取得不可）
+         *     - days: 7 / 30 / 90 の文字列のみ許容（省略時 30）
+         *     - レート制限: analytics_summary（10/分）
+         *     - posts.topPosts は期間内エンゲージメント（いいね＋コメント）上位 5 件
+         *     - followers.growth の totalFollowers は推定累積値（新規数を積算）
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description 集計期間（日）。7 / 30 / 90 のいずれか（省略時 30） */
+                    days?: "7" | "30" | "90";
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 分析サマリ取得成功 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["AnalyticsSummaryResponse"];
+                    };
+                };
+                /** @description バリデーションエラー (VALIDATION_ERROR) — days が不正な値 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description Bearer トークンなし (AUTH_REQUIRED) または期限切れ (AUTH_TOKEN_EXPIRED) */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description アカウント停止 (ACCOUNT_SUSPENDED) / ゲスト不可 (GUEST_NOT_ALLOWED) / プレミアム限定 (PREMIUM_REQUIRED) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description レート制限超過。Retry-After ヘッダー（秒）が返却される。自動リトライ禁止。 */
+                429: {
+                    headers: {
+                        /** @description 次のリクエストまでの待機秒数 */
+                        "Retry-After"?: number;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description 内部エラー (INTERNAL_ERROR) */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -4064,6 +8741,137 @@ export interface components {
         UnreadCountResponse: {
             count: number;
         };
+        /** @description ブックマーク操作後の状態。POST→true / DELETE→false。冪等: 既ブックマーク/未ブックマークでも 200。 */
+        BookmarkResponse: {
+            bookmarked: boolean;
+        };
+        /** @description ブックマーク投稿一覧レスポンス。feed と同等の投稿形式（mentionedUsers / isBlocked / isMuted 付き）。 */
+        BookmarksListResponse: {
+            items: {
+                id: string;
+                content: string;
+                /** Format: date-time */
+                createdAt: string;
+                /** Format: date-time */
+                updatedAt: string;
+                userId: string;
+                user: {
+                    id: string;
+                    nickname: string;
+                    avatarUrl: string | null;
+                    isBlocked: boolean;
+                    isMuted: boolean;
+                };
+                media: {
+                    id: string;
+                    url: string;
+                    type: string;
+                    sortOrder: number;
+                }[];
+                genres: {
+                    id: string;
+                    name: string;
+                    category: string;
+                }[];
+                likeCount: number;
+                commentCount: number;
+                repostCount: number;
+                isLiked: boolean;
+                isBookmarked: boolean;
+                isReposted: boolean;
+                quotePost: {
+                    id: string;
+                    content: string;
+                    user: {
+                        id: string;
+                        nickname: string;
+                        avatarUrl: string | null;
+                    };
+                    media?: {
+                        id: string;
+                        url: string;
+                        type: string;
+                        sortOrder: number;
+                    }[];
+                } | null;
+                repostPost: {
+                    id: string;
+                    content: string;
+                    user: {
+                        id: string;
+                        nickname: string;
+                        avatarUrl: string | null;
+                    };
+                    media?: {
+                        id: string;
+                        url: string;
+                        type: string;
+                        sortOrder: number;
+                    }[];
+                } | null;
+                poll?: unknown;
+                mentionedUsers: {
+                    id: string;
+                    nickname: string;
+                    avatarUrl: string | null;
+                }[];
+            }[];
+            nextCursor: string | null;
+        };
+        /** @description トレンドハッシュタグ 1 件（id, name, count）。count は Hashtag テーブルの累計投稿数。 */
+        TrendingHashtagItem: {
+            id: string;
+            name: string;
+            count: number;
+        };
+        /** @description トレンドハッシュタグ一覧レスポンス。count 降順。 */
+        TrendingHashtagsResponse: {
+            items: {
+                id: string;
+                name: string;
+                count: number;
+            }[];
+        };
+        /** @description トレンドジャンル 1 件（id, name, category, postCount）。postCount は直近 48 時間の投稿数。 */
+        TrendingGenreItem: {
+            id: string;
+            name: string;
+            category: string;
+            postCount: number;
+        };
+        /** @description トレンドジャンル一覧レスポンス。postCount 降順。 */
+        TrendingGenresResponse: {
+            items: {
+                id: string;
+                name: string;
+                category: string;
+                postCount: number;
+            }[];
+        };
+        /** @description おすすめユーザー 1 件（id, nickname, avatarUrl, bio, followersCount, following, requested, isPublic）。ゲスト時は空配列。 */
+        RecommendedUserItem: {
+            id: string;
+            nickname: string;
+            avatarUrl: string | null;
+            bio: string | null;
+            followersCount: number;
+            following: boolean;
+            requested: boolean;
+            isPublic: boolean;
+        };
+        /** @description おすすめユーザー一覧レスポンス。フォロワー数降順。ゲスト時は空配列。 */
+        RecommendedUsersResponse: {
+            items: {
+                id: string;
+                nickname: string;
+                avatarUrl: string | null;
+                bio: string | null;
+                followersCount: number;
+                following: boolean;
+                requested: boolean;
+                isPublic: boolean;
+            }[];
+        };
         /**
          * @description 動画 presigned PUT URL のリクエスト。
          *     contentType は video/mp4, video/quicktime, video/webm のいずれか。
@@ -4112,6 +8920,1146 @@ export interface components {
             token: string;
             /** @enum {string} */
             platform: "android" | "ios";
+        };
+        /**
+         * @description 辞典カテゴリ enum（7 固定値）: 樹形 / 技術・作業 / 管理・育成 / 道具・用品 / 盆器・鉢 / 用土・肥料 / 展示・鑑賞。
+         * @enum {string}
+         */
+        DictionaryCategory: "樹形" | "技術・作業" | "管理・育成" | "道具・用品" | "盆器・鉢" | "用土・肥料" | "展示・鑑賞";
+        /**
+         * @description 五十音行 enum（10 行）: あ行〜わ行。reading 先頭文字に基づく in-memory フィルタで使用。
+         * @enum {string}
+         */
+        KanaRow: "あ行" | "か行" | "さ行" | "た行" | "な行" | "は行" | "ま行" | "や行" | "ら行" | "わ行";
+        /** @description 辞典用語の一覧項目（description 省略）。 */
+        DictionaryTermSummary: {
+            id: string;
+            slug: string;
+            term: string;
+            reading: string;
+            category: string;
+        };
+        /** @description 辞典用語の詳細（description を含む）。 */
+        DictionaryTermDetail: {
+            id: string;
+            slug: string;
+            term: string;
+            reading: string;
+            category: string;
+            description: string;
+        };
+        /** @description GET /api/v1/dictionary 成功レスポンス。reading ASC / sortOrder ASC 順。 */
+        DictionaryListResponse: {
+            items: {
+                id: string;
+                slug: string;
+                term: string;
+                reading: string;
+                category: string;
+            }[];
+            nextCursor: string | null;
+        };
+        /** @description GET /api/v1/dictionary/{slug} 成功レスポンス。prev/next/related を含む。 */
+        DictionaryDetailResponse: {
+            term: {
+                id: string;
+                slug: string;
+                term: string;
+                reading: string;
+                category: string;
+                description: string;
+            };
+            prev: {
+                id: string;
+                slug: string;
+                term: string;
+                reading: string;
+                category: string;
+            } | null;
+            next: {
+                id: string;
+                slug: string;
+                term: string;
+                reading: string;
+                category: string;
+            } | null;
+            related: {
+                id: string;
+                slug: string;
+                term: string;
+                reading: string;
+                category: string;
+            }[];
+        };
+        /**
+         * @description 栄養素カテゴリ enum: primary（三大要素）/ secondary（二次要素）/ trace（微量要素）。
+         * @enum {string}
+         */
+        NutrientCategory: "primary" | "secondary" | "trace";
+        /**
+         * @description 樹種カテゴリ enum: conifer（松柏類）/ deciduous（雑木類）/ flowering（花物）/ fruiting（実物）/ grass（草物）/ evergreen（常緑広葉樹）。
+         * @enum {string}
+         */
+        TreeCategory: "conifer" | "deciduous" | "flowering" | "fruiting" | "grass" | "evergreen";
+        /**
+         * @description 施肥アクション enum: none（施肥不要）/ light（控えめ）/ moderate（通常量）/ heavy（たっぷり）。
+         * @enum {string}
+         */
+        FertilizerAction: "none" | "light" | "moderate" | "heavy";
+        /**
+         * @description 栄養素レベル enum: high（多め）/ balanced（バランス）/ low（控えめ）/ none（不要）。
+         * @enum {string}
+         */
+        NutrientLevel: "high" | "balanced" | "low" | "none";
+        /** @description 栄養素一覧の 1 件（deficiencySymptoms 等は詳細のみ）。 */
+        NutrientItem: {
+            id: string;
+            name: string;
+            symbol: string;
+            category: string;
+            description: string | null;
+            bonsaiRole: string | null;
+            slug: string;
+        };
+        /** @description 栄養素詳細（deficiencySymptoms / excessSymptoms / foodSources を含む）。 */
+        NutrientDetail: {
+            id: string;
+            name: string;
+            symbol: string;
+            category: string;
+            description: string | null;
+            bonsaiRole: string | null;
+            slug: string;
+            deficiencySymptoms: string | null;
+            excessSymptoms: string | null;
+            foodSources: string | null;
+        };
+        /** @description 肥料カテゴリ 1 件（code, name, description, merit, demerit, bonsaiUsage, slug）。 */
+        FertilizerCategoryItem: {
+            code: string;
+            name: string;
+            description: string | null;
+            merit: string | null;
+            demerit: string | null;
+            bonsaiUsage: string | null;
+            slug: string;
+        };
+        /** @description 樹種一覧の 1 件（id, name, category, fertilizingPolicy, slug）。 */
+        TreeSpeciesItem: {
+            id: string;
+            name: string;
+            category: string;
+            fertilizingPolicy: string | null;
+            slug: string;
+        };
+        /** @description 月別施肥データ 1 件（month 1〜12、action、各栄養素レベル、推奨肥料タイプ、備考）。 */
+        FertilizationMonth: {
+            month: number;
+            action: string;
+            nitrogenLevel: string | null;
+            phosphorusLevel: string | null;
+            potassiumLevel: string | null;
+            recommendedType: string | null;
+            description: string | null;
+        };
+        /** @description GET /api/v1/fertilizers/tree-species/{slug}/schedule 成功レスポンス。months は月順で最大 12 件。 */
+        FertilizationScheduleResponse: {
+            months: {
+                month: number;
+                action: string;
+                nitrogenLevel: string | null;
+                phosphorusLevel: string | null;
+                potassiumLevel: string | null;
+                recommendedType: string | null;
+                description: string | null;
+            }[];
+        };
+        /**
+         * @description ホルモンカテゴリ enum: major（主要ホルモン）/ secondary（補助ホルモン）。
+         * @enum {string}
+         */
+        HormoneCategory: "major" | "secondary";
+        /** @description ホルモン一覧の 1 件（id, name, nameEn, slug, category, chemicalFormula, description）。 */
+        HormoneItem: {
+            id: string;
+            name: string;
+            nameEn: string | null;
+            slug: string;
+            category: string;
+            chemicalFormula: string | null;
+            description: string | null;
+        };
+        /** @description ホルモン効果 1 件（effectName, isPromoting）。isPromoting=true: 促進 / false: 抑制。 */
+        HormoneEffect: {
+            effectName: string;
+            isPromoting: boolean;
+        };
+        /** @description 月別ホルモン活性 1 件（month 1〜12、level: high / moderate / low / minimal）。 */
+        HormoneSeasonalLevel: {
+            month: number;
+            level: string;
+        };
+        /** @description ホルモン詳細（bonsaiRole / productionSite / practicalTips / activationMethod / effects / seasonalLevels を含む）。interactions/techniques は別バッチで追加予定。 */
+        HormoneDetail: {
+            id: string;
+            name: string;
+            nameEn: string | null;
+            slug: string;
+            category: string;
+            chemicalFormula: string | null;
+            description: string | null;
+            bonsaiRole: string | null;
+            productionSite: string | null;
+            practicalTips: string | null;
+            activationMethod: string | null;
+            effects: {
+                effectName: string;
+                isPromoting: boolean;
+            }[];
+            seasonalLevels: {
+                month: number;
+                level: string;
+            }[];
+        };
+        /**
+         * @description 病害虫カテゴリ enum: disease（病害）/ pest（害虫）/ beneficial_insect（益虫）。
+         * @enum {string}
+         */
+        DiseasePestCategory: "disease" | "pest" | "beneficial_insect";
+        /**
+         * @description 農薬種別 enum: fungicide（殺菌剤）/ insecticide（殺虫剤）/ acaricide（殺ダニ剤）/ compound（複合剤）/ other。
+         * @enum {string}
+         */
+        PesticideType: "fungicide" | "insecticide" | "acaricide" | "compound" | "other";
+        /**
+         * @description 効果レーティング enum: excellent（◎）/ good（○）/ fair（△）/ poor（×）/ none（効果なし）。
+         * @enum {string}
+         */
+        EffectRating: "excellent" | "good" | "fair" | "poor" | "none";
+        /**
+         * @description 耐性リスク enum: low（つきにくい）/ medium（ややつきやすい）/ high（つきやすい）。
+         * @enum {string}
+         */
+        ResistanceRisk: "low" | "medium" | "high";
+        /** @description 病害虫一覧の 1 件（id, name, nameKana, category, description, imageUrl, slug）。 */
+        DiseasePestItem: {
+            id: string;
+            name: string;
+            nameKana: string | null;
+            /** @enum {string} */
+            category: "disease" | "pest" | "beneficial_insect";
+            description: string | null;
+            imageUrl: string | null;
+            slug: string;
+        };
+        /** @description 病害虫詳細の農薬効果 1 件（pesticide 情報 + rating）。 */
+        DiseasePestEffectItem: {
+            pesticide: {
+                id: string;
+                name: string;
+                slug: string;
+                /** @enum {string} */
+                pesticideType: "fungicide" | "insecticide" | "acaricide" | "compound" | "other";
+            };
+            rating: {
+                /** @enum {string|null} */
+                preventionLevel: "excellent" | "good" | "fair" | "poor" | "none" | null;
+                /** @enum {string|null} */
+                treatmentLevel: "excellent" | "good" | "fair" | "poor" | "none" | null;
+                /** @enum {string|null} */
+                efficacyLevel: "excellent" | "good" | "fair" | "poor" | "none" | null;
+                /** @enum {string|null} */
+                persistenceLevel: "excellent" | "good" | "fair" | "poor" | "none" | null;
+            };
+        };
+        /** @description 病害虫詳細（effects: 有効農薬一覧を含む）。 */
+        DiseasePestDetail: {
+            id: string;
+            name: string;
+            nameKana: string | null;
+            /** @enum {string} */
+            category: "disease" | "pest" | "beneficial_insect";
+            description: string | null;
+            imageUrl: string | null;
+            slug: string;
+            effects: {
+                pesticide: {
+                    id: string;
+                    name: string;
+                    slug: string;
+                    /** @enum {string} */
+                    pesticideType: "fungicide" | "insecticide" | "acaricide" | "compound" | "other";
+                };
+                rating: {
+                    /** @enum {string|null} */
+                    preventionLevel: "excellent" | "good" | "fair" | "poor" | "none" | null;
+                    /** @enum {string|null} */
+                    treatmentLevel: "excellent" | "good" | "fair" | "poor" | "none" | null;
+                    /** @enum {string|null} */
+                    efficacyLevel: "excellent" | "good" | "fair" | "poor" | "none" | null;
+                    /** @enum {string|null} */
+                    persistenceLevel: "excellent" | "good" | "fair" | "poor" | "none" | null;
+                };
+            }[];
+        };
+        /** @description GET /api/v1/pesticides/disease-pests 成功レスポンス。sortOrder ASC / name ASC 順。 */
+        DiseasePestListResponse: {
+            items: {
+                id: string;
+                name: string;
+                nameKana: string | null;
+                /** @enum {string} */
+                category: "disease" | "pest" | "beneficial_insect";
+                description: string | null;
+                imageUrl: string | null;
+                slug: string;
+            }[];
+            nextCursor: string | null;
+        };
+        /** @description 農薬製品一覧の 1 件（id, name, registrationNumber, pesticideType, description, slug）。 */
+        PesticideItem: {
+            id: string;
+            name: string;
+            registrationNumber: string | null;
+            /** @enum {string} */
+            pesticideType: "fungicide" | "insecticide" | "acaricide" | "compound" | "other";
+            description: string | null;
+            slug: string;
+        };
+        /** @description 農薬製品詳細の有効成分 1 件（id, name, fracCode, iracCode, resistanceRisk, slug）。 */
+        PesticideActiveIngredientItem: {
+            id: string;
+            name: string;
+            fracCode: string | null;
+            iracCode: string | null;
+            /** @enum {string|null} */
+            resistanceRisk: "low" | "medium" | "high" | null;
+            slug: string;
+        };
+        /** @description 農薬製品の剤型（name, code）。 */
+        PesticideFormulationType: {
+            name: string;
+            code: string;
+        };
+        /** @description 農薬製品詳細の効果 1 件（diseasePest 情報 + rating）。 */
+        PesticideEffectItem: {
+            diseasePest: {
+                id: string;
+                name: string;
+                slug: string;
+            };
+            rating: {
+                /** @enum {string|null} */
+                preventionLevel: "excellent" | "good" | "fair" | "poor" | "none" | null;
+                /** @enum {string|null} */
+                treatmentLevel: "excellent" | "good" | "fair" | "poor" | "none" | null;
+                /** @enum {string|null} */
+                efficacyLevel: "excellent" | "good" | "fair" | "poor" | "none" | null;
+                /** @enum {string|null} */
+                persistenceLevel: "excellent" | "good" | "fair" | "poor" | "none" | null;
+            };
+        };
+        /** @description 農薬製品詳細の混用不可農薬 1 件（id, name, slug, formulationTypeName）。 */
+        PesticideIncompatibilityItem: {
+            id: string;
+            name: string;
+            slug: string;
+            formulationTypeName: string | null;
+        };
+        /** @description 農薬製品詳細（formulationType, activeIngredients, effects, incompatibilities を含む）。 */
+        PesticideDetail: {
+            id: string;
+            name: string;
+            registrationNumber: string | null;
+            /** @enum {string} */
+            pesticideType: "fungicide" | "insecticide" | "acaricide" | "compound" | "other";
+            description: string | null;
+            slug: string;
+            formulationType: {
+                name: string;
+                code: string;
+            } | null;
+            activeIngredients: {
+                id: string;
+                name: string;
+                fracCode: string | null;
+                iracCode: string | null;
+                /** @enum {string|null} */
+                resistanceRisk: "low" | "medium" | "high" | null;
+                slug: string;
+            }[];
+            effects: {
+                diseasePest: {
+                    id: string;
+                    name: string;
+                    slug: string;
+                };
+                rating: {
+                    /** @enum {string|null} */
+                    preventionLevel: "excellent" | "good" | "fair" | "poor" | "none" | null;
+                    /** @enum {string|null} */
+                    treatmentLevel: "excellent" | "good" | "fair" | "poor" | "none" | null;
+                    /** @enum {string|null} */
+                    efficacyLevel: "excellent" | "good" | "fair" | "poor" | "none" | null;
+                    /** @enum {string|null} */
+                    persistenceLevel: "excellent" | "good" | "fair" | "poor" | "none" | null;
+                };
+            }[];
+            incompatibilities: {
+                id: string;
+                name: string;
+                slug: string;
+                formulationTypeName: string | null;
+            }[];
+        };
+        /** @description GET /api/v1/pesticides/products 成功レスポンス。name ASC 順。 */
+        PesticideListResponse: {
+            items: {
+                id: string;
+                name: string;
+                registrationNumber: string | null;
+                /** @enum {string} */
+                pesticideType: "fungicide" | "insecticide" | "acaricide" | "compound" | "other";
+                description: string | null;
+                slug: string;
+            }[];
+            nextCursor: string | null;
+        };
+        /** @description 有効成分一覧の 1 件（id, name, nameEn, fracCode, iracCode, resistanceRisk, slug）。 */
+        IngredientItem: {
+            id: string;
+            name: string;
+            nameEn: string | null;
+            fracCode: string | null;
+            iracCode: string | null;
+            /** @enum {string|null} */
+            resistanceRisk: "low" | "medium" | "high" | null;
+            slug: string;
+        };
+        /** @description 有効成分詳細（ingredientGroup, description, pesticides 一覧を含む）。 */
+        IngredientDetail: {
+            id: string;
+            name: string;
+            nameEn: string | null;
+            fracCode: string | null;
+            iracCode: string | null;
+            /** @enum {string|null} */
+            resistanceRisk: "low" | "medium" | "high" | null;
+            slug: string;
+            ingredientGroup: string | null;
+            description: string | null;
+            pesticides: {
+                contentLabel: string | null;
+                pesticide: {
+                    id: string;
+                    name: string;
+                    slug: string;
+                    formulationTypeName: string | null;
+                };
+            }[];
+        };
+        /** @description GET /api/v1/pesticides/ingredients 成功レスポンス。name ASC 順。 */
+        IngredientListResponse: {
+            items: {
+                id: string;
+                name: string;
+                nameEn: string | null;
+                fracCode: string | null;
+                iracCode: string | null;
+                /** @enum {string|null} */
+                resistanceRisk: "low" | "medium" | "high" | null;
+                slug: string;
+            }[];
+            nextCursor: string | null;
+        };
+        /**
+         * @description 盆栽作成リクエスト。name は必須（最大 100 文字）。
+         *     acquiredAt は ISO 8601 形式の日時文字列（例: "2024-03-15T00:00:00.000Z"）。
+         */
+        CreateBonsaiRequest: {
+            name: string;
+            species?: string;
+            /** Format: date-time */
+            acquiredAt?: string;
+            description?: string;
+        };
+        /**
+         * @description 盆栽部分更新リクエスト。全フィールドが optional。
+         *     acquiredAt に null を渡すと取得日をクリアする。
+         */
+        UpdateBonsaiRequest: {
+            name?: string;
+            species?: string;
+            /** Format: date-time */
+            acquiredAt?: string | null;
+            description?: string;
+        };
+        /**
+         * @description 成長記録作成リクエスト。recordAt は必須（ISO 8601）。
+         *     mediaUrls は POST /api/v1/upload/image で取得した自社ストレージ URL のみ（外部 URL は 400 VALIDATION_ERROR）。
+         *     最大 4 枚。
+         */
+        CreateBonsaiRecordRequest: {
+            content?: string;
+            /** Format: date-time */
+            recordAt: string;
+            /** @default [] */
+            mediaUrls: string[];
+        };
+        /**
+         * @description 成長記録部分更新リクエスト。
+         *     mediaUrls 指定時は既存画像を全て置換する（差し替え方式）。省略時は既存画像を維持する。
+         */
+        UpdateBonsaiRecordRequest: {
+            content?: string;
+            /** Format: date-time */
+            recordAt?: string;
+            mediaUrls?: string[];
+        };
+        /** @description 盆栽一覧の最新記録サムネイル情報。 */
+        BonsaiLatestRecord: {
+            id: string;
+            content: string | null;
+            /** Format: date-time */
+            recordAt: string;
+            thumbnailUrl: string | null;
+        };
+        /** @description 盆栽一覧の 1 件（最新記録サムネイル付き）。 */
+        BonsaiListItem: {
+            id: string;
+            name: string;
+            species: string | null;
+            /** Format: date-time */
+            acquiredAt: string | null;
+            description: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            recordCount: number;
+            latestRecord: {
+                id: string;
+                content: string | null;
+                /** Format: date-time */
+                recordAt: string;
+                thumbnailUrl: string | null;
+            } | null;
+        };
+        /** @description 盆栽一覧取得レスポンス。カーソルページネーション形式。 */
+        BonsaiListResponse: {
+            items: {
+                id: string;
+                name: string;
+                species: string | null;
+                /** Format: date-time */
+                acquiredAt: string | null;
+                description: string | null;
+                /** Format: date-time */
+                createdAt: string;
+                /** Format: date-time */
+                updatedAt: string;
+                recordCount: number;
+                latestRecord: {
+                    id: string;
+                    content: string | null;
+                    /** Format: date-time */
+                    recordAt: string;
+                    thumbnailUrl: string | null;
+                } | null;
+            }[];
+            nextCursor: string | null;
+        };
+        /** @description 盆栽詳細（作成・取得・更新で共用）。 */
+        BonsaiDetail: {
+            id: string;
+            name: string;
+            species: string | null;
+            /** Format: date-time */
+            acquiredAt: string | null;
+            description: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            recordCount: number;
+        };
+        /** @description 成長記録の添付画像 1 件（url + sortOrder）。 */
+        BonsaiRecordImage: {
+            url: string;
+            sortOrder: number;
+        };
+        /** @description 成長記録 1 件（作成・一覧・更新で共用）。 */
+        BonsaiRecordItem: {
+            id: string;
+            content: string | null;
+            /** Format: date-time */
+            recordAt: string;
+            images: {
+                url: string;
+                sortOrder: number;
+            }[];
+        };
+        /** @description 成長記録一覧取得レスポンス。カーソルページネーション形式。 */
+        BonsaiRecordListResponse: {
+            items: {
+                id: string;
+                content: string | null;
+                /** Format: date-time */
+                recordAt: string;
+                images: {
+                    url: string;
+                    sortOrder: number;
+                }[];
+            }[];
+            nextCursor: string | null;
+        };
+        /** @description イベント 1 件。creator が null の場合は作成者情報が不明（インポートイベント等）。 */
+        EventItem: {
+            id: string;
+            title: string;
+            description: string | null;
+            /** Format: date-time */
+            startDate: string;
+            /** Format: date-time */
+            endDate: string | null;
+            prefecture: string | null;
+            city: string | null;
+            venue: string | null;
+            organizer: string | null;
+            admissionFee: string | null;
+            hasSales: boolean;
+            externalUrl: string | null;
+            creator: {
+                id: string;
+                nickname: string;
+                avatarUrl: string | null;
+            } | null;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        /** @description イベント一覧レスポンス（カーソルページネーション）。 */
+        EventListResponse: {
+            items: {
+                id: string;
+                title: string;
+                description: string | null;
+                /** Format: date-time */
+                startDate: string;
+                /** Format: date-time */
+                endDate: string | null;
+                prefecture: string | null;
+                city: string | null;
+                venue: string | null;
+                organizer: string | null;
+                admissionFee: string | null;
+                hasSales: boolean;
+                externalUrl: string | null;
+                creator: {
+                    id: string;
+                    nickname: string;
+                    avatarUrl: string | null;
+                } | null;
+                /** Format: date-time */
+                createdAt: string;
+            }[];
+            nextCursor: string | null;
+        };
+        /**
+         * @description イベント作成リクエスト。title / startDate は必須。
+         *     prefecture は任意（都道府県名を日本語で指定）。
+         *     externalUrl は完全な URL 形式（https:// を含む）で指定すること。
+         *     hasSales: true の場合、グッズ・苗木等の販売あり。
+         */
+        CreateEventRequest: {
+            title: string;
+            startDate: string;
+            description?: string | null;
+            endDate?: string | null;
+            prefecture?: string | null;
+            city?: string | null;
+            venue?: string | null;
+            organizer?: string | null;
+            admissionFee?: string | null;
+            /** @default false */
+            hasSales: boolean;
+            /** Format: uri */
+            externalUrl?: string | null;
+        };
+        /**
+         * @description イベント部分更新リクエスト（作成者のみ）。すべてのフィールドが optional。
+         *     省略したフィールドは既存値を維持する。
+         *     null を渡すと該当フィールドをクリアする。
+         */
+        UpdateEventRequest: {
+            title?: string;
+            startDate?: string;
+            description?: string | null;
+            endDate?: string | null;
+            prefecture?: string | null;
+            city?: string | null;
+            venue?: string | null;
+            organizer?: string | null;
+            admissionFee?: string | null;
+            hasSales?: boolean;
+            /** Format: uri */
+            externalUrl?: string | null;
+        };
+        EventItemDetail: {
+            id: string;
+            title: string;
+            description: string | null;
+            /** Format: date-time */
+            startDate: string;
+            /** Format: date-time */
+            endDate: string | null;
+            prefecture: string | null;
+            city: string | null;
+            venue: string | null;
+            organizer: string | null;
+            admissionFee: string | null;
+            hasSales: boolean;
+            externalUrl: string | null;
+            creator: {
+                id: string;
+                nickname: string;
+                avatarUrl: string | null;
+            } | null;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        EventItemCreate: {
+            id: string;
+            title: string;
+            description: string | null;
+            /** Format: date-time */
+            startDate: string;
+            /** Format: date-time */
+            endDate: string | null;
+            prefecture: string | null;
+            city: string | null;
+            venue: string | null;
+            organizer: string | null;
+            admissionFee: string | null;
+            hasSales: boolean;
+            externalUrl: string | null;
+            creator: {
+                id: string;
+                nickname: string;
+                avatarUrl: string | null;
+            } | null;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        EventItemUpdate: {
+            id: string;
+            title: string;
+            description: string | null;
+            /** Format: date-time */
+            startDate: string;
+            /** Format: date-time */
+            endDate: string | null;
+            prefecture: string | null;
+            city: string | null;
+            venue: string | null;
+            organizer: string | null;
+            admissionFee: string | null;
+            hasSales: boolean;
+            externalUrl: string | null;
+            creator: {
+                id: string;
+                nickname: string;
+                avatarUrl: string | null;
+            } | null;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        /** @description 盆栽園ジャンル 1 件（id, name）。 */
+        ShopGenreItem: {
+            id: string;
+            name: string;
+        };
+        /**
+         * @description 盆栽園 1 件。latitude / longitude は Decimal から変換済みの number（小数点以下 7 桁）。
+         *     averageRating はレビューがない場合 null。isOwner は閲覧者が作成者なら true。
+         */
+        ShopItem: {
+            id: string;
+            name: string;
+            address: string;
+            latitude: number | null;
+            longitude: number | null;
+            phone: string | null;
+            website: string | null;
+            businessHours: string | null;
+            closedDays: string | null;
+            genres: {
+                id: string;
+                name: string;
+            }[];
+            averageRating: number | null;
+            reviewCount: number;
+            isOwner: boolean;
+        };
+        /** @description 盆栽園一覧取得レスポンス。 */
+        ShopListResponse: {
+            items: {
+                id: string;
+                name: string;
+                address: string;
+                latitude: number | null;
+                longitude: number | null;
+                phone: string | null;
+                website: string | null;
+                businessHours: string | null;
+                closedDays: string | null;
+                genres: {
+                    id: string;
+                    name: string;
+                }[];
+                averageRating: number | null;
+                reviewCount: number;
+                isOwner: boolean;
+            }[];
+            nextCursor: string | null;
+        };
+        /** @description 盆栽園作成成功レスポンス（id を返す）。 */
+        ShopCreatedResponse: {
+            id: string;
+        };
+        /** @description レビュー画像 1 件（url）。 */
+        ReviewImage: {
+            url: string;
+        };
+        /** @description レビュー投稿者の最小情報。 */
+        ReviewUser: {
+            id: string;
+            nickname: string;
+            avatarUrl: string | null;
+        };
+        /** @description レビュー 1 件。images は自社ストレージ URL。 */
+        ReviewItem: {
+            id: string;
+            rating: number;
+            content: string | null;
+            images: {
+                url: string;
+            }[];
+            user: {
+                id: string;
+                nickname: string;
+                avatarUrl: string | null;
+            };
+            /** Format: date-time */
+            createdAt: string;
+        };
+        /** @description レビュー一覧取得レスポンス。 */
+        ReviewListResponse: {
+            items: {
+                id: string;
+                rating: number;
+                content: string | null;
+                images: {
+                    url: string;
+                }[];
+                user: {
+                    id: string;
+                    nickname: string;
+                    avatarUrl: string | null;
+                };
+                /** Format: date-time */
+                createdAt: string;
+            }[];
+            nextCursor: string | null;
+        };
+        /** @description ジャンル一覧取得レスポンス。type=shop で盆栽園用ジャンル、type=post で投稿用ジャンルを返す。 */
+        GenreListResponse: {
+            items: {
+                id: string;
+                name: string;
+            }[];
+        };
+        /** @description GET /api/v1/shops クエリパラメータ。sortBy は rating/name/newest/location。 */
+        ListShopsQuery: {
+            cursor?: string;
+            limit?: number;
+            search?: string;
+            genreId?: string;
+            prefecture?: string;
+            /** @enum {string} */
+            sortBy?: "rating" | "name" | "newest" | "location";
+        };
+        /**
+         * @description 盆栽園作成リクエスト。name / address は必須。
+         *     latitude / longitude は Decimal(10,7) 相当の精度で受け付ける。
+         *     website は http(s) URL または null。
+         *     genreIds は type=shop のジャンル ID（最大 5 件）。
+         */
+        CreateShopRequest: {
+            name: string;
+            address: string;
+            latitude?: number | null;
+            longitude?: number | null;
+            phone?: string | null;
+            website?: string | null;
+            businessHours?: string | null;
+            closedDays?: string | null;
+            /** @default [] */
+            genreIds: string[];
+        };
+        /** @description 盆栽園部分更新リクエスト。すべてのフィールドが optional。genreIds 指定時は既存ジャンルを全て置換する。 */
+        UpdateShopRequest: {
+            name?: string;
+            address?: string;
+            latitude?: number | null;
+            longitude?: number | null;
+            phone?: string | null;
+            website?: string | null;
+            businessHours?: string | null;
+            closedDays?: string | null;
+            genreIds?: string[];
+        };
+        /**
+         * @description レビュー投稿リクエスト。rating は 1〜5 の整数。
+         *     mediaUrls は POST /api/v1/upload/image で取得した自社ストレージ URL を渡すこと（外部 URL は 400 VALIDATION_ERROR）。
+         *     最大 3 枚。@@unique([shopId, userId]) の二重投稿は 409 CONFLICT。
+         */
+        CreateReviewRequest: {
+            rating: number;
+            content?: string | null;
+            /** @default [] */
+            mediaUrls: string[];
+        };
+        /**
+         * @description 予約投稿のステータス enum（pending / published / failed / cancelled）。
+         * @enum {string}
+         */
+        ScheduledPostStatus: "pending" | "published" | "failed" | "cancelled";
+        /** @description 予約投稿に添付されたメディア 1 件（url, type, sortOrder）。 */
+        ScheduledPostMediaItem: {
+            url: string;
+            type: string;
+            sortOrder: number;
+        };
+        /** @description 予約投稿に紐付くジャンル 1 件（id, name）。 */
+        ScheduledPostGenreItem: {
+            id: string;
+            name: string;
+        };
+        /** @description 予約投稿 1 件（一覧・詳細共用）。 */
+        ScheduledPostItem: {
+            id: string;
+            content: string | null;
+            /** Format: date-time */
+            scheduledAt: string;
+            /** @enum {string} */
+            status: "pending" | "published" | "failed" | "cancelled";
+            media: {
+                url: string;
+                type: string;
+                sortOrder: number;
+            }[];
+            genres: {
+                id: string;
+                name: string;
+            }[];
+            publishedPostId: string | null;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        /** @description 予約投稿一覧レスポンス（カーソルページネーション形式）。 */
+        ScheduledPostListResponse: {
+            items: {
+                id: string;
+                content: string | null;
+                /** Format: date-time */
+                scheduledAt: string;
+                /** @enum {string} */
+                status: "pending" | "published" | "failed" | "cancelled";
+                media: {
+                    url: string;
+                    type: string;
+                    sortOrder: number;
+                }[];
+                genres: {
+                    id: string;
+                    name: string;
+                }[];
+                publishedPostId: string | null;
+                /** Format: date-time */
+                createdAt: string;
+            }[];
+            nextCursor: string | null;
+        };
+        /** @description POST /api/v1/scheduled-posts 201 — 作成した予約投稿の ID。 */
+        ScheduledPostCreatedResponse: {
+            id: string;
+        };
+        /**
+         * @description 予約投稿作成リクエスト（プレミアム会員のみ）。
+         *
+         *     制約:
+         *     - scheduledAt は未来かつ 30 日以内の ISO 8601 文字列
+         *     - pending 件数は 10 件を超えないこと
+         *     - content / mediaUrls のどちらか一方は必須
+         *     - mediaUrls は POST /api/v1/upload/image で取得した自社ストレージ URL のみ許可
+         */
+        CreateScheduledPostRequest: {
+            /** @default  */
+            content: string;
+            scheduledAt: string;
+            /** @default [] */
+            genreIds: string[];
+            /** @default [] */
+            mediaUrls: string[];
+            /** @default [] */
+            mediaTypes: ("image" | "video")[];
+        };
+        /**
+         * @description 予約投稿更新リクエスト（pending 状態のもののみ）。
+         *
+         *     制約:
+         *     - pending 以外（published / cancelled / failed）は 400 を返す
+         *     - フィールド構成は POST と同一（差し替え方式）
+         */
+        UpdateScheduledPostRequest: {
+            /** @default  */
+            content: string;
+            scheduledAt: string;
+            /** @default [] */
+            genreIds: string[];
+            /** @default [] */
+            mediaUrls: string[];
+            /** @default [] */
+            mediaTypes: ("image" | "video")[];
+        };
+        /** @description 法的文章の 1 セクション（見出しと本文）。 */
+        LegalSection: {
+            heading: string;
+            body: string;
+        };
+        /** @description GET /api/v1/legal/{slug} 200 — 法的文章詳細（slug, title, updatedAt, sections）。 */
+        LegalDocumentResponse: {
+            slug: string;
+            title: string;
+            updatedAt: string;
+            sections: {
+                heading: string;
+                body: string;
+            }[];
+        };
+        /** @description 法的文章一覧の 1 件（slug, title, updatedAt）。 */
+        LegalListItem: {
+            slug: string;
+            title: string;
+            updatedAt: string;
+        };
+        /** @description GET /api/v1/legal 200 — 利用可能な法的文章の slug/title 一覧。 */
+        LegalListResponse: {
+            items: {
+                slug: string;
+                title: string;
+                updatedAt: string;
+            }[];
+        };
+        /** @description 集計期間情報（開始日・終了日・日数）。 */
+        AnalyticsPeriod: {
+            days: number;
+            start: string;
+            end: string;
+        };
+        /** @description 分析サマリのトップ投稿 1 件（エンゲージメント降順で最大 5 件）。 */
+        AnalyticsTopPost: {
+            id: string;
+            content: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            likeCount: number;
+            commentCount: number;
+        };
+        /** @description 集計期間内の投稿統計。totalLikes / totalComments は受け取り側の数。 */
+        AnalyticsPostsSummary: {
+            total: number;
+            totalLikes: number;
+            totalComments: number;
+            avgEngagement: number;
+            topPosts: {
+                id: string;
+                content: string | null;
+                /** Format: date-time */
+                createdAt: string;
+                likeCount: number;
+                commentCount: number;
+            }[];
+        };
+        /** @description 日次エンゲージメント 1 件（date は YYYY-MM-DD 形式）。 */
+        AnalyticsDailyEngagement: {
+            date: string;
+            posts: number;
+            likes: number;
+            comments: number;
+            engagement: number;
+        };
+        /** @description 日次フォロワー増減 1 件（date は YYYY-MM-DD 形式）。 */
+        AnalyticsFollowerGrowthEntry: {
+            date: string;
+            newFollowers: number;
+            totalFollowers: number;
+        };
+        /** @description 集計期間内のフォロワー統計と日次推移。 */
+        AnalyticsFollowersSummary: {
+            current: number;
+            newInPeriod: number;
+            growth: {
+                date: string;
+                newFollowers: number;
+                totalFollowers: number;
+            }[];
+        };
+        /** @description GET /api/v1/analytics/summary の成功レスポンス。プレミアム会員のみ取得可能。 */
+        AnalyticsSummaryResponse: {
+            period: {
+                days: number;
+                start: string;
+                end: string;
+            };
+            posts: {
+                total: number;
+                totalLikes: number;
+                totalComments: number;
+                avgEngagement: number;
+                topPosts: {
+                    id: string;
+                    content: string | null;
+                    /** Format: date-time */
+                    createdAt: string;
+                    likeCount: number;
+                    commentCount: number;
+                }[];
+            };
+            followers: {
+                current: number;
+                newInPeriod: number;
+                growth: {
+                    date: string;
+                    newFollowers: number;
+                    totalFollowers: number;
+                }[];
+            };
+            engagementTrend: {
+                date: string;
+                posts: number;
+                likes: number;
+                comments: number;
+                engagement: number;
+            }[];
+        };
+        /** @description 集計期間クエリパラメータ。days は 7 / 30 / 90 の文字列のみ許容（省略時 30）。 */
+        AnalyticsSummaryQuery: {
+            /**
+             * @default 30
+             * @enum {string}
+             */
+            days: "7" | "30" | "90";
         };
     };
     responses: never;

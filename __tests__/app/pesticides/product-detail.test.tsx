@@ -1,0 +1,218 @@
+/**
+ * app/pesticides/products/[slug]/index のコンポーネントテスト。
+ * slug ガード・製品情報・有効成分・対象病害虫・エラー・オフラインを検証する。
+ */
+
+import React from 'react';
+import { screen, fireEvent, waitFor } from '@testing-library/react-native';
+import ProductDetailScreen from '@/app/pesticides/products/[slug]/index';
+import { renderWithProviders } from '@/__tests__/utils/test-utils';
+
+// ---------------------------------------------------------------------------
+// モック設定
+// ---------------------------------------------------------------------------
+
+const mockUseOnlineStatus = jest.fn(() => true);
+jest.mock('@/hooks/use-online-status', () => ({
+  useOnlineStatus: () => mockUseOnlineStatus(),
+}));
+
+const mockDetailQuery = {
+  data: undefined as unknown,
+  isLoading: false,
+  isError: false,
+  refetch: jest.fn(),
+};
+
+jest.mock('@/lib/queries/pesticides', () => ({
+  usePesticideDiseasePestsQuery: jest.fn(),
+  usePesticideProductsQuery: jest.fn(),
+  usePesticideIngredientsQuery: jest.fn(),
+  usePesticideDiseasePestDetailQuery: jest.fn(),
+  usePesticideProductDetailQuery: () => mockDetailQuery,
+  usePesticideIngredientDetailQuery: jest.fn(),
+}));
+
+const mockUseLocalSearchParams = jest.requireMock('expo-router').useLocalSearchParams;
+const mockRouter = jest.requireMock('expo-router').router;
+
+// ---------------------------------------------------------------------------
+// ヘルパー
+// ---------------------------------------------------------------------------
+
+function makeProductDetail(overrides?: Partial<Record<string, unknown>>) {
+  return {
+    id: 'p1',
+    slug: 'product-a',
+    name: 'アブラムシ専用殺虫剤A',
+    pesticideType: '殺虫剤',
+    registrationNumber: '農林水産省登録 第12345号',
+    formulationType: { name: '水和剤' },
+    description: '接触型の殺虫剤。速効性がある。',
+    activeIngredients: [
+      { id: 'i1', slug: 'ingredient-a', name: 'ピリミカルブ', resistanceRisk: 'low' },
+    ],
+    effects: [
+      { diseasePest: { id: 'dp1', slug: 'aphid', name: 'アブラムシ' } },
+    ],
+    incompatibilities: [
+      { id: 'ic1', name: '○○殺菌剤', formulationTypeName: '乳剤' },
+    ],
+    ...overrides,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// セットアップ
+// ---------------------------------------------------------------------------
+
+beforeEach(() => {
+  jest.clearAllMocks();
+  mockUseOnlineStatus.mockReturnValue(true);
+  mockDetailQuery.data = undefined;
+  mockDetailQuery.isLoading = false;
+  mockDetailQuery.isError = false;
+  mockDetailQuery.refetch = jest.fn();
+  mockUseLocalSearchParams.mockReturnValue({ slug: 'product-a' });
+});
+
+// ---------------------------------------------------------------------------
+// slug ガード
+// ---------------------------------------------------------------------------
+
+describe('ProductDetailScreen slug ガード', () => {
+  it('空文字 slug のとき「この情報は見つかりません。」が表示される', () => {
+    mockUseLocalSearchParams.mockReturnValue({ slug: '' });
+    renderWithProviders(<ProductDetailScreen />);
+    expect(screen.getByText('この情報は見つかりません。')).toBeTruthy();
+  });
+
+  it('配列 slug のとき先頭要素を使用し、isError でなければエラーなし', () => {
+    mockUseLocalSearchParams.mockReturnValue({ slug: ['product-a', 'other'] });
+    renderWithProviders(<ProductDetailScreen />);
+    expect(screen.queryByText('この情報は見つかりません。')).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// ローディング
+// ---------------------------------------------------------------------------
+
+describe('ProductDetailScreen ローディング', () => {
+  it('isLoading=true のとき ScreenLoading が表示される', () => {
+    mockDetailQuery.isLoading = true;
+    renderWithProviders(<ProductDetailScreen />);
+    expect(screen.getByLabelText('読み込み中')).toBeTruthy();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// エラー
+// ---------------------------------------------------------------------------
+
+describe('ProductDetailScreen エラー', () => {
+  it('isError=true のとき「この情報は見つかりません。」が表示される', () => {
+    mockDetailQuery.isError = true;
+    renderWithProviders(<ProductDetailScreen />);
+    expect(screen.getByText('この情報は見つかりません。')).toBeTruthy();
+  });
+
+  it('エラー時の再試行ボタンが refetch を呼ぶ', async () => {
+    mockDetailQuery.isError = true;
+    renderWithProviders(<ProductDetailScreen />);
+    fireEvent.press(screen.getByLabelText('再試行する'));
+    await waitFor(() => {
+      expect(mockDetailQuery.refetch).toHaveBeenCalledTimes(1);
+    });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 正常表示
+// ---------------------------------------------------------------------------
+
+describe('ProductDetailScreen 正常表示', () => {
+  it('製品名が表示される', () => {
+    mockDetailQuery.data = makeProductDetail();
+    renderWithProviders(<ProductDetailScreen />);
+    expect(screen.getByText('アブラムシ専用殺虫剤A')).toBeTruthy();
+  });
+
+  it('登録番号が表示される', () => {
+    mockDetailQuery.data = makeProductDetail();
+    renderWithProviders(<ProductDetailScreen />);
+    expect(screen.getByText('登録番号: 農林水産省登録 第12345号')).toBeTruthy();
+  });
+
+  it('説明が表示される', () => {
+    mockDetailQuery.data = makeProductDetail();
+    renderWithProviders(<ProductDetailScreen />);
+    expect(screen.getByText('接触型の殺虫剤。速効性がある。')).toBeTruthy();
+  });
+
+  it('有効成分セクションが表示される', () => {
+    mockDetailQuery.data = makeProductDetail();
+    renderWithProviders(<ProductDetailScreen />);
+    expect(screen.getByText('有効成分')).toBeTruthy();
+    expect(screen.getByText('ピリミカルブ')).toBeTruthy();
+  });
+
+  it('有効成分タップで詳細画面へ push する', () => {
+    mockDetailQuery.data = makeProductDetail();
+    renderWithProviders(<ProductDetailScreen />);
+    fireEvent.press(screen.getByLabelText('ピリミカルブの詳細を見る'));
+    expect(mockRouter.push).toHaveBeenCalledWith({
+      pathname: '/pesticides/ingredients/[slug]/index',
+      params: { slug: 'ingredient-a' },
+    });
+  });
+
+  it('対象病害虫セクションが表示される', () => {
+    mockDetailQuery.data = makeProductDetail();
+    renderWithProviders(<ProductDetailScreen />);
+    expect(screen.getByText('対象病害虫')).toBeTruthy();
+    expect(screen.getByText('アブラムシ')).toBeTruthy();
+  });
+
+  it('対象病害虫タップで詳細画面へ push する', () => {
+    mockDetailQuery.data = makeProductDetail();
+    renderWithProviders(<ProductDetailScreen />);
+    fireEvent.press(screen.getByLabelText('アブラムシの詳細を見る'));
+    expect(mockRouter.push).toHaveBeenCalledWith({
+      pathname: '/pesticides/disease-pests/[slug]/index',
+      params: { slug: 'aphid' },
+    });
+  });
+
+  it('混用不可農薬セクションが表示される', () => {
+    mockDetailQuery.data = makeProductDetail();
+    renderWithProviders(<ProductDetailScreen />);
+    expect(screen.getByText('混用不可農薬')).toBeTruthy();
+    expect(screen.getByText('○○殺菌剤')).toBeTruthy();
+  });
+
+  it('有効成分が空のとき「有効成分」セクションが表示されない', () => {
+    mockDetailQuery.data = makeProductDetail({ activeIngredients: [] });
+    renderWithProviders(<ProductDetailScreen />);
+    expect(screen.queryByText('有効成分')).toBeNull();
+  });
+
+  it('登録番号が null のとき表示されない', () => {
+    mockDetailQuery.data = makeProductDetail({ registrationNumber: null });
+    renderWithProviders(<ProductDetailScreen />);
+    expect(screen.queryByText(/登録番号/)).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// オフライン
+// ---------------------------------------------------------------------------
+
+describe('ProductDetailScreen オフライン', () => {
+  it('オフライン時に ERR_OFFLINE メッセージが表示される', () => {
+    mockUseOnlineStatus.mockReturnValue(false);
+    renderWithProviders(<ProductDetailScreen />);
+    const { ERR_OFFLINE } = jest.requireActual('@/lib/constants/errors');
+    expect(screen.getByText(ERR_OFFLINE)).toBeTruthy();
+  });
+});

@@ -161,6 +161,67 @@ export default function RootLayout() {
             name="settings/muted/index"
             options={{ headerShown: false }}
           />
+          {/* ウェーブ1 閲覧系スタック画面 */}
+          <Stack.Screen
+            name="dictionary/index"
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="dictionary/[slug]/index"
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="fertilizers/index"
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="fertilizers/nutrients/[slug]/index"
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="fertilizers/tree-species/[slug]/index"
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="hormones/index"
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="hormones/[slug]/index"
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="pesticides/index"
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="pesticides/disease-pests/[slug]/index"
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="pesticides/products/[slug]/index"
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="pesticides/ingredients/[slug]/index"
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="explore/index"
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="legal/index"
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="legal/[slug]/index"
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="analytics/index"
+            options={{ headerShown: false }}
+          />
         </Stack>
         <StatusBar style="dark" />
       </SafeAreaProvider>

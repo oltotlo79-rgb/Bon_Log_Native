@@ -1,3 +1,16 @@
+/**
+ * @module app/(tabs)/more/index
+ * 「もっと見る」タブ画面。アプリ内機能へのハブ。
+ * 仕様: docs/design/more-menu.md
+ *
+ * PM 決定事項:
+ * - legal（法的文章）は Web ではなくネイティブ画面（/legal/*）へ遷移する
+ * - 発見・育成ガイド系・投稿分析はウェーブ1でネイティブ実装済みのため router.push
+ * - ウェーブ2未実装（マイ盆栽・盆栽園マップ・イベント・ブックマーク・予約投稿）は今回掲載しない
+ * - ヘルプは Web のみ提供のため openBrowserAsync を維持
+ */
+
+import React from 'react';
 import { View, Text, ScrollView, StyleSheet, Alert } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -9,8 +22,11 @@ import { useOnlineStatus } from '@/hooks/use-online-status';
 import { OfflineBanner } from '@/components/common/OfflineBanner';
 import { MoreMenuGroup } from '@/components/common/MoreMenuGroup';
 import { MoreMenuItem } from '@/components/common/MoreMenuItem';
-import { ROUTE_PROFILE, routes } from '@/lib/constants/routes';
-import { TERMS_URL, PRIVACY_POLICY_URL, HELP_URL } from '@/lib/constants/external-links';
+import {
+  ROUTE_PROFILE,
+  routes,
+} from '@/lib/constants/routes';
+import { HELP_URL } from '@/lib/constants/external-links';
 import {
   colorBackground,
   colorSurfaceWashi,
@@ -18,12 +34,39 @@ import {
   colorTextSecondary,
   colorError,
   colorBorderLight,
+  spacing1,
   spacing4,
   textLg,
+  textSm,
   letterSpacingWidest,
+  letterSpacingWide,
 } from '@/lib/constants/design-tokens';
 
+// ---------------------------------------------------------------------------
+// 定数
+// ---------------------------------------------------------------------------
+
 const ICON_SIZE = 20;
+
+// ---------------------------------------------------------------------------
+// セクション見出し
+// ---------------------------------------------------------------------------
+
+type MoreSectionHeaderProps = {
+  label: string;
+};
+
+function MoreSectionHeader({ label }: MoreSectionHeaderProps) {
+  return (
+    <Text style={styles.sectionHeader} accessibilityRole="header">
+      {label}
+    </Text>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Screen
+// ---------------------------------------------------------------------------
 
 export default function MoreScreen() {
   const isOnline = useOnlineStatus();
@@ -74,7 +117,7 @@ export default function MoreScreen() {
         contentContainerStyle={styles.scrollContent}
         accessibilityLabel="もっと見るメニュー"
       >
-        {/* グループ 1: ナビゲーション */}
+        {/* グループ 1: ナビゲーション（見出しなし） */}
         <MoreMenuGroup>
           <MoreMenuItem
             label="プロフィール"
@@ -95,47 +138,126 @@ export default function MoreScreen() {
           />
         </MoreMenuGroup>
 
-        {/* グループ 2: 情報 */}
-        <MoreMenuGroup>
-          <MoreMenuItem
-            label="利用規約"
-            icon={
-              <Ionicons name="document-text-outline" size={ICON_SIZE} color={colorTextSecondary} />
-            }
-            rightElement="external"
-            onPress={() => void handleOpenBrowser(TERMS_URL)}
-            accessibilityLabel="利用規約を開く（外部ブラウザ）"
-            showBorder
-          />
-          <MoreMenuItem
-            label="プライバシーポリシー"
-            icon={
-              <Ionicons name="shield-outline" size={ICON_SIZE} color={colorTextSecondary} />
-            }
-            rightElement="external"
-            onPress={() => void handleOpenBrowser(PRIVACY_POLICY_URL)}
-            accessibilityLabel="プライバシーポリシーを開く（外部ブラウザ）"
-            showBorder
-          />
-          <MoreMenuItem
-            label="ヘルプ"
-            icon={
-              <Ionicons name="help-circle-outline" size={ICON_SIZE} color={colorTextSecondary} />
-            }
-            rightElement="external"
-            onPress={() => void handleOpenBrowser(HELP_URL)}
-            accessibilityLabel="ヘルプページを開く（外部ブラウザ）"
-          />
-        </MoreMenuGroup>
+        {/* グループ 2: 機能（ネイティブ遷移） */}
+        <View style={styles.groupWithHeader}>
+          <MoreSectionHeader label="機能" />
+          <MoreMenuGroup>
+            <MoreMenuItem
+              label="発見"
+              icon={
+                <Ionicons name="compass-outline" size={ICON_SIZE} color={colorTextSecondary} />
+              }
+              rightElement="chevron"
+              onPress={() => router.push({ pathname: '/explore/index' })}
+              accessibilityLabel="発見画面を開く"
+              showBorder
+            />
+            <MoreMenuItem
+              label="盆栽用語辞典"
+              icon={
+                <Ionicons name="book-outline" size={ICON_SIZE} color={colorTextSecondary} />
+              }
+              rightElement="chevron"
+              onPress={() => router.push({ pathname: '/dictionary/index' })}
+              accessibilityLabel="盆栽用語辞典を開く"
+              showBorder
+            />
+            <MoreMenuItem
+              label="施肥ガイド"
+              icon={
+                <Ionicons name="leaf-outline" size={ICON_SIZE} color={colorTextSecondary} />
+              }
+              rightElement="chevron"
+              onPress={() => router.push({ pathname: '/fertilizers/index' })}
+              accessibilityLabel="施肥ガイドを開く"
+              showBorder
+            />
+            <MoreMenuItem
+              label="植物ホルモン"
+              icon={
+                <Ionicons name="flask-outline" size={ICON_SIZE} color={colorTextSecondary} />
+              }
+              rightElement="chevron"
+              onPress={() => router.push({ pathname: '/hormones/index' })}
+              accessibilityLabel="植物ホルモン情報を開く"
+              showBorder
+            />
+            <MoreMenuItem
+              label="農薬・病害虫"
+              icon={
+                <Ionicons name="bug-outline" size={ICON_SIZE} color={colorTextSecondary} />
+              }
+              rightElement="chevron"
+              onPress={() => router.push({ pathname: '/pesticides/index' })}
+              accessibilityLabel="農薬・病害虫図鑑を開く"
+              showBorder
+            />
+            <MoreMenuItem
+              label="投稿分析"
+              icon={
+                <Ionicons name="bar-chart-outline" size={ICON_SIZE} color={colorTextSecondary} />
+              }
+              rightElement="chevron"
+              onPress={() => router.push({ pathname: '/analytics/index' })}
+              accessibilityLabel="投稿分析を開く"
+            />
+          </MoreMenuGroup>
+        </View>
 
-        {/* グループ 3: 危険ゾーン */}
+        {/* グループ 3: その他（法的情報はネイティブ・ヘルプはWeb） */}
+        <View style={styles.groupWithHeader}>
+          <MoreSectionHeader label="その他" />
+          <MoreMenuGroup>
+            <MoreMenuItem
+              label="利用規約"
+              icon={
+                <Ionicons name="document-text-outline" size={ICON_SIZE} color={colorTextSecondary} />
+              }
+              rightElement="chevron"
+              onPress={() => router.push({ pathname: '/legal/[slug]/index', params: { slug: 'terms' } })}
+              accessibilityLabel="利用規約を開く"
+              showBorder
+            />
+            <MoreMenuItem
+              label="プライバシーポリシー"
+              icon={
+                <Ionicons name="shield-outline" size={ICON_SIZE} color={colorTextSecondary} />
+              }
+              rightElement="chevron"
+              onPress={() => router.push({ pathname: '/legal/[slug]/index', params: { slug: 'privacy' } })}
+              accessibilityLabel="プライバシーポリシーを開く"
+              showBorder
+            />
+            <MoreMenuItem
+              label="特商法表記"
+              icon={
+                <Ionicons name="document-outline" size={ICON_SIZE} color={colorTextSecondary} />
+              }
+              rightElement="chevron"
+              onPress={() => router.push({ pathname: '/legal/[slug]/index', params: { slug: 'tokushoho' } })}
+              accessibilityLabel="特商法表記を開く"
+              showBorder
+            />
+            <MoreMenuItem
+              label="ヘルプ"
+              icon={
+                <Ionicons name="help-circle-outline" size={ICON_SIZE} color={colorTextSecondary} />
+              }
+              rightElement="external"
+              onPress={() => void handleOpenBrowser(HELP_URL)}
+              accessibilityLabel="ヘルプ（Web ページを開く）"
+            />
+          </MoreMenuGroup>
+        </View>
+
+        {/* グループ 4: 危険ゾーン（見出しなし） */}
         <MoreMenuGroup>
           <MoreMenuItem
             label={isLoggingOut ? 'ログアウト中...' : 'ログアウト'}
             icon={
               <Ionicons name="log-out-outline" size={ICON_SIZE} color={colorError} />
             }
-            rightElement={isLoggingOut ? 'none' : 'chevron'}
+            rightElement="none"
             onPress={handleLogout}
             destructive
             disabled={isLoggingOut}
@@ -146,6 +268,10 @@ export default function MoreScreen() {
     </SafeAreaView>
   );
 }
+
+// ---------------------------------------------------------------------------
+// スタイル
+// ---------------------------------------------------------------------------
 
 const styles = StyleSheet.create({
   safeArea: {
@@ -168,5 +294,15 @@ const styles = StyleSheet.create({
   scrollContent: {
     padding: spacing4,
     gap: spacing4,
+  },
+  groupWithHeader: {
+    gap: spacing1,
+  },
+  sectionHeader: {
+    ...textSm,
+    color: colorTextSecondary,
+    letterSpacing: letterSpacingWide,
+    paddingHorizontal: spacing1,
+    paddingBottom: spacing1,
   },
 });

@@ -82,4 +82,105 @@ export const queryKeys = {
     /** ユーザー検索 */
     users: (query: string) => ['search', 'users', query] as const,
   },
+
+  /** 発見（explore） */
+  explore: {
+    /** ルートキー */
+    all: ['explore'] as const,
+    /** トレンドハッシュタグ */
+    trendingHashtags: ['explore', 'trendingHashtags'] as const,
+    /** トレンドジャンル */
+    trendingGenres: ['explore', 'trendingGenres'] as const,
+    /** おすすめユーザー */
+    recommendedUsers: ['explore', 'recommendedUsers'] as const,
+  },
+
+  /** 盆栽用語辞典 */
+  dictionary: {
+    /** ルートキー */
+    all: ['dictionary'] as const,
+    /** 用語一覧（フィルタ含む） */
+    list: (params: DictionaryListParams) => ['dictionary', 'list', params] as const,
+    /** 用語詳細 */
+    detail: (slug: string) => ['dictionary', 'detail', slug] as const,
+  },
+
+  /** 施肥ガイド */
+  fertilizers: {
+    /** ルートキー */
+    all: ['fertilizers'] as const,
+    /** 栄養素一覧 */
+    nutrients: (category?: string) => ['fertilizers', 'nutrients', category] as const,
+    /** 栄養素詳細 */
+    nutrientDetail: (slug: string) => ['fertilizers', 'nutrientDetail', slug] as const,
+    /** 肥料カテゴリ一覧 */
+    categories: ['fertilizers', 'categories'] as const,
+    /** 樹種一覧 */
+    treeSpecies: (category?: string) => ['fertilizers', 'treeSpecies', category] as const,
+    /** 樹種別施肥スケジュール */
+    schedule: (slug: string) => ['fertilizers', 'schedule', slug] as const,
+  },
+
+  /** 植物ホルモン */
+  hormones: {
+    /** ルートキー */
+    all: ['hormones'] as const,
+    /** ホルモン一覧 */
+    list: (category?: string) => ['hormones', 'list', category] as const,
+    /** ホルモン詳細 */
+    detail: (slug: string) => ['hormones', 'detail', slug] as const,
+  },
+
+  /** 農薬病害虫図鑑 */
+  pesticides: {
+    /** ルートキー */
+    all: ['pesticides'] as const,
+    /** 病害虫一覧 */
+    diseasePests: (params: PesticideListParams) => ['pesticides', 'diseasePests', params] as const,
+    /** 病害虫詳細 */
+    diseasePestDetail: (slug: string) => ['pesticides', 'diseasePestDetail', slug] as const,
+    /** 農薬製品一覧 */
+    products: (params: PesticideListParams) => ['pesticides', 'products', params] as const,
+    /** 農薬製品詳細 */
+    productDetail: (slug: string) => ['pesticides', 'productDetail', slug] as const,
+    /** 有効成分一覧 */
+    ingredients: (params: PesticideListParams) => ['pesticides', 'ingredients', params] as const,
+    /** 有効成分詳細 */
+    ingredientDetail: (slug: string) => ['pesticides', 'ingredientDetail', slug] as const,
+  },
+
+  /** 法的文章 */
+  legal: {
+    /** ルートキー */
+    all: ['legal'] as const,
+    /** 法的文章一覧 */
+    list: ['legal', 'list'] as const,
+    /** 法的文章詳細 */
+    document: (slug: string) => ['legal', 'document', slug] as const,
+  },
+
+  /** 投稿分析（プレミアム限定） */
+  analytics: {
+    /** ルートキー */
+    all: ['analytics'] as const,
+    /** 分析サマリ */
+    summary: (days: AnalyticsDays) => ['analytics', 'summary', days] as const,
+  },
 } as const;
+
+// ---------------------------------------------------------------------------
+// 補助型（クエリキーのパラメータ型）
+// ---------------------------------------------------------------------------
+
+/** 辞典一覧フィルタ */
+export type DictionaryListParams = {
+  search?: string;
+  category?: string;
+  row?: string;
+};
+
+/** 農薬系一覧の共通フィルタ（未使用フィールドは undefined） */
+export type PesticideListParams = Record<string, string | number | undefined>;
+
+/** アナリティクス集計期間 */
+export type AnalyticsDays = '7' | '30' | '90';

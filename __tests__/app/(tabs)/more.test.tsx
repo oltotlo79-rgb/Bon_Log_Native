@@ -10,7 +10,7 @@ import { screen, fireEvent, waitFor } from '@testing-library/react-native';
 import * as WebBrowser from 'expo-web-browser';
 import MoreScreen from '@/app/(tabs)/more/index';
 import { ROUTE_PROFILE, routes } from '@/lib/constants/routes';
-import { TERMS_URL, PRIVACY_POLICY_URL, HELP_URL } from '@/lib/constants/external-links';
+import { HELP_URL } from '@/lib/constants/external-links';
 import { renderWithProviders } from '@/__tests__/utils/test-utils';
 
 // ---------------------------------------------------------------------------
@@ -111,32 +111,91 @@ describe('MoreScreen 遷移', () => {
 });
 
 // ---------------------------------------------------------------------------
-// 外部ブラウザ起動
+// ネイティブ遷移（法的文章）
+// ---------------------------------------------------------------------------
+
+describe('MoreScreen ネイティブ遷移（法的文章）', () => {
+  it('「利用規約」タップで /legal/[slug]/index（terms）へ push する', () => {
+    renderWithProviders(<MoreScreen />);
+    fireEvent.press(screen.getByLabelText('利用規約を開く'));
+    expect(mockRouter.push).toHaveBeenCalledWith({
+      pathname: '/legal/[slug]/index',
+      params: { slug: 'terms' },
+    });
+  });
+
+  it('「プライバシーポリシー」タップで /legal/[slug]/index（privacy）へ push する', () => {
+    renderWithProviders(<MoreScreen />);
+    fireEvent.press(screen.getByLabelText('プライバシーポリシーを開く'));
+    expect(mockRouter.push).toHaveBeenCalledWith({
+      pathname: '/legal/[slug]/index',
+      params: { slug: 'privacy' },
+    });
+  });
+
+  it('「特商法表記」タップで /legal/[slug]/index（tokushoho）へ push する', () => {
+    renderWithProviders(<MoreScreen />);
+    fireEvent.press(screen.getByLabelText('特商法表記を開く'));
+    expect(mockRouter.push).toHaveBeenCalledWith({
+      pathname: '/legal/[slug]/index',
+      params: { slug: 'tokushoho' },
+    });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 外部ブラウザ起動（ヘルプのみ）
 // ---------------------------------------------------------------------------
 
 describe('MoreScreen 外部ブラウザ起動', () => {
-  it('「利用規約」タップで TERMS_URL で openBrowserAsync が呼ばれる', async () => {
-    renderWithProviders(<MoreScreen />);
-    fireEvent.press(screen.getByLabelText('利用規約を開く（外部ブラウザ）'));
-    await waitFor(() => {
-      expect(WebBrowser.openBrowserAsync).toHaveBeenCalledWith(TERMS_URL);
-    });
-  });
-
-  it('「プライバシーポリシー」タップで PRIVACY_POLICY_URL で openBrowserAsync が呼ばれる', async () => {
-    renderWithProviders(<MoreScreen />);
-    fireEvent.press(screen.getByLabelText('プライバシーポリシーを開く（外部ブラウザ）'));
-    await waitFor(() => {
-      expect(WebBrowser.openBrowserAsync).toHaveBeenCalledWith(PRIVACY_POLICY_URL);
-    });
-  });
-
   it('「ヘルプ」タップで HELP_URL で openBrowserAsync が呼ばれる', async () => {
     renderWithProviders(<MoreScreen />);
-    fireEvent.press(screen.getByLabelText('ヘルプページを開く（外部ブラウザ）'));
+    fireEvent.press(screen.getByLabelText('ヘルプ（Web ページを開く）'));
     await waitFor(() => {
       expect(WebBrowser.openBrowserAsync).toHaveBeenCalledWith(HELP_URL);
     });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 機能ネイティブ遷移
+// ---------------------------------------------------------------------------
+
+describe('MoreScreen 機能遷移', () => {
+  it('「発見」タップで /explore/index へ push する', () => {
+    renderWithProviders(<MoreScreen />);
+    fireEvent.press(screen.getByLabelText('発見画面を開く'));
+    expect(mockRouter.push).toHaveBeenCalledWith({ pathname: '/explore/index' });
+  });
+
+  it('「盆栽用語辞典」タップで /dictionary/index へ push する', () => {
+    renderWithProviders(<MoreScreen />);
+    fireEvent.press(screen.getByLabelText('盆栽用語辞典を開く'));
+    expect(mockRouter.push).toHaveBeenCalledWith({ pathname: '/dictionary/index' });
+  });
+
+  it('「施肥ガイド」タップで /fertilizers/index へ push する', () => {
+    renderWithProviders(<MoreScreen />);
+    fireEvent.press(screen.getByLabelText('施肥ガイドを開く'));
+    expect(mockRouter.push).toHaveBeenCalledWith({ pathname: '/fertilizers/index' });
+  });
+
+  it('「植物ホルモン」タップで /hormones/index へ push する', () => {
+    renderWithProviders(<MoreScreen />);
+    fireEvent.press(screen.getByLabelText('植物ホルモン情報を開く'));
+    expect(mockRouter.push).toHaveBeenCalledWith({ pathname: '/hormones/index' });
+  });
+
+  it('「農薬・病害虫」タップで /pesticides/index へ push する', () => {
+    renderWithProviders(<MoreScreen />);
+    fireEvent.press(screen.getByLabelText('農薬・病害虫図鑑を開く'));
+    expect(mockRouter.push).toHaveBeenCalledWith({ pathname: '/pesticides/index' });
+  });
+
+  it('「投稿分析」タップで /analytics/index へ push する', () => {
+    renderWithProviders(<MoreScreen />);
+    fireEvent.press(screen.getByLabelText('投稿分析を開く'));
+    expect(mockRouter.push).toHaveBeenCalledWith({ pathname: '/analytics/index' });
   });
 });
 

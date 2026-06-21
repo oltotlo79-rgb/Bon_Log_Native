@@ -59,3 +59,13 @@
 | `queryKeys.search.users(q)` | `useSearchUsersQuery` | ユーザー名変更・削除・ブロック時（低優先） |
 | `queryKeys.notifications.list()` | `useNotificationsQuery` | 通知既読操作時（Batch 2b）・ブロック・ミュート時 |
 | `queryKeys.notifications.unreadCount` | `useUnreadCountQuery` | 通知既読操作・新規通知受信時（Batch 2b） |
+| `queryKeys.explore.trendingHashtags` | `useTrendingHashtagsQuery` | 将来のハッシュタグ作成系ミューテーション時（現在は読み取り専用） |
+| `queryKeys.explore.trendingGenres` | `useTrendingGenresQuery` | 同上 |
+| `queryKeys.explore.recommendedUsers` | `useRecommendedUsersQuery` | フォロー変更時（現在は `queryKeys.posts.feed()` 経由で間接的に更新） |
+| `queryKeys.dictionary.list(params)` | `useDictionaryListQuery` | マスタ系（変更なし想定） |
+| `queryKeys.dictionary.detail(slug)` | `useDictionaryDetailQuery` | マスタ系（変更なし想定） |
+| `queryKeys.fertilizers.*` | `useFertilizer*Query` 各種 | マスタ系（変更なし想定） |
+| `queryKeys.hormones.*` | `useHormone*Query` 各種 | マスタ系（変更なし想定） |
+| `queryKeys.pesticides.*` | `usePesticide*Query` 各種 | マスタ系（変更なし想定） |
+| `queryKeys.legal.list` / `queryKeys.legal.document(slug)` | `useLegalListQuery` / `useLegalDocumentQuery` | マスタ系（変更なし想定） |
+| `queryKeys.analytics.summary(days)` | `useAnalyticsSummaryQuery` | 投稿・フォロワー変動後に invalidate すると最新値に追従できる（任意） |

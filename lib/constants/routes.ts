@@ -132,6 +132,100 @@ export function routeUserDetail(id: string): `/users/${string}` {
 }
 
 // ---------------------------------------------------------------------------
+// ウェーブ1 閲覧系スタック画面
+// ---------------------------------------------------------------------------
+
+/** 発見（explore）画面 */
+export const ROUTE_EXPLORE = '/explore' as const;
+
+/** 盆栽用語辞典一覧 */
+export const ROUTE_DICTIONARY = '/dictionary' as const;
+
+/** 施肥ガイド */
+export const ROUTE_FERTILIZERS = '/fertilizers' as const;
+
+/** 植物ホルモン */
+export const ROUTE_HORMONES = '/hormones' as const;
+
+/** 農薬病害虫図鑑（3 カタログのタブ画面想定） */
+export const ROUTE_PESTICIDES = '/pesticides' as const;
+
+/** 法的文章一覧 */
+export const ROUTE_LEGAL = '/legal' as const;
+
+/** 投稿分析（プレミアム限定） */
+export const ROUTE_ANALYTICS = '/analytics' as const;
+
+// ---------------------------------------------------------------------------
+// ウェーブ1 動的ルートヘルパー
+// ---------------------------------------------------------------------------
+
+/**
+ * 盆栽用語辞典 詳細画面へのパスを返す。
+ * Expo Router の dynamic route: `app/dictionary/[slug].tsx`
+ */
+export function routeDictionaryDetail(slug: string): `/dictionary/${string}` {
+  return `/dictionary/${slug}`;
+}
+
+/**
+ * 施肥ガイド 栄養素詳細へのパスを返す。
+ * Expo Router の dynamic route: `app/fertilizers/nutrients/[slug].tsx`
+ */
+export function routeFertilizerNutrientDetail(slug: string): `/fertilizers/nutrients/${string}` {
+  return `/fertilizers/nutrients/${slug}`;
+}
+
+/**
+ * 施肥ガイド 樹種詳細（施肥スケジュール）へのパスを返す。
+ * Expo Router の dynamic route: `app/fertilizers/tree-species/[slug].tsx`
+ */
+export function routeFertilizerTreeSpeciesDetail(slug: string): `/fertilizers/tree-species/${string}` {
+  return `/fertilizers/tree-species/${slug}`;
+}
+
+/**
+ * 植物ホルモン詳細へのパスを返す。
+ * Expo Router の dynamic route: `app/hormones/[slug].tsx`
+ */
+export function routeHormoneDetail(slug: string): `/hormones/${string}` {
+  return `/hormones/${slug}`;
+}
+
+/**
+ * 農薬病害虫 詳細（病害虫）へのパスを返す。
+ * Expo Router の dynamic route: `app/pesticides/disease-pests/[slug].tsx`
+ */
+export function routeDiseasePestDetail(slug: string): `/pesticides/disease-pests/${string}` {
+  return `/pesticides/disease-pests/${slug}`;
+}
+
+/**
+ * 農薬病害虫 詳細（農薬製品）へのパスを返す。
+ * Expo Router の dynamic route: `app/pesticides/products/[slug].tsx`
+ */
+export function routePesticideProductDetail(slug: string): `/pesticides/products/${string}` {
+  return `/pesticides/products/${slug}`;
+}
+
+/**
+ * 農薬病害虫 詳細（有効成分）へのパスを返す。
+ * Expo Router の dynamic route: `app/pesticides/ingredients/[slug].tsx`
+ */
+export function routePesticideIngredientDetail(slug: string): `/pesticides/ingredients/${string}` {
+  return `/pesticides/ingredients/${slug}`;
+}
+
+/**
+ * 法的文章 詳細へのパスを返す。
+ * Expo Router の dynamic route: `app/legal/[slug].tsx`
+ * slug は 'tokushoho' | 'terms' | 'privacy' のみ有効（サーバー側で検証）。
+ */
+export function routeLegalDocument(slug: 'tokushoho' | 'terms' | 'privacy'): `/legal/${string}` {
+  return `/legal/${slug}`;
+}
+
+// ---------------------------------------------------------------------------
 // 後方互換エイリアス（frontend が `routes.xxx` 形式で参照する契約に対応）
 // ---------------------------------------------------------------------------
 
@@ -171,4 +265,23 @@ export const routes = {
   userDetail: routeUserDetail,
   searchByQuery: routeSearchByQuery,
   searchByGenre: routeSearchByGenre,
+
+  // wave-1 browse
+  explore: ROUTE_EXPLORE,
+  dictionary: ROUTE_DICTIONARY,
+  fertilizers: ROUTE_FERTILIZERS,
+  hormones: ROUTE_HORMONES,
+  pesticides: ROUTE_PESTICIDES,
+  legal: ROUTE_LEGAL,
+  analytics: ROUTE_ANALYTICS,
+
+  // wave-1 dynamic helpers
+  dictionaryDetail: routeDictionaryDetail,
+  fertilizerNutrientDetail: routeFertilizerNutrientDetail,
+  fertilizerTreeSpeciesDetail: routeFertilizerTreeSpeciesDetail,
+  hormoneDetail: routeHormoneDetail,
+  diseasePestDetail: routeDiseasePestDetail,
+  pesticideProductDetail: routePesticideProductDetail,
+  pesticideIngredientDetail: routePesticideIngredientDetail,
+  legalDocument: routeLegalDocument,
 } as const;
