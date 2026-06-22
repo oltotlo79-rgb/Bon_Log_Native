@@ -6,7 +6,7 @@
  */
 
 import React from 'react';
-import { screen, fireEvent, waitFor } from '@testing-library/react-native';
+import { screen, fireEvent, waitFor, act } from '@testing-library/react-native';
 import { FollowButton } from '@/components/user/FollowButton';
 import { renderWithProviders } from '@/__tests__/utils/test-utils';
 import { ApiError } from '@/lib/api/errors';
@@ -376,7 +376,9 @@ describe('FollowButton — ローディング状態', () => {
       expect(screen.getByRole('button').props.accessibilityState?.disabled).toBe(true);
     });
 
-    resolvePost({ data: { following: true, requested: false, followerCount: 51 }, error: undefined });
+    await act(async () => {
+      resolvePost({ data: { following: true, requested: false, followerCount: 51 }, error: undefined });
+    });
   });
 
   it('API 呼び出し中は accessibilityState.busy が true になる', async () => {
@@ -391,7 +393,9 @@ describe('FollowButton — ローディング状態', () => {
       expect(screen.getByRole('button').props.accessibilityState?.busy).toBe(true);
     });
 
-    resolvePost({ data: { following: true, requested: false, followerCount: 51 }, error: undefined });
+    await act(async () => {
+      resolvePost({ data: { following: true, requested: false, followerCount: 51 }, error: undefined });
+    });
   });
 });
 

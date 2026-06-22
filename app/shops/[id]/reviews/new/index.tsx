@@ -15,16 +15,21 @@ import {
   KeyboardAvoidingView,
   Platform,
   Alert,
+  Linking,
+  ActivityIndicator,
 } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCreateReviewMutation } from '@/lib/queries/shops';
 import { useShopDetailQuery } from '@/lib/queries/shops';
+import { uploadImage } from '@/lib/queries/upload';
 import { useOnlineStatus } from '@/hooks/use-online-status';
 import {
   ERR_REVIEW_CREATE_FAILED,
   ERR_REVIEW_DUPLICATE,
   ERR_OFFLINE_ACTION,
+  ERR_MEDIA_UPLOAD_FAILED,
 } from '@/lib/constants/errors';
 import {
   colorBackground,
@@ -51,6 +56,9 @@ import {
   textXs,
   textLg,
 } from '@/lib/constants/design-tokens';
+import { MAX_REVIEW_IMAGES } from '@/lib/constants/limits/media';
+import { ImageAttachmentGrid } from '@/components/post/ImageAttachmentGrid';
+import type { AttachedImage } from '@/components/post/ImageAttachmentGrid';
 
 // ---------------------------------------------------------------------------
 // 定数
@@ -59,6 +67,16 @@ import {
 const REVIEW_CONTENT_MAX = 1000;
 const STAR_SIZE = 36;
 const STAR_HIT_SLOP = { top: 4, bottom: 4, left: 4, right: 4 };
+
+// ---------------------------------------------------------------------------
+// ユニーク ID 生成（ImageAttachmentGrid の localId 用）
+// ---------------------------------------------------------------------------
+
+let _idCounter = 0;
+function generateLocalId(): string {
+  _idCounter += 1;
+  return `review-img-${Date.now()}-${_idCounter}`;
+}
 
 // ---------------------------------------------------------------------------
 // 型ガード
@@ -89,12 +107,58 @@ export default function NewReviewScreen() {
 
   const [rating, setRating] = useState<number | null>(null);
   const [content, setContent] = useState('');
+  const [images, setImages] = useState<AttachedImage[]>([]);
   const [formError, setFormError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const { mutateAsync: createReview, isPending } = useCreateReviewMutation();
+  const { mutateAsync: createReview } = useCreateReviewMutation();
 
-  const canSubmit = rating !== null && !isPending && isOnline;
-  const hasInput = rating !== null || content.trim().length > 0;
+  const hasInput = rating !== null || content.trim().length > 0 || images.length > 0;
+  const canSubmit = rating !== null && !isSubmitting && isOnline;
+
+  const handleAddImage = useCallback(async () => {
+    const remaining = MAX_REVIEW_IMAGES - images.length;
+    if (remaining <= 0) return;
+
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      if (Platform.OS === 'ios') {
+        Alert.alert(
+          '写真へのアクセスが必要です',
+          '設定アプリから写真へのアクセスを許可してください。',
+          [
+            { text: 'キャンセル', style: 'cancel' },
+            { text: '設定を開く', onPress: () => void Linking.openSettings() },
+          ]
+        );
+      } else {
+        Alert.alert(
+          '写真へのアクセスが必要です',
+          '設定アプリから写真へのアクセスを許可してください。'
+        );
+      }
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsMultipleSelection: true,
+      selectionLimit: remaining,
+      quality: 1,
+    });
+
+    if (!result.canceled) {
+      const newImages: AttachedImage[] = result.assets.map((asset) => ({
+        uri: asset.uri,
+        localId: generateLocalId(),
+      }));
+      setImages((prev) => [...prev, ...newImages].slice(0, MAX_REVIEW_IMAGES));
+    }
+  }, [images.length]);
+
+  const handleRemoveImage = useCallback((localId: string) => {
+    setImages((prev) => prev.filter((img) => img.localId !== localId));
+  }, []);
 
   const handleSubmit = useCallback(async () => {
     if (!isOnline) {
@@ -104,18 +168,28 @@ export default function NewReviewScreen() {
     if (rating === null) return;
 
     setFormError(null);
+    setIsSubmitting(true);
 
     try {
+      // 全画像をアップロードし、1枚でも失敗した場合は投稿しない
+      const uploadedUrls: string[] = [];
+      for (const img of images) {
+        const url = await uploadImage({ localUri: img.uri });
+        uploadedUrls.push(url);
+      }
+
       await createReview({
         shopId,
         rating,
         content: content.trim().length > 0 ? content.trim() : null,
-        mediaUrls: [],
+        mediaUrls: uploadedUrls,
       });
       router.back();
     } catch (err) {
       if (err instanceof Error) {
-        if (isDuplicateReviewError(err)) {
+        if (err.message === ERR_MEDIA_UPLOAD_FAILED || err.message.includes('upload')) {
+          setFormError(ERR_MEDIA_UPLOAD_FAILED);
+        } else if (isDuplicateReviewError(err)) {
           setFormError(ERR_REVIEW_DUPLICATE);
         } else {
           setFormError(ERR_REVIEW_CREATE_FAILED);
@@ -123,8 +197,10 @@ export default function NewReviewScreen() {
       } else {
         setFormError(ERR_REVIEW_CREATE_FAILED);
       }
+    } finally {
+      setIsSubmitting(false);
     }
-  }, [isOnline, rating, content, createReview, shopId]);
+  }, [isOnline, rating, content, images, createReview, shopId]);
 
   const handleCancel = useCallback(() => {
     if (!hasInput) {
@@ -141,6 +217,12 @@ export default function NewReviewScreen() {
     );
   }, [hasInput]);
 
+  const submitLabel = isSubmitting
+    ? images.length > 0
+      ? '画像をアップロード中...'
+      : '送信中...'
+    : '投稿する';
+
   return (
     <KeyboardAvoidingView
       style={styles.keyboardAvoid}
@@ -151,12 +233,16 @@ export default function NewReviewScreen() {
         <View style={styles.header}>
           <Pressable
             onPress={handleCancel}
+            disabled={isSubmitting}
             accessibilityRole="button"
             accessibilityLabel="キャンセル"
+            accessibilityState={{ disabled: isSubmitting }}
             style={styles.headerButton}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
-            <Text style={styles.headerButtonText}>キャンセル</Text>
+            <Text style={[styles.headerButtonText, isSubmitting && styles.headerButtonTextDisabled]}>
+              キャンセル
+            </Text>
           </Pressable>
           <Text style={styles.headerTitle}>レビューを書く</Text>
           <Pressable
@@ -168,9 +254,17 @@ export default function NewReviewScreen() {
             style={styles.headerButton}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
           >
-            <Text style={[styles.headerSaveText, !canSubmit && styles.headerSaveTextDisabled]}>
-              {isPending ? '送信中...' : '投稿する'}
-            </Text>
+            {isSubmitting ? (
+              <ActivityIndicator
+                size="small"
+                color={colorActionPrimary}
+                accessibilityLabel="送信中"
+              />
+            ) : (
+              <Text style={[styles.headerSaveText, !canSubmit && styles.headerSaveTextDisabled]}>
+                {submitLabel}
+              </Text>
+            )}
           </Pressable>
         </View>
 
@@ -227,6 +321,18 @@ export default function NewReviewScreen() {
                 {content.length}/{REVIEW_CONTENT_MAX}
               </Text>
             </View>
+          </View>
+
+          {/* 画像添付 */}
+          <View style={styles.section}>
+            <Text style={styles.label}>{`写真（最大${MAX_REVIEW_IMAGES}枚・任意）`}</Text>
+            <ImageAttachmentGrid
+              images={images}
+              onAdd={() => void handleAddImage()}
+              onRemove={handleRemoveImage}
+              maxCount={MAX_REVIEW_IMAGES}
+              isDisabled={isSubmitting}
+            />
           </View>
         </ScrollView>
       </View>
@@ -305,6 +411,9 @@ const styles = StyleSheet.create({
   headerButtonText: {
     ...textBase,
     color: colorTextSecondary,
+  },
+  headerButtonTextDisabled: {
+    color: colorTextTertiary,
   },
   headerTitle: {
     flex: 1,

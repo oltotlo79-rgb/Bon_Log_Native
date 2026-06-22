@@ -69,9 +69,11 @@ describe('SettingsProfileScreen - フォーム表示', () => {
       .mockResolvedValueOnce({ data: PROFILE_DETAIL, error: undefined });
   });
 
-  it('ローディング中にスクリーンが表示される', () => {
+  it('ローディング中にスクリーンが表示される', async () => {
     renderWithProviders(<SettingsProfileScreen />);
-    expect(screen.getByRole('header', { name: 'プロフィールを編集' })).toBeTruthy();
+    await waitFor(() => {
+      expect(screen.getByRole('header', { name: 'プロフィールを編集' })).toBeTruthy();
+    });
   });
 
   it('プロフィール読み込み後にニックネームフィールドが表示される', async () => {
@@ -81,9 +83,11 @@ describe('SettingsProfileScreen - フォーム表示', () => {
     });
   });
 
-  it('プロフィール取得後に戻るボタンが表示される', () => {
+  it('プロフィール取得後に戻るボタンが表示される', async () => {
     renderWithProviders(<SettingsProfileScreen />);
-    expect(screen.getByRole('button', { name: '戻る' })).toBeTruthy();
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: '戻る' })).toBeTruthy();
+    });
   });
 
   it('初期状態では保存ボタンが無効（isDirty=false）', async () => {

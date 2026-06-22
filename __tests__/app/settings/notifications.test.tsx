@@ -172,25 +172,34 @@ describe('SettingsNotificationsScreen', () => {
       mockGetPermissionStatus.mockResolvedValue({ granted: false, canAskAgain: true });
     });
 
-    it('ヘッダーに「通知設定」が表示される', () => {
+    it('ヘッダーに「通知設定」が表示される', async () => {
       render(<SettingsNotificationsScreen />);
-      expect(screen.getByRole('header', { name: '通知設定' })).toBeTruthy();
+      await waitFor(() => {
+        expect(screen.getByRole('header', { name: '通知設定' })).toBeTruthy();
+      });
     });
 
-    it('戻るボタンが表示される', () => {
+    it('戻るボタンが表示される', async () => {
       render(<SettingsNotificationsScreen />);
-      expect(screen.getByRole('button', { name: '戻る' })).toBeTruthy();
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: '戻る' })).toBeTruthy();
+      });
     });
 
-    it('戻るボタンを押すと router.back が呼ばれる', () => {
+    it('戻るボタンを押すと router.back が呼ばれる', async () => {
       render(<SettingsNotificationsScreen />);
+      await waitFor(() => {
+        expect(screen.getByRole('button', { name: '戻る' })).toBeTruthy();
+      });
       fireEvent.press(screen.getByRole('button', { name: '戻る' }));
       expect(mockRouterBack).toHaveBeenCalledTimes(1);
     });
 
-    it('「プッシュ通知」という見出しが表示される', () => {
+    it('「プッシュ通知」という見出しが表示される', async () => {
       render(<SettingsNotificationsScreen />);
-      expect(screen.getByText('プッシュ通知')).toBeTruthy();
+      await waitFor(() => {
+        expect(screen.getByText('プッシュ通知')).toBeTruthy();
+      });
     });
   });
 

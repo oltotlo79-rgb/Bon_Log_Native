@@ -7,7 +7,154 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
 // jest.mock のファクトリ内では ES import が使えないため require を使用する（Jest 制約）。
 
+import { Animated } from 'react-native';
 import { notifyManager, timeoutManager } from '@tanstack/react-query';
+
+// ---------------------------------------------------------------------------
+// Animated アニメーション同期化モック
+// ---------------------------------------------------------------------------
+// テスト環境（IS_REACT_ACT_ENVIRONMENT=true）では、requestAnimationFrame が
+// setTimeout(cb, 0) に置き換えられているため、JS 駆動アニメーション
+// （useNativeDriver: false）の ValueUpdate コールバックが act 外・非同期で呼ばれ、
+// "An update to Animated(View) inside a test was not wrapped in act(...)" 警告が発生する。
+// 以下の上書きで timing/spring/decay/sequence/parallel を即時・同期完了させ、
+// loop を no-op にすることで警告を解消する。
+// 本番コードの Animated 呼び出しが引き続き機能する（Value の最終値が即時セットされる）。
+//
+// 参考: react-native/Libraries/Animated/AnimatedMock.js（同じパターン）。
+// ---------------------------------------------------------------------------
+
+type AnimatedEndResult = { finished: boolean };
+type AnimatedEndCallback = (result: AnimatedEndResult) => void;
+
+type SyncCompositeAnimation = {
+  start: (callback?: AnimatedEndCallback) => void;
+  stop: () => void;
+  reset: () => void;
+  _startNativeLoop: (iterations?: number) => void;
+  _isUsingNativeDriver: () => boolean;
+};
+
+// コールバックを即時同期呼び出しするラッパー
+// 再帰呼び出し（アニメーションコールバック内から別のアニメーションを開始する場合）を
+// ガードして無限ループを防ぐ（AnimatedMock.js と同じ保護）。
+let inAnimationCallback = false;
+function wrapImmediateStart(
+  startFn: (cb?: AnimatedEndCallback) => void,
+): (callback?: AnimatedEndCallback) => void {
+  return (callback) => {
+    if (callback == null) {
+      startFn(callback);
+      return;
+    }
+    const guarded: AnimatedEndCallback = (...args) => {
+      if (inAnimationCallback) {
+        return;
+      }
+      inAnimationCallback = true;
+      try {
+        callback(...args);
+      } finally {
+        inAnimationCallback = false;
+      }
+    };
+    startFn(guarded);
+  };
+}
+
+const noopAnimation: SyncCompositeAnimation = {
+  start: () => {},
+  stop: () => {},
+  reset: () => {},
+  _startNativeLoop: () => {},
+  _isUsingNativeDriver: () => false,
+};
+
+function makeImmediateAnimation(
+  immediateStart: (cb?: AnimatedEndCallback) => void,
+): SyncCompositeAnimation {
+  return {
+    ...noopAnimation,
+    start: wrapImmediateStart(immediateStart),
+  };
+}
+
+// timing: コールバックのみ即時同期呼び出し（setValue は呼ばない）
+// Animated.timing は TypeScript の型定義上 readonly だが、実行時は writable であるため
+// Object.defineProperty で上書きする（型アサーション不使用）。
+// setValue() は AnimatedValue サブスクライバを介して React 更新をスケジュールするため
+// 呼ばない。act 外での setValue() が act 警告の直接原因となるため省略する。
+Object.defineProperty(Animated, 'timing', {
+  configurable: true,
+  writable: true,
+  value: (
+    _value: Parameters<typeof Animated.timing>[0],
+    _config: Parameters<typeof Animated.timing>[1],
+  ): ReturnType<typeof Animated.timing> =>
+    makeImmediateAnimation((cb) => {
+      cb?.({ finished: true });
+    }),
+});
+
+// spring: コールバックのみ即時同期呼び出し（setValue は呼ばない）
+Object.defineProperty(Animated, 'spring', {
+  configurable: true,
+  writable: true,
+  value: (
+    _value: Parameters<typeof Animated.spring>[0],
+    _config: Parameters<typeof Animated.spring>[1],
+  ): ReturnType<typeof Animated.spring> =>
+    makeImmediateAnimation((cb) => {
+      cb?.({ finished: true });
+    }),
+});
+
+// decay: no-op（toValue がないため即時セット不可）
+Object.defineProperty(Animated, 'decay', {
+  configurable: true,
+  writable: true,
+  value: (
+    _value: Parameters<typeof Animated.decay>[0],
+    _config: Parameters<typeof Animated.decay>[1],
+  ): ReturnType<typeof Animated.decay> => noopAnimation,
+});
+
+// sequence: 各アニメーションを順次 start して最後にコールバック
+Object.defineProperty(Animated, 'sequence', {
+  configurable: true,
+  writable: true,
+  value: (
+    animations: Parameters<typeof Animated.sequence>[0],
+  ): ReturnType<typeof Animated.sequence> =>
+    makeImmediateAnimation((cb) => {
+      animations.forEach((anim) => anim.start());
+      cb?.({ finished: true });
+    }),
+});
+
+// parallel: 全アニメーションを start して最後にコールバック
+Object.defineProperty(Animated, 'parallel', {
+  configurable: true,
+  writable: true,
+  value: (
+    animations: Parameters<typeof Animated.parallel>[0],
+    _config?: Parameters<typeof Animated.parallel>[1],
+  ): ReturnType<typeof Animated.parallel> =>
+    makeImmediateAnimation((cb) => {
+      animations.forEach((anim) => anim.start());
+      cb?.({ finished: true });
+    }),
+});
+
+// loop: no-op（無限ループを防ぐ。テストで loop アニメーションの完了は検証しない）
+Object.defineProperty(Animated, 'loop', {
+  configurable: true,
+  writable: true,
+  value: (
+    _animation: Parameters<typeof Animated.loop>[0],
+    _config?: Parameters<typeof Animated.loop>[1],
+  ): ReturnType<typeof Animated.loop> => noopAnimation,
+});
 
 // notifyManager の内部スケジューラを同期化する。
 // デフォルトは setTimeout(cb, 0) で非同期バッチするため、テスト終了後に残留タイマーが
@@ -291,6 +438,31 @@ jest.mock('expo-web-browser', () => ({
   maybeCompleteAuthSession: jest.fn(),
   openAuthSessionAsync: jest.fn(async () => ({ type: 'dismiss' })),
 }));
+
+// KeyboardAvoidingView のモック
+// RN の KeyboardAvoidingView.componentDidMount は _setBottom で setState を呼ぶ。
+// react-test-renderer の commitLayoutEffectOnFiber 直後に同期で setState が走るため
+// IS_REACT_ACT_ENVIRONMENT=true 環境では act 外更新警告になる。
+// テスト環境ではキーボード回避ロジックは不要なため、シンプルな View に置き換えて警告を除去する。
+jest.mock('react-native/Libraries/Components/Keyboard/KeyboardAvoidingView', () => {
+  const React = require('react');
+  const { View } = require('react-native');
+  return {
+    __esModule: true,
+    default: ({
+      children,
+      style,
+      testID,
+      ...rest
+    }: {
+      children?: React.ReactNode;
+      style?: unknown;
+      testID?: string;
+      [key: string]: unknown;
+    }) =>
+      React.createElement(View, { style, testID, ...rest }, children),
+  };
+});
 
 // expo-image のモック
 jest.mock('expo-image', () => {

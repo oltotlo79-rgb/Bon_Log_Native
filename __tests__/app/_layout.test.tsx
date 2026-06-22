@@ -42,31 +42,41 @@ describe('RootLayout', () => {
     mockSetupFocusManager.mockReturnValue(jest.fn());
   });
 
-  it('マウント時に setupOnlineManager が呼ばれる', () => {
+  it('マウント時に setupOnlineManager が呼ばれる', async () => {
     render(<RootLayout />);
-    expect(mockSetupOnlineManager).toHaveBeenCalledTimes(1);
+    await waitFor(() => {
+      expect(mockSetupOnlineManager).toHaveBeenCalledTimes(1);
+    });
   });
 
-  it('マウント時に setupFocusManager が呼ばれる', () => {
+  it('マウント時に setupFocusManager が呼ばれる', async () => {
     render(<RootLayout />);
-    expect(mockSetupFocusManager).toHaveBeenCalledTimes(1);
+    await waitFor(() => {
+      expect(mockSetupFocusManager).toHaveBeenCalledTimes(1);
+    });
   });
 
-  it('アンマウント時に online cleanup が呼ばれる', () => {
+  it('アンマウント時に online cleanup が呼ばれる', async () => {
     const cleanupOnline = jest.fn();
     mockSetupOnlineManager.mockReturnValue(cleanupOnline);
 
     const { unmount } = render(<RootLayout />);
+    await waitFor(() => {
+      expect(mockSetupOnlineManager).toHaveBeenCalledTimes(1);
+    });
     unmount();
 
     expect(cleanupOnline).toHaveBeenCalledTimes(1);
   });
 
-  it('アンマウント時に focus cleanup が呼ばれる', () => {
+  it('アンマウント時に focus cleanup が呼ばれる', async () => {
     const cleanupFocus = jest.fn();
     mockSetupFocusManager.mockReturnValue(cleanupFocus);
 
     const { unmount } = render(<RootLayout />);
+    await waitFor(() => {
+      expect(mockSetupFocusManager).toHaveBeenCalledTimes(1);
+    });
     unmount();
 
     expect(cleanupFocus).toHaveBeenCalledTimes(1);
@@ -80,9 +90,11 @@ describe('RootLayout', () => {
     });
   });
 
-  it('QueryClientProvider が存在する（SafeAreaProvider が内包される）', () => {
+  it('QueryClientProvider が存在する（SafeAreaProvider が内包される）', async () => {
     render(<RootLayout />);
     // setup.ts の SafeAreaProvider モックにより testID="safe-area-provider" が描画される
-    expect(screen.getByTestId('safe-area-provider')).toBeTruthy();
+    await waitFor(() => {
+      expect(screen.getByTestId('safe-area-provider')).toBeTruthy();
+    });
   });
 });

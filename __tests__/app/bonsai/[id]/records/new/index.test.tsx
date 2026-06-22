@@ -216,7 +216,9 @@ describe('BonsaiRecordNewScreen', () => {
       });
       const addedId = capturedImages[0]?.localId;
       if (addedId !== undefined) {
-        capturedOnRemove?.(addedId);
+        await waitFor(() => {
+          capturedOnRemove?.(addedId);
+        });
         await waitFor(() => {
           expect(capturedImages.find((img) => img.localId === addedId)).toBeUndefined();
         });

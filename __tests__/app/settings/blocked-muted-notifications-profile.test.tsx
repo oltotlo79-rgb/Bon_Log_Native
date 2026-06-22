@@ -37,18 +37,25 @@ describe('SettingsBlockedScreen', () => {
     jest.clearAllMocks();
   });
 
-  it('ヘッダーに「ブロックリスト」と表示される', () => {
+  it('ヘッダーに「ブロックリスト」と表示される', async () => {
     renderWithProviders(<SettingsBlockedScreen />);
-    expect(screen.getByRole('header', { name: 'ブロックリスト' })).toBeTruthy();
+    await waitFor(() => {
+      expect(screen.getByRole('header', { name: 'ブロックリスト' })).toBeTruthy();
+    });
   });
 
-  it('戻るボタンが表示される', () => {
+  it('戻るボタンが表示される', async () => {
     renderWithProviders(<SettingsBlockedScreen />);
-    expect(screen.getByRole('button', { name: '戻る' })).toBeTruthy();
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: '戻る' })).toBeTruthy();
+    });
   });
 
-  it('戻るボタンを押すと router.back が呼ばれる', () => {
+  it('戻るボタンを押すと router.back が呼ばれる', async () => {
     renderWithProviders(<SettingsBlockedScreen />);
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: '戻る' })).toBeTruthy();
+    });
     fireEvent.press(screen.getByRole('button', { name: '戻る' }));
     expect(mockRouterBack).toHaveBeenCalledTimes(1);
   });
@@ -66,18 +73,25 @@ describe('SettingsMutedScreen', () => {
     jest.clearAllMocks();
   });
 
-  it('ヘッダーに「ミュートリスト」と表示される', () => {
+  it('ヘッダーに「ミュートリスト」と表示される', async () => {
     renderWithProviders(<SettingsMutedScreen />);
-    expect(screen.getByRole('header', { name: 'ミュートリスト' })).toBeTruthy();
+    await waitFor(() => {
+      expect(screen.getByRole('header', { name: 'ミュートリスト' })).toBeTruthy();
+    });
   });
 
-  it('戻るボタンが表示される', () => {
+  it('戻るボタンが表示される', async () => {
     renderWithProviders(<SettingsMutedScreen />);
-    expect(screen.getByRole('button', { name: '戻る' })).toBeTruthy();
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: '戻る' })).toBeTruthy();
+    });
   });
 
-  it('戻るボタンを押すと router.back が呼ばれる', () => {
+  it('戻るボタンを押すと router.back が呼ばれる', async () => {
     renderWithProviders(<SettingsMutedScreen />);
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: '戻る' })).toBeTruthy();
+    });
     fireEvent.press(screen.getByRole('button', { name: '戻る' }));
     expect(mockRouterBack).toHaveBeenCalledTimes(1);
   });
@@ -100,32 +114,43 @@ describe('SettingsNotificationsScreen', () => {
     });
   });
 
-  it('ヘッダーに「通知設定」と表示される', () => {
+  it('ヘッダーに「通知設定」と表示される', async () => {
     render(<SettingsNotificationsScreen />);
-    expect(screen.getByRole('header', { name: '通知設定' })).toBeTruthy();
+    await waitFor(() => {
+      expect(screen.getByRole('header', { name: '通知設定' })).toBeTruthy();
+    });
   });
 
-  it('戻るボタンが表示される', () => {
+  it('戻るボタンが表示される', async () => {
     render(<SettingsNotificationsScreen />);
-    expect(screen.getByRole('button', { name: '戻る' })).toBeTruthy();
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: '戻る' })).toBeTruthy();
+    });
   });
 
-  it('戻るボタンを押すと router.back が呼ばれる', () => {
+  it('戻るボタンを押すと router.back が呼ばれる', async () => {
     render(<SettingsNotificationsScreen />);
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: '戻る' })).toBeTruthy();
+    });
     fireEvent.press(screen.getByRole('button', { name: '戻る' }));
     expect(mockRouterBack).toHaveBeenCalledTimes(1);
   });
 
-  it('カードに「プッシュ通知」という見出しが表示される', () => {
+  it('カードに「プッシュ通知」という見出しが表示される', async () => {
     render(<SettingsNotificationsScreen />);
-    expect(screen.getByText('プッシュ通知')).toBeTruthy();
+    await waitFor(() => {
+      expect(screen.getByText('プッシュ通知')).toBeTruthy();
+    });
   });
 
-  it('通知の説明文が表示される', () => {
+  it('通知の説明文が表示される', async () => {
     render(<SettingsNotificationsScreen />);
-    expect(
-      screen.getByText('いいね・コメント・フォローなどの通知をお知らせします。')
-    ).toBeTruthy();
+    await waitFor(() => {
+      expect(
+        screen.getByText('いいね・コメント・フォローなどの通知をお知らせします。')
+      ).toBeTruthy();
+    });
   });
 });
 
@@ -134,24 +159,33 @@ describe('SettingsProfileScreen', () => {
     jest.clearAllMocks();
   });
 
-  it('ヘッダーに「プロフィールを編集」と表示される', () => {
+  it('ヘッダーに「プロフィールを編集」と表示される', async () => {
     renderWithProviders(<SettingsProfileScreen />);
-    expect(screen.getByRole('header', { name: 'プロフィールを編集' })).toBeTruthy();
+    await waitFor(() => {
+      expect(screen.getByRole('header', { name: 'プロフィールを編集' })).toBeTruthy();
+    });
   });
 
-  it('戻るボタンが表示される', () => {
+  it('戻るボタンが表示される', async () => {
     renderWithProviders(<SettingsProfileScreen />);
-    expect(screen.getByRole('button', { name: '戻る' })).toBeTruthy();
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: '戻る' })).toBeTruthy();
+    });
   });
 
-  it('戻るボタンを押すと router.back が呼ばれる', () => {
+  it('戻るボタンを押すと router.back が呼ばれる', async () => {
     renderWithProviders(<SettingsProfileScreen />);
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: '戻る' })).toBeTruthy();
+    });
     fireEvent.press(screen.getByRole('button', { name: '戻る' }));
     expect(mockRouterBack).toHaveBeenCalledTimes(1);
   });
 
-  it('プロフィール取得中または取得後に「プロフィールを編集」ヘッダーが表示される', () => {
+  it('プロフィール取得中または取得後に「プロフィールを編集」ヘッダーが表示される', async () => {
     renderWithProviders(<SettingsProfileScreen />);
-    expect(screen.getByRole('header', { name: 'プロフィールを編集' })).toBeTruthy();
+    await waitFor(() => {
+      expect(screen.getByRole('header', { name: 'プロフィールを編集' })).toBeTruthy();
+    });
   });
 });

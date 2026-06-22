@@ -28,6 +28,9 @@ export const MAX_POST_VIDEOS_PREMIUM = 1;
 /** コメントに添付可能な画像の最大枚数 */
 export const MAX_COMMENT_IMAGES = 2;
 
+/** レビューに添付可能な画像の最大枚数 */
+export const MAX_REVIEW_IMAGES = 3;
+
 /** 無料プラン: コメントに添付可能な動画の最大本数（プレミアム限定） */
 export const MAX_COMMENT_VIDEOS_FREE = 0;
 
