@@ -16,7 +16,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { router } from 'expo-router';
-import { routeBonsaiDetail } from '@/lib/constants/routes';
+import { routeBonsaiDetail, ROUTE_BONSAI_CARE_LOGS } from '@/lib/constants/routes';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useBonsaiListQuery, type BonsaiListResponse } from '@/lib/queries/bonsai';
@@ -212,7 +212,15 @@ function BonsaiHeader() {
         <Text style={styles.backButtonText}>‹ 戻る</Text>
       </Pressable>
       <Text style={styles.headerTitle}>マイ盆栽</Text>
-      <View style={styles.headerRight} />
+      <Pressable
+        onPress={() => router.push(ROUTE_BONSAI_CARE_LOGS)}
+        accessibilityRole="button"
+        accessibilityLabel="手入れログを見る"
+        style={styles.careLogsButton}
+        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+      >
+        <Text style={styles.careLogsButtonText}>手入れログ</Text>
+      </Pressable>
     </View>
   );
 }
@@ -252,6 +260,16 @@ const styles = StyleSheet.create({
   },
   headerRight: {
     minWidth: 60,
+  },
+  careLogsButton: {
+    minWidth: 72,
+    minHeight: 44,
+    justifyContent: 'center',
+    alignItems: 'flex-end',
+  },
+  careLogsButtonText: {
+    color: colorTextSecondary,
+    fontSize: 13,
   },
   listContent: {
     paddingHorizontal: spacing4,

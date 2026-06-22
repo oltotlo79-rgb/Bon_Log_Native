@@ -33,7 +33,7 @@ import { OfflineBanner } from '@/components/common/OfflineBanner';
 import { ScreenError } from '@/components/common/ScreenError';
 import { ScreenEmpty } from '@/components/common/ScreenEmpty';
 import { FollowButton } from '@/components/user/FollowButton';
-import { routeUserDetail } from '@/lib/constants/routes';
+import { routeUserDetail, routeExplorePostsByHashtag, routeExplorePostsByGenre } from '@/lib/constants/routes';
 import { ERR_EXPLORE_LOAD_FAILED } from '@/lib/constants/errors';
 import {
   colorBackground,
@@ -76,15 +76,18 @@ type TagChipProps = {
 };
 
 const TagChip = memo(function TagChip({ item }: TagChipProps) {
+  const handlePress = useCallback(() => {
+    router.push(routeExplorePostsByHashtag(item.name));
+  }, [item.name]);
+
   return (
     <TouchableOpacity
-      style={[styles.chip, styles.chipDisabled]}
-      disabled
+      style={styles.chip}
+      onPress={handlePress}
       activeOpacity={0.7}
       hitSlop={CHIP_HIT_SLOP}
       accessibilityRole="button"
-      accessibilityLabel={`#${item.name}（現在選択できません）`}
-      accessibilityState={{ disabled: true }}
+      accessibilityLabel={`#${item.name}の投稿を見る（${item.count}件）`}
     >
       <Text style={styles.chipName}>#{item.name}</Text>
       <Text style={styles.chipCount}>（{item.count}件）</Text>
@@ -103,15 +106,18 @@ type GenreChipProps = {
 };
 
 const GenreChip = memo(function GenreChip({ item }: GenreChipProps) {
+  const handlePress = useCallback(() => {
+    router.push(routeExplorePostsByGenre(item.id));
+  }, [item.id]);
+
   return (
     <TouchableOpacity
-      style={[styles.chip, styles.chipDisabled]}
-      disabled
+      style={styles.chip}
+      onPress={handlePress}
       activeOpacity={0.7}
       hitSlop={CHIP_HIT_SLOP}
       accessibilityRole="button"
-      accessibilityLabel={`${item.name}（現在選択できません）`}
-      accessibilityState={{ disabled: true }}
+      accessibilityLabel={`${item.name}の投稿を見る（${item.postCount}件）`}
     >
       <Text style={styles.chipName}>{item.name}</Text>
       <Text style={styles.chipCount}>（{item.postCount}件）</Text>
@@ -422,9 +428,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing4,
     paddingVertical: spacing2,
     gap: spacing2,
-  },
-  chipDisabled: {
-    opacity: 0.5,
   },
   chipName: {
     ...textSm,

@@ -40,3 +40,6 @@ export const GENRE_CATEGORY_ORDER = [
 
 /** GenreCategory の union 型 */
 export type GenreCategory = (typeof GENRE_CATEGORY_ORDER)[number];
+
+/** 手入れログのメモ最大文字数 */
+export const MAX_CARE_LOG_NOTE_LENGTH = 500;

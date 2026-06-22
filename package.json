@@ -59,6 +59,8 @@
     "ios": "expo run:ios",
     "web": "expo start --web",
     "lint": "expo lint app lib hooks components __tests__ -- --no-error-on-unmatched-pattern",
+    "typecheck": "tsc --noEmit",
+    "ci:typegen": "node scripts/generate-router-types.mjs",
     "test": "jest",
     "test:coverage": "jest --coverage",
     "test:e2e": "maestro test .maestro/",

@@ -8132,6 +8132,476 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/explore/posts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * ハッシュタグ or ジャンル別の投稿一覧を取得する（ゲスト可）
+         * @description hashtag または genreId のどちらか一方を指定して、該当する投稿一覧をカーソルページネーションで返す。
+         *
+         *     重要仕様:
+         *     - hashtag と genreId は排他（両方指定 / 両方未指定は 400 VALIDATION_ERROR）
+         *     - hashtag は #なしのタグ名（例: "松"）。大小文字無視の部分一致
+         *     - ブロック / ミュート / 非公開著者 / 停止著者の投稿は除外（feed と同一フィルタ）
+         *     - isBlocked / isMuted / mentionedUsers は feed と同じ形式で付与
+         *     - ゲスト可（Bearer 認証は必須だがゲストトークンで呼び出し可）
+         *     - レート制限: read（60/分）
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description ハッシュタグ名（# なし、例: "松"）。genreId と排他 */
+                    hashtag?: string;
+                    /** @description ジャンル ID。hashtag と排他 */
+                    genreId?: string;
+                    /** @description 前回レスポンスの nextCursor 値 */
+                    cursor?: string;
+                    /** @description 取得件数（デフォルト 20、最大 100） */
+                    limit?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 投稿一覧取得成功 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ExplorePostsResponse"];
+                    };
+                };
+                /** @description バリデーションエラー (VALIDATION_ERROR) — hashtag/genreId 排他違反または形式不正 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description Bearer トークンなし (AUTH_REQUIRED) または期限切れ (AUTH_TOKEN_EXPIRED) */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description アカウント停止 (ACCOUNT_SUSPENDED) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description レート制限超過。Retry-After ヘッダー（秒）が返却される。自動リトライ禁止。 */
+                429: {
+                    headers: {
+                        /** @description 次のリクエストまでの待機秒数 */
+                        "Retry-After"?: number;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/bonsai/care-logs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 自分の手入れログ一覧を取得する（認証必須・ゲスト 403）
+         * @description 認証ユーザー自身の手入れログをカーソルページネーションで返す。
+         *
+         *     重要仕様:
+         *     - Bearer 必須・ゲストアカウントは 403 GUEST_NOT_ALLOWED
+         *     - from / to 両方指定で期間フィルタ（半開区間 [from, to)）
+         *     - to - from が 367 日超の場合は 400 VALIDATION_ERROR
+         *     - from のみ / to のみは期間フィルタなしで全件取得
+         *     - BonsaiCareLog は特定の盆栽に紐付かないユーザー全体のメモ（Web 仕様に準拠）
+         *     - レート制限: read（60/分）
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description 期間開始（ISO 8601、含む） */
+                    from?: string;
+                    /** @description 期間終了（ISO 8601、含まない） */
+                    to?: string;
+                    /** @description 前回レスポンスの nextCursor 値 */
+                    cursor?: string;
+                    /** @description 取得件数（デフォルト 20、最大 100） */
+                    limit?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 手入れログ一覧取得成功 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CareLogListResponse"];
+                    };
+                };
+                /** @description バリデーションエラー (VALIDATION_ERROR) — 期間形式不正 / 期間超過 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description Bearer トークンなし (AUTH_REQUIRED) または期限切れ (AUTH_TOKEN_EXPIRED) */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description アカウント停止 (ACCOUNT_SUSPENDED) またはゲスト不可 (GUEST_NOT_ALLOWED) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description レート制限超過。Retry-After ヘッダー（秒）が返却される。自動リトライ禁止。 */
+                429: {
+                    headers: {
+                        /** @description 次のリクエストまでの待機秒数 */
+                        "Retry-After"?: number;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description 内部エラー (INTERNAL_ERROR) */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        /**
+         * 手入れログを作成する（認証必須・ゲスト 403）
+         * @description 手入れログを作成する。type と performedAt は必須。
+         *
+         *     重要仕様:
+         *     - Bearer 必須・ゲストアカウントは 403 GUEST_NOT_ALLOWED
+         *     - performedAt の未来日（+1 日トレランス）は 400 VALIDATION_ERROR
+         *     - note は最大 500 文字
+         *     - BonsaiCareLog は特定の盆栽に紐付かないユーザー全体のメモ
+         *     - レート制限: care_log_write
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["CreateCareLogRequest"];
+                };
+            };
+            responses: {
+                /** @description 手入れログ作成成功。id を返す */
+                201: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CareLogCreatedResponse"];
+                    };
+                };
+                /** @description バリデーションエラー (VALIDATION_ERROR) — 必須フィールド欠落 / 未来日 / note 超過 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description Bearer トークンなし (AUTH_REQUIRED) または期限切れ (AUTH_TOKEN_EXPIRED) */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description アカウント停止 (ACCOUNT_SUSPENDED) またはゲスト不可 (GUEST_NOT_ALLOWED) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description レート制限超過。Retry-After ヘッダー（秒）が返却される。自動リトライ禁止。 */
+                429: {
+                    headers: {
+                        /** @description 次のリクエストまでの待機秒数 */
+                        "Retry-After"?: number;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description 内部エラー (INTERNAL_ERROR) */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/bonsai/care-logs/{logId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * 手入れログを削除する（所有者のみ）
+         * @description 自分の手入れログを削除する。
+         *
+         *     重要仕様:
+         *     - 所有者以外・不存在は 404 NOT_FOUND（ID 列挙攻撃防止）
+         *     - Bearer 必須・ゲストアカウントは 403 GUEST_NOT_ALLOWED
+         *     - レート制限: delete_care_log
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description 手入れログ ID */
+                    logId: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 手入れログ削除成功 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @enum {boolean} */
+                            success: true;
+                        };
+                    };
+                };
+                /** @description Bearer トークンなし (AUTH_REQUIRED) または期限切れ (AUTH_TOKEN_EXPIRED) */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description アカウント停止 (ACCOUNT_SUSPENDED) またはゲスト不可 (GUEST_NOT_ALLOWED) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description 手入れログが見つからない (NOT_FOUND) — 不存在 / 他ユーザーのログ */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description レート制限超過。Retry-After ヘッダー（秒）が返却される。自動リトライ禁止。 */
+                429: {
+                    headers: {
+                        /** @description 次のリクエストまでの待機秒数 */
+                        "Retry-After"?: number;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description 内部エラー (INTERNAL_ERROR) */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        /**
+         * 手入れログを部分更新する（所有者のみ）
+         * @description 自分の手入れログを部分更新する。省略したフィールドは現在値を維持する。
+         *
+         *     重要仕様:
+         *     - 所有者以外・不存在は 404 NOT_FOUND（ID 列挙攻撃防止）
+         *     - Bearer 必須・ゲストアカウントは 403 GUEST_NOT_ALLOWED
+         *     - note に null を渡すとノートをクリアする
+         *     - レート制限: care_log_write
+         */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description 手入れログ ID */
+                    logId: string;
+                };
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["UpdateCareLogRequest"];
+                };
+            };
+            responses: {
+                /** @description 手入れログ更新成功 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            /** @enum {boolean} */
+                            success: true;
+                        };
+                    };
+                };
+                /** @description バリデーションエラー (VALIDATION_ERROR) — 未来日 / note 超過 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description Bearer トークンなし (AUTH_REQUIRED) または期限切れ (AUTH_TOKEN_EXPIRED) */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description アカウント停止 (ACCOUNT_SUSPENDED) またはゲスト不可 (GUEST_NOT_ALLOWED) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description 手入れログが見つからない (NOT_FOUND) — 不存在 / 他ユーザーのログ */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description レート制限超過。Retry-After ヘッダー（秒）が返却される。自動リトライ禁止。 */
+                429: {
+                    headers: {
+                        /** @description 次のリクエストまでの待機秒数 */
+                        "Retry-After"?: number;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description 内部エラー (INTERNAL_ERROR) */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -10060,6 +10530,155 @@ export interface components {
              * @enum {string}
              */
             days: "7" | "30" | "90";
+        };
+        /**
+         * @description GET /api/v1/explore/posts クエリパラメータ。
+         *     hashtag と genreId はどちらか一方のみ指定可（排他）。両方 / 両方未指定は 400 VALIDATION_ERROR。
+         */
+        ExplorePostsQuery: {
+            hashtag?: string;
+            genreId?: string;
+            cursor?: string;
+            limit?: number;
+        };
+        /** @description ハッシュタグ / ジャンル別投稿一覧レスポンス。feed と同等の投稿形式。 */
+        ExplorePostsResponse: {
+            items: {
+                id: string;
+                content: string;
+                /** Format: date-time */
+                createdAt: string;
+                /** Format: date-time */
+                updatedAt: string;
+                userId: string;
+                user: {
+                    id: string;
+                    nickname: string;
+                    avatarUrl: string | null;
+                    isBlocked: boolean;
+                    isMuted: boolean;
+                };
+                media: {
+                    id: string;
+                    url: string;
+                    type: string;
+                    sortOrder: number;
+                }[];
+                genres: {
+                    id: string;
+                    name: string;
+                    category: string;
+                }[];
+                likeCount: number;
+                commentCount: number;
+                repostCount: number;
+                isLiked: boolean;
+                isBookmarked: boolean;
+                isReposted: boolean;
+                quotePost: {
+                    id: string;
+                    content: string;
+                    user: {
+                        id: string;
+                        nickname: string;
+                        avatarUrl: string | null;
+                    };
+                    media?: {
+                        id: string;
+                        url: string;
+                        type: string;
+                        sortOrder: number;
+                    }[];
+                } | null;
+                repostPost: {
+                    id: string;
+                    content: string;
+                    user: {
+                        id: string;
+                        nickname: string;
+                        avatarUrl: string | null;
+                    };
+                    media?: {
+                        id: string;
+                        url: string;
+                        type: string;
+                        sortOrder: number;
+                    }[];
+                } | null;
+                poll?: unknown;
+                mentionedUsers: {
+                    id: string;
+                    nickname: string;
+                    avatarUrl: string | null;
+                }[];
+            }[];
+            nextCursor: string | null;
+        };
+        /**
+         * @description 盆栽手入れ種別 enum（Prisma BonsaiCareType と一致）。
+         *     値: pesticide / solid_fertilizer / liquid_fertilizer / rotate / shading / muro_in / muro_out / other
+         * @enum {string}
+         */
+        BonsaiCareType: "pesticide" | "solid_fertilizer" | "liquid_fertilizer" | "rotate" | "shading" | "muro_in" | "muro_out" | "other";
+        /** @description 手入れログ 1 件（id, type, performedAt, note）。 */
+        CareLogItem: {
+            id: string;
+            /** @enum {string} */
+            type: "pesticide" | "solid_fertilizer" | "liquid_fertilizer" | "rotate" | "shading" | "muro_in" | "muro_out" | "other";
+            /** Format: date-time */
+            performedAt: string;
+            note: string | null;
+        };
+        /** @description 手入れログ作成成功レスポンス（id を返す）。 */
+        CareLogCreatedResponse: {
+            id: string;
+        };
+        /** @description 手入れログ一覧レスポンス（カーソルページネーション）。 */
+        CareLogListResponse: {
+            items: {
+                id: string;
+                /** @enum {string} */
+                type: "pesticide" | "solid_fertilizer" | "liquid_fertilizer" | "rotate" | "shading" | "muro_in" | "muro_out" | "other";
+                /** Format: date-time */
+                performedAt: string;
+                note: string | null;
+            }[];
+            nextCursor: string | null;
+        };
+        /**
+         * @description 手入れログ作成リクエスト。type と performedAt は必須。
+         *     note は最大 500 文字。
+         *     未来日（+1 日トレランス）は 400 VALIDATION_ERROR。
+         */
+        CreateCareLogRequest: {
+            /** @enum {string} */
+            type: "pesticide" | "solid_fertilizer" | "liquid_fertilizer" | "rotate" | "shading" | "muro_in" | "muro_out" | "other";
+            /** Format: date-time */
+            performedAt: string;
+            note?: string;
+        };
+        /**
+         * @description 手入れログ部分更新リクエスト。すべてのフィールドが optional。
+         *     note に null を渡すとノートをクリアする。
+         */
+        UpdateCareLogRequest: {
+            /** @enum {string} */
+            type?: "pesticide" | "solid_fertilizer" | "liquid_fertilizer" | "rotate" | "shading" | "muro_in" | "muro_out" | "other";
+            /** Format: date-time */
+            performedAt?: string;
+            note?: string | null;
+        };
+        /**
+         * @description GET /api/v1/bonsai/care-logs クエリパラメータ。
+         *     from / to 両方指定時は期間フィルタ（半開区間 [from, to)）。to - from が 367 日超は 400。
+         */
+        ListCareLogsQuery: {
+            /** Format: date-time */
+            from?: string;
+            /** Format: date-time */
+            to?: string;
+            cursor?: string;
+            limit?: number;
         };
     };
     responses: never;

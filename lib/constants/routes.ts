@@ -187,6 +187,12 @@ export const ROUTE_SCHEDULED_POSTS = '/scheduled-posts' as const;
 /** 予約投稿新規作成（プレミアム限定） */
 export const ROUTE_SCHEDULED_POSTS_NEW = '/scheduled-posts/new' as const;
 
+/** ハッシュタグ/ジャンル別投稿一覧（explore/posts） */
+export const ROUTE_EXPLORE_POSTS = '/explore/posts' as const;
+
+/** 手入れログ一覧（カレンダー） */
+export const ROUTE_BONSAI_CARE_LOGS = '/bonsai/care-logs' as const;
+
 // ---------------------------------------------------------------------------
 // ウェーブ1 動的ルートヘルパー
 // ---------------------------------------------------------------------------
@@ -378,6 +384,34 @@ export function routeScheduledPostEdit(id: string): {
 }
 
 /**
+ * ハッシュタグ別投稿一覧画面へのパスを返す。
+ * params に hashtag を渡す（# なしのタグ名）。
+ * Expo Router の画面: `app/explore/posts/index.tsx`
+ *
+ * 使い方: `router.push(routeExplorePostsByHashtag('松'))`
+ */
+export function routeExplorePostsByHashtag(hashtag: string): {
+  pathname: typeof ROUTE_EXPLORE_POSTS;
+  params: { hashtag: string };
+} {
+  return { pathname: ROUTE_EXPLORE_POSTS, params: { hashtag } };
+}
+
+/**
+ * ジャンル別投稿一覧画面へのパスを返す。
+ * params に genreId を渡す。
+ * Expo Router の画面: `app/explore/posts/index.tsx`
+ *
+ * 使い方: `router.push(routeExplorePostsByGenre('genre-id'))`
+ */
+export function routeExplorePostsByGenre(genreId: string): {
+  pathname: typeof ROUTE_EXPLORE_POSTS;
+  params: { genreId: string };
+} {
+  return { pathname: ROUTE_EXPLORE_POSTS, params: { genreId } };
+}
+
+/**
  * 盆栽成長記録 新規追加画面へのパスを返す。
  * Expo Router の dynamic route: `app/bonsai/[id]/records/new/index.tsx`
  *
@@ -486,6 +520,8 @@ export const routes = {
   shopsNew: ROUTE_SHOPS_NEW,
   scheduledPosts: ROUTE_SCHEDULED_POSTS,
   scheduledPostsNew: ROUTE_SCHEDULED_POSTS_NEW,
+  explorePosts: ROUTE_EXPLORE_POSTS,
+  bonsaiCareLogs: ROUTE_BONSAI_CARE_LOGS,
 
   // wave-2 dynamic helpers
   bonsaiDetail: routeBonsaiDetail,
@@ -500,4 +536,6 @@ export const routes = {
   shopReviewNew: routeShopReviewNew,
   scheduledPostDetail: routeScheduledPostDetail,
   scheduledPostEdit: routeScheduledPostEdit,
+  explorePostsByHashtag: routeExplorePostsByHashtag,
+  explorePostsByGenre: routeExplorePostsByGenre,
 } as const;

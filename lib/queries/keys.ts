@@ -93,6 +93,8 @@ export const queryKeys = {
     trendingGenres: ['explore', 'trendingGenres'] as const,
     /** おすすめユーザー */
     recommendedUsers: ['explore', 'recommendedUsers'] as const,
+    /** ハッシュタグ/ジャンル別投稿一覧（無限スクロール・排他パラメータ） */
+    posts: (params: ExplorePostsParams) => ['explore', 'posts', params] as const,
   },
 
   /** 盆栽用語辞典 */
@@ -185,6 +187,8 @@ export const queryKeys = {
     detail: (id: string) => ['bonsai', 'detail', id] as const,
     /** 成長記録一覧（盆栽 ID ごと・無限スクロール） */
     records: (bonsaiId: string) => ['bonsai', 'records', bonsaiId] as const,
+    /** 手入れログ一覧（ユーザー単位・無限スクロール） */
+    careLogs: (params: CareLogsParams) => ['bonsai', 'careLogs', params] as const,
   },
 
   /** イベント */
@@ -264,3 +268,18 @@ export type ShopsListParams = {
 
 /** ジャンル取得タイプ */
 export type GenreType = 'shop' | 'post';
+
+/**
+ * ハッシュタグ/ジャンル別投稿一覧のパラメータ（排他）。
+ * hashtag と genreId はどちらか一方のみ指定可。
+ * 両方指定 / 両方未指定はサーバーが 400 VALIDATION_ERROR を返す。
+ */
+export type ExplorePostsParams =
+  | { hashtag: string; genreId?: never }
+  | { genreId: string; hashtag?: never };
+
+/** 手入れログ一覧のフィルタパラメータ */
+export type CareLogsParams = {
+  from?: string;
+  to?: string;
+};

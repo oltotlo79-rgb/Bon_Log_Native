@@ -60,3 +60,9 @@ export const REVIEWS_PAGE_SIZE = 20;
 
 /** 予約投稿一覧のページ取得件数 */
 export const SCHEDULED_POSTS_PAGE_SIZE = 20;
+
+/** ハッシュタグ/ジャンル別投稿一覧のページ取得件数 */
+export const EXPLORE_POSTS_PAGE_SIZE = 20;
+
+/** 手入れログ一覧のページ取得件数 */
+export const CARE_LOGS_PAGE_SIZE = 20;

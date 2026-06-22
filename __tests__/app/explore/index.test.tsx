@@ -182,8 +182,17 @@ describe('ExploreScreen トレンドハッシュタグ', () => {
   it('ハッシュタグのアクセシビリティラベルが表示される', () => {
     mockHashtagsQuery.data = makeHashtagsData();
     renderWithProviders(<ExploreScreen />);
-    expect(screen.getByLabelText('#黒松（現在選択できません）')).toBeTruthy();
-    expect(screen.getByLabelText('#五葉松（現在選択できません）')).toBeTruthy();
+    expect(screen.getByLabelText('#黒松の投稿を見る（100件）')).toBeTruthy();
+    expect(screen.getByLabelText('#五葉松の投稿を見る（80件）')).toBeTruthy();
+  });
+
+  it('ハッシュタグタップで routeExplorePostsByHashtag へ遷移する', () => {
+    mockHashtagsQuery.data = makeHashtagsData();
+    renderWithProviders(<ExploreScreen />);
+    fireEvent.press(screen.getByLabelText('#黒松の投稿を見る（100件）'));
+    expect(mockRouter.push).toHaveBeenCalledWith(
+      expect.objectContaining({ params: expect.objectContaining({ hashtag: '黒松' }) })
+    );
   });
 
   it('ハッシュタグのカウントが表示される', () => {
@@ -208,8 +217,17 @@ describe('ExploreScreen ジャンル', () => {
   it('ジャンルのアクセシビリティラベルが表示される', () => {
     mockGenresQuery.data = makeGenresData();
     renderWithProviders(<ExploreScreen />);
-    expect(screen.getByLabelText('松柏類（現在選択できません）')).toBeTruthy();
-    expect(screen.getByLabelText('雑木類（現在選択できません）')).toBeTruthy();
+    expect(screen.getByLabelText('松柏類の投稿を見る（200件）')).toBeTruthy();
+    expect(screen.getByLabelText('雑木類の投稿を見る（150件）')).toBeTruthy();
+  });
+
+  it('ジャンルタップで routeExplorePostsByGenre へ遷移する', () => {
+    mockGenresQuery.data = makeGenresData();
+    renderWithProviders(<ExploreScreen />);
+    fireEvent.press(screen.getByLabelText('松柏類の投稿を見る（200件）'));
+    expect(mockRouter.push).toHaveBeenCalledWith(
+      expect.objectContaining({ params: expect.objectContaining({ genreId: 'g1' }) })
+    );
   });
 
   it('ジャンルのカウントが表示される', () => {

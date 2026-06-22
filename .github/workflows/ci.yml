@@ -1,0 +1,94 @@
+# ===========================================
+# Bon_Log_Native CI
+# ===========================================
+# CLAUDE.md「CI（方針）」表に対応:
+#   lint  = ESLint + TypeScript 型チェック（常時）
+#   test  = ユニットテスト（カバレッジゲート: jest 設定の coverageThreshold で担保）（常時）
+#   e2e   = Maestro（リリース前に Phase 5 で整備するため、このワークフローには含めない）
+#   build = EAS Build（リリース時のみ。このワークフローには含めない）
+#
+# Web 版 (Bon_Log_cfw .github/workflows/ci.yml) の lint / test ジョブ構成を踏襲し、
+# Prisma generate を Expo Router の typed routes 生成 (ci:typegen) に置換している。
+# typedRoutes (app.json) が有効なため .expo/types/router.d.ts が必要だが、
+# .expo/ は .gitignore 済みで `npm ci` 直後には存在しない。生成しないと
+# `tsc --noEmit` が Href 型エラーで落ちるため、型チェック・テストの前に生成する。
+
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+# 同じブランチの古いワークフローをキャンセル（Web 版と同様）
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  NODE_VERSION: '20'
+
+jobs:
+  # ===========================================
+  # Lint & Type Check
+  # ===========================================
+  lint:
+    name: Lint & Type Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Expo Router types
+        run: npm run ci:typegen
+
+      - name: Run ESLint
+        run: npm run lint
+
+      - name: Run TypeScript type check
+        run: npm run typecheck
+
+  # ===========================================
+  # Unit Tests (coverage gate enforced)
+  # ===========================================
+  test:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Expo Router types
+        run: npm run ci:typegen
+
+      - name: Run unit tests (coverage gate enforced)
+        # package.json の jest.coverageThreshold（branches 80%, functions/lines/statements 85%）
+        # を Jest 自身が検証し、未達なら exit 1 で CI を失敗させる。
+        run: npm run test:coverage
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-report
+          path: coverage/
+          retention-days: 7

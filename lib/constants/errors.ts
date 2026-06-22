@@ -369,6 +369,18 @@ export const ERR_BONSAI_UPDATE_FAILED = '盆栽情報の更新に失敗しまし
 /** 盆栽削除失敗 */
 export const ERR_BONSAI_DELETE_FAILED = '盆栽の削除に失敗しました。もう一度お試しください。';
 
+/** 手入れログ一覧読み込み失敗 */
+export const ERR_CARE_LOGS_LOAD_FAILED = '手入れログを読み込めませんでした。';
+
+/** 手入れログ作成失敗 */
+export const ERR_CARE_LOG_CREATE_FAILED = '手入れログの追加に失敗しました。もう一度お試しください。';
+
+/** 手入れログ更新失敗 */
+export const ERR_CARE_LOG_UPDATE_FAILED = '手入れログの更新に失敗しました。もう一度お試しください。';
+
+/** 手入れログ削除失敗 */
+export const ERR_CARE_LOG_DELETE_FAILED = '手入れログの削除に失敗しました。もう一度お試しください。';
+
 /** 成長記録追加失敗 */
 export const ERR_BONSAI_RECORD_CREATE_FAILED = '成長記録の追加に失敗しました。もう一度お試しください。';
 

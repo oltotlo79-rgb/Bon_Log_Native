@@ -211,6 +211,10 @@ export default function RootLayout() {
             options={{ headerShown: false }}
           />
           <Stack.Screen
+            name="explore/posts/index"
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
             name="legal/index"
             options={{ headerShown: false }}
           />
@@ -229,6 +233,10 @@ export default function RootLayout() {
           />
           <Stack.Screen
             name="bonsai/index"
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="bonsai/care-logs/index"
             options={{ headerShown: false }}
           />
           <Stack.Screen

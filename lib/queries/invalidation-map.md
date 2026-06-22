@@ -84,6 +84,14 @@
 | 予約投稿削除（`useDeleteScheduledPostMutation`） | `queryKeys.scheduledPosts.list()`（onSettled） | 400 published 状態は削除不可。楽観更新なし |
 | 予約投稿キャンセル（`useCancelScheduledPostMutation`） | `queryKeys.scheduledPosts.detail(id)` / `queryKeys.scheduledPosts.list()`（onSettled） | ソフトキャンセル（status→cancelled）。400 pending 以外はそのまま伝播 |
 
+## 手入れログ系（lib/queries/bonsai-care-logs.ts）
+
+| ミューテーション | 無効化するキー | 備考 |
+|----------------|--------------|------|
+| 手入れログ作成（`useCreateCareLogMutation`） | `queryKeys.bonsai.all`（onSettled） | 全 CareLogsParams パターンのキャッシュを一括 invalidate |
+| 手入れログ更新（`useUpdateCareLogMutation`） | `queryKeys.bonsai.all`（onSettled） | 同上 |
+| 手入れログ削除（`useDeleteCareLogMutation`） | `queryKeys.bonsai.all`（onSettled） | 同上 |
+
 ## 読み取り系クエリの参照（lib/queries/ 各フック）
 
 無効化が必要な場面のために対応表を記録する。
@@ -104,6 +112,7 @@
 | `queryKeys.explore.trendingHashtags` | `useTrendingHashtagsQuery` | 将来のハッシュタグ作成系ミューテーション時（現在は読み取り専用） |
 | `queryKeys.explore.trendingGenres` | `useTrendingGenresQuery` | 同上 |
 | `queryKeys.explore.recommendedUsers` | `useRecommendedUsersQuery` | フォロー変更時（現在は `queryKeys.posts.feed()` 経由で間接的に更新） |
+| `queryKeys.explore.posts(params)` | `useExplorePostsQuery` | 投稿作成・削除・ブロック・ミュート時（高頻度更新のため自動で stale になる） |
 | `queryKeys.dictionary.list(params)` | `useDictionaryListQuery` | マスタ系（変更なし想定） |
 | `queryKeys.dictionary.detail(slug)` | `useDictionaryDetailQuery` | マスタ系（変更なし想定） |
 | `queryKeys.fertilizers.*` | `useFertilizer*Query` 各種 | マスタ系（変更なし想定） |
@@ -115,6 +124,7 @@
 | `queryKeys.bonsai.list()` | `useBonsaiListQuery` | 盆栽作成・削除・成長記録追加時 |
 | `queryKeys.bonsai.detail(id)` | `useBonsaiDetailQuery` | 盆栽更新・成長記録追加・更新・削除時 |
 | `queryKeys.bonsai.records(bonsaiId)` | `useBonsaiRecordsQuery` | 成長記録追加・更新・削除時 |
+| `queryKeys.bonsai.careLogs(params)` | `useCareLogsQuery` | 手入れログ作成・更新・削除時（bonsai.all で一括 invalidate） |
 | `queryKeys.events.list(filter)` | `useEventsListQuery` | イベント作成・更新・削除時（all で一括 invalidate）|
 | `queryKeys.events.detail(id)` | `useEventDetailQuery` | イベント更新時 |
 | `queryKeys.shops.list(params)` | `useShopsListQuery` | 盆栽園登録・更新時（all で一括 invalidate）|
