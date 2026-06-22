@@ -20,6 +20,24 @@ import {
   toAuthFailureReason,
 } from '@/lib/auth/auth-store';
 import { unregisterDeviceForPushNotifications } from '@/lib/push/device-registration';
+import { identifyBillingUser, resetBillingUser } from '@/lib/billing/purchases';
+
+// ---------------------------------------------------------------------------
+// 内部ヘルパー
+// ---------------------------------------------------------------------------
+
+/**
+ * /users/me からユーザー ID を取得して RevenueCat に identify する（fail-safe）。
+ * ログインレスポンスに userId が含まれないため、サインイン成功後に別途 GET する。
+ * Web=Stripe 購読者との整合のためサーバーのユーザー ID を appUserID として使う（billing.md）。
+ */
+async function identifyBillingFromServerUser(): Promise<void> {
+  const { data } = await apiClient.GET('/api/v1/users/me');
+  if (data === undefined) {
+    return;
+  }
+  await identifyBillingUser(data.id);
+}
 
 // ---------------------------------------------------------------------------
 // 型定義
@@ -95,7 +113,18 @@ export async function initializeAuth({
   });
 
   const token = await getAccessToken();
-  setAuthStatus(token !== null ? 'signedIn' : 'signedOut');
+  if (token !== null) {
+    setAuthStatus('signedIn');
+    // 保存済みトークンからのセッション復元時も RevenueCat identify を実行する。
+    // アプリ再起動で再ログインを経ない既存ユーザーも正しく紐付けるため（fail-safe）。
+    try {
+      await identifyBillingFromServerUser();
+    } catch {
+      // identify 失敗はセッション復元を止めない
+    }
+  } else {
+    setAuthStatus('signedOut');
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -132,6 +161,14 @@ export async function signInWithPassword(
       refreshToken: data.refreshToken,
     });
     setAuthStatus('signedIn');
+
+    // RevenueCat にサーバーのユーザー ID を紐付ける（fail-safe）
+    try {
+      await identifyBillingFromServerUser();
+    } catch {
+      // 課金 identify 失敗はログインを止めない
+    }
+
     return { requires2FA: false };
   }
 
@@ -170,6 +207,13 @@ export async function verifyTwoFactor(code: string): Promise<void> {
     refreshToken: data.refreshToken,
   });
   setAuthStatus('signedIn');
+
+  // RevenueCat にサーバーのユーザー ID を紐付ける（fail-safe）
+  try {
+    await identifyBillingFromServerUser();
+  } catch {
+    // 課金 identify 失敗はログインを止めない
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -199,6 +243,13 @@ export async function signOut(queryClient: QueryClient): Promise<void> {
     await unregisterDeviceForPushNotifications();
   } catch {
     // fail-safe: Push 解除失敗は無視してトークン削除・状態遷移を続行する
+  }
+
+  // RevenueCat ユーザーをリセットする（fail-safe）
+  try {
+    await resetBillingUser();
+  } catch {
+    // fail-safe: RevenueCat reset 失敗は無視してトークン削除・状態遷移を続行する
   }
 
   await deleteTokenPair();
@@ -273,6 +324,13 @@ export async function signInWithGoogle(idToken: string): Promise<void> {
     refreshToken: data.refreshToken,
   });
   setAuthStatus('signedIn');
+
+  // RevenueCat にサーバーのユーザー ID を紐付ける（fail-safe）
+  try {
+    await identifyBillingFromServerUser();
+  } catch {
+    // 課金 identify 失敗はログインを止めない
+  }
 }
 
 // ---------------------------------------------------------------------------

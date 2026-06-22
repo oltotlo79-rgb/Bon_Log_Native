@@ -230,6 +230,17 @@ export const queryKeys = {
     /** 予約投稿詳細 */
     detail: (id: string) => ['scheduledPosts', 'detail', id] as const,
   },
+
+  /** 課金・サブスクリプション */
+  subscription: {
+    /** ルートキー */
+    all: ['subscription'] as const,
+    /**
+     * RevenueCat Offering（価格表示用）。
+     * プレミアム判定には使わない — 判定の正は queryKeys.users.me の isPremium（billing.md）。
+     */
+    offering: ['subscription', 'offering'] as const,
+  },
 } as const;
 
 // ---------------------------------------------------------------------------

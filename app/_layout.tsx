@@ -15,6 +15,7 @@ import { initializeAuth } from '@/lib/auth';
 import { useAuth } from '@/lib/auth/use-auth';
 import { ROUTE_LOGIN, ROUTE_FEED } from '@/lib/constants/routes';
 import { setupPushNotifications } from '@/lib/push';
+import { initBilling } from '@/lib/billing';
 import { usePushRegistration } from '@/hooks/use-push-registration';
 
 // Sentry はモジュールロード時（アプリ起動最初期）に1回だけ初期化する
@@ -89,6 +90,15 @@ export default function RootLayout() {
   useEffect(() => {
     // 通知ハンドラと Android チャネルの初期化。例外でも起動を止めない。
     void setupPushNotifications().catch(() => undefined);
+  }, []);
+
+  useEffect(() => {
+    // RevenueCat SDK の初期化。API キー未設定・非サポート環境では no-op。例外でも起動を止めない。
+    try {
+      initBilling();
+    } catch {
+      // SDK 初期化失敗はアプリの起動を妨げない
+    }
   }, []);
 
   useEffect(() => {

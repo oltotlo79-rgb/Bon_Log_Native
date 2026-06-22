@@ -84,6 +84,13 @@
 | 予約投稿削除（`useDeleteScheduledPostMutation`） | `queryKeys.scheduledPosts.list()`（onSettled） | 400 published 状態は削除不可。楽観更新なし |
 | 予約投稿キャンセル（`useCancelScheduledPostMutation`） | `queryKeys.scheduledPosts.detail(id)` / `queryKeys.scheduledPosts.list()`（onSettled） | ソフトキャンセル（status→cancelled）。400 pending 以外はそのまま伝播 |
 
+## 課金・サブスクリプション系（lib/queries/subscription.ts）
+
+| ミューテーション | 無効化するキー | 備考 |
+|----------------|--------------|------|
+| プレミアム購入（`usePurchasePremiumMutation`） | `queryKeys.users.me`（onSettled） | 購入結果に関わらず常に invalidate する（成功・キャンセル・エラー）。RevenueCat Webhook 経由の反映遅延があるため、invalidate 後は users.me の isFetching を UI で表示する。RevenueCat entitlement は判定の正にしない（billing.md 絶対規則 1） |
+| 購入復元（`useRestorePurchasesMutation`） | `queryKeys.users.me`（onSettled） | 復元後の購読状態はサーバーの isPremium で確認する。同上 |
+
 ## 手入れログ系（lib/queries/bonsai-care-logs.ts）
 
 | ミューテーション | 無効化するキー | 備考 |
