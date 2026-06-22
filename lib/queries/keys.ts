@@ -166,6 +166,66 @@ export const queryKeys = {
     /** 分析サマリ */
     summary: (days: AnalyticsDays) => ['analytics', 'summary', days] as const,
   },
+
+  /** ブックマーク */
+  bookmarks: {
+    /** ルートキー */
+    all: ['bookmarks'] as const,
+    /** 自分のブックマーク一覧（無限スクロール） */
+    list: () => ['bookmarks', 'list'] as const,
+  },
+
+  /** マイ盆栽 */
+  bonsai: {
+    /** ルートキー */
+    all: ['bonsai'] as const,
+    /** 盆栽一覧（無限スクロール） */
+    list: () => ['bonsai', 'list'] as const,
+    /** 盆栽詳細 */
+    detail: (id: string) => ['bonsai', 'detail', id] as const,
+    /** 成長記録一覧（盆栽 ID ごと・無限スクロール） */
+    records: (bonsaiId: string) => ['bonsai', 'records', bonsaiId] as const,
+  },
+
+  /** イベント */
+  events: {
+    /** ルートキー */
+    all: ['events'] as const,
+    /** イベント一覧（フィルタ付き・無限スクロール） */
+    list: (filter: EventsFilter) => ['events', 'list', filter] as const,
+    /** イベント詳細 */
+    detail: (id: string) => ['events', 'detail', id] as const,
+  },
+
+  /** 盆栽園マップ */
+  shops: {
+    /** ルートキー */
+    all: ['shops'] as const,
+    /** 盆栽園一覧（フィルタ付き・無限スクロール） */
+    list: (params: ShopsListParams) => ['shops', 'list', params] as const,
+    /** 盆栽園詳細 */
+    detail: (id: string) => ['shops', 'detail', id] as const,
+    /** レビュー一覧（盆栽園 ID ごと・無限スクロール） */
+    reviews: (shopId: string) => ['shops', 'reviews', shopId] as const,
+  },
+
+  /** ジャンル */
+  genres: {
+    /** ルートキー */
+    all: ['genres'] as const,
+    /** ジャンル一覧（type=shop or post） */
+    list: (type: GenreType) => ['genres', 'list', type] as const,
+  },
+
+  /** 予約投稿（プレミアム限定） */
+  scheduledPosts: {
+    /** ルートキー */
+    all: ['scheduledPosts'] as const,
+    /** 予約投稿一覧（無限スクロール） */
+    list: () => ['scheduledPosts', 'list'] as const,
+    /** 予約投稿詳細 */
+    detail: (id: string) => ['scheduledPosts', 'detail', id] as const,
+  },
 } as const;
 
 // ---------------------------------------------------------------------------
@@ -184,3 +244,23 @@ export type PesticideListParams = Record<string, string | number | undefined>;
 
 /** アナリティクス集計期間 */
 export type AnalyticsDays = '7' | '30' | '90';
+
+/** イベント一覧フィルタ */
+export type EventsFilter = {
+  region?: string;
+  prefecture?: string;
+  showPast?: boolean;
+  year?: number;
+  month?: number;
+};
+
+/** 盆栽園一覧クエリパラメータ */
+export type ShopsListParams = {
+  search?: string;
+  genreId?: string;
+  prefecture?: string;
+  sortBy?: 'rating' | 'name' | 'newest' | 'location';
+};
+
+/** ジャンル取得タイプ */
+export type GenreType = 'shop' | 'post';

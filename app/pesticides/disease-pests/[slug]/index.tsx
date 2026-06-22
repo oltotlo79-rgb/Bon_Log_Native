@@ -48,7 +48,7 @@ export default function DiseasePestDetailScreen() {
   const { data, isLoading, isError, refetch } = usePesticideDiseasePestDetailQuery(slug ?? '');
 
   const handleProductPress = useCallback((productSlug: string) => {
-    router.push({ pathname: '/pesticides/products/[slug]/index', params: { slug: productSlug } });
+    router.push({ pathname: '/pesticides/products/[slug]', params: { slug: productSlug } });
   }, []);
 
   return (

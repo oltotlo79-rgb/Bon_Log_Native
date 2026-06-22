@@ -101,7 +101,7 @@ describe('DictionaryScreen 正常表示', () => {
     renderWithProviders(<DictionaryScreen />);
     fireEvent.press(screen.getByLabelText('黒松（黒松のよみ）'));
     expect(mockRouter.push).toHaveBeenCalledWith({
-      pathname: '/dictionary/[slug]/index',
+      pathname: '/dictionary/[slug]',
       params: { slug: '黒松' },
     });
   });

@@ -82,7 +82,7 @@ type DictionaryCellProps = {
 
 const DictionaryCell = memo(function DictionaryCell({ item }: DictionaryCellProps) {
   const handlePress = useCallback(() => {
-    router.push({ pathname: '/dictionary/[slug]/index', params: { slug: item.slug } });
+    router.push({ pathname: '/dictionary/[slug]', params: { slug: item.slug } });
   }, [item.slug]);
 
   return (

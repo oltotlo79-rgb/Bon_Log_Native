@@ -112,7 +112,7 @@ export default function LegalListScreen() {
 
   const handlePressItem = useCallback((slug: string) => {
     if (!isLegalSlug(slug)) return;
-    router.push({ pathname: '/legal/[slug]/index', params: { slug } });
+    router.push({ pathname: '/legal/[slug]', params: { slug } });
   }, []);
 
   const renderItem = useCallback(

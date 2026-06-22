@@ -42,6 +42,48 @@
 | ミュート解除（`useUnmuteUserMutation`） | `queryKeys.users.mutes` / `queryKeys.posts.feed()` / `queryKeys.notifications.all`（onSettled） | onSuccess で users.detail の isMuted=false を setQueryData で即時反映 |
 | 通報（`useReportMutation`） | なし（キャッシュ変更なし） | サーバー側でモデレーション処理される。成功トーストのみ表示 |
 
+## ブックマーク系（lib/queries/bookmarks.ts）
+
+| ミューテーション | 無効化するキー | 備考 |
+|----------------|--------------|------|
+| ブックマーク追加・解除（`useToggleBookmarkMutation`） | `queryKeys.posts.detail(postId)` / `queryKeys.bookmarks.list()`（onSettled） | onMutate でフィード・詳細・ブックマーク一覧・検索を楽観更新（isBookmarked 反転）。ブックマーク解除時はブックマーク一覧から除去。onSettled で詳細と一覧を invalidate |
+
+## マイ盆栽系（lib/queries/bonsai.ts）
+
+| ミューテーション | 無効化するキー | 備考 |
+|----------------|--------------|------|
+| 盆栽作成（`useCreateBonsaiMutation`） | `queryKeys.bonsai.list()`（onSettled） | 楽観更新なし |
+| 盆栽更新（`useUpdateBonsaiMutation`） | `queryKeys.bonsai.detail(id)` / `queryKeys.bonsai.list()`（onSettled） | 楽観更新なし |
+| 盆栽削除（`useDeleteBonsaiMutation`） | `queryKeys.bonsai.list()`（onSettled） | 楽観更新なし |
+| 成長記録追加（`useCreateBonsaiRecordMutation`） | `queryKeys.bonsai.records(bonsaiId)` / `queryKeys.bonsai.detail(bonsaiId)` / `queryKeys.bonsai.list()`（onSettled） | latestRecord が更新されるため list も invalidate |
+| 成長記録更新（`useUpdateBonsaiRecordMutation`） | `queryKeys.bonsai.records(bonsaiId)` / `queryKeys.bonsai.detail(bonsaiId)`（onSettled） | 楽観更新なし |
+| 成長記録削除（`useDeleteBonsaiRecordMutation`） | `queryKeys.bonsai.records(bonsaiId)` / `queryKeys.bonsai.detail(bonsaiId)`（onSettled） | recordCount が変わるため detail も invalidate |
+
+## イベント系（lib/queries/events.ts）
+
+| ミューテーション | 無効化するキー | 備考 |
+|----------------|--------------|------|
+| イベント作成（`useCreateEventMutation`） | `queryKeys.events.all`（onSettled） | 全フィルタのリストを一括 invalidate |
+| イベント更新（`useUpdateEventMutation`） | `queryKeys.events.detail(id)` / `queryKeys.events.all`（onSettled） | 楽観更新なし。403 作成者でない / 404 はそのまま伝播 |
+| イベント削除（`useDeleteEventMutation`） | `queryKeys.events.all`（onSettled） | 204 No Content。楽観更新なし |
+
+## 盆栽園マップ系（lib/queries/shops.ts）
+
+| ミューテーション | 無効化するキー | 備考 |
+|----------------|--------------|------|
+| 盆栽園登録（`useCreateShopMutation`） | `queryKeys.shops.all`（onSettled） | 409 CONFLICT（同一住所重複）はそのまま伝播 |
+| 盆栽園更新（`useUpdateShopMutation`） | `queryKeys.shops.detail(id)` / `queryKeys.shops.all`（onSettled） | 楽観更新なし。403 権限なし / 404 はそのまま伝播 |
+| レビュー投稿（`useCreateReviewMutation`） | `queryKeys.shops.reviews(shopId)` / `queryKeys.shops.detail(shopId)`（onSettled） | averageRating / reviewCount が変わるため detail も invalidate。409 CONFLICT（二重投稿）はそのまま伝播 |
+
+## 予約投稿系（lib/queries/scheduled-posts.ts）
+
+| ミューテーション | 無効化するキー | 備考 |
+|----------------|--------------|------|
+| 予約投稿作成（`useCreateScheduledPostMutation`） | `queryKeys.scheduledPosts.list()`（onSettled） | 400 pending 上限超過 / 403 PREMIUM_REQUIRED はそのまま伝播。retry: false |
+| 予約投稿更新（`useUpdateScheduledPostMutation`） | `queryKeys.scheduledPosts.detail(id)` / `queryKeys.scheduledPosts.list()`（onSettled） | 400 pending 以外の編集 / 403 PREMIUM_REQUIRED はそのまま伝播 |
+| 予約投稿削除（`useDeleteScheduledPostMutation`） | `queryKeys.scheduledPosts.list()`（onSettled） | 400 published 状態は削除不可。楽観更新なし |
+| 予約投稿キャンセル（`useCancelScheduledPostMutation`） | `queryKeys.scheduledPosts.detail(id)` / `queryKeys.scheduledPosts.list()`（onSettled） | ソフトキャンセル（status→cancelled）。400 pending 以外はそのまま伝播 |
+
 ## 読み取り系クエリの参照（lib/queries/ 各フック）
 
 無効化が必要な場面のために対応表を記録する。
@@ -69,3 +111,15 @@
 | `queryKeys.pesticides.*` | `usePesticide*Query` 各種 | マスタ系（変更なし想定） |
 | `queryKeys.legal.list` / `queryKeys.legal.document(slug)` | `useLegalListQuery` / `useLegalDocumentQuery` | マスタ系（変更なし想定） |
 | `queryKeys.analytics.summary(days)` | `useAnalyticsSummaryQuery` | 投稿・フォロワー変動後に invalidate すると最新値に追従できる（任意） |
+| `queryKeys.bookmarks.list()` | `useBookmarksQuery` | ブックマーク追加・解除時 |
+| `queryKeys.bonsai.list()` | `useBonsaiListQuery` | 盆栽作成・削除・成長記録追加時 |
+| `queryKeys.bonsai.detail(id)` | `useBonsaiDetailQuery` | 盆栽更新・成長記録追加・更新・削除時 |
+| `queryKeys.bonsai.records(bonsaiId)` | `useBonsaiRecordsQuery` | 成長記録追加・更新・削除時 |
+| `queryKeys.events.list(filter)` | `useEventsListQuery` | イベント作成・更新・削除時（all で一括 invalidate）|
+| `queryKeys.events.detail(id)` | `useEventDetailQuery` | イベント更新時 |
+| `queryKeys.shops.list(params)` | `useShopsListQuery` | 盆栽園登録・更新時（all で一括 invalidate）|
+| `queryKeys.shops.detail(id)` | `useShopDetailQuery` | 盆栽園更新・レビュー投稿時 |
+| `queryKeys.shops.reviews(shopId)` | `useShopReviewsQuery` | レビュー投稿時 |
+| `queryKeys.genres.list(type)` | `useGenresQuery` | マスタ系（変更なし想定） |
+| `queryKeys.scheduledPosts.list()` | `useScheduledPostsQuery` | 予約投稿作成・更新・削除・キャンセル時 |
+| `queryKeys.scheduledPosts.detail(id)` | `useScheduledPostDetailQuery` | 予約投稿更新・キャンセル時 |

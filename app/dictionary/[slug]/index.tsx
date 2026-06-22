@@ -58,15 +58,15 @@ export default function DictionaryDetailScreen() {
   const { data, isLoading, isError, refetch } = useDictionaryDetailQuery(slug ?? '');
 
   const handleRelatedPress = useCallback((relatedSlug: string) => {
-    router.push({ pathname: '/dictionary/[slug]/index', params: { slug: relatedSlug } });
+    router.push({ pathname: '/dictionary/[slug]', params: { slug: relatedSlug } });
   }, []);
 
   const handlePrevPress = useCallback((prevSlug: string) => {
-    router.push({ pathname: '/dictionary/[slug]/index', params: { slug: prevSlug } });
+    router.push({ pathname: '/dictionary/[slug]', params: { slug: prevSlug } });
   }, []);
 
   const handleNextPress = useCallback((nextSlug: string) => {
-    router.push({ pathname: '/dictionary/[slug]/index', params: { slug: nextSlug } });
+    router.push({ pathname: '/dictionary/[slug]', params: { slug: nextSlug } });
   }, []);
 
   return (

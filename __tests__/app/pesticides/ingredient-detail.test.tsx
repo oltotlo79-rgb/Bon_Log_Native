@@ -178,7 +178,7 @@ describe('IngredientDetailScreen 正常表示', () => {
     renderWithProviders(<IngredientDetailScreen />);
     fireEvent.press(screen.getByLabelText('アブラムシ殺虫剤Aの詳細を見る'));
     expect(mockRouter.push).toHaveBeenCalledWith({
-      pathname: '/pesticides/products/[slug]/index',
+      pathname: '/pesticides/products/[slug]',
       params: { slug: 'product-a' },
     });
   });

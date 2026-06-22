@@ -50,6 +50,7 @@ export function makePostCardProps(overrides?: Partial<PostCardProps>): PostCardP
     likeCount: 0,
     commentCount: 0,
     isLiked: false,
+    isBookmarked: false,
     currentUserId: undefined,
     mentionUsers: new Map(),
     onComment: jest.fn(),

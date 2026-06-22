@@ -171,7 +171,7 @@ describe('DiseasePestDetailScreen 正常表示', () => {
     renderWithProviders(<DiseasePestDetailScreen />);
     fireEvent.press(screen.getByLabelText('アブラムシ専用殺虫剤の詳細を見る'));
     expect(mockRouter.push).toHaveBeenCalledWith({
-      pathname: '/pesticides/products/[slug]/index',
+      pathname: '/pesticides/products/[slug]',
       params: { slug: 'product-a' },
     });
   });

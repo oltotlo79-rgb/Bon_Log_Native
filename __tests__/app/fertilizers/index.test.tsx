@@ -150,7 +150,7 @@ describe('FertilizersScreen 栄養素タブ', () => {
     renderWithProviders(<FertilizersScreen />);
     fireEvent.press(screen.getByLabelText('窒素（N）の詳細を見る'));
     expect(mockRouter.push).toHaveBeenCalledWith({
-      pathname: '/fertilizers/nutrients/[slug]/index',
+      pathname: '/fertilizers/nutrients/[slug]',
       params: { slug: 'nitrogen' },
     });
   });
@@ -224,7 +224,7 @@ describe('FertilizersScreen 樹種タブ', () => {
     fireEvent.press(screen.getByLabelText('樹種'));
     fireEvent.press(screen.getByLabelText('黒松の施肥スケジュールを見る'));
     expect(mockRouter.push).toHaveBeenCalledWith({
-      pathname: '/fertilizers/tree-species/[slug]/index',
+      pathname: '/fertilizers/tree-species/[slug]',
       params: { slug: 'kuromatsu' },
     });
   });

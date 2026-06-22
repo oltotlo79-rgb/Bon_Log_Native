@@ -68,6 +68,7 @@ export function mapToPostCardProps(
     likeCount: post.likeCount,
     commentCount: post.commentCount,
     isLiked: post.isLiked,
+    isBookmarked: post.isBookmarked,
     currentUserId,
     disableNavigation: options?.disableNavigation ?? false,
     mentionUsers: new Map(),

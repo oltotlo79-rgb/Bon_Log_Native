@@ -103,7 +103,7 @@ describe('LegalListScreen 正常表示', () => {
     renderWithProviders(<LegalListScreen />);
     fireEvent.press(screen.getByLabelText('利用規約（更新日: 2025/03/15）'));
     expect(mockRouter.push).toHaveBeenCalledWith({
-      pathname: '/legal/[slug]/index',
+      pathname: '/legal/[slug]',
       params: { slug: 'terms' },
     });
   });
@@ -112,7 +112,7 @@ describe('LegalListScreen 正常表示', () => {
     renderWithProviders(<LegalListScreen />);
     fireEvent.press(screen.getByLabelText('プライバシーポリシー（更新日: 2025/06/01）'));
     expect(mockRouter.push).toHaveBeenCalledWith({
-      pathname: '/legal/[slug]/index',
+      pathname: '/legal/[slug]',
       params: { slug: 'privacy' },
     });
   });
@@ -121,7 +121,7 @@ describe('LegalListScreen 正常表示', () => {
     renderWithProviders(<LegalListScreen />);
     fireEvent.press(screen.getByLabelText('特定商取引法に基づく表記（更新日: 2025/01/01）'));
     expect(mockRouter.push).toHaveBeenCalledWith({
-      pathname: '/legal/[slug]/index',
+      pathname: '/legal/[slug]',
       params: { slug: 'tokushoho' },
     });
   });

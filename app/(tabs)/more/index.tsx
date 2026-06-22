@@ -6,7 +6,7 @@
  * PM 決定事項:
  * - legal（法的文章）は Web ではなくネイティブ画面（/legal/*）へ遷移する
  * - 発見・育成ガイド系・投稿分析はウェーブ1でネイティブ実装済みのため router.push
- * - ウェーブ2未実装（マイ盆栽・盆栽園マップ・イベント・ブックマーク・予約投稿）は今回掲載しない
+ * - ウェーブ2（マイ盆栽・盆栽園マップ・イベント・ブックマーク・予約投稿）はネイティブ遷移で追加
  * - ヘルプは Web のみ提供のため openBrowserAsync を維持
  */
 
@@ -148,7 +148,7 @@ export default function MoreScreen() {
                 <Ionicons name="compass-outline" size={ICON_SIZE} color={colorTextSecondary} />
               }
               rightElement="chevron"
-              onPress={() => router.push({ pathname: '/explore/index' })}
+              onPress={() => router.push({ pathname: '/explore' })}
               accessibilityLabel="発見画面を開く"
               showBorder
             />
@@ -158,7 +158,7 @@ export default function MoreScreen() {
                 <Ionicons name="book-outline" size={ICON_SIZE} color={colorTextSecondary} />
               }
               rightElement="chevron"
-              onPress={() => router.push({ pathname: '/dictionary/index' })}
+              onPress={() => router.push({ pathname: '/dictionary' })}
               accessibilityLabel="盆栽用語辞典を開く"
               showBorder
             />
@@ -168,7 +168,7 @@ export default function MoreScreen() {
                 <Ionicons name="leaf-outline" size={ICON_SIZE} color={colorTextSecondary} />
               }
               rightElement="chevron"
-              onPress={() => router.push({ pathname: '/fertilizers/index' })}
+              onPress={() => router.push({ pathname: '/fertilizers' })}
               accessibilityLabel="施肥ガイドを開く"
               showBorder
             />
@@ -178,7 +178,7 @@ export default function MoreScreen() {
                 <Ionicons name="flask-outline" size={ICON_SIZE} color={colorTextSecondary} />
               }
               rightElement="chevron"
-              onPress={() => router.push({ pathname: '/hormones/index' })}
+              onPress={() => router.push({ pathname: '/hormones' })}
               accessibilityLabel="植物ホルモン情報を開く"
               showBorder
             />
@@ -188,7 +188,7 @@ export default function MoreScreen() {
                 <Ionicons name="bug-outline" size={ICON_SIZE} color={colorTextSecondary} />
               }
               rightElement="chevron"
-              onPress={() => router.push({ pathname: '/pesticides/index' })}
+              onPress={() => router.push({ pathname: '/pesticides' })}
               accessibilityLabel="農薬・病害虫図鑑を開く"
               showBorder
             />
@@ -198,8 +198,58 @@ export default function MoreScreen() {
                 <Ionicons name="bar-chart-outline" size={ICON_SIZE} color={colorTextSecondary} />
               }
               rightElement="chevron"
-              onPress={() => router.push({ pathname: '/analytics/index' })}
+              onPress={() => router.push({ pathname: '/analytics' })}
               accessibilityLabel="投稿分析を開く"
+              showBorder
+            />
+            <MoreMenuItem
+              label="マイ盆栽"
+              icon={
+                <Ionicons name="flower-outline" size={ICON_SIZE} color={colorTextSecondary} />
+              }
+              rightElement="chevron"
+              onPress={() => router.push({ pathname: '/bonsai' })}
+              accessibilityLabel="マイ盆栽を開く"
+              showBorder
+            />
+            <MoreMenuItem
+              label="ブックマーク"
+              icon={
+                <Ionicons name="bookmark-outline" size={ICON_SIZE} color={colorTextSecondary} />
+              }
+              rightElement="chevron"
+              onPress={() => router.push({ pathname: '/bookmarks' })}
+              accessibilityLabel="ブックマークを開く"
+              showBorder
+            />
+            <MoreMenuItem
+              label="盆栽園マップ"
+              icon={
+                <Ionicons name="map-outline" size={ICON_SIZE} color={colorTextSecondary} />
+              }
+              rightElement="chevron"
+              onPress={() => router.push({ pathname: '/shops' })}
+              accessibilityLabel="盆栽園マップを開く"
+              showBorder
+            />
+            <MoreMenuItem
+              label="イベント"
+              icon={
+                <Ionicons name="calendar-outline" size={ICON_SIZE} color={colorTextSecondary} />
+              }
+              rightElement="chevron"
+              onPress={() => router.push({ pathname: '/events' })}
+              accessibilityLabel="イベント一覧を開く"
+              showBorder
+            />
+            <MoreMenuItem
+              label="予約投稿"
+              icon={
+                <Ionicons name="time-outline" size={ICON_SIZE} color={colorTextSecondary} />
+              }
+              rightElement="chevron"
+              onPress={() => router.push({ pathname: '/scheduled-posts' })}
+              accessibilityLabel="予約投稿を開く"
             />
           </MoreMenuGroup>
         </View>
@@ -214,7 +264,7 @@ export default function MoreScreen() {
                 <Ionicons name="document-text-outline" size={ICON_SIZE} color={colorTextSecondary} />
               }
               rightElement="chevron"
-              onPress={() => router.push({ pathname: '/legal/[slug]/index', params: { slug: 'terms' } })}
+              onPress={() => router.push({ pathname: '/legal/[slug]', params: { slug: 'terms' } })}
               accessibilityLabel="利用規約を開く"
               showBorder
             />
@@ -224,7 +274,7 @@ export default function MoreScreen() {
                 <Ionicons name="shield-outline" size={ICON_SIZE} color={colorTextSecondary} />
               }
               rightElement="chevron"
-              onPress={() => router.push({ pathname: '/legal/[slug]/index', params: { slug: 'privacy' } })}
+              onPress={() => router.push({ pathname: '/legal/[slug]', params: { slug: 'privacy' } })}
               accessibilityLabel="プライバシーポリシーを開く"
               showBorder
             />
@@ -234,7 +284,7 @@ export default function MoreScreen() {
                 <Ionicons name="document-outline" size={ICON_SIZE} color={colorTextSecondary} />
               }
               rightElement="chevron"
-              onPress={() => router.push({ pathname: '/legal/[slug]/index', params: { slug: 'tokushoho' } })}
+              onPress={() => router.push({ pathname: '/legal/[slug]', params: { slug: 'tokushoho' } })}
               accessibilityLabel="特商法表記を開く"
               showBorder
             />

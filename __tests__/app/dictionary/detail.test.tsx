@@ -155,7 +155,7 @@ describe('DictionaryDetailScreen 正常表示', () => {
     renderWithProviders(<DictionaryDetailScreen />);
     fireEvent.press(screen.getByLabelText('五葉松の詳細を見る'));
     expect(mockRouter.push).toHaveBeenCalledWith({
-      pathname: '/dictionary/[slug]/index',
+      pathname: '/dictionary/[slug]',
       params: { slug: 'goyomatsu' },
     });
   });
@@ -177,7 +177,7 @@ describe('DictionaryDetailScreen 正常表示', () => {
     renderWithProviders(<DictionaryDetailScreen />);
     fireEvent.press(screen.getByLabelText('前の用語: 柿葉'));
     expect(mockRouter.push).toHaveBeenCalledWith({
-      pathname: '/dictionary/[slug]/index',
+      pathname: '/dictionary/[slug]',
       params: { slug: 'kakihan' },
     });
   });
@@ -187,7 +187,7 @@ describe('DictionaryDetailScreen 正常表示', () => {
     renderWithProviders(<DictionaryDetailScreen />);
     fireEvent.press(screen.getByLabelText('次の用語: 欅'));
     expect(mockRouter.push).toHaveBeenCalledWith({
-      pathname: '/dictionary/[slug]/index',
+      pathname: '/dictionary/[slug]',
       params: { slug: 'keyaki' },
     });
   });

@@ -68,7 +68,7 @@ type NutrientCellProps = { item: NutrientItem };
 
 const NutrientCell = memo(function NutrientCell({ item }: NutrientCellProps) {
   const handlePress = useCallback(() => {
-    router.push({ pathname: '/fertilizers/nutrients/[slug]/index', params: { slug: item.slug } });
+    router.push({ pathname: '/fertilizers/nutrients/[slug]', params: { slug: item.slug } });
   }, [item.slug]);
 
   return (
@@ -111,7 +111,7 @@ type TreeSpeciesCellProps = { item: TreeSpeciesItem };
 
 const TreeSpeciesCell = memo(function TreeSpeciesCell({ item }: TreeSpeciesCellProps) {
   const handlePress = useCallback(() => {
-    router.push({ pathname: '/fertilizers/tree-species/[slug]/index', params: { slug: item.slug } });
+    router.push({ pathname: '/fertilizers/tree-species/[slug]', params: { slug: item.slug } });
   }, [item.slug]);
 
   return (

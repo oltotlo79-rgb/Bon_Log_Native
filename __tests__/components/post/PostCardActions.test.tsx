@@ -17,12 +17,21 @@ function renderActions(overrides?: Partial<Parameters<typeof PostCardActions>[0]
     likeCount: 0,
     commentCount: 0,
     isLiked: false,
+    isBookmarked: false,
     currentUserId: undefined as string | undefined,
     onComment: jest.fn(),
     ...overrides,
   };
   return renderWithProviders(<PostCardActions {...props} />);
 }
+
+// ブックマーク mutation のモック（ネットワークに出ない）
+jest.mock('@/lib/queries/bookmarks', () => ({
+  useToggleBookmarkMutation: jest.fn(() => ({
+    mutate: jest.fn(),
+    isPending: false,
+  })),
+}));
 
 describe('PostCardActions', () => {
   describe('いいねボタン', () => {
@@ -89,6 +98,41 @@ describe('PostCardActions', () => {
     it('commentCount=7 のとき「7」が表示される', () => {
       renderActions({ commentCount: 7 });
       expect(screen.getByText('7')).toBeTruthy();
+    });
+  });
+
+  describe('ブックマークボタン', () => {
+    it('currentUserId が undefined のときブックマークボタンが表示されない', () => {
+      renderActions({ currentUserId: undefined, isBookmarked: false });
+      expect(screen.queryByRole('button', { name: 'ブックマークに追加' })).toBeNull();
+      expect(screen.queryByRole('button', { name: 'ブックマークを解除' })).toBeNull();
+    });
+
+    it('currentUserId がある場合にブックマークボタンが表示される', () => {
+      renderActions({ currentUserId: 'user-1', isBookmarked: false });
+      expect(screen.getByRole('button', { name: 'ブックマークに追加' })).toBeTruthy();
+    });
+
+    it('isBookmarked=true のとき「ブックマークを解除」ラベルが設定される', () => {
+      renderActions({ currentUserId: 'user-1', isBookmarked: true });
+      expect(screen.getByRole('button', { name: 'ブックマークを解除' })).toBeTruthy();
+    });
+
+    it('isBookmarked=false のとき「ブックマークに追加」ラベルが設定される', () => {
+      renderActions({ currentUserId: 'user-1', isBookmarked: false });
+      expect(screen.getByRole('button', { name: 'ブックマークに追加' })).toBeTruthy();
+    });
+
+    it('タップすると useToggleBookmarkMutation.mutate が呼ばれる', () => {
+      const mockMutate = jest.fn();
+      const { useToggleBookmarkMutation } = jest.requireMock('@/lib/queries/bookmarks') as {
+        useToggleBookmarkMutation: jest.Mock;
+      };
+      useToggleBookmarkMutation.mockReturnValue({ mutate: mockMutate, isPending: false });
+
+      renderActions({ currentUserId: 'user-1', isBookmarked: false, postId: 'post-123' });
+      fireEvent.press(screen.getByRole('button', { name: 'ブックマークに追加' }));
+      expect(mockMutate).toHaveBeenCalledWith({ postId: 'post-123', currentlyBookmarked: false });
     });
   });
 });

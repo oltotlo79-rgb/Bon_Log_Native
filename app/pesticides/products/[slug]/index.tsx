@@ -49,11 +49,11 @@ export default function ProductDetailScreen() {
   const { data, isLoading, isError, refetch } = usePesticideProductDetailQuery(slug ?? '');
 
   const handleIngredientPress = useCallback((ingredientSlug: string) => {
-    router.push({ pathname: '/pesticides/ingredients/[slug]/index', params: { slug: ingredientSlug } });
+    router.push({ pathname: '/pesticides/ingredients/[slug]', params: { slug: ingredientSlug } });
   }, []);
 
   const handleDiseasePestPress = useCallback((diseasePestSlug: string) => {
-    router.push({ pathname: '/pesticides/disease-pests/[slug]/index', params: { slug: diseasePestSlug } });
+    router.push({ pathname: '/pesticides/disease-pests/[slug]', params: { slug: diseasePestSlug } });
   }, []);
 
   return (

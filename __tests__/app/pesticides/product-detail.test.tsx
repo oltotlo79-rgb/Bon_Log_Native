@@ -162,7 +162,7 @@ describe('ProductDetailScreen 正常表示', () => {
     renderWithProviders(<ProductDetailScreen />);
     fireEvent.press(screen.getByLabelText('ピリミカルブの詳細を見る'));
     expect(mockRouter.push).toHaveBeenCalledWith({
-      pathname: '/pesticides/ingredients/[slug]/index',
+      pathname: '/pesticides/ingredients/[slug]',
       params: { slug: 'ingredient-a' },
     });
   });
@@ -179,7 +179,7 @@ describe('ProductDetailScreen 正常表示', () => {
     renderWithProviders(<ProductDetailScreen />);
     fireEvent.press(screen.getByLabelText('アブラムシの詳細を見る'));
     expect(mockRouter.push).toHaveBeenCalledWith({
-      pathname: '/pesticides/disease-pests/[slug]/index',
+      pathname: '/pesticides/disease-pests/[slug]',
       params: { slug: 'aphid' },
     });
   });

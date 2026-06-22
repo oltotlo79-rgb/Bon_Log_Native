@@ -46,6 +46,7 @@ export type PostCardProps = {
   likeCount: number;
   commentCount: number;
   isLiked: boolean;
+  isBookmarked: boolean;
   /** 閲覧者のユーザー ID（未認証は undefined）*/
   currentUserId: string | undefined;
   /** true のとき投稿詳細遷移を無効化（投稿詳細画面での使用時）*/
@@ -72,6 +73,7 @@ function PostCardInner({
   likeCount,
   commentCount,
   isLiked,
+  isBookmarked,
   currentUserId,
   disableNavigation = false,
   mentionUsers,
@@ -152,12 +154,13 @@ function PostCardInner({
           </View>
         )}
 
-        {/* アクション行（いいね・コメント）*/}
+        {/* アクション行（いいね・コメント・ブックマーク）*/}
         <PostCardActions
           postId={id}
           likeCount={likeCount}
           commentCount={commentCount}
           isLiked={isLiked}
+          isBookmarked={isBookmarked}
           currentUserId={currentUserId}
           onComment={onComment}
         />

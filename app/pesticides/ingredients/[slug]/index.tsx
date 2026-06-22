@@ -59,7 +59,7 @@ export default function IngredientDetailScreen() {
   const { data, isLoading, isError, refetch } = usePesticideIngredientDetailQuery(slug ?? '');
 
   const handleProductPress = useCallback((productSlug: string) => {
-    router.push({ pathname: '/pesticides/products/[slug]/index', params: { slug: productSlug } });
+    router.push({ pathname: '/pesticides/products/[slug]', params: { slug: productSlug } });
   }, []);
 
   return (

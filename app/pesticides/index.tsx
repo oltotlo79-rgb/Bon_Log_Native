@@ -61,7 +61,7 @@ type TabKey = typeof TABS[number]['key'];
 
 const DiseasePestCell = memo(function DiseasePestCell({ item }: { item: DiseasePestItem }) {
   const handlePress = useCallback(() => {
-    router.push({ pathname: '/pesticides/disease-pests/[slug]/index', params: { slug: item.slug } });
+    router.push({ pathname: '/pesticides/disease-pests/[slug]', params: { slug: item.slug } });
   }, [item.slug]);
 
   return (
@@ -77,7 +77,7 @@ const DiseasePestCell = memo(function DiseasePestCell({ item }: { item: DiseaseP
 
 const ProductCell = memo(function ProductCell({ item }: { item: PesticideItem }) {
   const handlePress = useCallback(() => {
-    router.push({ pathname: '/pesticides/products/[slug]/index', params: { slug: item.slug } });
+    router.push({ pathname: '/pesticides/products/[slug]', params: { slug: item.slug } });
   }, [item.slug]);
 
   return (
@@ -93,7 +93,7 @@ const ProductCell = memo(function ProductCell({ item }: { item: PesticideItem })
 
 const IngredientCell = memo(function IngredientCell({ item }: { item: IngredientItem }) {
   const handlePress = useCallback(() => {
-    router.push({ pathname: '/pesticides/ingredients/[slug]/index', params: { slug: item.slug } });
+    router.push({ pathname: '/pesticides/ingredients/[slug]', params: { slug: item.slug } });
   }, [item.slug]);
 
   return (

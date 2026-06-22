@@ -39,3 +39,24 @@ export const PESTICIDE_INGREDIENTS_PAGE_SIZE = 20;
 
 /** トレンドジャンルの取得件数 */
 export const TRENDING_GENRES_LIMIT = 10;
+
+/** ブックマーク一覧のページ取得件数 */
+export const BOOKMARKS_PAGE_SIZE = 20;
+
+/** マイ盆栽一覧のページ取得件数 */
+export const BONSAI_PAGE_SIZE = 20;
+
+/** 盆栽成長記録一覧のページ取得件数 */
+export const BONSAI_RECORDS_PAGE_SIZE = 20;
+
+/** イベント一覧のページ取得件数 */
+export const EVENTS_PAGE_SIZE = 20;
+
+/** 盆栽園一覧のページ取得件数 */
+export const SHOPS_PAGE_SIZE = 20;
+
+/** レビュー一覧のページ取得件数 */
+export const REVIEWS_PAGE_SIZE = 20;
+
+/** 予約投稿一覧のページ取得件数 */
+export const SCHEDULED_POSTS_PAGE_SIZE = 20;

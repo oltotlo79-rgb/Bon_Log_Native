@@ -110,7 +110,7 @@ describe('HormonesScreen 正常表示', () => {
     renderWithProviders(<HormonesScreen />);
     fireEvent.press(screen.getByLabelText('オーキシン（Auxin）の詳細を見る'));
     expect(mockRouter.push).toHaveBeenCalledWith({
-      pathname: '/hormones/[slug]/index',
+      pathname: '/hormones/[slug]',
       params: { slug: 'auxin' },
     });
   });
@@ -120,7 +120,7 @@ describe('HormonesScreen 正常表示', () => {
     renderWithProviders(<HormonesScreen />);
     fireEvent.press(screen.getByLabelText('サイトカイニンの詳細を見る'));
     expect(mockRouter.push).toHaveBeenCalledWith({
-      pathname: '/hormones/[slug]/index',
+      pathname: '/hormones/[slug]',
       params: { slug: 'cytokinin' },
     });
   });

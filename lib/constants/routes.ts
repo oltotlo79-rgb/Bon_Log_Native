@@ -157,6 +157,37 @@ export const ROUTE_LEGAL = '/legal' as const;
 export const ROUTE_ANALYTICS = '/analytics' as const;
 
 // ---------------------------------------------------------------------------
+// ウェーブ2 操作系スタック画面
+// ---------------------------------------------------------------------------
+
+/** ブックマーク一覧 */
+export const ROUTE_BOOKMARKS = '/bookmarks' as const;
+
+/** マイ盆栽一覧 */
+export const ROUTE_BONSAI = '/bonsai' as const;
+
+/** 盆栽新規登録 */
+export const ROUTE_BONSAI_NEW = '/bonsai/new' as const;
+
+/** イベント一覧 */
+export const ROUTE_EVENTS = '/events' as const;
+
+/** イベント新規登録 */
+export const ROUTE_EVENTS_NEW = '/events/new' as const;
+
+/** 盆栽園マップ一覧 */
+export const ROUTE_SHOPS = '/shops' as const;
+
+/** 盆栽園新規登録 */
+export const ROUTE_SHOPS_NEW = '/shops/new' as const;
+
+/** 予約投稿一覧（プレミアム限定） */
+export const ROUTE_SCHEDULED_POSTS = '/scheduled-posts' as const;
+
+/** 予約投稿新規作成（プレミアム限定） */
+export const ROUTE_SCHEDULED_POSTS_NEW = '/scheduled-posts/new' as const;
+
+// ---------------------------------------------------------------------------
 // ウェーブ1 動的ルートヘルパー
 // ---------------------------------------------------------------------------
 
@@ -226,6 +257,166 @@ export function routeLegalDocument(slug: 'tokushoho' | 'terms' | 'privacy'): `/l
 }
 
 // ---------------------------------------------------------------------------
+// ウェーブ2 動的ルートヘルパー
+// ---------------------------------------------------------------------------
+
+/**
+ * 盆栽詳細画面へのパスを返す。
+ * Expo Router の dynamic route: `app/bonsai/[id]/index.tsx`
+ *
+ * 使い方: `router.push(routeBonsaiDetail('abc123'))`
+ */
+export function routeBonsaiDetail(id: string): {
+  pathname: '/bonsai/[id]';
+  params: { id: string };
+} {
+  return { pathname: '/bonsai/[id]', params: { id } };
+}
+
+/**
+ * 盆栽編集画面へのパスを返す。
+ * Expo Router の dynamic route: `app/bonsai/[id]/edit/index.tsx`
+ *
+ * 使い方: `router.push(routeBonsaiEdit('abc123'))`
+ */
+export function routeBonsaiEdit(id: string): {
+  pathname: '/bonsai/[id]/edit';
+  params: { id: string };
+} {
+  return { pathname: '/bonsai/[id]/edit', params: { id } };
+}
+
+/**
+ * イベント詳細画面へのパスを返す。
+ * Expo Router の dynamic route: `app/events/[id]/index.tsx`
+ *
+ * 使い方: `router.push(routeEventDetail('abc123'))`
+ */
+export function routeEventDetail(id: string): {
+  pathname: '/events/[id]';
+  params: { id: string };
+} {
+  return { pathname: '/events/[id]', params: { id } };
+}
+
+/**
+ * イベント編集画面へのパスを返す。
+ * Expo Router の dynamic route: `app/events/[id]/edit/index.tsx`
+ *
+ * 使い方: `router.push(routeEventEdit('abc123'))`
+ */
+export function routeEventEdit(id: string): {
+  pathname: '/events/[id]/edit';
+  params: { id: string };
+} {
+  return { pathname: '/events/[id]/edit', params: { id } };
+}
+
+/**
+ * 盆栽園詳細画面へのパスを返す。
+ * Expo Router の dynamic route: `app/shops/[id]/index.tsx`
+ *
+ * 使い方: `router.push(routeShopDetail('abc123'))`
+ */
+export function routeShopDetail(id: string): {
+  pathname: '/shops/[id]';
+  params: { id: string };
+} {
+  return { pathname: '/shops/[id]', params: { id } };
+}
+
+/**
+ * 盆栽園編集画面へのパスを返す。
+ * Expo Router の dynamic route: `app/shops/[id]/edit/index.tsx`
+ *
+ * 使い方: `router.push(routeShopEdit('abc123'))`
+ */
+export function routeShopEdit(id: string): {
+  pathname: '/shops/[id]/edit';
+  params: { id: string };
+} {
+  return { pathname: '/shops/[id]/edit', params: { id } };
+}
+
+/**
+ * 盆栽園レビュー一覧画面へのパスを返す。
+ * Expo Router の dynamic route: `app/shops/[id]/reviews/index.tsx`
+ *
+ * 使い方: `router.push(routeShopReviews('abc123'))`
+ */
+export function routeShopReviews(id: string): {
+  pathname: '/shops/[id]/reviews';
+  params: { id: string };
+} {
+  return { pathname: '/shops/[id]/reviews', params: { id } };
+}
+
+/**
+ * 予約投稿詳細画面へのパスを返す。
+ * Expo Router の dynamic route: `app/scheduled-posts/[id]/index.tsx`
+ *
+ * 使い方: `router.push(routeScheduledPostDetail('abc123'))`
+ */
+export function routeScheduledPostDetail(id: string): {
+  pathname: '/scheduled-posts/[id]';
+  params: { id: string };
+} {
+  return { pathname: '/scheduled-posts/[id]', params: { id } };
+}
+
+/**
+ * 予約投稿編集画面へのパスを返す。
+ * Expo Router の dynamic route: `app/scheduled-posts/[id]/edit/index.tsx`
+ *
+ * 使い方: `router.push(routeScheduledPostEdit('abc123'))`
+ */
+export function routeScheduledPostEdit(id: string): {
+  pathname: '/scheduled-posts/[id]/edit';
+  params: { id: string };
+} {
+  return { pathname: '/scheduled-posts/[id]/edit', params: { id } };
+}
+
+/**
+ * 盆栽成長記録 新規追加画面へのパスを返す。
+ * Expo Router の dynamic route: `app/bonsai/[id]/records/new/index.tsx`
+ *
+ * 使い方: `router.push(routeBonsaiRecordNew('abc123'))`
+ */
+export function routeBonsaiRecordNew(bonsaiId: string): {
+  pathname: '/bonsai/[id]/records/new';
+  params: { id: string };
+} {
+  return { pathname: '/bonsai/[id]/records/new', params: { id: bonsaiId } };
+}
+
+/**
+ * 盆栽成長記録 編集画面へのパスを返す。
+ * Expo Router の dynamic route: `app/bonsai/[id]/records/[recordId]/edit/index.tsx`
+ *
+ * 使い方: `router.push(routeBonsaiRecordEdit('abc123', 'rec456'))`
+ */
+export function routeBonsaiRecordEdit(bonsaiId: string, recordId: string): {
+  pathname: '/bonsai/[id]/records/[recordId]/edit';
+  params: { id: string; recordId: string };
+} {
+  return { pathname: '/bonsai/[id]/records/[recordId]/edit', params: { id: bonsaiId, recordId } };
+}
+
+/**
+ * 盆栽園レビュー 新規投稿画面へのパスを返す。
+ * Expo Router の dynamic route: `app/shops/[id]/reviews/new/index.tsx`
+ *
+ * 使い方: `router.push(routeShopReviewNew('abc123'))`
+ */
+export function routeShopReviewNew(id: string): {
+  pathname: '/shops/[id]/reviews/new';
+  params: { id: string };
+} {
+  return { pathname: '/shops/[id]/reviews/new', params: { id } };
+}
+
+// ---------------------------------------------------------------------------
 // 後方互換エイリアス（frontend が `routes.xxx` 形式で参照する契約に対応）
 // ---------------------------------------------------------------------------
 
@@ -284,4 +475,29 @@ export const routes = {
   pesticideProductDetail: routePesticideProductDetail,
   pesticideIngredientDetail: routePesticideIngredientDetail,
   legalDocument: routeLegalDocument,
+
+  // wave-2 browse
+  bookmarks: ROUTE_BOOKMARKS,
+  bonsai: ROUTE_BONSAI,
+  bonsaiNew: ROUTE_BONSAI_NEW,
+  events: ROUTE_EVENTS,
+  eventsNew: ROUTE_EVENTS_NEW,
+  shops: ROUTE_SHOPS,
+  shopsNew: ROUTE_SHOPS_NEW,
+  scheduledPosts: ROUTE_SCHEDULED_POSTS,
+  scheduledPostsNew: ROUTE_SCHEDULED_POSTS_NEW,
+
+  // wave-2 dynamic helpers
+  bonsaiDetail: routeBonsaiDetail,
+  bonsaiEdit: routeBonsaiEdit,
+  bonsaiRecordNew: routeBonsaiRecordNew,
+  bonsaiRecordEdit: routeBonsaiRecordEdit,
+  eventDetail: routeEventDetail,
+  eventEdit: routeEventEdit,
+  shopDetail: routeShopDetail,
+  shopEdit: routeShopEdit,
+  shopReviews: routeShopReviews,
+  shopReviewNew: routeShopReviewNew,
+  scheduledPostDetail: routeScheduledPostDetail,
+  scheduledPostEdit: routeScheduledPostEdit,
 } as const;

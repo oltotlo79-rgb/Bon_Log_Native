@@ -222,6 +222,97 @@ export default function RootLayout() {
             name="analytics/index"
             options={{ headerShown: false }}
           />
+          {/* ウェーブ2 操作系スタック画面 */}
+          <Stack.Screen
+            name="bookmarks/index"
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="bonsai/index"
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="bonsai/new/index"
+            options={{ headerShown: false, presentation: 'modal' }}
+          />
+          <Stack.Screen
+            name="bonsai/[id]/index"
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="bonsai/[id]/edit/index"
+            options={{ headerShown: false, presentation: 'modal' }}
+          />
+          <Stack.Screen
+            name="bonsai/[id]/records/new/index"
+            options={{ headerShown: false, presentation: 'modal' }}
+          />
+          <Stack.Screen
+            name="bonsai/[id]/records/[recordId]/edit/index"
+            options={{ headerShown: false, presentation: 'modal' }}
+          />
+          <Stack.Screen
+            name="scheduled-posts/index"
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="scheduled-posts/locked/index"
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="scheduled-posts/new/index"
+            options={{ headerShown: false, presentation: 'modal' }}
+          />
+          <Stack.Screen
+            name="scheduled-posts/[id]/index"
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="scheduled-posts/[id]/edit/index"
+            options={{ headerShown: false, presentation: 'modal' }}
+          />
+          {/* ウェーブ2 イベント */}
+          <Stack.Screen
+            name="events/index"
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="events/new/index"
+            options={{ headerShown: false, presentation: 'modal' }}
+          />
+          <Stack.Screen
+            name="events/[id]/index"
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="events/[id]/edit/index"
+            options={{ headerShown: false, presentation: 'modal' }}
+          />
+          {/* ウェーブ2 盆栽園マップ */}
+          <Stack.Screen
+            name="shops/index"
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="shops/new/index"
+            options={{ headerShown: false, presentation: 'modal' }}
+          />
+          <Stack.Screen
+            name="shops/[id]/index"
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="shops/[id]/edit/index"
+            options={{ headerShown: false, presentation: 'modal' }}
+          />
+          <Stack.Screen
+            name="shops/[id]/reviews/index"
+            options={{ headerShown: false }}
+          />
+          <Stack.Screen
+            name="shops/[id]/reviews/new/index"
+            options={{ headerShown: false, presentation: 'modal' }}
+          />
         </Stack>
         <StatusBar style="dark" />
       </SafeAreaProvider>

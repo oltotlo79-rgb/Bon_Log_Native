@@ -38,7 +38,7 @@ type HormoneCellProps = { item: HormoneItem };
 
 const HormoneCell = memo(function HormoneCell({ item }: HormoneCellProps) {
   const handlePress = useCallback(() => {
-    router.push({ pathname: '/hormones/[slug]/index', params: { slug: item.slug } });
+    router.push({ pathname: '/hormones/[slug]', params: { slug: item.slug } });
   }, [item.slug]);
 
   return (

@@ -161,7 +161,7 @@ describe('PesticidesScreen 病害虫タブ', () => {
     renderWithProviders(<PesticidesScreen />);
     fireEvent.press(screen.getByLabelText('アブラムシの詳細を見る'));
     expect(mockRouter.push).toHaveBeenCalledWith({
-      pathname: '/pesticides/disease-pests/[slug]/index',
+      pathname: '/pesticides/disease-pests/[slug]',
       params: { slug: 'aphid' },
     });
   });
@@ -207,7 +207,7 @@ describe('PesticidesScreen 農薬製品タブ', () => {
     fireEvent.press(screen.getByLabelText('農薬製品'));
     fireEvent.press(screen.getByLabelText('殺虫剤Aの詳細を見る'));
     expect(mockRouter.push).toHaveBeenCalledWith({
-      pathname: '/pesticides/products/[slug]/index',
+      pathname: '/pesticides/products/[slug]',
       params: { slug: 'product-a' },
     });
   });
@@ -246,7 +246,7 @@ describe('PesticidesScreen 農薬成分タブ', () => {
     fireEvent.press(screen.getByLabelText('農薬成分'));
     fireEvent.press(screen.getByLabelText('ピリミカルブの詳細を見る'));
     expect(mockRouter.push).toHaveBeenCalledWith({
-      pathname: '/pesticides/ingredients/[slug]/index',
+      pathname: '/pesticides/ingredients/[slug]',
       params: { slug: 'ingredient-a' },
     });
   });

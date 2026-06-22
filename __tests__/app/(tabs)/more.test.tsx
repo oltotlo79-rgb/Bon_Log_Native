@@ -119,7 +119,7 @@ describe('MoreScreen ネイティブ遷移（法的文章）', () => {
     renderWithProviders(<MoreScreen />);
     fireEvent.press(screen.getByLabelText('利用規約を開く'));
     expect(mockRouter.push).toHaveBeenCalledWith({
-      pathname: '/legal/[slug]/index',
+      pathname: '/legal/[slug]',
       params: { slug: 'terms' },
     });
   });
@@ -128,7 +128,7 @@ describe('MoreScreen ネイティブ遷移（法的文章）', () => {
     renderWithProviders(<MoreScreen />);
     fireEvent.press(screen.getByLabelText('プライバシーポリシーを開く'));
     expect(mockRouter.push).toHaveBeenCalledWith({
-      pathname: '/legal/[slug]/index',
+      pathname: '/legal/[slug]',
       params: { slug: 'privacy' },
     });
   });
@@ -137,7 +137,7 @@ describe('MoreScreen ネイティブ遷移（法的文章）', () => {
     renderWithProviders(<MoreScreen />);
     fireEvent.press(screen.getByLabelText('特商法表記を開く'));
     expect(mockRouter.push).toHaveBeenCalledWith({
-      pathname: '/legal/[slug]/index',
+      pathname: '/legal/[slug]',
       params: { slug: 'tokushoho' },
     });
   });
@@ -165,37 +165,67 @@ describe('MoreScreen 機能遷移', () => {
   it('「発見」タップで /explore/index へ push する', () => {
     renderWithProviders(<MoreScreen />);
     fireEvent.press(screen.getByLabelText('発見画面を開く'));
-    expect(mockRouter.push).toHaveBeenCalledWith({ pathname: '/explore/index' });
+    expect(mockRouter.push).toHaveBeenCalledWith({ pathname: '/explore' });
   });
 
   it('「盆栽用語辞典」タップで /dictionary/index へ push する', () => {
     renderWithProviders(<MoreScreen />);
     fireEvent.press(screen.getByLabelText('盆栽用語辞典を開く'));
-    expect(mockRouter.push).toHaveBeenCalledWith({ pathname: '/dictionary/index' });
+    expect(mockRouter.push).toHaveBeenCalledWith({ pathname: '/dictionary' });
   });
 
   it('「施肥ガイド」タップで /fertilizers/index へ push する', () => {
     renderWithProviders(<MoreScreen />);
     fireEvent.press(screen.getByLabelText('施肥ガイドを開く'));
-    expect(mockRouter.push).toHaveBeenCalledWith({ pathname: '/fertilizers/index' });
+    expect(mockRouter.push).toHaveBeenCalledWith({ pathname: '/fertilizers' });
   });
 
   it('「植物ホルモン」タップで /hormones/index へ push する', () => {
     renderWithProviders(<MoreScreen />);
     fireEvent.press(screen.getByLabelText('植物ホルモン情報を開く'));
-    expect(mockRouter.push).toHaveBeenCalledWith({ pathname: '/hormones/index' });
+    expect(mockRouter.push).toHaveBeenCalledWith({ pathname: '/hormones' });
   });
 
   it('「農薬・病害虫」タップで /pesticides/index へ push する', () => {
     renderWithProviders(<MoreScreen />);
     fireEvent.press(screen.getByLabelText('農薬・病害虫図鑑を開く'));
-    expect(mockRouter.push).toHaveBeenCalledWith({ pathname: '/pesticides/index' });
+    expect(mockRouter.push).toHaveBeenCalledWith({ pathname: '/pesticides' });
   });
 
   it('「投稿分析」タップで /analytics/index へ push する', () => {
     renderWithProviders(<MoreScreen />);
     fireEvent.press(screen.getByLabelText('投稿分析を開く'));
-    expect(mockRouter.push).toHaveBeenCalledWith({ pathname: '/analytics/index' });
+    expect(mockRouter.push).toHaveBeenCalledWith({ pathname: '/analytics' });
+  });
+
+  it('「マイ盆栽」タップで /bonsai/index へ push する', () => {
+    renderWithProviders(<MoreScreen />);
+    fireEvent.press(screen.getByLabelText('マイ盆栽を開く'));
+    expect(mockRouter.push).toHaveBeenCalledWith({ pathname: '/bonsai' });
+  });
+
+  it('「ブックマーク」タップで /bookmarks/index へ push する', () => {
+    renderWithProviders(<MoreScreen />);
+    fireEvent.press(screen.getByLabelText('ブックマークを開く'));
+    expect(mockRouter.push).toHaveBeenCalledWith({ pathname: '/bookmarks' });
+  });
+
+  it('「盆栽園マップ」タップで /shops/index へ push する', () => {
+    renderWithProviders(<MoreScreen />);
+    fireEvent.press(screen.getByLabelText('盆栽園マップを開く'));
+    expect(mockRouter.push).toHaveBeenCalledWith({ pathname: '/shops' });
+  });
+
+  it('「イベント」タップで /events/index へ push する', () => {
+    renderWithProviders(<MoreScreen />);
+    fireEvent.press(screen.getByLabelText('イベント一覧を開く'));
+    expect(mockRouter.push).toHaveBeenCalledWith({ pathname: '/events' });
+  });
+
+  it('「予約投稿」タップで /scheduled-posts/index へ push する', () => {
+    renderWithProviders(<MoreScreen />);
+    fireEvent.press(screen.getByLabelText('予約投稿を開く'));
+    expect(mockRouter.push).toHaveBeenCalledWith({ pathname: '/scheduled-posts' });
   });
 });
 
