@@ -7,6 +7,35 @@
 /* eslint-disable @typescript-eslint/no-require-imports */
 // jest.mock のファクトリ内では ES import が使えないため require を使用する（Jest 制約）。
 
+import { notifyManager, timeoutManager } from '@tanstack/react-query';
+
+// notifyManager の内部スケジューラを同期化する。
+// デフォルトは setTimeout(cb, 0) で非同期バッチするため、テスト終了後に残留タイマーが
+// 残り「Jest did not exit」を引き起こす。cb() を直接呼ぶことで残留を防ぐ。
+// @testing-library/react-query 系の定番パターン（testing.md）。
+// cleanup() は @testing-library/react-native の index.js が自動 afterEach で呼ぶため不要。
+notifyManager.setScheduler((cb) => cb());
+
+// timeoutManager に unref() 付きプロバイダーを設定する。
+// staleTime / gcTime / refetchInterval は timeoutManager.setTimeout / setInterval 経由で
+// Node.js の setTimeout / setInterval に登録される。テスト終了後も残留するタイマーが
+// プロセス終了をブロックしないよう、.unref() を呼んでイベントループから切り離す。
+type UnrefableTimer = ReturnType<typeof setTimeout> & { unref?: () => void };
+timeoutManager.setTimeoutProvider({
+  setTimeout: (cb, delay) => {
+    const id = setTimeout(cb, delay) as UnrefableTimer;
+    id.unref?.();
+    return id;
+  },
+  clearTimeout: (id) => clearTimeout(id as UnrefableTimer),
+  setInterval: (cb, delay) => {
+    const id = setInterval(cb, delay) as UnrefableTimer;
+    id.unref?.();
+    return id;
+  },
+  clearInterval: (id) => clearInterval(id as UnrefableTimer),
+});
+
 // expo-router のモック
 jest.mock('expo-router', () => ({
   useLocalSearchParams: jest.fn(() => ({})),

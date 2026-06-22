@@ -7,7 +7,7 @@
 // jest.mock ファクトリ内では ES import が使えないため require を使用する（Jest 制約）。
 
 import React from 'react';
-import { screen, fireEvent, waitFor } from '@testing-library/react-native';
+import { screen, fireEvent, waitFor, act } from '@testing-library/react-native';
 import { renderWithProviders } from '../../utils/test-utils';
 import LoginScreen from '@/app/(auth)/login/index';
 import { ApiError } from '@/lib/api/errors';
@@ -156,7 +156,11 @@ describe('requires2FA 分岐', () => {
     renderWithProviders(<LoginScreen />);
     fillAndSubmit();
 
+    // capturedCallbacks が設定されるまで待機してから一度だけコールバックを呼ぶ
     await waitFor(() => {
+      expect(capturedCallbacks.onSuccess).toBeDefined();
+    });
+    await act(async () => {
       capturedCallbacks.onSuccess?.({ requires2FA: true });
     });
 
@@ -176,6 +180,9 @@ describe('requires2FA 分岐', () => {
     fillAndSubmit();
 
     await waitFor(() => {
+      expect(capturedCallbacks.onSuccess).toBeDefined();
+    });
+    await act(async () => {
       capturedCallbacks.onSuccess?.({ requires2FA: false });
     });
 
@@ -201,10 +208,15 @@ describe('API エラーの文言表示', () => {
     fillAndSubmit();
 
     await waitFor(() => {
+      expect(capturedCallbacks.onError).toBeDefined();
+    });
+    await act(async () => {
       capturedCallbacks.onError?.(makeApiError('AUTH_INVALID_CREDENTIALS', 401));
     });
 
-    expect(screen.getByText(ERR_LOGIN_INVALID_CREDENTIALS)).toBeTruthy();
+    await waitFor(() => {
+      expect(screen.getByText(ERR_LOGIN_INVALID_CREDENTIALS)).toBeTruthy();
+    });
   });
 
   it('RATE_LIMITED (429) で ERR_LOGIN_RATE_LIMITED が表示される', async () => {
@@ -220,10 +232,15 @@ describe('API エラーの文言表示', () => {
     fillAndSubmit();
 
     await waitFor(() => {
+      expect(capturedCallbacks.onError).toBeDefined();
+    });
+    await act(async () => {
       capturedCallbacks.onError?.(makeApiError('RATE_LIMITED', 429));
     });
 
-    expect(screen.getByText(ERR_LOGIN_RATE_LIMITED)).toBeTruthy();
+    await waitFor(() => {
+      expect(screen.getByText(ERR_LOGIN_RATE_LIMITED)).toBeTruthy();
+    });
   });
 });
 

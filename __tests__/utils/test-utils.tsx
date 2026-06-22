@@ -36,6 +36,16 @@ export function renderWithProviders(
   const client = queryClient ?? createTestQueryClient();
 
   function Wrapper({ children }: { children: React.ReactNode }) {
+    // QueryClientProvider のアンマウント時にキャッシュとタイマーを全解除する。
+    // refetchInterval 等のポーリングタイマーを残留させないために useEffect の cleanup で実行する。
+    React.useEffect(() => {
+      return () => {
+        client.getQueryCache().clear();
+        client.getMutationCache().clear();
+        client.clear();
+      };
+    }, []);
+
     return (
       <QueryClientProvider client={client}>
         {children}

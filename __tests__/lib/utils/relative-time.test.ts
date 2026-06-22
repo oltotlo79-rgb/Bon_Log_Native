@@ -124,12 +124,14 @@ describe('formatRelativeTime', () => {
   });
 
   it('今年の1月1日 → MM/DD 形式', () => {
-    const jan1 = new Date('2026-01-01T00:00:00+09:00');
+    // UTC 正午を使うことで任意タイムゾーン環境でも getDate/getMonth/getFullYear が同じ値を返す
+    const jan1 = new Date('2026-01-01T12:00:00Z');
     expect(formatRelativeTime(jan1, NOW)).toBe('01/01');
   });
 
   it('昨年の投稿 → YYYY/MM/DD 形式', () => {
-    const lastYear = new Date('2025-12-31T00:00:00+09:00');
+    // UTC 正午を使うことで任意タイムゾーン環境でも getDate/getMonth/getFullYear が同じ値を返す
+    const lastYear = new Date('2025-12-31T12:00:00Z');
     expect(formatRelativeTime(lastYear, NOW)).toBe('2025/12/31');
   });
 

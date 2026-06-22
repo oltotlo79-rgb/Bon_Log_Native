@@ -7,7 +7,7 @@
 // jest.mock ファクトリ内では ES import が使えないため require を使用する（Jest 制約）。
 
 import React from 'react';
-import { screen, fireEvent, waitFor } from '@testing-library/react-native';
+import { screen, fireEvent, waitFor, act } from '@testing-library/react-native';
 import { renderWithProviders } from '../../utils/test-utils';
 import TwoFactorVerifyScreen from '@/app/(auth)/two-factor-verify/index';
 import { ApiError } from '@/lib/api/errors';
@@ -215,6 +215,9 @@ describe('送信成功', () => {
     fireEvent.press(screen.getByRole('button', { name: '確認する' }));
 
     await waitFor(() => {
+      expect(capturedCallbacks.onSuccess).toBeDefined();
+    });
+    await act(async () => {
       capturedCallbacks.onSuccess?.();
     });
 
@@ -238,11 +241,10 @@ describe('AUTH_2FA_INVALID_CODE エラー', () => {
     fireEvent.changeText(input, '000000');
     fireEvent.press(screen.getByRole('button', { name: '確認する' }));
 
-    await waitFor(() => {
-      capturedCallbacks.onError?.(makeApiError('AUTH_2FA_INVALID_CODE'));
-    });
+    await waitFor(() => { expect(capturedCallbacks.onError).toBeDefined(); });
+    await act(async () => { capturedCallbacks.onError?.(makeApiError('AUTH_2FA_INVALID_CODE')); });
 
-    expect(screen.getByText(ERR_2FA_INVALID_CODE)).toBeTruthy();
+    await waitFor(() => { expect(screen.getByText(ERR_2FA_INVALID_CODE)).toBeTruthy(); });
   });
 
   it('「ログイン画面へ戻る」強調ボタンが表示される', async () => {
@@ -256,11 +258,10 @@ describe('AUTH_2FA_INVALID_CODE エラー', () => {
     fireEvent.changeText(input, '000000');
     fireEvent.press(screen.getByRole('button', { name: '確認する' }));
 
-    await waitFor(() => {
-      capturedCallbacks.onError?.(makeApiError('AUTH_2FA_INVALID_CODE'));
-    });
+    await waitFor(() => { expect(capturedCallbacks.onError).toBeDefined(); });
+    await act(async () => { capturedCallbacks.onError?.(makeApiError('AUTH_2FA_INVALID_CODE')); });
 
-    expect(screen.getByRole('button', { name: 'ログイン画面へ戻る' })).toBeTruthy();
+    await waitFor(() => { expect(screen.getByRole('button', { name: 'ログイン画面へ戻る' })).toBeTruthy(); });
   });
 
   it('ticket-consumed 後は確認するボタンが disabled になる（フォーム無効化）', async () => {
@@ -274,12 +275,13 @@ describe('AUTH_2FA_INVALID_CODE エラー', () => {
     fireEvent.changeText(input, '000000');
     fireEvent.press(screen.getByRole('button', { name: '確認する' }));
 
-    await waitFor(() => {
-      capturedCallbacks.onError?.(makeApiError('AUTH_2FA_INVALID_CODE'));
-    });
+    await waitFor(() => { expect(capturedCallbacks.onError).toBeDefined(); });
+    await act(async () => { capturedCallbacks.onError?.(makeApiError('AUTH_2FA_INVALID_CODE')); });
 
-    const submitButton = screen.getByRole('button', { name: '確認する' });
-    expect(submitButton.props.accessibilityState?.disabled).toBe(true);
+    await waitFor(() => {
+      const submitButton = screen.getByRole('button', { name: '確認する' });
+      expect(submitButton.props.accessibilityState?.disabled).toBe(true);
+    });
   });
 
   it('ticket-consumed 後はモード切替リンクが非表示になる（自動遷移しない）', async () => {
@@ -293,14 +295,15 @@ describe('AUTH_2FA_INVALID_CODE エラー', () => {
     fireEvent.changeText(input, '000000');
     fireEvent.press(screen.getByRole('button', { name: '確認する' }));
 
-    await waitFor(() => {
-      capturedCallbacks.onError?.(makeApiError('AUTH_2FA_INVALID_CODE'));
-    });
+    await waitFor(() => { expect(capturedCallbacks.onError).toBeDefined(); });
+    await act(async () => { capturedCallbacks.onError?.(makeApiError('AUTH_2FA_INVALID_CODE')); });
 
     // 自動遷移しない（router.replace が呼ばれていない）
     expect(mockRouterReplace).not.toHaveBeenCalledWith(routes.login);
     // モード切替ボタンが非表示
-    expect(screen.queryByRole('button', { name: 'バックアップコードを使用する' })).toBeNull();
+    await waitFor(() => {
+      expect(screen.queryByRole('button', { name: 'バックアップコードを使用する' })).toBeNull();
+    });
   });
 });
 
@@ -316,11 +319,10 @@ describe('AUTH_2FA_TICKET_EXPIRED エラー', () => {
     fireEvent.changeText(input, '123456');
     fireEvent.press(screen.getByRole('button', { name: '確認する' }));
 
-    await waitFor(() => {
-      capturedCallbacks.onError?.(makeApiError('AUTH_2FA_TICKET_EXPIRED'));
-    });
+    await waitFor(() => { expect(capturedCallbacks.onError).toBeDefined(); });
+    await act(async () => { capturedCallbacks.onError?.(makeApiError('AUTH_2FA_TICKET_EXPIRED')); });
 
-    expect(screen.getByText(ERR_2FA_TICKET_EXPIRED)).toBeTruthy();
+    await waitFor(() => { expect(screen.getByText(ERR_2FA_TICKET_EXPIRED)).toBeTruthy(); });
   });
 
   it('「ログイン画面へ戻る」強調ボタンが表示される', async () => {
@@ -334,11 +336,10 @@ describe('AUTH_2FA_TICKET_EXPIRED エラー', () => {
     fireEvent.changeText(input, '123456');
     fireEvent.press(screen.getByRole('button', { name: '確認する' }));
 
-    await waitFor(() => {
-      capturedCallbacks.onError?.(makeApiError('AUTH_2FA_TICKET_EXPIRED'));
-    });
+    await waitFor(() => { expect(capturedCallbacks.onError).toBeDefined(); });
+    await act(async () => { capturedCallbacks.onError?.(makeApiError('AUTH_2FA_TICKET_EXPIRED')); });
 
-    expect(screen.getByRole('button', { name: 'ログイン画面へ戻る' })).toBeTruthy();
+    await waitFor(() => { expect(screen.getByRole('button', { name: 'ログイン画面へ戻る' })).toBeTruthy(); });
   });
 });
 
@@ -354,11 +355,10 @@ describe('429 (RATE_LIMITED) エラー', () => {
     fireEvent.changeText(input, '123456');
     fireEvent.press(screen.getByRole('button', { name: '確認する' }));
 
-    await waitFor(() => {
-      capturedCallbacks.onError?.(makeApiError('RATE_LIMITED', 429));
-    });
+    await waitFor(() => { expect(capturedCallbacks.onError).toBeDefined(); });
+    await act(async () => { capturedCallbacks.onError?.(makeApiError('RATE_LIMITED', 429)); });
 
-    expect(screen.getByText(ERR_2FA_RATE_LIMITED)).toBeTruthy();
+    await waitFor(() => { expect(screen.getByText(ERR_2FA_RATE_LIMITED)).toBeTruthy(); });
   });
 
   it('フォームが無効化される', async () => {
@@ -372,12 +372,13 @@ describe('429 (RATE_LIMITED) エラー', () => {
     fireEvent.changeText(input, '123456');
     fireEvent.press(screen.getByRole('button', { name: '確認する' }));
 
-    await waitFor(() => {
-      capturedCallbacks.onError?.(makeApiError('RATE_LIMITED', 429));
-    });
+    await waitFor(() => { expect(capturedCallbacks.onError).toBeDefined(); });
+    await act(async () => { capturedCallbacks.onError?.(makeApiError('RATE_LIMITED', 429)); });
 
-    const submitButton = screen.getByRole('button', { name: '確認する' });
-    expect(submitButton.props.accessibilityState?.disabled).toBe(true);
+    await waitFor(() => {
+      const submitButton = screen.getByRole('button', { name: '確認する' });
+      expect(submitButton.props.accessibilityState?.disabled).toBe(true);
+    });
   });
 });
 
@@ -397,11 +398,10 @@ describe('ネットワークエラー / 5xx エラー（retryable）', () => {
     fireEvent.changeText(input, '123456');
     fireEvent.press(screen.getByRole('button', { name: '確認する' }));
 
-    await waitFor(() => {
-      capturedCallbacks.onError?.(makeApiError('INTERNAL_ERROR', 500));
-    });
+    await waitFor(() => { expect(capturedCallbacks.onError).toBeDefined(); });
+    await act(async () => { capturedCallbacks.onError?.(makeApiError('INTERNAL_ERROR', 500)); });
 
-    expect(screen.getByText(ERR_2FA_SERVER_ERROR)).toBeTruthy();
+    await waitFor(() => { expect(screen.getByText(ERR_2FA_SERVER_ERROR)).toBeTruthy(); });
   });
 
   it('5xx エラー後はフォームが有効のまま（再試行可能）', async () => {
@@ -415,9 +415,8 @@ describe('ネットワークエラー / 5xx エラー（retryable）', () => {
     fireEvent.changeText(input, '123456');
     fireEvent.press(screen.getByRole('button', { name: '確認する' }));
 
-    await waitFor(() => {
-      capturedCallbacks.onError?.(makeApiError('INTERNAL_ERROR', 500));
-    });
+    await waitFor(() => { expect(capturedCallbacks.onError).toBeDefined(); });
+    await act(async () => { capturedCallbacks.onError?.(makeApiError('INTERNAL_ERROR', 500)); });
 
     // 「ログイン画面へ戻る」強調ボタンが表示されない
     expect(screen.queryByRole('button', { name: 'ログイン画面へ戻る' })).toBeNull();
@@ -436,11 +435,10 @@ describe('ネットワークエラー / 5xx エラー（retryable）', () => {
     fireEvent.changeText(input, '123456');
     fireEvent.press(screen.getByRole('button', { name: '確認する' }));
 
-    await waitFor(() => {
-      capturedCallbacks.onError?.(new Error('Network error'));
-    });
+    await waitFor(() => { expect(capturedCallbacks.onError).toBeDefined(); });
+    await act(async () => { capturedCallbacks.onError?.(new Error('Network error')); });
 
-    expect(screen.getByText(ERR_NETWORK)).toBeTruthy();
+    await waitFor(() => { expect(screen.getByText(ERR_NETWORK)).toBeTruthy(); });
   });
 
   it('ネットワークエラー後はフォームが有効のまま（再試行可能）', async () => {
@@ -454,9 +452,8 @@ describe('ネットワークエラー / 5xx エラー（retryable）', () => {
     fireEvent.changeText(input, '123456');
     fireEvent.press(screen.getByRole('button', { name: '確認する' }));
 
-    await waitFor(() => {
-      capturedCallbacks.onError?.(new Error('Network error'));
-    });
+    await waitFor(() => { expect(capturedCallbacks.onError).toBeDefined(); });
+    await act(async () => { capturedCallbacks.onError?.(new Error('Network error')); });
 
     // フォームが有効なまま
     expect(screen.queryByRole('button', { name: 'ログイン画面へ戻る' })).toBeNull();
@@ -479,11 +476,10 @@ describe('チケット未保持での直接到達', () => {
     fireEvent.changeText(input, '123456');
     fireEvent.press(screen.getByRole('button', { name: '確認する' }));
 
-    await waitFor(() => {
-      capturedCallbacks.onError?.(new Error('2FA ticket is not available'));
-    });
+    await waitFor(() => { expect(capturedCallbacks.onError).toBeDefined(); });
+    await act(async () => { capturedCallbacks.onError?.(new Error('2FA ticket is not available')); });
 
-    expect(screen.getByText(ERR_2FA_NO_TICKET)).toBeTruthy();
+    await waitFor(() => { expect(screen.getByText(ERR_2FA_NO_TICKET)).toBeTruthy(); });
   });
 
   it('チケット不在後はフォームが無効化される', async () => {
@@ -497,12 +493,13 @@ describe('チケット未保持での直接到達', () => {
     fireEvent.changeText(input, '123456');
     fireEvent.press(screen.getByRole('button', { name: '確認する' }));
 
-    await waitFor(() => {
-      capturedCallbacks.onError?.(new Error('2FA ticket is not available'));
-    });
+    await waitFor(() => { expect(capturedCallbacks.onError).toBeDefined(); });
+    await act(async () => { capturedCallbacks.onError?.(new Error('2FA ticket is not available')); });
 
-    const submitButton = screen.getByRole('button', { name: '確認する' });
-    expect(submitButton.props.accessibilityState?.disabled).toBe(true);
+    await waitFor(() => {
+      const submitButton = screen.getByRole('button', { name: '確認する' });
+      expect(submitButton.props.accessibilityState?.disabled).toBe(true);
+    });
   });
 
   it('チケット不在後は「ログイン画面へ戻る」強調ボタンが表示される', async () => {
@@ -516,11 +513,10 @@ describe('チケット未保持での直接到達', () => {
     fireEvent.changeText(input, '123456');
     fireEvent.press(screen.getByRole('button', { name: '確認する' }));
 
-    await waitFor(() => {
-      capturedCallbacks.onError?.(new Error('2FA ticket is not available'));
-    });
+    await waitFor(() => { expect(capturedCallbacks.onError).toBeDefined(); });
+    await act(async () => { capturedCallbacks.onError?.(new Error('2FA ticket is not available')); });
 
-    expect(screen.getByRole('button', { name: 'ログイン画面へ戻る' })).toBeTruthy();
+    await waitFor(() => { expect(screen.getByRole('button', { name: 'ログイン画面へ戻る' })).toBeTruthy(); });
   });
 });
 
@@ -545,11 +541,12 @@ describe('「ログイン画面へ戻る」ボタン', () => {
     fireEvent.changeText(input, '123456');
     fireEvent.press(screen.getByRole('button', { name: '確認する' }));
 
-    await waitFor(() => {
-      capturedCallbacks.onError?.(makeApiError('AUTH_2FA_INVALID_CODE'));
-    });
+    await waitFor(() => { expect(capturedCallbacks.onError).toBeDefined(); });
+    await act(async () => { capturedCallbacks.onError?.(makeApiError('AUTH_2FA_INVALID_CODE')); });
 
-    fireEvent.press(screen.getByRole('button', { name: 'ログイン画面へ戻る' }));
+    await waitFor(() => {
+      fireEvent.press(screen.getByRole('button', { name: 'ログイン画面へ戻る' }));
+    });
     expect(mockRouterReplace).toHaveBeenCalledWith(routes.login);
   });
 });

@@ -6,7 +6,7 @@
 
 import React from 'react';
 import { Alert, Platform } from 'react-native';
-import { screen, fireEvent, waitFor, render } from '@testing-library/react-native';
+import { screen, fireEvent, waitFor, render, act } from '@testing-library/react-native';
 import { CommentItem } from '@/components/comment/CommentItem';
 import { makeCommentItem } from '@/__tests__/utils/data-factories';
 
@@ -123,11 +123,13 @@ describe('CommentItem - Android 削除シート', () => {
     await waitFor(() => {
       expect(screen.getByLabelText('コメントを削除')).toBeTruthy();
     });
-    // Modal の onRequestClose を直接呼ぶ
+    // Modal の onRequestClose を直接呼ぶ。状態更新を act() でラップして React の更新を確定させる
     const { Modal } = require('react-native');
     const modals = UNSAFE_getAllByType(Modal);
     expect(modals.length).toBeGreaterThan(0);
-    modals[0].props.onRequestClose?.();
+    await act(async () => {
+      modals[0].props.onRequestClose?.();
+    });
     await waitFor(() => {
       expect(screen.queryByLabelText('コメントを削除')).toBeNull();
     });

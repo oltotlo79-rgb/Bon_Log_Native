@@ -238,12 +238,9 @@ describe('SettingsProfileScreen - エラー状態', () => {
     fireEvent.press(screen.getByRole('button', { name: '再試行する' }));
 
     // クエリが再実行されてフォームが表示される（エラー UI が消えフォームに遷移）
-    await waitFor(
-      () => {
-        expect(screen.queryByText('プロフィールを読み込めませんでした')).toBeNull();
-      },
-      { timeout: 10000 }
-    );
+    await waitFor(() => {
+      expect(screen.queryByText('プロフィールを読み込めませんでした')).toBeNull();
+    });
   });
 
   it('エラー状態でも戻るボタンを押すと router.back が呼ばれる', async () => {
