@@ -11,7 +11,12 @@ import { renderHook, act, waitFor } from '@testing-library/react-native';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ApiError } from '@/lib/api/errors';
 import type { MobileApiErrorCode } from '@/lib/api/errors';
-import { useToggleFollowMutation } from '@/lib/queries/follows';
+import {
+  useToggleFollowMutation,
+  useFollowRequestsQuery,
+  useApproveFollowRequestMutation,
+  useRejectFollowRequestMutation,
+} from '@/lib/queries/follows';
 import { queryKeys } from '@/lib/queries/keys';
 import type { components } from '@/lib/api/generated/schema.d.ts';
 
@@ -22,9 +27,11 @@ import type { components } from '@/lib/api/generated/schema.d.ts';
 const mockApiClientPost = jest.fn();
 const mockApiClientDelete = jest.fn();
 
+const mockApiClientGet = jest.fn();
+
 jest.mock('@/lib/api/client', () => ({
   apiClient: {
-    GET: jest.fn(),
+    GET: (...args: unknown[]) => mockApiClientGet(...args),
     POST: (...args: unknown[]) => mockApiClientPost(...args),
     DELETE: (...args: unknown[]) => mockApiClientDelete(...args),
     PATCH: jest.fn(),
@@ -42,6 +49,7 @@ jest.mock('@/lib/api/client', () => ({
 
 type UserProfileResponse = components['schemas']['UserProfileResponse'];
 type SearchUsersResponse = components['schemas']['SearchUsersResponse'];
+type FollowRequestsListResponse = components['schemas']['FollowRequestsListResponse'];
 
 // ---------------------------------------------------------------------------
 // ヘルパー
@@ -517,5 +525,258 @@ describe('useToggleFollowMutation', () => {
         expect(result.current.error.code).toBe('ACCOUNT_SUSPENDED');
       }
     });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// ヘルパー（フォローリクエスト系）
+// ---------------------------------------------------------------------------
+
+function makeFollowRequestsPage(
+  ids: string[],
+  nextCursor: string | null
+): FollowRequestsListResponse {
+  return {
+    requests: ids.map((id) => ({
+      id,
+      createdAt: '2025-06-01T10:00:00Z',
+      requester: {
+        id: `requester-${id}`,
+        nickname: `申請者${id}`,
+        avatarUrl: null,
+        bio: null,
+      },
+    })),
+    nextCursor,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// useFollowRequestsQuery
+// ---------------------------------------------------------------------------
+
+describe('useFollowRequestsQuery', () => {
+  it('成功で requests が返る', async () => {
+    const page = makeFollowRequestsPage(['req-1', 'req-2'], null);
+    mockApiClientGet.mockResolvedValue({ data: page, error: undefined });
+    const { Wrapper } = createWrapper();
+
+    const { result } = renderHook(() => useFollowRequestsQuery(), { wrapper: Wrapper });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(result.current.data?.pages[0].requests).toHaveLength(2);
+  });
+
+  it('空レスポンスで hasNextPage が false', async () => {
+    const page = makeFollowRequestsPage([], null);
+    mockApiClientGet.mockResolvedValue({ data: page, error: undefined });
+    const { Wrapper } = createWrapper();
+
+    const { result } = renderHook(() => useFollowRequestsQuery(), { wrapper: Wrapper });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(result.current.hasNextPage).toBe(false);
+    expect(result.current.data?.pages[0].requests).toHaveLength(0);
+  });
+
+  it('nextCursor が string の場合は hasNextPage が true', async () => {
+    const page = makeFollowRequestsPage(['req-1'], 'cursor-abc');
+    mockApiClientGet.mockResolvedValue({ data: page, error: undefined });
+    const { Wrapper } = createWrapper();
+
+    const { result } = renderHook(() => useFollowRequestsQuery(), { wrapper: Wrapper });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(result.current.hasNextPage).toBe(true);
+  });
+
+  it('次ページ取得が実行される', async () => {
+    const page1 = makeFollowRequestsPage(['req-1'], 'cursor-abc');
+    const page2 = makeFollowRequestsPage(['req-2'], null);
+    mockApiClientGet
+      .mockResolvedValueOnce({ data: page1, error: undefined })
+      .mockResolvedValueOnce({ data: page2, error: undefined });
+    const { Wrapper } = createWrapper();
+
+    const { result } = renderHook(() => useFollowRequestsQuery(), { wrapper: Wrapper });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+    act(() => {
+      result.current.fetchNextPage();
+    });
+
+    await waitFor(
+      () => {
+        expect(result.current.isFetchingNextPage).toBe(false);
+        expect(result.current.data?.pages).toHaveLength(2);
+      },
+      { timeout: 5000 }
+    );
+  });
+
+  it('403 GUEST_NOT_ALLOWED で ApiError が throw される', async () => {
+    mockApiClientGet.mockResolvedValue({
+      data: undefined,
+      error: makeApiError('GUEST_NOT_ALLOWED', 403),
+    });
+    const { Wrapper } = createWrapper();
+
+    const { result } = renderHook(() => useFollowRequestsQuery(), { wrapper: Wrapper });
+
+    await waitFor(() => expect(result.current.isError).toBe(true));
+    expect(result.current.error).toBeInstanceOf(ApiError);
+    if (result.current.error instanceof ApiError) {
+      expect(result.current.error.code).toBe('GUEST_NOT_ALLOWED');
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// useApproveFollowRequestMutation
+// ---------------------------------------------------------------------------
+
+describe('useApproveFollowRequestMutation', () => {
+  it('成功で isSuccess になる', async () => {
+    mockApiClientPost.mockResolvedValue({ data: { success: true }, error: undefined });
+    const { Wrapper } = createWrapper();
+
+    const { result } = renderHook(() => useApproveFollowRequestMutation(), { wrapper: Wrapper });
+
+    await act(async () => {
+      result.current.mutate({ requestId: 'req-1', requesterId: 'user-2' });
+    });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(mockApiClientPost).toHaveBeenCalledWith(
+      '/api/v1/users/me/follow-requests/{id}/approve',
+      { params: { path: { id: 'req-1' } } }
+    );
+  });
+
+  it('成功でフォローリクエスト一覧から承認済み id が除去される', async () => {
+    mockApiClientPost.mockResolvedValue({ data: { success: true }, error: undefined });
+    const { Wrapper, queryClient } = createWrapper();
+
+    const listData = {
+      pages: [makeFollowRequestsPage(['req-1', 'req-2'], null)],
+      pageParams: [undefined],
+    };
+    queryClient.setQueryData(queryKeys.followRequests.list(), listData);
+
+    const { result } = renderHook(() => useApproveFollowRequestMutation(), { wrapper: Wrapper });
+
+    await act(async () => {
+      result.current.mutate({ requestId: 'req-1', requesterId: 'user-2' });
+    });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+    const cached = queryClient.getQueryData<typeof listData>(queryKeys.followRequests.list());
+    const remainingIds = cached?.pages[0].requests.map((r) => r.id);
+    expect(remainingIds).not.toContain('req-1');
+    expect(remainingIds).toContain('req-2');
+  });
+
+  it('成功で users.detail(requesterId) / notifications.unreadCount / notifications.list が invalidate される', async () => {
+    mockApiClientPost.mockResolvedValue({ data: { success: true }, error: undefined });
+    const { Wrapper, queryClient } = createWrapper();
+
+    const invalidateSpy = jest.spyOn(queryClient, 'invalidateQueries');
+
+    const { result } = renderHook(() => useApproveFollowRequestMutation(), { wrapper: Wrapper });
+
+    await act(async () => {
+      result.current.mutate({ requestId: 'req-1', requesterId: 'user-abc' });
+    });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: queryKeys.users.detail('user-abc') });
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: queryKeys.notifications.unreadCount });
+    expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: queryKeys.notifications.list() });
+  });
+
+  it('404 NOT_FOUND で ApiError が throw される', async () => {
+    const err = makeApiError('NOT_FOUND', 404);
+    mockApiClientPost.mockResolvedValue({ data: undefined, error: err });
+    const { Wrapper } = createWrapper();
+
+    const { result } = renderHook(() => useApproveFollowRequestMutation(), { wrapper: Wrapper });
+
+    await act(async () => {
+      result.current.mutate({ requestId: 'req-x', requesterId: 'user-2' });
+    });
+
+    await waitFor(() => expect(result.current.isError).toBe(true));
+    expect(result.current.error).toBeInstanceOf(ApiError);
+    if (result.current.error instanceof ApiError) {
+      expect(result.current.error.code).toBe('NOT_FOUND');
+    }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// useRejectFollowRequestMutation
+// ---------------------------------------------------------------------------
+
+describe('useRejectFollowRequestMutation', () => {
+  it('成功で isSuccess になる', async () => {
+    mockApiClientPost.mockResolvedValue({ data: { success: true }, error: undefined });
+    const { Wrapper } = createWrapper();
+
+    const { result } = renderHook(() => useRejectFollowRequestMutation(), { wrapper: Wrapper });
+
+    await act(async () => {
+      result.current.mutate({ requestId: 'req-1' });
+    });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(mockApiClientPost).toHaveBeenCalledWith(
+      '/api/v1/users/me/follow-requests/{id}/reject',
+      { params: { path: { id: 'req-1' } } }
+    );
+  });
+
+  it('成功でフォローリクエスト一覧から拒否済み id が除去される', async () => {
+    mockApiClientPost.mockResolvedValue({ data: { success: true }, error: undefined });
+    const { Wrapper, queryClient } = createWrapper();
+
+    const listData = {
+      pages: [makeFollowRequestsPage(['req-1', 'req-2'], null)],
+      pageParams: [undefined],
+    };
+    queryClient.setQueryData(queryKeys.followRequests.list(), listData);
+
+    const { result } = renderHook(() => useRejectFollowRequestMutation(), { wrapper: Wrapper });
+
+    await act(async () => {
+      result.current.mutate({ requestId: 'req-1' });
+    });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+
+    const cached = queryClient.getQueryData<typeof listData>(queryKeys.followRequests.list());
+    const remainingIds = cached?.pages[0].requests.map((r) => r.id);
+    expect(remainingIds).not.toContain('req-1');
+    expect(remainingIds).toContain('req-2');
+  });
+
+  it('404 NOT_FOUND で ApiError が throw される', async () => {
+    const err = makeApiError('NOT_FOUND', 404);
+    mockApiClientPost.mockResolvedValue({ data: undefined, error: err });
+    const { Wrapper } = createWrapper();
+
+    const { result } = renderHook(() => useRejectFollowRequestMutation(), { wrapper: Wrapper });
+
+    await act(async () => {
+      result.current.mutate({ requestId: 'req-x' });
+    });
+
+    await waitFor(() => expect(result.current.isError).toBe(true));
+    expect(result.current.error).toBeInstanceOf(ApiError);
+    if (result.current.error instanceof ApiError) {
+      expect(result.current.error.code).toBe('NOT_FOUND');
+    }
   });
 });

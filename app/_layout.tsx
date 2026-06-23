@@ -171,6 +171,10 @@ export default function RootLayout() {
             name="settings/muted/index"
             options={{ headerShown: false }}
           />
+          <Stack.Screen
+            name="follow-requests/index"
+            options={{ headerShown: false }}
+          />
           {/* ウェーブ1 閲覧系スタック画面 */}
           <Stack.Screen
             name="dictionary/index"

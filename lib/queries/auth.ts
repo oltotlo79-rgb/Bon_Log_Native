@@ -17,6 +17,8 @@ import {
 } from '@/lib/auth/auth';
 import { queryKeys } from '@/lib/queries/keys';
 import { STALE_TIME_STANDARD } from '@/lib/constants/query';
+import { isApiError } from '@/lib/api/errors';
+import { ERR_VERIFY_EMAIL_RESEND_RATE_LIMITED } from '@/lib/constants/errors';
 import type { components } from '@/lib/api/generated/schema.d.ts';
 
 // ---------------------------------------------------------------------------
@@ -135,6 +137,33 @@ export function usePasswordResetConfirmMutation() {
 export function useGoogleSignInMutation() {
   return useMutation<void, Error, { idToken: string }>({
     mutationFn: ({ idToken }) => signInWithGoogle(idToken),
+  });
+}
+
+// ---------------------------------------------------------------------------
+// useResendVerificationMutation
+// ---------------------------------------------------------------------------
+
+/**
+ * 確認メール再送ミューテーション（POST /api/v1/auth/verify-email/resend）。
+ * 列挙攻撃対策によりメール存在有無に関わらず常に 200 を返す。
+ * 429 のみ RATE_LIMITED エラーとして throw する。
+ * 認証不要の公開エンドポイント。invalidation 不要。
+ */
+export function useResendVerificationMutation() {
+  return useMutation<void, Error, { email: string }>({
+    mutationFn: async ({ email }) => {
+      const { error } = await apiClient.POST('/api/v1/auth/verify-email/resend', {
+        body: { email },
+      });
+      if (error !== undefined) {
+        // 429 のみエラーとして伝播する（仕様上 429 以外は常に 200 が返る）
+        if (isApiError(error) && error.code === 'RATE_LIMITED') {
+          throw new Error(ERR_VERIFY_EMAIL_RESEND_RATE_LIMITED);
+        }
+        throw error;
+      }
+    },
   });
 }
 

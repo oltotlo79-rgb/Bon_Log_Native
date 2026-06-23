@@ -3,6 +3,7 @@ import {
   View,
   Text,
   TouchableOpacity,
+  ScrollView,
   StyleSheet,
   Linking,
   ActivityIndicator,
@@ -17,6 +18,7 @@ import type { PushPermissionStatus } from '@/lib/push';
 import { useOnlineStatus } from '@/hooks/use-online-status';
 import { useToast } from '@/hooks/use-toast';
 import { Toast } from '@/components/common/Toast';
+import { NotificationTypeSettings } from '@/components/settings/NotificationTypeSettings';
 import { ERR_PUSH_SUBSCRIBE_FAILED } from '@/lib/constants/errors';
 import {
   colorBackground,
@@ -137,7 +139,7 @@ export default function SettingsNotificationsScreen() {
         <View style={styles.headerRight} />
       </View>
 
-      <View style={styles.content}>
+      <ScrollView contentContainerStyle={styles.scrollContent}>
         {!isOnline && (
           <View style={styles.offlineBanner} accessibilityRole="alert">
             <Text style={styles.offlineBannerText}>
@@ -146,89 +148,95 @@ export default function SettingsNotificationsScreen() {
           </View>
         )}
 
-        <View style={styles.card}>
-          <Text style={styles.cardTitle}>プッシュ通知</Text>
-          <Text style={styles.cardDescription}>
-            いいね・コメント・フォローなどの通知をお知らせします。
-          </Text>
+        {/* セクション 1: 端末プッシュ通知許可（既存コード。変更しない）*/}
+        <View style={styles.content}>
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>プッシュ通知</Text>
+            <Text style={styles.cardDescription}>
+              いいね・コメント・フォローなどの通知をお知らせします。
+            </Text>
 
-          <View style={styles.statusRow}>
-            {displayState.kind === 'loading' && (
-              <ActivityIndicator
-                size="small"
-                color={colorActionPrimary}
-                accessibilityLabel="通知設定を確認中"
-              />
-            )}
+            <View style={styles.statusRow}>
+              {displayState.kind === 'loading' && (
+                <ActivityIndicator
+                  size="small"
+                  color={colorActionPrimary}
+                  accessibilityLabel="通知設定を確認中"
+                />
+              )}
 
-            {displayState.kind === 'granted' && (
-              <View style={styles.statusGranted}>
-                <Text style={styles.statusGrantedText}>通知は有効です</Text>
-              </View>
-            )}
-
-            {displayState.kind === 'error' && (
-              <View style={styles.statusError}>
-                <Text style={styles.statusErrorText}>
-                  通知設定を読み込めませんでした。
-                </Text>
-                <TouchableOpacity
-                  style={styles.retryButton}
-                  onPress={() => void loadPermissionStatus()}
-                  accessibilityRole="button"
-                  accessibilityLabel="再読み込み"
-                >
-                  <Text style={styles.retryButtonText}>再読み込み</Text>
-                </TouchableOpacity>
-              </View>
-            )}
-
-            {displayState.kind === 'denied-can-ask' && (
-              <TouchableOpacity
-                style={[
-                  styles.primaryButton,
-                  (isRequesting || !isOnline) && styles.primaryButtonDisabled,
-                ]}
-                onPress={() => void handleEnableNotifications()}
-                disabled={isRequesting || !isOnline}
-                accessibilityRole="button"
-                accessibilityLabel="通知を有効にする"
-              >
-                {isRequesting ? (
-                  <ActivityIndicator
-                    size="small"
-                    color={colorTextInverse}
-                    accessibilityLabel="処理中"
-                  />
-                ) : (
-                  <Text style={styles.primaryButtonText}>通知を有効にする</Text>
-                )}
-              </TouchableOpacity>
-            )}
-
-            {displayState.kind === 'denied-permanent' && (
-              <View style={styles.permanentDenied}>
-                <View style={styles.permanentDeniedInfo}>
-                  <Text style={styles.permanentDeniedMessage}>
-                    通知が許可されていません。
-                  </Text>
-                  <Text style={styles.permanentDeniedHint}>
-                    OS の設定アプリから通知を許可してください。
-                  </Text>
+              {displayState.kind === 'granted' && (
+                <View style={styles.statusGranted}>
+                  <Text style={styles.statusGrantedText}>通知は有効です</Text>
                 </View>
+              )}
+
+              {displayState.kind === 'error' && (
+                <View style={styles.statusError}>
+                  <Text style={styles.statusErrorText}>
+                    通知設定を読み込めませんでした。
+                  </Text>
+                  <TouchableOpacity
+                    style={styles.retryButton}
+                    onPress={() => void loadPermissionStatus()}
+                    accessibilityRole="button"
+                    accessibilityLabel="再読み込み"
+                  >
+                    <Text style={styles.retryButtonText}>再読み込み</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+
+              {displayState.kind === 'denied-can-ask' && (
                 <TouchableOpacity
-                  style={styles.secondaryButton}
-                  onPress={handleOpenOsSettings}
+                  style={[
+                    styles.primaryButton,
+                    (isRequesting || !isOnline) && styles.primaryButtonDisabled,
+                  ]}
+                  onPress={() => void handleEnableNotifications()}
+                  disabled={isRequesting || !isOnline}
                   accessibilityRole="button"
-                  accessibilityLabel="設定アプリを開く"
+                  accessibilityLabel="通知を有効にする"
                 >
-                  <Text style={styles.secondaryButtonText}>設定アプリを開く</Text>
+                  {isRequesting ? (
+                    <ActivityIndicator
+                      size="small"
+                      color={colorTextInverse}
+                      accessibilityLabel="処理中"
+                    />
+                  ) : (
+                    <Text style={styles.primaryButtonText}>通知を有効にする</Text>
+                  )}
                 </TouchableOpacity>
-              </View>
-            )}
+              )}
+
+              {displayState.kind === 'denied-permanent' && (
+                <View style={styles.permanentDenied}>
+                  <View style={styles.permanentDeniedInfo}>
+                    <Text style={styles.permanentDeniedMessage}>
+                      通知が許可されていません。
+                    </Text>
+                    <Text style={styles.permanentDeniedHint}>
+                      OS の設定アプリから通知を許可してください。
+                    </Text>
+                  </View>
+                  <TouchableOpacity
+                    style={styles.secondaryButton}
+                    onPress={handleOpenOsSettings}
+                    accessibilityRole="button"
+                    accessibilityLabel="設定アプリを開く"
+                  >
+                    <Text style={styles.secondaryButtonText}>設定アプリを開く</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </View>
           </View>
         </View>
-      </View>
+
+        {/* セクション 2: 通知の種類別トグル（新規追加）*/}
+        <NotificationTypeSettings isOnline={isOnline} />
+      </ScrollView>
 
       <Toast
         message={toast.message}
@@ -277,8 +285,10 @@ const styles = StyleSheet.create({
   headerRight: {
     minWidth: 44,
   },
+  scrollContent: {
+    flexGrow: 1,
+  },
   content: {
-    flex: 1,
     padding: spacing4,
     gap: spacing4,
   },

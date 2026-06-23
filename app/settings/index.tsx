@@ -99,6 +99,10 @@ export default function SettingsScreen() {
           label: 'ミュートリスト',
           onPress: () => router.push(routes.settingsMuted),
         },
+        {
+          label: 'フォローリクエスト',
+          onPress: () => router.push(routes.followRequests),
+        },
       ],
     },
     {

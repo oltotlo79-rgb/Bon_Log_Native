@@ -5,7 +5,6 @@ import {
   KeyboardAvoidingView,
   ScrollView,
   Platform,
-  Pressable,
   StyleSheet,
   type TextInput,
 } from 'react-native';
@@ -19,6 +18,9 @@ import { GoogleSignInButton } from '@/components/auth/GoogleSignInButton';
 import { FormErrorMessage } from '@/components/auth/FormErrorMessage';
 import { AuthBrandHeader } from '@/components/auth/AuthBrandHeader';
 import { AuthScreenBackground } from '@/components/auth/AuthScreenBackground';
+import { ResendVerificationButton } from '@/components/auth/ResendVerificationButton';
+import { useToast } from '@/hooks/use-toast';
+import { Toast } from '@/components/common/Toast';
 import { validateEmail } from '@/lib/utils/validate-auth';
 import { useLoginMutation } from '@/lib/queries/auth';
 import { useAuth } from '@/lib/auth/use-auth';
@@ -35,7 +37,6 @@ import {
   colorWarningBg,
   colorWarning,
   colorBorder,
-  radiusLg,
   radiusMd,
   spacing2,
   spacing3,
@@ -56,6 +57,8 @@ import {
   ERR_NETWORK,
   ERR_SESSION_REUSE_DETECTED,
   ERR_SESSION_EXPIRED,
+  ERR_GENERIC,
+  ERR_VERIFY_EMAIL_RESEND_RATE_LIMITED,
   messageForApiError,
 } from '@/lib/constants/errors';
 
@@ -72,6 +75,7 @@ export default function LoginScreen() {
   const [isEmailVerifiedError, setIsEmailVerifiedError] = useState(false);
 
   const passwordRef = useRef<TextInput>(null);
+  const { toast, showToast, hideToast } = useToast();
 
   const { mutate: login, isPending } = useLoginMutation();
   const { lastAuthFailureReason } = useAuth();
@@ -150,8 +154,16 @@ export default function LoginScreen() {
     );
   }
 
-  async function handleResendVerification() {
-    // 再送 API は後フェーズで接続する
+  function handleResendError(error: unknown) {
+    const message =
+      isApiError(error) && error.code === 'RATE_LIMITED'
+        ? ERR_VERIFY_EMAIL_RESEND_RATE_LIMITED
+        : ERR_GENERIC;
+    showToast(message, 'error');
+  }
+
+  function handleResendSuccess() {
+    router.push(routes.verifyEmailSent);
   }
 
   // lastAuthFailureReason の警告バナー文言を決定する
@@ -231,21 +243,12 @@ export default function LoginScreen() {
 
               <FormErrorMessage message={formError} />
 
-              {isEmailVerifiedError && (
-                <Pressable
-                  style={({ pressed }) => [
-                    styles.resendButton,
-                    pressed && styles.resendButtonPressed,
-                  ]}
-                  onPress={handleResendVerification}
-                  disabled={isPending}
-                  accessibilityRole="button"
-                  accessibilityLabel="確認メールを再送する"
-                >
-                  <Text style={styles.resendButtonText}>
-                    {isPending ? '送信中...' : '確認メールを再送する'}
-                  </Text>
-                </Pressable>
+              {isEmailVerifiedError && email.length > 0 && (
+                <ResendVerificationButton
+                  email={email}
+                  onSuccess={handleResendSuccess}
+                  onError={handleResendError}
+                />
               )}
 
               <AuthPrimaryButton
@@ -281,6 +284,13 @@ export default function LoginScreen() {
           </ScrollView>
         </KeyboardAvoidingView>
       </AuthScreenBackground>
+
+      <Toast
+        message={toast.message}
+        visible={toast.visible}
+        variant={toast.variant}
+        onHide={hideToast}
+      />
     </SafeAreaView>
   );
 }
@@ -325,23 +335,6 @@ const styles = StyleSheet.create({
   },
   form: {
     gap: spacing4,
-  },
-  resendButton: {
-    backgroundColor: colorErrorBg,
-    borderColor: colorError,
-    borderWidth: 1,
-    borderRadius: radiusLg,
-    paddingVertical: spacing3,
-    paddingHorizontal: spacing4,
-    alignItems: 'center',
-  },
-  resendButtonPressed: {
-    opacity: 0.7,
-  },
-  resendButtonText: {
-    ...textBase,
-    color: colorError,
-    fontWeight: '600',
   },
   footer: {
     marginTop: spacing6,

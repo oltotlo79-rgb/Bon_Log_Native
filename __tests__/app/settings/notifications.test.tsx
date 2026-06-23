@@ -6,9 +6,10 @@
  */
 
 import React from 'react';
-import { render, screen, fireEvent, waitFor, act } from '@testing-library/react-native';
+import { screen, fireEvent, waitFor, act } from '@testing-library/react-native';
 import { Linking } from 'react-native';
 import SettingsNotificationsScreen from '@/app/settings/notifications/index';
+import { renderWithProviders } from '@/__tests__/utils/test-utils';
 
 // ---------------------------------------------------------------------------
 // モック設定
@@ -24,6 +25,35 @@ jest.mock('@/lib/push', () => ({
 
 jest.mock('@/hooks/use-online-status', () => ({
   useOnlineStatus: jest.fn(() => true),
+}));
+
+// NotificationTypeSettings（子コンポーネント）が useNotificationSettingsQuery を呼ぶため
+// lib/queries/notifications をモックし、QueryClient 未設定エラーを防ぐ。
+jest.mock('@/lib/queries/notifications', () => ({
+  useNotificationSettingsQuery: jest.fn(() => ({
+    data: { preferences: {} },
+    isLoading: false,
+    isError: false,
+    error: null,
+    refetch: jest.fn(),
+  })),
+  useUpdateNotificationSettingsMutation: jest.fn(() => ({
+    mutate: jest.fn(),
+    isPending: false,
+  })),
+  resolveNotificationPreference: (_prefs: Record<string, boolean | undefined>, _key: string) => true,
+  useNotificationsQuery: jest.fn(() => ({
+    data: undefined,
+    isLoading: false,
+    isError: false,
+    fetchNextPage: jest.fn(),
+    hasNextPage: false,
+    isFetchingNextPage: false,
+    isRefetching: false,
+    refetch: jest.fn(),
+  })),
+  useUnreadCountQuery: jest.fn(() => ({ data: { count: 0 } })),
+  useMarkNotificationsReadMutation: jest.fn(() => ({ mutate: jest.fn(), isPending: false })),
 }));
 
 // Linking.openSettings はモジュール参照で上書きする
@@ -51,7 +81,7 @@ describe('SettingsNotificationsScreen', () => {
     });
 
     it('「通知は有効です」が表示される', async () => {
-      render(<SettingsNotificationsScreen />);
+      renderWithProviders(<SettingsNotificationsScreen />);
 
       await waitFor(() => {
         expect(screen.getByText('通知は有効です')).toBeTruthy();
@@ -59,7 +89,7 @@ describe('SettingsNotificationsScreen', () => {
     });
 
     it('「通知を有効にする」ボタンが表示されない', async () => {
-      render(<SettingsNotificationsScreen />);
+      renderWithProviders(<SettingsNotificationsScreen />);
 
       await waitFor(() => {
         expect(screen.getByText('通知は有効です')).toBeTruthy();
@@ -69,7 +99,7 @@ describe('SettingsNotificationsScreen', () => {
     });
 
     it('「設定アプリを開く」ボタンが表示されない', async () => {
-      render(<SettingsNotificationsScreen />);
+      renderWithProviders(<SettingsNotificationsScreen />);
 
       await waitFor(() => {
         expect(screen.getByText('通知は有効です')).toBeTruthy();
@@ -86,7 +116,7 @@ describe('SettingsNotificationsScreen', () => {
     });
 
     it('「通知を有効にする」ボタンが表示される', async () => {
-      render(<SettingsNotificationsScreen />);
+      renderWithProviders(<SettingsNotificationsScreen />);
 
       await waitFor(() => {
         expect(screen.getByRole('button', { name: '通知を有効にする' })).toBeTruthy();
@@ -94,7 +124,7 @@ describe('SettingsNotificationsScreen', () => {
     });
 
     it('「通知を有効にする」を押すと registerDeviceForPushNotifications が呼ばれる', async () => {
-      render(<SettingsNotificationsScreen />);
+      renderWithProviders(<SettingsNotificationsScreen />);
 
       await waitFor(() => {
         expect(screen.getByRole('button', { name: '通知を有効にする' })).toBeTruthy();
@@ -109,7 +139,7 @@ describe('SettingsNotificationsScreen', () => {
     });
 
     it('「設定アプリを開く」ボタンが表示されない', async () => {
-      render(<SettingsNotificationsScreen />);
+      renderWithProviders(<SettingsNotificationsScreen />);
 
       await waitFor(() => {
         expect(screen.getByRole('button', { name: '通知を有効にする' })).toBeTruthy();
@@ -125,7 +155,7 @@ describe('SettingsNotificationsScreen', () => {
     });
 
     it('「通知が許可されていません。」が表示される', async () => {
-      render(<SettingsNotificationsScreen />);
+      renderWithProviders(<SettingsNotificationsScreen />);
 
       await waitFor(() => {
         expect(screen.getByText('通知が許可されていません。')).toBeTruthy();
@@ -133,7 +163,7 @@ describe('SettingsNotificationsScreen', () => {
     });
 
     it('「設定アプリを開く」ボタンが表示される', async () => {
-      render(<SettingsNotificationsScreen />);
+      renderWithProviders(<SettingsNotificationsScreen />);
 
       await waitFor(() => {
         expect(screen.getByRole('button', { name: '設定アプリを開く' })).toBeTruthy();
@@ -141,7 +171,7 @@ describe('SettingsNotificationsScreen', () => {
     });
 
     it('「設定アプリを開く」を押すと Linking.openSettings が呼ばれる', async () => {
-      render(<SettingsNotificationsScreen />);
+      renderWithProviders(<SettingsNotificationsScreen />);
 
       await waitFor(() => {
         expect(screen.getByRole('button', { name: '設定アプリを開く' })).toBeTruthy();
@@ -153,7 +183,7 @@ describe('SettingsNotificationsScreen', () => {
     });
 
     it('「通知を有効にする」ボタンが表示されない', async () => {
-      render(<SettingsNotificationsScreen />);
+      renderWithProviders(<SettingsNotificationsScreen />);
 
       await waitFor(() => {
         expect(screen.getByText('通知が許可されていません。')).toBeTruthy();
@@ -173,21 +203,21 @@ describe('SettingsNotificationsScreen', () => {
     });
 
     it('ヘッダーに「通知設定」が表示される', async () => {
-      render(<SettingsNotificationsScreen />);
+      renderWithProviders(<SettingsNotificationsScreen />);
       await waitFor(() => {
         expect(screen.getByRole('header', { name: '通知設定' })).toBeTruthy();
       });
     });
 
     it('戻るボタンが表示される', async () => {
-      render(<SettingsNotificationsScreen />);
+      renderWithProviders(<SettingsNotificationsScreen />);
       await waitFor(() => {
         expect(screen.getByRole('button', { name: '戻る' })).toBeTruthy();
       });
     });
 
     it('戻るボタンを押すと router.back が呼ばれる', async () => {
-      render(<SettingsNotificationsScreen />);
+      renderWithProviders(<SettingsNotificationsScreen />);
       await waitFor(() => {
         expect(screen.getByRole('button', { name: '戻る' })).toBeTruthy();
       });
@@ -196,7 +226,7 @@ describe('SettingsNotificationsScreen', () => {
     });
 
     it('「プッシュ通知」という見出しが表示される', async () => {
-      render(<SettingsNotificationsScreen />);
+      renderWithProviders(<SettingsNotificationsScreen />);
       await waitFor(() => {
         expect(screen.getByText('プッシュ通知')).toBeTruthy();
       });
@@ -225,7 +255,7 @@ describe('SettingsNotificationsScreen', () => {
     });
 
     it('オフラインバナーが表示される', async () => {
-      render(<SettingsNotificationsScreen />);
+      renderWithProviders(<SettingsNotificationsScreen />);
 
       await waitFor(() => {
         expect(
@@ -235,7 +265,7 @@ describe('SettingsNotificationsScreen', () => {
     });
 
     it('「通知を有効にする」ボタンが無効化される', async () => {
-      render(<SettingsNotificationsScreen />);
+      renderWithProviders(<SettingsNotificationsScreen />);
 
       await waitFor(() => {
         expect(screen.getByRole('button', { name: '通知を有効にする' })).toBeTruthy();

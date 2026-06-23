@@ -1,10 +1,13 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { AuthPrimaryButton } from '@/components/auth/AuthPrimaryButton';
 import { AuthScreenBackground } from '@/components/auth/AuthScreenBackground';
+import { ResendVerificationButton } from '@/components/auth/ResendVerificationButton';
+import { useToast } from '@/hooks/use-toast';
+import { Toast } from '@/components/common/Toast';
 import {
   colorBackground,
   colorTextPrimary,
@@ -12,18 +15,28 @@ import {
   colorTextTertiary,
   colorActionPrimary,
   colorSurfaceMuted,
+  colorSuccessBg,
+  colorSuccess,
+  colorBorder,
+  radiusFull,
+  radiusMd,
+  spacing3,
   spacing6,
   spacing8,
-  radiusFull,
   textBase,
   textSm,
   textXl,
   letterSpacingWidest,
 } from '@/lib/constants/design-tokens';
 import { routes } from '@/lib/constants/routes';
+import {
+  ERR_GENERIC,
+  ERR_VERIFY_EMAIL_RESEND_RATE_LIMITED,
+} from '@/lib/constants/errors';
+import { isApiError } from '@/lib/api/errors';
 
 // ---------------------------------------------------------------------------
-// Constants
+// 定数
 // ---------------------------------------------------------------------------
 
 const ICON_CIRCLE_SIZE = 80;
@@ -34,8 +47,27 @@ const ICON_SIZE = 36;
 // ---------------------------------------------------------------------------
 
 export default function VerifyEmailSentScreen() {
+  const params = useLocalSearchParams();
+  const rawEmail = params['email'];
+  const email = typeof rawEmail === 'string' ? rawEmail : '';
+
+  const [resendSuccess, setResendSuccess] = useState(false);
+  const { toast, showToast, hideToast } = useToast();
+
   function handleBackToLogin() {
     router.replace(routes.login);
+  }
+
+  function handleResendSuccess() {
+    setResendSuccess(true);
+  }
+
+  function handleResendError(error: unknown) {
+    const message =
+      isApiError(error) && error.code === 'RATE_LIMITED'
+        ? ERR_VERIFY_EMAIL_RESEND_RATE_LIMITED
+        : ERR_GENERIC;
+    showToast(message, 'error');
   }
 
   return (
@@ -64,6 +96,27 @@ export default function VerifyEmailSentScreen() {
           メールが届かない場合は、迷惑メールフォルダもご確認ください。
         </Text>
 
+        {resendSuccess && (
+          <View
+            style={styles.successBanner}
+            accessibilityRole="alert"
+            accessibilityLiveRegion="polite"
+          >
+            <Text style={styles.successBannerText}>
+              確認メールを再送しました。しばらく経ってもメールが届かない場合は、迷惑メールフォルダもご確認ください。
+            </Text>
+          </View>
+        )}
+
+        {email.length > 0 && (
+          <ResendVerificationButton
+            email={email}
+            onSuccess={handleResendSuccess}
+            onError={handleResendError}
+            style={styles.resendButton}
+          />
+        )}
+
         <AuthPrimaryButton
           label="ログイン画面へ戻る"
           onPress={handleBackToLogin}
@@ -71,9 +124,20 @@ export default function VerifyEmailSentScreen() {
         />
       </View>
       </AuthScreenBackground>
+
+      <Toast
+        message={toast.message}
+        visible={toast.visible}
+        variant={toast.variant}
+        onHide={hideToast}
+      />
     </SafeAreaView>
   );
 }
+
+// ---------------------------------------------------------------------------
+// スタイル
+// ---------------------------------------------------------------------------
 
 const styles = StyleSheet.create({
   safeArea: {
@@ -113,5 +177,21 @@ const styles = StyleSheet.create({
     ...textSm,
     color: colorTextTertiary,
     textAlign: 'center',
+  },
+  successBanner: {
+    backgroundColor: colorSuccessBg,
+    borderLeftWidth: 3,
+    borderLeftColor: colorSuccess,
+    borderColor: colorBorder,
+    borderRadius: radiusMd,
+    padding: spacing3,
+    alignSelf: 'stretch',
+  },
+  successBannerText: {
+    ...textSm,
+    color: colorTextPrimary,
+  },
+  resendButton: {
+    alignSelf: 'stretch',
   },
 });

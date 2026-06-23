@@ -129,7 +129,7 @@ describe('通知タップ → router.push 遷移先の検証', () => {
     expect(mockRouter.push).toHaveBeenCalledWith(routes.userDetail('actor-xyz'));
   });
 
-  it('type="follow_request" で actorId="actor-req" のとき → routes.userDetail("actor-req") で push する', () => {
+  it('type="follow_request" のとき → routes.followRequests で push する（v1.21.0 変更: フォローリクエスト管理画面へ遷移）', () => {
     const notification = makeNotificationItem({
       type: 'follow_request',
       actorId: 'actor-req',
@@ -142,7 +142,7 @@ describe('通知タップ → router.push 遷移先の検証', () => {
     fireEvent.press(screen.getByRole('button'));
 
     expect(mockRouter.push).toHaveBeenCalledTimes(1);
-    expect(mockRouter.push).toHaveBeenCalledWith(routes.userDetail('actor-req'));
+    expect(mockRouter.push).toHaveBeenCalledWith(routes.followRequests);
   });
 
   it('type="follow_request_approved" で actorId="actor-approved" のとき → routes.userDetail("actor-approved") で push する', () => {
@@ -200,6 +200,11 @@ describe('通知タップ → router.push 遷移先の検証', () => {
   // settingsSubscription が正しい定数値を持つことを定数参照で保証（文字列ハードコード回避）
   it('routes.settingsSubscription が "/settings/subscription" を返す', () => {
     expect(routes.settingsSubscription).toBe('/settings/subscription');
+  });
+
+  // followRequests が正しい定数値を持つことを保証
+  it('routes.followRequests が "/follow-requests" を返す', () => {
+    expect(routes.followRequests).toBe('/follow-requests');
   });
 
   // -----------------------------------------------------------------------

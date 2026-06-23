@@ -121,6 +121,26 @@ export function makeUserProfile(overrides?: Partial<UserProfile>): UserProfile {
 }
 
 // ---------------------------------------------------------------------------
+// FollowRequestItem
+// ---------------------------------------------------------------------------
+
+export type FollowRequestItem = components['schemas']['FollowRequestItem'];
+
+export function makeFollowRequestItem(overrides?: Partial<FollowRequestItem>): FollowRequestItem {
+  return {
+    id: 'req-1',
+    createdAt: '2025-06-01T10:00:00Z',
+    requester: {
+      id: 'requester-1',
+      nickname: '申請者',
+      avatarUrl: null,
+      bio: '盆栽好き',
+    },
+    ...overrides,
+  };
+}
+
+// ---------------------------------------------------------------------------
 // FeedItem / PostDetail（use-post-card-props テスト用）
 // ---------------------------------------------------------------------------
 

@@ -1,21 +1,30 @@
 /**
  * @module lib/queries/follows
- * フォロートグルミューテーションフック（楽観更新付き）。
+ * フォロートグルミューテーションフック（楽観更新付き）＋フォローリクエスト管理フック。
  *
  * v1.4.0 以降: UserProfileResponse / SearchUsersResponse.items に following/requested が含まれる。
  * フォロー状態は users.detail と search.users キャッシュから直接読み書きする。
  *
+ * v1.21.0 以降: フォローリクエスト一覧・承認・拒否を追加。
+ *
  * invalidation-map.md 参照。
  */
 
-import { useMutation, useQueryClient, type InfiniteData, type QueryKey } from '@tanstack/react-query';
+import { useInfiniteQuery, useMutation, useQueryClient, type InfiniteData, type QueryKey } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api/client';
 import { queryKeys } from '@/lib/queries/keys';
+import { FOLLOW_REQUESTS_PAGE_SIZE } from '@/lib/constants/limits/pagination';
+import { STALE_TIME_STANDARD } from '@/lib/constants/query';
 import type { components } from '@/lib/api/generated/schema.d.ts';
 
 type FollowResponse = components['schemas']['FollowResponse'];
 type UserProfileResponse = components['schemas']['UserProfileResponse'];
 type SearchUsersResponse = components['schemas']['SearchUsersResponse'];
+type FollowRequestsListResponse = components['schemas']['FollowRequestsListResponse'];
+type SuccessResponse = components['schemas']['SuccessResponse'];
+
+/** フォローリクエスト 1 件の型。requester に bio が含まれる点に注意。 */
+export type FollowRequestItem = components['schemas']['FollowRequestItem'];
 
 export type ToggleFollowParams = {
   userId: string;
@@ -190,6 +199,140 @@ export function useToggleFollowMutation() {
     onSettled: (_data, _error, { userId }) => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.users.detail(userId) });
       void queryClient.invalidateQueries({ queryKey: queryKeys.posts.feed() });
+    },
+  });
+}
+
+// ---------------------------------------------------------------------------
+// useFollowRequestsQuery
+// ---------------------------------------------------------------------------
+
+/**
+ * 受信フォローリクエスト一覧の無限スクロールクエリ（GET /api/v1/users/me/follow-requests）。
+ * pending 状態のリクエストのみ返す（承認/拒否済みは含まない）。
+ * ゲスト不可（403 GUEST_NOT_ALLOWED）— ApiError をそのまま throw する。
+ */
+export function useFollowRequestsQuery() {
+  return useInfiniteQuery<
+    FollowRequestsListResponse,
+    Error,
+    InfiniteData<FollowRequestsListResponse>,
+    ReturnType<typeof queryKeys.followRequests.list>,
+    string | undefined
+  >({
+    queryKey: queryKeys.followRequests.list(),
+    queryFn: async ({ pageParam }) => {
+      const { data, error } = await apiClient.GET('/api/v1/users/me/follow-requests', {
+        params: {
+          query: {
+            cursor: pageParam ?? undefined,
+            limit: FOLLOW_REQUESTS_PAGE_SIZE,
+          },
+        },
+      });
+      if (error !== undefined || data === undefined) {
+        throw error ?? new Error('Unexpected error fetching follow requests');
+      }
+      return data;
+    },
+    initialPageParam: undefined,
+    getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
+    staleTime: STALE_TIME_STANDARD,
+  });
+}
+
+// ---------------------------------------------------------------------------
+// useApproveFollowRequestMutation
+// ---------------------------------------------------------------------------
+
+/**
+ * フォローリクエストを承認するミューテーション（POST /api/v1/users/me/follow-requests/{id}/approve）。
+ * 冪等（既承認/拒否済みも 200）。他者のリクエスト/不存在は 404 をそのまま throw する。
+ * onSuccess: フォローリクエスト一覧から該当 id を除去 + users.detail(requesterId) と
+ *   notifications.unreadCount / notifications.list を invalidate する。
+ */
+export function useApproveFollowRequestMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation<SuccessResponse, Error, { requestId: string; requesterId: string }>({
+    mutationFn: async ({ requestId }) => {
+      const { data, error } = await apiClient.POST(
+        '/api/v1/users/me/follow-requests/{id}/approve',
+        { params: { path: { id: requestId } } }
+      );
+      if (error !== undefined || data === undefined) {
+        throw error ?? new Error('Unexpected error approving follow request');
+      }
+      return data;
+    },
+
+    onSuccess: (_data, { requestId, requesterId }) => {
+      // フォローリクエスト一覧から承認済み id を除去する
+      const listData = queryClient.getQueryData<InfiniteData<FollowRequestsListResponse>>(
+        queryKeys.followRequests.list()
+      );
+      if (listData !== undefined) {
+        queryClient.setQueryData<InfiniteData<FollowRequestsListResponse>>(
+          queryKeys.followRequests.list(),
+          {
+            ...listData,
+            pages: listData.pages.map((page) => ({
+              ...page,
+              requests: page.requests.filter((req) => req.id !== requestId),
+            })),
+          }
+        );
+      }
+
+      // 承認によりフォロー関係が成立したため関連キャッシュを invalidate する
+      void queryClient.invalidateQueries({ queryKey: queryKeys.users.detail(requesterId) });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.notifications.unreadCount });
+      void queryClient.invalidateQueries({ queryKey: queryKeys.notifications.list() });
+    },
+  });
+}
+
+// ---------------------------------------------------------------------------
+// useRejectFollowRequestMutation
+// ---------------------------------------------------------------------------
+
+/**
+ * フォローリクエストを拒否するミューテーション（POST /api/v1/users/me/follow-requests/{id}/reject）。
+ * 他者のリクエスト/不存在は 404 をそのまま throw する。通知なし。
+ * onSuccess: フォローリクエスト一覧から該当 id を除去する。
+ */
+export function useRejectFollowRequestMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation<SuccessResponse, Error, { requestId: string }>({
+    mutationFn: async ({ requestId }) => {
+      const { data, error } = await apiClient.POST(
+        '/api/v1/users/me/follow-requests/{id}/reject',
+        { params: { path: { id: requestId } } }
+      );
+      if (error !== undefined || data === undefined) {
+        throw error ?? new Error('Unexpected error rejecting follow request');
+      }
+      return data;
+    },
+
+    onSuccess: (_data, { requestId }) => {
+      // フォローリクエスト一覧から拒否済み id を除去する
+      const listData = queryClient.getQueryData<InfiniteData<FollowRequestsListResponse>>(
+        queryKeys.followRequests.list()
+      );
+      if (listData !== undefined) {
+        queryClient.setQueryData<InfiniteData<FollowRequestsListResponse>>(
+          queryKeys.followRequests.list(),
+          {
+            ...listData,
+            pages: listData.pages.map((page) => ({
+              ...page,
+              requests: page.requests.filter((req) => req.id !== requestId),
+            })),
+          }
+        );
+      }
     },
   });
 }

@@ -71,6 +71,16 @@ export const queryKeys = {
     list: () => ['notifications', 'list'] as const,
     /** 未読件数 */
     unreadCount: ['notifications', 'unreadCount'] as const,
+    /** 通知設定（GET /api/v1/users/me/notification-settings） */
+    settings: ['notifications', 'settings'] as const,
+  },
+
+  /** フォローリクエスト */
+  followRequests: {
+    /** ルートキー */
+    all: ['followRequests'] as const,
+    /** 受信フォローリクエスト一覧（無限スクロール・pending のみ） */
+    list: () => ['followRequests', 'list'] as const,
   },
 
   /** 検索 */

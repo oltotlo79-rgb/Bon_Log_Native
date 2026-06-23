@@ -66,3 +66,6 @@ export const EXPLORE_POSTS_PAGE_SIZE = 20;
 
 /** 手入れログ一覧のページ取得件数 */
 export const CARE_LOGS_PAGE_SIZE = 20;
+
+/** フォローリクエスト一覧のページ取得件数（サーバー default 20 / max 100） */
+export const FOLLOW_REQUESTS_PAGE_SIZE = 20;

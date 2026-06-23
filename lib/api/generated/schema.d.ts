@@ -8602,6 +8602,450 @@ export interface paths {
         };
         trace?: never;
     };
+    "/api/v1/auth/verify-email/resend": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 確認メールを再送する
+         * @description 列挙攻撃対策: メールアドレスの存在有無・確認済み・バリデーション失敗に関わらず常に 200 を返す。
+         *     バリデーションエラーも 200 を返す（この仕様は意図的）。
+         *     認証不要（未ログイン状態からも呼び出せる公開エンドポイント）。
+         *
+         *     レート制限: verify_email_resend（IP ベース、1 時間 3 回、fail-closed）
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["VerifyEmailResendRequest"];
+                };
+            };
+            responses: {
+                /** @description リクエスト受付（メールアドレス存在有無・確認済みに関わらず常に 200） */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["SuccessResponse"];
+                    };
+                };
+                /** @description レート制限超過。Retry-After ヘッダー（秒）が返却される。自動リトライ禁止。 */
+                429: {
+                    headers: {
+                        /** @description 次のリクエストまでの待機秒数 */
+                        "Retry-After"?: number;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/users/me/follow-requests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 受信フォローリクエスト一覧を取得する
+         * @description 自分宛ての pending フォローリクエスト一覧をカーソルページネーションで返す。
+         *
+         *     重要仕様:
+         *     - Bearer 必須・ゲストアカウントは 403 GUEST_NOT_ALLOWED
+         *     - pending 状態のリクエストのみ返す（承認/拒否済みは含まない）
+         *     - 返却順: createdAt DESC、id DESC
+         *     - レート制限: timeline（30/分）
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description 前回レスポンスの nextCursor 値 */
+                    cursor?: string;
+                    /** @description 取得件数（デフォルト 20、最大 100） */
+                    limit?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 受信フォローリクエスト一覧取得成功 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["FollowRequestsListResponse"];
+                    };
+                };
+                /** @description Bearer トークンなし (AUTH_REQUIRED) または期限切れ (AUTH_TOKEN_EXPIRED) */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description アカウント停止 (ACCOUNT_SUSPENDED) またはゲスト不可 (GUEST_NOT_ALLOWED) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description レート制限超過。Retry-After ヘッダー（秒）が返却される。自動リトライ禁止。 */
+                429: {
+                    headers: {
+                        /** @description 次のリクエストまでの待機秒数 */
+                        "Retry-After"?: number;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/users/me/follow-requests/{id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * フォローリクエストを承認する
+         * @description 指定 ID のフォローリクエストを承認してフォロー関係を確立する。
+         *
+         *     重要仕様:
+         *     - Bearer 必須・ゲストアカウントは 403 GUEST_NOT_ALLOWED
+         *     - 所有権チェック（自分宛てのリクエストのみ承認可）。他者のリクエスト / 不存在は 404
+         *     - 承認完了後、リクエスト送信者に follow_request_approved 通知を送る
+         *     - 既に承認/拒否済みの場合は 200 を返す（冪等）
+         *     - レート制限: engagement（30/分）
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description フォローリクエスト ID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 承認成功（または既に処理済みで冪等成功） */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["SuccessResponse"];
+                    };
+                };
+                /** @description Bearer トークンなし (AUTH_REQUIRED) または期限切れ (AUTH_TOKEN_EXPIRED) */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description アカウント停止 (ACCOUNT_SUSPENDED) またはゲスト不可 (GUEST_NOT_ALLOWED) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description リクエストが存在しないか自分宛てではない (NOT_FOUND) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description レート制限超過。Retry-After ヘッダー（秒）が返却される。自動リトライ禁止。 */
+                429: {
+                    headers: {
+                        /** @description 次のリクエストまでの待機秒数 */
+                        "Retry-After"?: number;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/users/me/follow-requests/{id}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * フォローリクエストを拒否する
+         * @description 指定 ID のフォローリクエストを拒否してリクエストを削除する。
+         *
+         *     重要仕様:
+         *     - Bearer 必須・ゲストアカウントは 403 GUEST_NOT_ALLOWED
+         *     - 所有権チェック（自分宛てのリクエストのみ拒否可）。他者のリクエスト / 不存在は 404
+         *     - 拒否後は通知を送らない（Web 側と同一仕様）
+         *     - レート制限: engagement（30/分）
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description フォローリクエスト ID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 拒否成功 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["SuccessResponse"];
+                    };
+                };
+                /** @description Bearer トークンなし (AUTH_REQUIRED) または期限切れ (AUTH_TOKEN_EXPIRED) */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description アカウント停止 (ACCOUNT_SUSPENDED) またはゲスト不可 (GUEST_NOT_ALLOWED) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description リクエストが存在しないか自分宛てではない (NOT_FOUND) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description レート制限超過。Retry-After ヘッダー（秒）が返却される。自動リトライ禁止。 */
+                429: {
+                    headers: {
+                        /** @description 次のリクエストまでの待機秒数 */
+                        "Retry-After"?: number;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/users/me/notification-settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 通知設定を取得する
+         * @description 認証ユーザー自身の通知設定を返す。
+         *
+         *     重要仕様:
+         *     - Bearer 必須・ゲストアカウントは 403 GUEST_NOT_ALLOWED
+         *     - 未設定キーは省略（デフォルト true と解釈すること）
+         *     - system / subscription_expiring は含まれない（変更不可）
+         *     - レート制限なし（read 相当）
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 通知設定取得成功 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["NotificationSettingsResponse"];
+                    };
+                };
+                /** @description Bearer トークンなし (AUTH_REQUIRED) または期限切れ (AUTH_TOKEN_EXPIRED) */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description アカウント停止 (ACCOUNT_SUSPENDED) またはゲスト不可 (GUEST_NOT_ALLOWED) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * 通知設定を部分更新する
+         * @description 通知設定を部分更新する。送信したキーのみ更新される。
+         *
+         *     重要仕様:
+         *     - Bearer 必須・ゲストアカウントは 403 GUEST_NOT_ALLOWED
+         *     - system / subscription_expiring キーは受け付けない（400 VALIDATION_ERROR）
+         *     - 省略したキーは現在値を維持する
+         *     - レート制限: engagement（30/分）
+         */
+        patch: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["NotificationPreferencesResponse"];
+                };
+            };
+            responses: {
+                /** @description 通知設定更新成功 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["SuccessResponse"];
+                    };
+                };
+                /** @description バリデーションエラー (VALIDATION_ERROR) — 不正なキー / 値 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description Bearer トークンなし (AUTH_REQUIRED) または期限切れ (AUTH_TOKEN_EXPIRED) */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description アカウント停止 (ACCOUNT_SUSPENDED) またはゲスト不可 (GUEST_NOT_ALLOWED) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description レート制限超過。Retry-After ヘッダー（秒）が返却される。自動リトライ禁止。 */
+                429: {
+                    headers: {
+                        /** @description 次のリクエストまでの待機秒数 */
+                        "Retry-After"?: number;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -8707,6 +9151,11 @@ export interface components {
         };
         /** @description パスワードリセットメール送信のリクエスト。 */
         PasswordResetRequest: {
+            /** Format: email */
+            email: string;
+        };
+        /** @description 確認メール再送のリクエスト。メールアドレスの存在有無に関わらず常に 200 を返す（列挙攻撃対策）。 */
+        VerifyEmailResendRequest: {
             /** Format: email */
             email: string;
         };
@@ -10679,6 +11128,66 @@ export interface components {
             to?: string;
             cursor?: string;
             limit?: number;
+        };
+        /** @description フォローリクエスト 1 件（リクエスト ID、作成日時、送信者情報）。 */
+        FollowRequestItem: {
+            id: string;
+            /** Format: date-time */
+            createdAt: string;
+            requester: {
+                id: string;
+                nickname: string;
+                avatarUrl: string | null;
+                bio: string | null;
+            };
+        };
+        /** @description 受信フォローリクエスト一覧（pending のみ）。カーソルページネーション形式。 */
+        FollowRequestsListResponse: {
+            requests: {
+                id: string;
+                /** Format: date-time */
+                createdAt: string;
+                requester: {
+                    id: string;
+                    nickname: string;
+                    avatarUrl: string | null;
+                    bio: string | null;
+                };
+            }[];
+            nextCursor: string | null;
+        };
+        /**
+         * @description ユーザーが変更可能な通知設定。全キーは optional（未設定 = default true の意味）。
+         *     system / subscription_expiring は重要なシステム通知のため含まれない（ユーザーが無効化不可）。
+         */
+        NotificationPreferencesResponse: {
+            like?: boolean;
+            comment?: boolean;
+            reply?: boolean;
+            comment_like?: boolean;
+            follow?: boolean;
+            quote?: boolean;
+            follow_request?: boolean;
+            follow_request_approved?: boolean;
+            mention?: boolean;
+            message?: boolean;
+            repost?: boolean;
+        };
+        /** @description GET /api/v1/users/me/notification-settings の成功レスポンス。 */
+        NotificationSettingsResponse: {
+            preferences: {
+                like?: boolean;
+                comment?: boolean;
+                reply?: boolean;
+                comment_like?: boolean;
+                follow?: boolean;
+                quote?: boolean;
+                follow_request?: boolean;
+                follow_request_approved?: boolean;
+                mention?: boolean;
+                message?: boolean;
+                repost?: boolean;
+            };
         };
     };
     responses: never;

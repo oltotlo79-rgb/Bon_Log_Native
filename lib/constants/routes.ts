@@ -72,6 +72,9 @@ export const ROUTE_SETTINGS_BLOCKED = '/settings/blocked' as const;
 /** ミュートリスト */
 export const ROUTE_SETTINGS_MUTED = '/settings/muted' as const;
 
+/** フォローリクエスト管理 */
+export const ROUTE_FOLLOW_REQUESTS = '/follow-requests' as const;
+
 /** サブスクリプション（購入・復元 — store-compliance.md 要件） */
 export const ROUTE_SETTINGS_SUBSCRIPTION = '/settings/subscription' as const;
 
@@ -483,6 +486,7 @@ export const routes = {
   settingsBlocked: ROUTE_SETTINGS_BLOCKED,
   settingsMuted: ROUTE_SETTINGS_MUTED,
   settingsSubscription: ROUTE_SETTINGS_SUBSCRIPTION,
+  followRequests: ROUTE_FOLLOW_REQUESTS,
 
   // dynamic helpers
   postDetail: routePostDetail,

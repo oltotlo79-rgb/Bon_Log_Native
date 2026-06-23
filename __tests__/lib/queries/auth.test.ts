@@ -19,7 +19,9 @@ import {
   useGoogleSignInMutation,
   useCurrentUserQuery,
   useRegisterMutation,
+  useResendVerificationMutation,
 } from '@/lib/queries/auth';
+import { ERR_VERIFY_EMAIL_RESEND_RATE_LIMITED } from '@/lib/constants/errors';
 
 // ---------------------------------------------------------------------------
 // モック設定
@@ -416,6 +418,62 @@ describe('useRegisterMutation', () => {
     if (result.current.error instanceof ApiError) {
       expect(result.current.error.code).toBe('RATE_LIMITED');
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// useResendVerificationMutation
+// ---------------------------------------------------------------------------
+
+describe('useResendVerificationMutation', () => {
+  it('成功（200）で isSuccess になる', async () => {
+    mockApiClientPost.mockResolvedValue({ data: undefined, error: undefined });
+    const { Wrapper } = createWrapper();
+
+    const { result } = renderHook(() => useResendVerificationMutation(), { wrapper: Wrapper });
+
+    await act(async () => {
+      result.current.mutate({ email: 'user@example.com' });
+    });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(mockApiClientPost).toHaveBeenCalledWith('/api/v1/auth/verify-email/resend', {
+      body: { email: 'user@example.com' },
+    });
+  });
+
+  it('429 RATE_LIMITED で ERR_VERIFY_EMAIL_RESEND_RATE_LIMITED メッセージの Error が throw される', async () => {
+    mockApiClientPost.mockResolvedValue({
+      data: undefined,
+      error: makeApiError('RATE_LIMITED', 429),
+    });
+    const { Wrapper } = createWrapper();
+
+    const { result } = renderHook(() => useResendVerificationMutation(), { wrapper: Wrapper });
+
+    await act(async () => {
+      result.current.mutate({ email: 'user@example.com' });
+    });
+
+    await waitFor(() => expect(result.current.isError).toBe(true));
+    expect(result.current.error?.message).toBe(ERR_VERIFY_EMAIL_RESEND_RATE_LIMITED);
+  });
+
+  it('429 以外の error でも Error として throw される（汎用エラーパス）', async () => {
+    mockApiClientPost.mockResolvedValue({
+      data: undefined,
+      error: makeApiError('INTERNAL_ERROR', 500),
+    });
+    const { Wrapper } = createWrapper();
+
+    const { result } = renderHook(() => useResendVerificationMutation(), { wrapper: Wrapper });
+
+    await act(async () => {
+      result.current.mutate({ email: 'user@example.com' });
+    });
+
+    await waitFor(() => expect(result.current.isError).toBe(true));
+    expect(result.current.error).toBeInstanceOf(ApiError);
   });
 });
 

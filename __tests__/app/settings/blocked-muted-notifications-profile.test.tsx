@@ -30,6 +30,35 @@ jest.mock('@/lib/push', () => ({
   registerDeviceForPushNotifications: jest.fn(async () => ({ granted: true })),
 }));
 
+// SettingsNotificationsScreen の子コンポーネント NotificationTypeSettings が
+// useNotificationSettingsQuery を呼ぶため、モックが必要。
+jest.mock('@/lib/queries/notifications', () => ({
+  useNotificationSettingsQuery: jest.fn(() => ({
+    data: { preferences: {} },
+    isLoading: false,
+    isError: false,
+    error: null,
+    refetch: jest.fn(),
+  })),
+  useUpdateNotificationSettingsMutation: jest.fn(() => ({
+    mutate: jest.fn(),
+    isPending: false,
+  })),
+  resolveNotificationPreference: (_prefs: Record<string, boolean | undefined>, _key: string) => true,
+  useNotificationsQuery: jest.fn(() => ({
+    data: undefined,
+    isLoading: false,
+    isError: false,
+    fetchNextPage: jest.fn(),
+    hasNextPage: false,
+    isFetchingNextPage: false,
+    isRefetching: false,
+    refetch: jest.fn(),
+  })),
+  useUnreadCountQuery: jest.fn(() => ({ data: { count: 0 } })),
+  useMarkNotificationsReadMutation: jest.fn(() => ({ mutate: jest.fn(), isPending: false })),
+}));
+
 const mockRouterBack = jest.requireMock('expo-router').router.back;
 
 describe('SettingsBlockedScreen', () => {
@@ -115,21 +144,21 @@ describe('SettingsNotificationsScreen', () => {
   });
 
   it('ヘッダーに「通知設定」と表示される', async () => {
-    render(<SettingsNotificationsScreen />);
+    renderWithProviders(<SettingsNotificationsScreen />);
     await waitFor(() => {
       expect(screen.getByRole('header', { name: '通知設定' })).toBeTruthy();
     });
   });
 
   it('戻るボタンが表示される', async () => {
-    render(<SettingsNotificationsScreen />);
+    renderWithProviders(<SettingsNotificationsScreen />);
     await waitFor(() => {
       expect(screen.getByRole('button', { name: '戻る' })).toBeTruthy();
     });
   });
 
   it('戻るボタンを押すと router.back が呼ばれる', async () => {
-    render(<SettingsNotificationsScreen />);
+    renderWithProviders(<SettingsNotificationsScreen />);
     await waitFor(() => {
       expect(screen.getByRole('button', { name: '戻る' })).toBeTruthy();
     });
@@ -138,14 +167,14 @@ describe('SettingsNotificationsScreen', () => {
   });
 
   it('カードに「プッシュ通知」という見出しが表示される', async () => {
-    render(<SettingsNotificationsScreen />);
+    renderWithProviders(<SettingsNotificationsScreen />);
     await waitFor(() => {
       expect(screen.getByText('プッシュ通知')).toBeTruthy();
     });
   });
 
   it('通知の説明文が表示される', async () => {
-    render(<SettingsNotificationsScreen />);
+    renderWithProviders(<SettingsNotificationsScreen />);
     await waitFor(() => {
       expect(
         screen.getByText('いいね・コメント・フォローなどの通知をお知らせします。')

@@ -65,9 +65,10 @@ function resolveNotificationRoute(notification: NotificationItemType): Href | nu
     case 'mention':
       return postId !== null ? routes.postDetail(postId) : null;
     case 'follow':
-    case 'follow_request':
     case 'follow_request_approved':
       return actorId !== null ? routes.userDetail(actorId) : null;
+    case 'follow_request':
+      return routes.followRequests;
     case 'subscription_expiring':
       // notifications-screen.md §6.1 PM 決定: サブスクリプション設定画面へ遷移
       return routes.settingsSubscription;

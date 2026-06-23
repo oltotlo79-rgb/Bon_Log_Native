@@ -14,6 +14,7 @@
 | パスワードリセット確定 | なし（ログインし直すため、その後のログインで解決） | — |
 | Google サインイン | なし（ログイン成功と同等） | — |
 | 新規登録（register） | なし（201 = メール確認待ち。ログインしないため状態変更なし） | 成功後は verify-email-sent 画面へ遷移するのみ |
+| 確認メール再送（`useResendVerificationMutation`） | なし（状態変更なし。常に 200 = キャッシュ無効化不要） | 429 のみ ERR_VERIFY_EMAIL_RESEND_RATE_LIMITED として throw する |
 
 ## フィード・投稿系
 
@@ -26,9 +27,12 @@
 | コメント作成（`useCreateCommentMutation`） | `queryKeys.comments.byPost(postId)` / `queryKeys.posts.detail(postId)`（onSettled） | コメント数カウントも投稿詳細に含まれるため。楽観更新なし |
 | コメント削除（`useDeleteCommentMutation`） | `queryKeys.comments.byPost(postId)` / `queryKeys.posts.detail(postId)`（onSettled） | 同上 |
 | フォロー・フォロー解除（`useToggleFollowMutation`） | 対象の `queryKeys.users.detail(targetId)` / `queryKeys.posts.feed()`（onSettled で invalidate） | onMutate で users.detail の following/requested/followersCount と search.users キャッシュ内の該当 item を楽観更新。onSuccess で FollowResponse 確定値（following/requested/followerCount）を users.detail と search.users item に書き込む。onSettled で users.detail と posts.feed を invalidate |
+| フォローリクエスト承認（`useApproveFollowRequestMutation`） | `queryKeys.users.detail(requesterId)` / `queryKeys.notifications.unreadCount` / `queryKeys.notifications.list()`（onSuccess で invalidate） | onSuccess で followRequests.list() のキャッシュから該当 id を setQueryData で除去（承認後は pending 一覧に出ないため）。承認でフォロー関係が成立するため users.detail と notifications も invalidate |
+| フォローリクエスト拒否（`useRejectFollowRequestMutation`） | なし（setQueryData のみ） | onSuccess で followRequests.list() のキャッシュから該当 id を setQueryData で除去。拒否は通知なし・フォロー関係変化なしのため invalidate 不要 |
 | プロフィール更新（`useUpdateProfileMutation`） | `queryKeys.users.me` / `queryKeys.users.meProfile` / 自分の `queryKeys.users.detail(currentUserId)`（onSuccess で setQueryData + invalidate） | onSuccess で users.me（基本情報）・users.meProfile（全フィールド）・users.detail（プロフィール全体）を setQueryData で即時反映し、その後 invalidate で整合させる |
 | アカウント削除（`useDeleteAccountMutation`） | なし（onSettled で `signOut(queryClient)` を呼び、`queryClient.clear()` が全キャッシュを消去） | fail-safe: サーバー削除成功・失敗いずれの場合も signOut を実行してローカル撤収する |
 | 通知既読（`useMarkNotificationsReadMutation`） | invalidate なし（setQueryData のみ） | onSuccess で通知一覧の isRead と unreadCount を setQueryData で即時反映。サーバーとの整合はリスト再フェッチ（pull-to-refresh・フォアグラウンド復帰）に委ねる |
+| 通知設定更新（`useUpdateNotificationSettingsMutation`） | `queryKeys.notifications.settings`（onSuccess で invalidate） | 部分更新（PATCH）のため整合性を保つため invalidate を選択。楽観更新は行わない（設定ミスのロールバック処理が複雑になるため） |
 | 画像アップロード（`useUploadImageMutation` / `uploadImage`） | なし（アップロードはキャッシュを持たない。投稿/プロフィール更新ミューテーションに URL を渡す） | — |
 | 動画アップロード（`useUploadVideoMutation` / `uploadVideo`） | なし（同上） | — |
 
@@ -114,8 +118,10 @@
 | `queryKeys.users.mutes` | `useMutedUsersQuery` | ミュート・ミュート解除時 |
 | `queryKeys.search.posts(q)` | `useSearchPostsQuery` | 投稿削除・大幅更新時（検索キャッシュは低優先） |
 | `queryKeys.search.users(q)` | `useSearchUsersQuery` | ユーザー名変更・削除・ブロック時（低優先） |
-| `queryKeys.notifications.list()` | `useNotificationsQuery` | 通知既読操作時（Batch 2b）・ブロック・ミュート時 |
-| `queryKeys.notifications.unreadCount` | `useUnreadCountQuery` | 通知既読操作・新規通知受信時（Batch 2b） |
+| `queryKeys.notifications.list()` | `useNotificationsQuery` | 通知既読操作時（Batch 2b）・ブロック・ミュート時・フォローリクエスト承認時 |
+| `queryKeys.notifications.unreadCount` | `useUnreadCountQuery` | 通知既読操作・新規通知受信時（Batch 2b）・フォローリクエスト承認時 |
+| `queryKeys.notifications.settings` | `useNotificationSettingsQuery` | 通知設定更新時 |
+| `queryKeys.followRequests.list()` | `useFollowRequestsQuery` | フォローリクエスト承認・拒否時（setQueryData で即時除去） |
 | `queryKeys.explore.trendingHashtags` | `useTrendingHashtagsQuery` | 将来のハッシュタグ作成系ミューテーション時（現在は読み取り専用） |
 | `queryKeys.explore.trendingGenres` | `useTrendingGenresQuery` | 同上 |
 | `queryKeys.explore.recommendedUsers` | `useRecommendedUsersQuery` | フォロー変更時（現在は `queryKeys.posts.feed()` 経由で間接的に更新） |

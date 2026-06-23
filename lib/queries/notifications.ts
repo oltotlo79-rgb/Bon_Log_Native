@@ -1,19 +1,22 @@
 /**
  * @module lib/queries/notifications
- * 通知一覧・未読件数クエリフック + 既読化ミューテーション。
+ * 通知一覧・未読件数・通知設定クエリフック + 既読化・設定更新ミューテーション。
  * ゲストユーザーには 403 GUEST_NOT_ALLOWED を返すため、frontend で認証状態を確認してから使用すること。
  */
 
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient, type InfiniteData } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api/client';
 import { queryKeys } from '@/lib/queries/keys';
-import { STALE_TIME_REALTIME, UNREAD_COUNT_REFETCH_INTERVAL_MS } from '@/lib/constants/query';
+import { STALE_TIME_REALTIME, STALE_TIME_STANDARD, UNREAD_COUNT_REFETCH_INTERVAL_MS } from '@/lib/constants/query';
 import { NOTIFICATIONS_PAGE_SIZE } from '@/lib/constants/limits/pagination';
+import type { NotificationPreferenceKey } from '@/lib/constants/notification-settings';
 import type { components } from '@/lib/api/generated/schema.d.ts';
 
 export type NotificationItem = components['schemas']['NotificationsListResponse']['items'][number];
 export type UnreadCount = components['schemas']['UnreadCountResponse'];
 export type NotificationReadResponse = components['schemas']['NotificationReadResponse'];
+export type NotificationPreferences = components['schemas']['NotificationPreferencesResponse'];
+export type NotificationSettingsResponse = components['schemas']['NotificationSettingsResponse'];
 
 type NotificationsListResponse = components['schemas']['NotificationsListResponse'];
 type UnreadCountResponse = components['schemas']['UnreadCountResponse'];
@@ -120,6 +123,75 @@ export function useMarkNotificationsReadMutation() {
       queryClient.setQueryData<UnreadCountResponse>(queryKeys.notifications.unreadCount, {
         count: response.unreadCount,
       });
+    },
+  });
+}
+
+// ---------------------------------------------------------------------------
+// resolveNotificationPreference
+// ---------------------------------------------------------------------------
+
+/**
+ * 通知設定の 1 キーを解決する純粋ヘルパー。
+ * スペック仕様: 未設定キーは省略 = デフォルト true として解釈する。
+ * frontend が設定 UI を描画する際の真偽値取得に使う。
+ */
+export function resolveNotificationPreference(
+  prefs: NotificationPreferences,
+  key: NotificationPreferenceKey
+): boolean {
+  const value = prefs[key];
+  return value !== false;
+}
+
+// ---------------------------------------------------------------------------
+// useNotificationSettingsQuery
+// ---------------------------------------------------------------------------
+
+/**
+ * 通知設定取得クエリ（GET /api/v1/users/me/notification-settings）。
+ * 生の preferences オブジェクトを返す。未設定キー = true の解釈は resolveNotificationPreference で行う。
+ * ゲスト不可（403 GUEST_NOT_ALLOWED）— ApiError をそのまま throw する。
+ */
+export function useNotificationSettingsQuery() {
+  return useQuery({
+    queryKey: queryKeys.notifications.settings,
+    queryFn: async () => {
+      const { data, error } = await apiClient.GET('/api/v1/users/me/notification-settings');
+      if (error !== undefined || data === undefined) {
+        throw error ?? new Error('Unexpected error fetching notification settings');
+      }
+      return data;
+    },
+    staleTime: STALE_TIME_STANDARD,
+  });
+}
+
+// ---------------------------------------------------------------------------
+// useUpdateNotificationSettingsMutation
+// ---------------------------------------------------------------------------
+
+/**
+ * 通知設定部分更新ミューテーション（PATCH /api/v1/users/me/notification-settings）。
+ * 送信したキーのみ更新される（省略したキーは現在値を維持）。
+ * system / subscription_expiring キーは送らないこと（400 VALIDATION_ERROR になる）。
+ * onSuccess: notifications.settings を invalidate して最新値を再取得する。
+ */
+export function useUpdateNotificationSettingsMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation<void, Error, NotificationPreferences>({
+    mutationFn: async (preferences) => {
+      const { error } = await apiClient.PATCH('/api/v1/users/me/notification-settings', {
+        body: preferences,
+      });
+      if (error !== undefined) {
+        throw error;
+      }
+    },
+
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.notifications.settings });
     },
   });
 }
