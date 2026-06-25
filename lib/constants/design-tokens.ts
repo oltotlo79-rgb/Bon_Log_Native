@@ -18,24 +18,24 @@ export const colorBackground = '#ffffff';
 /** カード・シート・セル */
 export const colorSurface = '#fcfcfc';
 
-/** ナビバー・ヘッダー（Web: --washi）*/
-export const colorSurfaceWashi = '#f7f7f7';
+/** ナビバー・ヘッダー（Web: --washi = oklch(0.98 0 0)）*/
+export const colorSurfaceWashi = '#f8f8f8';
 
 /** 温かみのある背景（Web: --kinoko / 鳥の子色） */
 export const colorSurfaceKinoko = '#f0ece4';
 
-/** 非アクティブ・ローディングスケルトン */
-export const colorSurfaceMuted = '#f0f0f0';
+/** 非アクティブ・ローディングスケルトン（Web: --muted = oklch(0.96 0 0)） */
+export const colorSurfaceMuted = '#f2f2f2';
 
 // ---------------------------------------------------------------------------
 // カラー — テキスト系
 // ---------------------------------------------------------------------------
 
-/** 本文・見出し（Web: --foreground） */
-export const colorTextPrimary = '#1a1a1a';
+/** 本文・見出し（Web: --foreground = oklch(0.12 0 0)） */
+export const colorTextPrimary = '#060606';
 
-/** 補助テキスト（日時・カウント・プレースホルダー）（Web: --muted-foreground） */
-export const colorTextSecondary = '#5c5c5c';
+/** 補助テキスト（日時・カウント・プレースホルダー）（Web: --muted-foreground = oklch(0.40 0 0)） */
+export const colorTextSecondary = '#484848';
 
 /**
  * さらに薄い補助（キャプション・ヒント）。
@@ -46,21 +46,21 @@ export const colorTextTertiary = '#8a8a8a';
 /** 墨色背景上のテキスト（Web: --primary-foreground） */
 export const colorTextInverse = '#ffffff';
 
-/** リンク・ハッシュタグ（Web: --primary = 墨） */
-export const colorTextLink = '#2e2e2e';
+/** リンク・ハッシュタグ（Web: --primary = oklch(0.20 0 0)） */
+export const colorTextLink = '#161616';
 
-/** ハッシュタグ専用（Web: text-bonsai-green） */
-export const colorTextHashtag = '#4a4a4a';
+/** ハッシュタグ専用（Web: text-bonsai-green = oklch(0.35 0 0)） */
+export const colorTextHashtag = '#3a3a3a';
 
 // ---------------------------------------------------------------------------
 // カラー — ボーダー・セパレータ系
 // ---------------------------------------------------------------------------
 
-/** 汎用ボーダー（Web: --border） */
-export const colorBorder = '#c8c8c8';
+/** 汎用ボーダー（Web: --border = oklch(0.85 0 0)） */
+export const colorBorder = '#cececd';
 
-/** 薄いセパレータ（Web: --accent） */
-export const colorBorderLight = '#e2e2e2';
+/** 薄いセパレータ（Web: --accent = oklch(0.92 0 0)） */
+export const colorBorderLight = '#e4e4e4';
 
 /** フォーカスリング（入力フィールド）（Web: --ring） */
 export const colorBorderFocus = '#2e2e2e';
@@ -69,20 +69,20 @@ export const colorBorderFocus = '#2e2e2e';
 // カラー — アクション系
 // ---------------------------------------------------------------------------
 
-/** 主要ボタン背景（墨）（Web: --primary） */
-export const colorActionPrimary = '#2e2e2e';
+/** 主要ボタン背景（墨）（Web: --primary = oklch(0.20 0 0)） */
+export const colorActionPrimary = '#161616';
 
 /** 主要ボタンテキスト（Web: --primary-foreground） */
 export const colorActionPrimaryText = '#ffffff';
 
-/** セカンダリボタン背景（Web: --secondary） */
-export const colorActionSecondary = '#e9e9e9';
+/** セカンダリボタン背景（Web: --secondary = oklch(0.94 0 0)） */
+export const colorActionSecondary = '#ebebeb';
 
-/** セカンダリボタンテキスト（Web: --secondary-foreground） */
-export const colorActionSecondaryText = '#2e2e2e';
+/** セカンダリボタンテキスト（Web: --secondary-foreground = oklch(0.20 0 0)） */
+export const colorActionSecondaryText = '#161616';
 
 /** FAB 背景（Web: bg-bonsai-green = oklch(0.35 0 0)） */
-export const colorFab = '#4a4a4a';
+export const colorFab = '#3a3a3a';
 
 /** FAB アイコン・テキスト */
 export const colorFabText = '#ffffff';
@@ -103,7 +103,7 @@ export const colorSuccess = '#3a6b42';
 export const colorSuccessBg = '#eaf3eb';
 
 /** エラー・削除（Web: --aka / --destructive = oklch(0.52 0.20 26)） */
-export const colorError = '#c0392b';
+export const colorError = '#c21721';
 
 /** エラーバックグラウンド */
 export const colorErrorBg = '#fdf0ef';
@@ -144,23 +144,23 @@ export const colorGoogleBrand = '#4285F4';
 // カラー — ナビゲーション系（Web: MobileNav.tsx の色クラスから抽出）
 // ---------------------------------------------------------------------------
 
-/** ボトムナビ背景（Web: bg-washi/90） */
-export const colorNavBackground = '#f7f7f7';
+/** ボトムナビ背景（Web: bg-washi/90 = --washi oklch(0.98 0 0)） */
+export const colorNavBackground = '#f8f8f8';
 
-/** アクティブタブアイコン（Web: text-sumi） */
-export const colorNavIconActive = '#252525';
+/** アクティブタブアイコン（Web: text-sumi = oklch(0.18 0 0)） */
+export const colorNavIconActive = '#121212';
 
 /**
- * 非アクティブタブアイコン（Web: text-sumi/40 = #252525 @ 40% opacity）。
+ * 非アクティブタブアイコン（Web: text-sumi/40 = #121212 @ 40% opacity）。
  * StyleSheet では opacity 分離が面倒なため hex + alpha の 8 桁表記を使用。
  */
-export const colorNavIconInactive = '#72727280';
+export const colorNavIconInactive = '#12121266';
 
-/** アクティブラベル（Web: text-sumi） */
-export const colorNavLabel = '#252525';
+/** アクティブラベル（Web: text-sumi = oklch(0.18 0 0)） */
+export const colorNavLabel = '#121212';
 
 /** 非アクティブラベル（Web: text-sumi/40） */
-export const colorNavLabelInactive = '#72727280';
+export const colorNavLabelInactive = '#12121266';
 
 // ---------------------------------------------------------------------------
 // カラー — オーバーレイ・スクリム系
@@ -235,7 +235,7 @@ export const letterSpacingWidest = 1.5;
 
 /** PostCard 標準影（Web: .shadow-washi） */
 export const shadowWashi = {
-  shadowColor: '#18150a',
+  shadowColor: '#17100c',
   shadowOffset: { width: 0, height: 2 },
   shadowOpacity: 0.06,
   shadowRadius: 6,
@@ -244,7 +244,7 @@ export const shadowWashi = {
 
 /** PostCard フォーカス相当（Web: .shadow-washi-hover） */
 export const shadowWashiHover = {
-  shadowColor: '#18150a',
+  shadowColor: '#17100c',
   shadowOffset: { width: 0, height: 4 },
   shadowOpacity: 0.10,
   shadowRadius: 12,
@@ -253,7 +253,7 @@ export const shadowWashiHover = {
 
 /** モーダル・ドロップアップ（Web: .shadow-washi-lg） */
 export const shadowWashiLg = {
-  shadowColor: '#18150a',
+  shadowColor: '#17100c',
   shadowOffset: { width: 0, height: 8 },
   shadowOpacity: 0.14,
   shadowRadius: 20,
