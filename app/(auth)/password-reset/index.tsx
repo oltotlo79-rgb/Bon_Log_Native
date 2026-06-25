@@ -13,6 +13,7 @@ import { AuthTextField } from '@/components/auth/AuthTextField';
 import { AuthPrimaryButton } from '@/components/auth/AuthPrimaryButton';
 import { FormErrorMessage } from '@/components/auth/FormErrorMessage';
 import { AuthBrandHeader } from '@/components/auth/AuthBrandHeader';
+import { AuthHeroImage } from '@/components/auth/AuthHeroImage';
 import { AuthScreenBackground } from '@/components/auth/AuthScreenBackground';
 import { validateEmail } from '@/lib/utils/validate-auth';
 import { usePasswordResetRequestMutation } from '@/lib/queries/auth';
@@ -106,6 +107,8 @@ export default function PasswordResetScreen() {
           <View style={styles.scrollContent}>
             <AuthBrandHeader />
 
+            <AuthHeroImage />
+
             <Text style={styles.title} accessibilityRole="header">
               パスワードの再設定
             </Text>
@@ -143,6 +146,8 @@ export default function PasswordResetScreen() {
             keyboardShouldPersistTaps="handled"
           >
             <AuthBrandHeader />
+
+            <AuthHeroImage />
 
             <Text style={styles.title} accessibilityRole="header">
               パスワードの再設定

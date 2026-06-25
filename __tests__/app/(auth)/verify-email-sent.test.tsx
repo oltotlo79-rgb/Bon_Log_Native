@@ -40,9 +40,9 @@ describe('VerifyEmailSentScreen', () => {
     expect(screen.getByRole('button', { name: 'ログイン画面へ戻る' })).toBeTruthy();
   });
 
-  it('メールアイコンが JSON に含まれる', () => {
-    const { toJSON } = render(<VerifyEmailSentScreen />);
-    expect(JSON.stringify(toJSON())).toContain('mail-outline');
+  it('ヒーロー画像（盆栽の墨絵）が表示される', () => {
+    render(<VerifyEmailSentScreen />);
+    expect(screen.getByLabelText('盆栽の墨絵')).toBeTruthy();
   });
 
   it('「ログイン画面へ戻る」を押すと router.replace が呼ばれる', () => {

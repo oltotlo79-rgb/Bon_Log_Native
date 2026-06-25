@@ -17,6 +17,7 @@ import { AuthDivider } from '@/components/auth/AuthDivider';
 import { GoogleSignInButton } from '@/components/auth/GoogleSignInButton';
 import { FormErrorMessage } from '@/components/auth/FormErrorMessage';
 import { AuthBrandHeader } from '@/components/auth/AuthBrandHeader';
+import { AuthHeroImage } from '@/components/auth/AuthHeroImage';
 import { AuthScreenBackground } from '@/components/auth/AuthScreenBackground';
 import { ResendVerificationButton } from '@/components/auth/ResendVerificationButton';
 import { useToast } from '@/hooks/use-toast';
@@ -188,6 +189,8 @@ export default function LoginScreen() {
             keyboardShouldPersistTaps="handled"
           >
             <AuthBrandHeader />
+
+            <AuthHeroImage />
 
             <Text style={styles.title} accessibilityRole="header">
               ログイン

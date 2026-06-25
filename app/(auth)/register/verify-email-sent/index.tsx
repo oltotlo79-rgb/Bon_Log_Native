@@ -2,8 +2,8 @@ import React, { useState } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
 import { AuthPrimaryButton } from '@/components/auth/AuthPrimaryButton';
+import { AuthHeroImage } from '@/components/auth/AuthHeroImage';
 import { AuthScreenBackground } from '@/components/auth/AuthScreenBackground';
 import { ResendVerificationButton } from '@/components/auth/ResendVerificationButton';
 import { useToast } from '@/hooks/use-toast';
@@ -13,12 +13,9 @@ import {
   colorTextPrimary,
   colorTextSecondary,
   colorTextTertiary,
-  colorActionPrimary,
-  colorSurfaceMuted,
   colorSuccessBg,
   colorSuccess,
   colorBorder,
-  radiusFull,
   radiusMd,
   spacing3,
   spacing6,
@@ -34,13 +31,6 @@ import {
   ERR_VERIFY_EMAIL_RESEND_RATE_LIMITED,
 } from '@/lib/constants/errors';
 import { isApiError } from '@/lib/api/errors';
-
-// ---------------------------------------------------------------------------
-// 定数
-// ---------------------------------------------------------------------------
-
-const ICON_CIRCLE_SIZE = 80;
-const ICON_SIZE = 36;
 
 // ---------------------------------------------------------------------------
 // Component
@@ -74,15 +64,7 @@ export default function VerifyEmailSentScreen() {
     <SafeAreaView style={styles.safeArea}>
       <AuthScreenBackground style={styles.background}>
       <View style={styles.container}>
-        <View style={styles.iconCircle}>
-          <Ionicons
-            name="mail-outline"
-            size={ICON_SIZE}
-            color={colorActionPrimary}
-            accessibilityRole="image"
-            accessibilityLabel="メール"
-          />
-        </View>
+        <AuthHeroImage />
 
         <Text style={styles.title} accessibilityRole="header">
           メールをご確認ください
@@ -153,14 +135,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: spacing8,
     gap: spacing6,
-  },
-  iconCircle: {
-    width: ICON_CIRCLE_SIZE,
-    height: ICON_CIRCLE_SIZE,
-    borderRadius: radiusFull,
-    backgroundColor: colorSurfaceMuted,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   title: {
     ...textXl,

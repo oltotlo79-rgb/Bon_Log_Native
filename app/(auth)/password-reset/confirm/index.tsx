@@ -15,6 +15,7 @@ import { PasswordField } from '@/components/auth/PasswordField';
 import { AuthPrimaryButton } from '@/components/auth/AuthPrimaryButton';
 import { FormErrorMessage } from '@/components/auth/FormErrorMessage';
 import { AuthBrandHeader } from '@/components/auth/AuthBrandHeader';
+import { AuthHeroImage } from '@/components/auth/AuthHeroImage';
 import { AuthScreenBackground } from '@/components/auth/AuthScreenBackground';
 import { validatePassword } from '@/lib/utils/validate-auth';
 import { usePasswordResetConfirmMutation } from '@/lib/queries/auth';
@@ -161,6 +162,8 @@ export default function PasswordResetConfirmScreen() {
           <View style={styles.scrollContent}>
             <AuthBrandHeader />
 
+            <AuthHeroImage />
+
             <View style={styles.errorBanner}>
               <Text style={styles.errorBannerTitle}>{MSG_RESET_LINK_INVALID_TITLE}</Text>
               <Text style={styles.errorBannerBody}>{MSG_RESET_LINK_INVALID_BODY}</Text>
@@ -196,6 +199,8 @@ export default function PasswordResetConfirmScreen() {
           <View style={styles.scrollContent}>
             <AuthBrandHeader />
 
+            <AuthHeroImage />
+
             <View style={styles.successBanner}>
               <Text style={styles.successTitle}>{MSG_PASSWORD_UPDATED_TITLE}</Text>
               <Text style={styles.successBody}>{MSG_PASSWORD_UPDATED_BODY}</Text>
@@ -227,6 +232,8 @@ export default function PasswordResetConfirmScreen() {
             keyboardShouldPersistTaps="handled"
           >
             <AuthBrandHeader />
+
+            <AuthHeroImage />
 
             <Text style={styles.title} accessibilityRole="header">
               新しいパスワードを設定

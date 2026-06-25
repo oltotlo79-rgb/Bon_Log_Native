@@ -18,6 +18,7 @@ import { GoogleSignInButton } from '@/components/auth/GoogleSignInButton';
 import { FormErrorMessage } from '@/components/auth/FormErrorMessage';
 import { AuthTermsAgreement } from '@/components/auth/AuthTermsAgreement';
 import { AuthBrandHeader } from '@/components/auth/AuthBrandHeader';
+import { AuthHeroImage } from '@/components/auth/AuthHeroImage';
 import { AuthScreenBackground } from '@/components/auth/AuthScreenBackground';
 import { validateEmail, validatePassword, validateNickname } from '@/lib/utils/validate-auth';
 import { MAX_NICKNAME_LENGTH } from '@/lib/constants/limits/auth';
@@ -164,6 +165,8 @@ export default function RegisterScreen() {
             keyboardShouldPersistTaps="handled"
           >
             <AuthBrandHeader />
+
+            <AuthHeroImage />
 
             <Text style={styles.title} accessibilityRole="header">
               新規登録
