@@ -6,6 +6,12 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { StyleSheet } from 'react-native';
 import { QueryClientProvider } from '@tanstack/react-query';
 import type { QueryClient } from '@tanstack/react-query';
+import { useFonts } from 'expo-font';
+import {
+  ShipporiMincho_400Regular,
+  ShipporiMincho_500Medium,
+  ShipporiMincho_700Bold,
+} from '@expo-google-fonts/shippori-mincho';
 import { createQueryClient } from '@/lib/queries/query-client';
 import { setupOnlineManager, setupFocusManager } from '@/lib/queries/managers';
 import { initSentry, captureException } from '@/lib/monitoring/sentry';
@@ -77,6 +83,11 @@ export default function RootLayout() {
   // StrictMode の二重発火でも再生成されないよう lazy init で保持する
   const [queryClient] = useState<QueryClient>(() => createQueryClient());
   const [authInitialized, setAuthInitialized] = useState(false);
+  const [fontsLoaded] = useFonts({
+    ShipporiMincho_400Regular,
+    ShipporiMincho_500Medium,
+    ShipporiMincho_700Bold,
+  });
 
   useEffect(() => {
     const cleanupOnline = setupOnlineManager();
@@ -109,7 +120,7 @@ export default function RootLayout() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  if (!authInitialized) {
+  if (!authInitialized || !fontsLoaded) {
     return (
       <SafeAreaProvider>
         <ScreenLoading variant="spinner" accessibilityLabel="認証情報を確認中" />

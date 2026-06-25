@@ -552,6 +552,35 @@ jest.mock('react-native-purchases', () => {
   };
 });
 
+// expo-font のモック
+// useFonts は loadAsync の非同期完了後に setLoaded(true) を呼ぶ。
+// テスト環境（IS_REACT_ACT_ENVIRONMENT=true）では act 外の setState になり
+// "An update to ... inside a test was not wrapped in act(...)" 警告が発生する。
+// useFonts を同期的に [true, null] を返す関数に差し替えることで警告を除去する。
+jest.mock('expo-font', () => ({
+  useFonts: jest.fn(() => [true, null]),
+  loadAsync: jest.fn(async () => {}),
+  isLoaded: jest.fn(() => true),
+  isLoadedNative: jest.fn(() => true),
+  FontDisplay: {
+    AUTO: 'auto',
+    BLOCK: 'block',
+    SWAP: 'swap',
+    FALLBACK: 'fallback',
+    OPTIONAL: 'optional',
+  },
+}));
+
+// @expo-google-fonts/shippori-mincho のモック
+// TTF バイナリは Jest で処理できないため、フォント識別子として文字列を返す。
+// useFonts はフォントマップのキーをフォントファミリー名として登録するため、
+// 値（ここでは文字列）はロードシンボルとして機能する。
+jest.mock('@expo-google-fonts/shippori-mincho', () => ({
+  ShipporiMincho_400Regular: 'ShipporiMincho_400Regular',
+  ShipporiMincho_500Medium: 'ShipporiMincho_500Medium',
+  ShipporiMincho_700Bold: 'ShipporiMincho_700Bold',
+}));
+
 // expo-image のモック
 jest.mock('expo-image', () => {
   const React = require('react');

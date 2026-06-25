@@ -9,6 +9,30 @@ import { Easing } from 'react-native';
 import type { EasingFunction, TextStyle, ViewStyle } from 'react-native';
 
 // ---------------------------------------------------------------------------
+// フォントファミリー — Shippori Mincho（和風世界観の核）
+// ---------------------------------------------------------------------------
+
+/**
+ * 本文用明朝体（Regular 400）。
+ * RN ではカスタムフォント時に fontWeight だけで太さが変わらないため、
+ * 太さごとに専用ファミリー名を指定する必要がある。
+ * app/_layout.tsx の useFonts で ShipporiMincho_400Regular をロードすること。
+ */
+export const fontFamilySerif = 'ShipporiMincho_400Regular';
+
+/**
+ * 中太明朝体（Medium 500）。本文より少し強調したい箇所に使用する。
+ * app/_layout.tsx の useFonts で ShipporiMincho_500Medium をロードすること。
+ */
+export const fontFamilySerifMedium = 'ShipporiMincho_500Medium';
+
+/**
+ * 太字明朝体（Bold 700）。見出し・強調 fontWeight 600 以上の箇所に使用する。
+ * app/_layout.tsx の useFonts で ShipporiMincho_700Bold をロードすること。
+ */
+export const fontFamilySerifBold = 'ShipporiMincho_700Bold';
+
+// ---------------------------------------------------------------------------
 // カラー — 背景系
 // ---------------------------------------------------------------------------
 
@@ -210,16 +234,16 @@ export const radiusFull = 9999;
 // タイポグラフィ
 // ---------------------------------------------------------------------------
 
-export const textXs = { fontSize: 10, lineHeight: 14 } satisfies Pick<TextStyle, 'fontSize' | 'lineHeight'>;
-export const textSm = { fontSize: 12, lineHeight: 18 } satisfies Pick<TextStyle, 'fontSize' | 'lineHeight'>;
-export const textBase = { fontSize: 14, lineHeight: 22 } satisfies Pick<TextStyle, 'fontSize' | 'lineHeight'>;
-export const textMd = { fontSize: 15, lineHeight: 23 } satisfies Pick<TextStyle, 'fontSize' | 'lineHeight'>;
-const fontWeightSemibold: TextStyle['fontWeight'] = '600';
-const fontWeightBold: TextStyle['fontWeight'] = '700';
+export const textXs = { fontSize: 10, lineHeight: 14, fontFamily: fontFamilySerif } satisfies Pick<TextStyle, 'fontSize' | 'lineHeight' | 'fontFamily'>;
+export const textSm = { fontSize: 12, lineHeight: 18, fontFamily: fontFamilySerif } satisfies Pick<TextStyle, 'fontSize' | 'lineHeight' | 'fontFamily'>;
+export const textBase = { fontSize: 14, lineHeight: 22, fontFamily: fontFamilySerif } satisfies Pick<TextStyle, 'fontSize' | 'lineHeight' | 'fontFamily'>;
+export const textMd = { fontSize: 15, lineHeight: 23, fontFamily: fontFamilySerif } satisfies Pick<TextStyle, 'fontSize' | 'lineHeight' | 'fontFamily'>;
 
-export const textLg = { fontSize: 17, fontWeight: fontWeightSemibold, lineHeight: 24 } satisfies Pick<TextStyle, 'fontSize' | 'fontWeight' | 'lineHeight'>;
-export const textXl = { fontSize: 20, fontWeight: fontWeightBold, lineHeight: 28 } satisfies Pick<TextStyle, 'fontSize' | 'fontWeight' | 'lineHeight'>;
-export const text2xl = { fontSize: 24, fontWeight: fontWeightBold, lineHeight: 32 } satisfies Pick<TextStyle, 'fontSize' | 'fontWeight' | 'lineHeight'>;
+// RN はカスタムフォント時に fontWeight だけで太さが変わらないため、
+// fontWeight 600 以上の見出し・強調スタイルは専用ファミリーを指定する。
+export const textLg = { fontSize: 17, fontFamily: fontFamilySerifMedium, lineHeight: 24 } satisfies Pick<TextStyle, 'fontSize' | 'fontFamily' | 'lineHeight'>;
+export const textXl = { fontSize: 20, fontFamily: fontFamilySerifBold, lineHeight: 28 } satisfies Pick<TextStyle, 'fontSize' | 'fontFamily' | 'lineHeight'>;
+export const text2xl = { fontSize: 24, fontFamily: fontFamilySerifBold, lineHeight: 32 } satisfies Pick<TextStyle, 'fontSize' | 'fontFamily' | 'lineHeight'>;
 
 /** 字間トークン（Web の letter-spacing 規約に対応） */
 export const letterSpacingNone = 0;
