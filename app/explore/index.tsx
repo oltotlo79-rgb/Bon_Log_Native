@@ -15,7 +15,6 @@ import {
   RefreshControl,
   ActivityIndicator,
 } from 'react-native';
-import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -31,6 +30,7 @@ import { useCurrentUserQuery } from '@/lib/queries/auth';
 import { useOnlineStatus } from '@/hooks/use-online-status';
 import { OfflineBanner } from '@/components/common/OfflineBanner';
 import { ScreenError } from '@/components/common/ScreenError';
+import { UserAvatar } from '@/components/common/UserAvatar';
 import { ScreenEmpty } from '@/components/common/ScreenEmpty';
 import { FollowButton } from '@/components/user/FollowButton';
 import { routeUserDetail, routeExplorePostsByHashtag, routeExplorePostsByGenre } from '@/lib/constants/routes';
@@ -168,12 +168,11 @@ const RecommendedUserRow = memo(function RecommendedUserRow({
       accessibilityRole="button"
       accessibilityLabel={`${user.nickname}のプロフィールを見る`}
     >
-      <Image
-        source={{ uri: user.avatarUrl ?? undefined }}
-        style={styles.avatar}
-        contentFit="cover"
-        accessibilityElementsHidden
-        importantForAccessibility="no"
+      <UserAvatar
+        avatarUrl={user.avatarUrl}
+        userId={user.id}
+        size={AVATAR_SIZE}
+        accessibilityLabel={`${user.nickname}のプロフィール画像`}
       />
 
       <View style={styles.userInfo}>
@@ -453,12 +452,6 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colorBorderLight,
     gap: spacing3,
-  },
-  avatar: {
-    width: AVATAR_SIZE,
-    height: AVATAR_SIZE,
-    borderRadius: radiusFull,
-    backgroundColor: colorBorderLight,
   },
   userInfo: {
     flex: 1,

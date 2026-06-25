@@ -76,13 +76,15 @@ describe('CommentItem', () => {
   });
 
   describe('avatarUrl=null フォールバック', () => {
-    it('avatarUrl が null のとき、ニックネームの頭文字がフォールバックとして表示される', () => {
+    it('avatarUrl が null のとき enso アバター画像が表示される', () => {
       const item = makeCommentItem({
         user: { id: 'u-1', nickname: '盆栽太郎', avatarUrl: null, isBlocked: false, isMuted: false },
       });
       render(<CommentItem item={item} currentUserId={undefined} />);
-      // ニックネームの先頭1文字「盆」がフォールバックとして表示される
-      expect(screen.getByText('盆')).toBeTruthy();
+      // UserAvatar は avatarUrl=null のとき enso 画像を表示する
+      expect(
+        screen.getByLabelText('盆栽太郎のプロフィール画像')
+      ).toBeTruthy();
     });
   });
 

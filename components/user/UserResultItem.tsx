@@ -6,24 +6,22 @@
 
 import React from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
-import { Image } from 'expo-image';
 import type { SearchUserItem } from '@/lib/queries/search';
 import { FollowButton } from '@/components/user/FollowButton';
 import {
   colorSurface,
   colorTextPrimary,
   colorTextSecondary,
-  colorSurfaceMuted,
   shadowWashi,
   spacing4,
   spacing2,
   spacing3,
-  radiusFull,
   radiusLg,
   textMd,
   textBase,
   textSm,
 } from '@/lib/constants/design-tokens';
+import { UserAvatar } from '@/components/common/UserAvatar';
 
 // ---------------------------------------------------------------------------
 // 定数
@@ -69,20 +67,12 @@ function UserResultItemBase({ user, onPress, currentUserId }: UserResultItemProp
       accessibilityLabel={accessibilityLabel}
     >
       <View style={styles.avatarWrapper}>
-        {avatarUrl !== null ? (
-          <Image
-            source={{ uri: avatarUrl }}
-            style={styles.avatar}
-            contentFit="cover"
-            accessibilityRole="image"
-            accessibilityLabel={`${nickname}のプロフィール画像`}
-            accessibilityElementsHidden
-          />
-        ) : (
-          <View style={styles.avatarFallback} accessibilityElementsHidden>
-            <Text style={styles.avatarFallbackText}>{nickname.charAt(0)}</Text>
-          </View>
-        )}
+        <UserAvatar
+          avatarUrl={avatarUrl}
+          userId={id}
+          size={AVATAR_SIZE}
+          accessibilityLabel={`${nickname}のプロフィール画像`}
+        />
       </View>
 
       <View style={styles.info}>
@@ -148,24 +138,6 @@ const styles = StyleSheet.create({
   },
   avatarWrapper: {
     marginRight: spacing3,
-  },
-  avatar: {
-    width: AVATAR_SIZE,
-    height: AVATAR_SIZE,
-    borderRadius: radiusFull,
-  },
-  avatarFallback: {
-    width: AVATAR_SIZE,
-    height: AVATAR_SIZE,
-    borderRadius: radiusFull,
-    backgroundColor: colorSurfaceMuted,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarFallbackText: {
-    ...textMd,
-    color: colorTextSecondary,
-    fontWeight: '600',
   },
   info: {
     flex: 1,

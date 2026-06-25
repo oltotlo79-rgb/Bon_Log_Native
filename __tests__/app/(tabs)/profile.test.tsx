@@ -209,7 +209,7 @@ describe('ProfileScreen: data 状態', () => {
     expect(screen.getByRole('button', { name: '設定を開く' })).toBeTruthy();
   });
 
-  it('avatarUrl が null のときプレースホルダーアイコンが表示される', () => {
+  it('avatarUrl が null のとき enso アバター画像が表示される', () => {
     mockUseCurrentUserQuery.mockReturnValue({
       data: makeUser({ avatarUrl: null }),
       isLoading: false,
@@ -218,10 +218,8 @@ describe('ProfileScreen: data 状態', () => {
     });
 
     const { toJSON } = renderWithProviders(<ProfileScreen />);
-    // person-outline アイコンは setup.ts モックにより testID="icon-person-outline" として JSON に含まれる
-    // importantForAccessibility="no" を持つためアクセシビリティツリーからは除外されるが、
-    // JSON で描画されていることを確認する
-    expect(JSON.stringify(toJSON())).toContain('icon-person-outline');
+    // UserAvatar は avatarUrl=null のとき enso 画像を表示する
+    expect(JSON.stringify(toJSON())).toContain('enso-avatar');
   });
 });
 

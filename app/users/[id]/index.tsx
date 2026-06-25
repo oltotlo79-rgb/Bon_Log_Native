@@ -18,6 +18,7 @@ import { ScreenError } from '@/components/common/ScreenError';
 import { OfflineBanner } from '@/components/common/OfflineBanner';
 import { FollowButton } from '@/components/user/FollowButton';
 import { UserActionMenu } from '@/components/user/UserActionMenu';
+import { UserAvatar } from '@/components/common/UserAvatar';
 import { isApiError } from '@/lib/api/errors';
 import {
   colorBackground,
@@ -35,13 +36,11 @@ import {
   spacing5,
   spacing6,
   spacing8,
-  radiusFull,
   radiusMd,
   shadowWashi,
   textBase,
   textLg,
   textSm,
-  textXl,
   letterSpacingWidest,
 } from '@/lib/constants/design-tokens';
 import {
@@ -123,19 +122,12 @@ function ProfileHeader({
 
       {/* アバター */}
       <View style={styles.avatarRow}>
-        {avatarUrl !== null ? (
-          <Image
-            source={{ uri: avatarUrl }}
-            style={styles.avatar}
-            contentFit="cover"
-            accessibilityLabel={`${nickname}のプロフィール画像`}
-            accessibilityRole="image"
-          />
-        ) : (
-          <View style={[styles.avatar, styles.avatarFallback]}>
-            <Text style={styles.avatarFallbackText}>{nickname.charAt(0)}</Text>
-          </View>
-        )}
+        <UserAvatar
+          avatarUrl={avatarUrl}
+          userId={targetUserId}
+          size={AVATAR_SIZE}
+          accessibilityLabel={`${nickname}のプロフィール画像`}
+        />
       </View>
 
       <View style={styles.profileInfo}>
@@ -436,22 +428,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: spacing4,
     marginTop: -(AVATAR_SIZE / 2),
     marginBottom: spacing3,
-  },
-  avatar: {
-    width: AVATAR_SIZE,
-    height: AVATAR_SIZE,
-    borderRadius: radiusFull,
-    borderWidth: 2,
-    borderColor: colorBackground,
-  },
-  avatarFallback: {
-    backgroundColor: colorSurfaceMuted,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarFallbackText: {
-    ...textXl,
-    color: colorTextSecondary,
   },
   profileInfo: {
     paddingHorizontal: spacing4,

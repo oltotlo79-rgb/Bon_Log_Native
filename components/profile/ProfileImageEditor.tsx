@@ -7,7 +7,6 @@
 import React, { useCallback } from 'react';
 import {
   View,
-  Text,
   TouchableOpacity,
   StyleSheet,
   Alert,
@@ -27,8 +26,8 @@ import {
   colorBorder,
   spacing4,
   radiusFull,
-  textXl,
 } from '@/lib/constants/design-tokens';
+import { UserAvatar } from '@/components/common/UserAvatar';
 
 // ---------------------------------------------------------------------------
 // 定数
@@ -55,6 +54,8 @@ export type ProfileImageEditorProps = {
   avatarLocalUri: string | null;
   headerLocalUri: string | null;
   nickname: string;
+  /** 未設定時の enso フォールバック選択に使用する。未指定の場合は enso-1 固定 */
+  userId?: string;
   onAvatarChange: (localUri: string) => void;
   onHeaderChange: (localUri: string) => void;
   onAvatarRemove: () => void;
@@ -72,6 +73,7 @@ export function ProfileImageEditor({
   avatarLocalUri,
   headerLocalUri,
   nickname,
+  userId = '',
   onAvatarChange,
   onHeaderChange,
   onAvatarRemove,
@@ -171,7 +173,6 @@ export function ProfileImageEditor({
   const currentHeaderSource = headerLocalUri ?? headerUrl;
   const hasAvatar = currentAvatarSource !== null;
   const hasHeader = currentHeaderSource !== null;
-  const avatarInitial = nickname.length > 0 ? nickname.charAt(0) : '?';
 
   return (
     <View style={[styles.container, { paddingBottom: AVATAR_OVERLAP + spacing4 }]}>
@@ -224,20 +225,12 @@ export function ProfileImageEditor({
         disabled={isDisabled}
         activeOpacity={0.85}
       >
-        {hasAvatar ? (
-          <Image
-            source={{ uri: currentAvatarSource }}
-            style={styles.avatarImage}
-            contentFit="cover"
-            accessibilityLabel="プロフィール写真"
-          />
-        ) : (
-          <View style={styles.avatarPlaceholder}>
-            <Text style={styles.avatarInitialText} accessibilityElementsHidden>
-              {avatarInitial}
-            </Text>
-          </View>
-        )}
+        <UserAvatar
+          avatarUrl={currentAvatarSource}
+          userId={userId}
+          size={AVATAR_SIZE}
+          accessibilityLabel="プロフィール写真"
+        />
 
         {/* アバター編集ボタン（右下オーバーレイ） */}
         <View style={styles.avatarEditButton}>
@@ -298,21 +291,6 @@ const styles = StyleSheet.create({
     borderColor: colorBackground,
     overflow: 'hidden',
     backgroundColor: colorSurface,
-  },
-  avatarImage: {
-    width: '100%',
-    height: '100%',
-  },
-  avatarPlaceholder: {
-    width: '100%',
-    height: '100%',
-    backgroundColor: colorSurfaceMuted,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarInitialText: {
-    ...textXl,
-    color: colorTextSecondary,
   },
   avatarEditButton: {
     position: 'absolute',

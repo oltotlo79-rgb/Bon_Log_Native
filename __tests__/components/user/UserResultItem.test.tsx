@@ -72,12 +72,13 @@ describe('UserResultItem', () => {
   });
 
   describe('アバター', () => {
-    it('avatarUrl が null のとき ニックネームの頭文字がフォールバックとして存在する', () => {
+    it('avatarUrl が null のとき enso アバター画像が表示される', () => {
       const user = makeSearchUserItem({ nickname: '松の匠', avatarUrl: null });
-      const { toJSON } = renderWithProviders(
+      renderWithProviders(
         <UserResultItem user={user} onPress={jest.fn()} currentUserId="other-user" />
       );
-      expect(JSON.stringify(toJSON())).toContain('"松"');
+      // UserAvatar は avatarUrl=null のとき enso 画像を表示する
+      expect(screen.getByLabelText('松の匠のプロフィール画像')).toBeTruthy();
     });
   });
 

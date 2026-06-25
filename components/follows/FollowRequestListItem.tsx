@@ -12,8 +12,6 @@ import {
   TouchableOpacity,
   StyleSheet,
 } from 'react-native';
-import { Image } from 'expo-image';
-import { Ionicons } from '@expo/vector-icons';
 import type { FollowRequestItem } from '@/lib/queries/follows';
 import {
   colorBackground,
@@ -24,21 +22,19 @@ import {
   colorTextPrimary,
   colorTextSecondary,
   colorTextTertiary,
-  colorSurfaceMuted,
-  radiusFull,
   radiusMd,
   spacing2,
   spacing4,
   textBase,
   textSm,
 } from '@/lib/constants/design-tokens';
+import { UserAvatar } from '@/components/common/UserAvatar';
 
 // ---------------------------------------------------------------------------
 // 定数
 // ---------------------------------------------------------------------------
 
 const AVATAR_SIZE = 44;
-const AVATAR_BORDER_RADIUS = radiusFull;
 const BUTTON_HEIGHT = 36;
 const BUTTON_MIN_WIDTH = 56;
 const BUTTON_HIT_SLOP = { top: 4, bottom: 4, left: 8, right: 8 };
@@ -83,25 +79,14 @@ function FollowRequestListItemBase({
       activeOpacity={0.7}
     >
       {/* アバター */}
-      {avatarUrl !== null ? (
-        <Image
-          source={{ uri: avatarUrl }}
-          style={styles.avatar}
-          contentFit="cover"
-          accessibilityRole="image"
+      <View style={styles.avatarWrapper}>
+        <UserAvatar
+          avatarUrl={avatarUrl}
+          userId={requesterId}
+          size={AVATAR_SIZE}
           accessibilityLabel={`${nickname}のプロフィール画像`}
         />
-      ) : (
-        <View style={[styles.avatar, styles.avatarFallback]}>
-          <Ionicons
-            name="person-outline"
-            size={20}
-            color={colorTextSecondary}
-            accessibilityElementsHidden
-            importantForAccessibility="no"
-          />
-        </View>
-      )}
+      </View>
 
       {/* ユーザー情報 */}
       <View style={styles.info}>
@@ -182,18 +167,8 @@ const styles = StyleSheet.create({
     borderBottomColor: colorBorderLight,
     backgroundColor: colorBackground,
   },
-  avatar: {
-    width: AVATAR_SIZE,
-    height: AVATAR_SIZE,
-    borderRadius: AVATAR_BORDER_RADIUS,
-    borderWidth: 1.5,
-    borderColor: colorBorder,
+  avatarWrapper: {
     marginRight: spacing4,
-  },
-  avatarFallback: {
-    backgroundColor: colorSurfaceMuted,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   info: {
     flex: 1,

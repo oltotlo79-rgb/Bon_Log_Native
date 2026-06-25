@@ -10,11 +10,9 @@
 
 import React, { useMemo, useState, useCallback } from 'react';
 import { View, Text, StyleSheet, Pressable, Alert, Platform, Modal } from 'react-native';
-import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import {
-  colorBorder,
   colorBorderLight,
   colorSurface,
   colorSurfaceMuted,
@@ -34,8 +32,8 @@ import {
   textBase,
   textSm,
   textMd,
-  durationFast,
 } from '@/lib/constants/design-tokens';
+import { UserAvatar } from '@/components/common/UserAvatar';
 import { formatRelativeTime, formatAbsoluteDateTime } from '@/lib/utils/relative-time';
 import { parseContentSegments } from '@/lib/utils/parse-content-segments';
 import { routeUserDetail } from '@/lib/constants/routes';
@@ -160,22 +158,13 @@ function CommentItemInner({
           accessibilityLabel={`${item.user.nickname}のプロフィールを表示`}
           style={styles.avatarButton}
         >
-          {item.user.avatarUrl !== null ? (
-            <Image
-              source={{ uri: item.user.avatarUrl }}
-              style={styles.avatar}
-              contentFit="cover"
-              transition={durationFast}
-              recyclingKey={item.user.id}
-              accessibilityLabel={`${item.user.nickname}のプロフィール画像`}
-            />
-          ) : (
-            <View style={[styles.avatar, styles.avatarFallback]}>
-              <Text style={styles.avatarFallbackText}>
-                {item.user.nickname.charAt(0)}
-              </Text>
-            </View>
-          )}
+          <UserAvatar
+            avatarUrl={item.user.avatarUrl}
+            userId={item.user.id}
+            size={AVATAR_SIZE}
+            accessibilityLabel={`${item.user.nickname}のプロフィール画像`}
+            recyclingKey={item.user.id}
+          />
         </Pressable>
 
         {/* コンテンツエリア */}
@@ -361,22 +350,6 @@ const styles = StyleSheet.create({
     height: AVATAR_SIZE,
     marginRight: spacing3,
     flexShrink: 0,
-  },
-  avatar: {
-    width: AVATAR_SIZE,
-    height: AVATAR_SIZE,
-    borderRadius: radiusFull,
-    borderWidth: 1.5,
-    borderColor: colorBorder,
-  },
-  avatarFallback: {
-    backgroundColor: colorSurfaceMuted,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarFallbackText: {
-    ...textSm,
-    color: colorTextSecondary,
   },
   contentArea: {
     flex: 1,

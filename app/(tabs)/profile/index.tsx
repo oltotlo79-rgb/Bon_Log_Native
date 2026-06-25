@@ -1,11 +1,11 @@
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useCurrentUserQuery } from '@/lib/queries/auth';
 import { ScreenLoading } from '@/components/common/ScreenLoading';
 import { ScreenError } from '@/components/common/ScreenError';
+import { UserAvatar } from '@/components/common/UserAvatar';
 import {
   colorBackground,
   colorSurface,
@@ -101,25 +101,12 @@ export default function ProfileScreen() {
       <View style={styles.content}>
         <View style={styles.profileCard}>
           <View style={styles.avatarWrapper}>
-            {user.avatarUrl !== null && user.avatarUrl !== undefined && user.avatarUrl.length > 0 ? (
-              <Image
-                source={{ uri: user.avatarUrl }}
-                style={styles.avatar}
-                contentFit="cover"
-                accessibilityLabel={`${user.nickname} のアバター`}
-                accessibilityRole="image"
-              />
-            ) : (
-              <View style={styles.avatarPlaceholder}>
-                <Ionicons
-                  name="person-outline"
-                  size={36}
-                  color={colorTextSecondary}
-                  accessibilityElementsHidden
-                  importantForAccessibility="no"
-                />
-              </View>
-            )}
+            <UserAvatar
+              avatarUrl={user.avatarUrl}
+              userId={user.id}
+              size={AVATAR_SIZE}
+              accessibilityLabel={`${user.nickname} のアバター`}
+            />
 
             {user.isPremium && (
               <View
@@ -211,19 +198,6 @@ const styles = StyleSheet.create({
   },
   avatarWrapper: {
     position: 'relative',
-  },
-  avatar: {
-    width: AVATAR_SIZE,
-    height: AVATAR_SIZE,
-    borderRadius: radiusFull,
-  },
-  avatarPlaceholder: {
-    width: AVATAR_SIZE,
-    height: AVATAR_SIZE,
-    borderRadius: radiusFull,
-    backgroundColor: colorSurfaceMuted,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   premiumBadge: {
     position: 'absolute',

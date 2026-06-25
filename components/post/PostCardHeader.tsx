@@ -7,24 +7,21 @@
 
 import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
-import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import {
-  colorBorder,
   colorSurfaceMuted,
   colorTextPrimary,
   colorTextSecondary,
   spacing2,
   spacing3,
-  radiusFull,
   textMd,
   textSm,
   textXs,
-  durationFast,
 } from '@/lib/constants/design-tokens';
 import { formatRelativeTime, formatAbsoluteDateTime } from '@/lib/utils/relative-time';
 import { routeUserDetail } from '@/lib/constants/routes';
+import { UserAvatar } from '@/components/common/UserAvatar';
 
 // ---------------------------------------------------------------------------
 // 定数
@@ -107,22 +104,13 @@ export function PostCardHeader({
           accessibilityLabel={`${user.nickname}のプロフィールを表示`}
           style={styles.avatarButton}
         >
-          {user.avatarUrl !== null && user.avatarUrl !== undefined ? (
-            <Image
-              source={{ uri: user.avatarUrl }}
-              style={styles.avatar}
-              contentFit="cover"
-              transition={durationFast}
-              recyclingKey={user.id}
-              accessibilityLabel={`${user.nickname}のプロフィール画像`}
-            />
-          ) : (
-            <View style={[styles.avatar, styles.avatarFallback]}>
-              <Text style={styles.avatarFallbackText}>
-                {user.nickname.charAt(0)}
-              </Text>
-            </View>
-          )}
+          <UserAvatar
+            avatarUrl={user.avatarUrl}
+            userId={user.id}
+            size={AVATAR_SIZE}
+            accessibilityLabel={`${user.nickname}のプロフィール画像`}
+            recyclingKey={user.id}
+          />
         </Pressable>
 
         {/* ニックネーム・日時エリア */}
@@ -188,22 +176,6 @@ const styles = StyleSheet.create({
   avatarButton: {
     width: AVATAR_SIZE,
     height: AVATAR_SIZE,
-  },
-  avatar: {
-    width: AVATAR_SIZE,
-    height: AVATAR_SIZE,
-    borderRadius: radiusFull,
-    borderWidth: 1.5,
-    borderColor: colorBorder,
-  },
-  avatarFallback: {
-    backgroundColor: colorSurfaceMuted,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarFallbackText: {
-    ...textMd,
-    color: colorTextSecondary,
   },
   nameTimeArea: {
     flex: 1,

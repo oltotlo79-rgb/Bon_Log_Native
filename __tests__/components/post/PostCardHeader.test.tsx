@@ -36,35 +36,40 @@ describe('PostCardHeader', () => {
   });
 
   describe('アバター表示', () => {
-    it('avatarUrl が null のときフォールバック（ニックネーム頭文字）が表示される', () => {
+    it('avatarUrl が null のとき enso アバター画像が表示される', () => {
       render(
         <PostCardHeader
           user={makeUser({ nickname: '黒松', avatarUrl: null })}
           createdAt={BASE_DATE}
         />
       );
-      expect(screen.getByText('黒')).toBeTruthy();
+      // UserAvatar は avatarUrl=null のとき enso 画像（Image ロール）を表示する
+      expect(
+        screen.getByLabelText('黒松のプロフィール画像')
+      ).toBeTruthy();
     });
 
-    it('avatarUrl が undefined のときフォールバックが表示される', () => {
+    it('avatarUrl が undefined のとき enso アバター画像が表示される', () => {
       render(
         <PostCardHeader
           user={makeUser({ nickname: '五葉', avatarUrl: undefined })}
           createdAt={BASE_DATE}
         />
       );
-      expect(screen.getByText('五')).toBeTruthy();
+      expect(
+        screen.getByLabelText('五葉のプロフィール画像')
+      ).toBeTruthy();
     });
 
-    it('avatarUrl があるとき expo-image が表示される（フォールバックテキストなし）', () => {
-      render(
+    it('avatarUrl があるとき uri ベースの画像が表示される', () => {
+      const { toJSON } = render(
         <PostCardHeader
           user={makeUser({ nickname: '盆栽師', avatarUrl: 'https://example.com/avatar.jpg' })}
           createdAt={BASE_DATE}
         />
       );
-      // フォールバックテキスト（頭文字「盆」）が表示されない
-      expect(screen.queryByText('盆')).toBeNull();
+      // uri ベースの source が存在することを確認
+      expect(JSON.stringify(toJSON())).toContain('https://example.com/avatar.jpg');
     });
   });
 

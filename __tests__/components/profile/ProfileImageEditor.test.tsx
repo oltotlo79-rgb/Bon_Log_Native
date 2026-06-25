@@ -5,8 +5,8 @@
  */
 
 import React from 'react';
-import { render, fireEvent } from '@testing-library/react-native';
-import { Alert, Text, type AlertButton } from 'react-native';
+import { render, fireEvent, screen } from '@testing-library/react-native';
+import { Alert, type AlertButton } from 'react-native';
 import { ProfileImageEditor, type ProfileImageEditorProps } from '@/components/profile/ProfileImageEditor';
 
 const defaultProps: ProfileImageEditorProps = {
@@ -27,15 +27,11 @@ beforeEach(() => {
 });
 
 describe('ProfileImageEditor', () => {
-  it('ニックネームの頭文字がアバタープレースホルダーに含まれる（accessibilityElementsHidden=true）', () => {
-    const { UNSAFE_getAllByType } = render(<ProfileImageEditor {...defaultProps} />);
-    // 頭文字テキストは accessibilityElementsHidden のためスクリーンリーダーから隠れているが DOM には存在する
-    const textElements = UNSAFE_getAllByType(Text);
-    const initialText = textElements.find((el: { props: { children?: unknown; accessibilityElementsHidden?: boolean } }) =>
-      el.props.accessibilityElementsHidden === true &&
-      String(el.props.children) === 'テ'
-    );
-    expect(initialText).toBeTruthy();
+  it('アバターエリアに enso 画像が表示される（avatarUrl=null 時）', () => {
+    render(<ProfileImageEditor {...defaultProps} />);
+    // UserAvatar は avatarUrl=null のとき enso 画像を表示する
+    // accessibilityLabel "プロフィール写真" を持つ Image が存在することを確認
+    expect(screen.getByLabelText('プロフィール写真')).toBeTruthy();
   });
 
   it('ヘッダーボタンの accessibilityLabel に「未設定」が含まれる（画像なし）', () => {
@@ -43,11 +39,12 @@ describe('ProfileImageEditor', () => {
     expect(getByLabelText(/ヘッダー画像を変更。現在未設定/)).toBeTruthy();
   });
 
-  it('avatarUrl がある場合はアバタープレースホルダーを表示しない', () => {
-    const { queryByText } = render(
+  it('avatarUrl がある場合は uri ベースの画像が表示される', () => {
+    const { toJSON } = render(
       <ProfileImageEditor {...defaultProps} avatarUrl="https://cdn.bon-log.com/avatar.jpg" />
     );
-    expect(queryByText('テ')).toBeNull();
+    // uri 指定の Image が表示されることを JSON ツリーで確認
+    expect(JSON.stringify(toJSON())).toContain('https://cdn.bon-log.com/avatar.jpg');
   });
 
   it('ヘッダーボタンの accessibilityLabel に「設定済み」が含まれる（画像あり）', () => {

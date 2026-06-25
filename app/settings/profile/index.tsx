@@ -350,6 +350,7 @@ export default function SettingsProfileScreen() {
             avatarLocalUri={form.avatarLocalUri}
             headerLocalUri={form.headerLocalUri}
             nickname={form.nickname}
+            userId={profile.id}
             onAvatarChange={setAvatarLocalUri}
             onHeaderChange={setHeaderLocalUri}
             onAvatarRemove={() => {

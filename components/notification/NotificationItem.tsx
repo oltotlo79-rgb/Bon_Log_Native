@@ -7,7 +7,6 @@
 
 import React from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
-import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import type { NotificationItem as NotificationItemType } from '@/lib/queries/notifications';
 import { getNotificationMessage } from '@/lib/utils/notification-message';
@@ -30,6 +29,7 @@ import {
   textBase,
   textSm,
 } from '@/lib/constants/design-tokens';
+import { UserAvatar } from '@/components/common/UserAvatar';
 
 // ---------------------------------------------------------------------------
 // 定数
@@ -158,13 +158,11 @@ function NotificationItemBase({ notification, onPress }: NotificationItemProps) 
       {/* アバター + タイプバッジ */}
       <View style={styles.avatarContainer}>
         {actor !== null && actor !== undefined ? (
-          <Image
-            source={{ uri: actor.avatarUrl ?? undefined }}
-            style={styles.avatar}
-            contentFit="cover"
-            accessibilityRole="image"
+          <UserAvatar
+            avatarUrl={actor.avatarUrl}
+            userId={actor.id}
+            size={AVATAR_SIZE}
             accessibilityLabel={`${actor.nickname}のプロフィール画像`}
-            accessibilityElementsHidden
           />
         ) : (
           <View
