@@ -229,7 +229,7 @@ export default function NotificationsScreen() {
       {/* 通知リスト */}
       {notifications.length === 0 ? (
         <ScreenEmpty
-          iconName="notifications-outline"
+          variant="notification"
           title="まだ通知はありません"
           description="いいねやコメントが届くとここに表示されます"
         />

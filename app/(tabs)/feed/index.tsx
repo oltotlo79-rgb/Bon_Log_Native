@@ -149,7 +149,7 @@ export default function FeedScreen() {
     if (items.length === 0) {
       return (
         <ScreenEmpty
-          iconName="leaf-outline"
+          variant="feed"
           title="タイムラインに投稿がありません"
           description="ユーザーをフォローすると、その人の投稿がここに表示されます"
           actionLabel="ユーザーを検索"

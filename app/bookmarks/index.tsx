@@ -139,7 +139,7 @@ export default function BookmarksScreen() {
 
       {allItems.length === 0 ? (
         <ScreenEmpty
-          iconName="bookmark-outline"
+          variant="bookmark"
           title="ブックマークがありません"
           description="投稿のブックマークボタンをタップすると、ここに保存されます。"
           actionLabel="フィードを見る"

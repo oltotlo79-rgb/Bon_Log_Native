@@ -1,13 +1,14 @@
 /**
  * @module components/common/ScreenEmpty
  * データが 0 件の場合に表示するコンポーネント。
- * アイコン + 見出し + 補足 + 任意アクションボタン。
- * イラスト不使用・Ionicons で代替（PM 決定事項）。
+ * 墨絵イラスト（webP） + 見出し + 補足 + 任意アクションボタン。
+ * variant で Web 版 placeholders に対応する墨絵を選択する。
  * 仕様: docs/design/common-states.md §3
  */
 
 import React from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
+import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
 import {
   colorBackground,
@@ -29,11 +30,38 @@ import {
 } from '@/lib/constants/design-tokens';
 
 // ---------------------------------------------------------------------------
+// 墨絵イラスト定義
+// Web 版 placeholders（400×300 px webP）をモバイル向けサイズに縮小表示する。
+// 表示サイズ定数は lib/constants/limits/ui.ts への移行を core チームへ依頼中。
+// ---------------------------------------------------------------------------
+
+const ILLUSTRATION_WIDTH = 192;
+const ILLUSTRATION_HEIGHT = 144;
+
+// variant → ローカル画像のマッピング（アスペクト比 4:3 を維持）
+// require() の戻り値は Expo Metro が解決するリソース ID（number）。
+/* eslint-disable @typescript-eslint/no-require-imports */
+const ILLUSTRATION_MAP: Record<string, number> = {
+  feed: require('@/assets/images/placeholders/empty-timeline.webp'),
+  bookmark: require('@/assets/images/placeholders/empty-bookmark.webp'),
+  notification: require('@/assets/images/placeholders/empty-notification.webp'),
+  search: require('@/assets/images/placeholders/empty-search.webp'),
+};
+/* eslint-enable @typescript-eslint/no-require-imports */
+
+type EmptyVariant = 'feed' | 'bookmark' | 'notification' | 'search';
+
+// ---------------------------------------------------------------------------
 // Props
 // ---------------------------------------------------------------------------
 
 type ScreenEmptyProps = {
-  /** アイコン名（Ionicons）。省略時は "leaf-outline" */
+  /**
+   * 墨絵バリアント。指定すると Web 版対応の墨絵を表示し、アイコン円を非表示にする。
+   * 省略時はアイコン円（iconName）を表示する従来の挙動を維持する。
+   */
+  variant?: EmptyVariant;
+  /** アイコン名（Ionicons）。variant 未指定時のフォールバック。省略時は "leaf-outline" */
   iconName?: React.ComponentProps<typeof Ionicons>['name'];
   /** 見出し文言（必須） */
   title: string;
@@ -56,6 +84,7 @@ const ICON_SIZE = 32;
 const ACTION_BUTTON_MIN_WIDTH = 160;
 
 export function ScreenEmpty({
+  variant,
   iconName = 'leaf-outline',
   title,
   description,
@@ -64,17 +93,30 @@ export function ScreenEmpty({
   subLinkLabel,
   onSubLink,
 }: ScreenEmptyProps) {
+  const illustrationSource = variant !== undefined ? ILLUSTRATION_MAP[variant] : undefined;
+
   return (
     <View style={styles.container}>
-      <View style={styles.iconCircle}>
-        <Ionicons
-          name={iconName}
-          size={ICON_SIZE}
-          color={colorTextSecondary}
+      {illustrationSource !== undefined ? (
+        <Image
+          source={illustrationSource}
+          style={styles.illustration}
+          contentFit="contain"
+          accessibilityLabel="空状態のイラスト"
           accessibilityElementsHidden
           importantForAccessibility="no"
         />
-      </View>
+      ) : (
+        <View style={styles.iconCircle}>
+          <Ionicons
+            name={iconName}
+            size={ICON_SIZE}
+            color={colorTextSecondary}
+            accessibilityElementsHidden
+            importantForAccessibility="no"
+          />
+        </View>
+      )}
 
       <Text style={styles.title} accessibilityRole="header">
         {title}
@@ -117,6 +159,12 @@ const styles = StyleSheet.create({
     padding: spacing8,
     backgroundColor: colorBackground,
     gap: spacing4,
+  },
+  illustration: {
+    width: ILLUSTRATION_WIDTH,
+    height: ILLUSTRATION_HEIGHT,
+    opacity: 0.6,
+    marginBottom: spacing2,
   },
   iconCircle: {
     width: ICON_CIRCLE_SIZE,

@@ -228,7 +228,7 @@ function PostSearchResults({ query, currentUserId }: PostSearchResultsProps) {
   if (posts.length === 0) {
     return (
       <ScreenEmpty
-        iconName="search"
+        variant="search"
         title={`「${query}」の投稿は見つかりませんでした`}
         description="別のキーワードでお試しください"
       />
@@ -335,7 +335,7 @@ function UserSearchResults({ query, currentUserId }: UserSearchResultsProps) {
   if (users.length === 0) {
     return (
       <ScreenEmpty
-        iconName="search"
+        variant="search"
         title={`「${query}」に一致するユーザーはいません`}
         description="別のキーワードでお試しください"
       />
