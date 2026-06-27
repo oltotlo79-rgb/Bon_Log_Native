@@ -7,13 +7,17 @@
 import React, { useState, useCallback, memo } from 'react';
 import {
   View,
+  Text,
   FlatList,
   StyleSheet,
   ActivityIndicator,
   RefreshControl,
+  TouchableOpacity,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { Stack, router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Ionicons } from '@expo/vector-icons';
 import {
   usePesticideDiseasePestsQuery,
   usePesticideProductsQuery,
@@ -28,11 +32,24 @@ import { CatalogTabs } from '@/components/browse/CatalogTabs';
 import { CatalogListItem } from '@/components/browse/CatalogListItem';
 import { useOnlineStatus } from '@/hooks/use-online-status';
 import { ERR_PESTICIDES_LOAD_FAILED } from '@/lib/constants/errors';
+import { resolveApiImageUrl } from '@/lib/utils/resolve-api-image-url';
 import {
   colorBackground,
   colorActionPrimary,
+  colorSurfaceMuted,
+  colorTextPrimary,
+  colorTextSecondary,
+  colorTextTertiary,
+  colorBorderLight,
+  spacing2,
+  spacing3,
   spacing4,
   spacing6,
+  radiusSm,
+  radiusMd,
+  textMd,
+  textSm,
+  textXs,
 } from '@/lib/constants/design-tokens';
 
 // ---------------------------------------------------------------------------
@@ -59,19 +76,53 @@ type TabKey = typeof TABS[number]['key'];
 // セルコンポーネント
 // ---------------------------------------------------------------------------
 
+const THUMBNAIL_SIZE = 52;
+const CHEVRON_SIZE = 16;
+
 const DiseasePestCell = memo(function DiseasePestCell({ item }: { item: DiseasePestItem }) {
+  const thumbnailUri = resolveApiImageUrl(item.imageUrl);
+
   const handlePress = useCallback(() => {
     router.push({ pathname: '/pesticides/disease-pests/[slug]', params: { slug: item.slug } });
   }, [item.slug]);
 
   return (
-    <CatalogListItem
-      title={item.name}
-      subtitle={item.description ?? undefined}
-      categoryLabel={item.category}
+    <TouchableOpacity
+      style={styles.diseasePestRow}
       onPress={handlePress}
+      activeOpacity={0.7}
+      accessibilityRole="button"
       accessibilityLabel={`${item.name}の詳細を見る`}
-    />
+    >
+      <View style={styles.diseasePestThumbnailWrapper}>
+        {thumbnailUri !== null ? (
+          <Image
+            source={{ uri: thumbnailUri }}
+            style={styles.diseasePestThumbnail}
+            contentFit="cover"
+            accessibilityLabel={`${item.name}のサムネイル`}
+          />
+        ) : (
+          <View style={styles.diseasePestThumbnailPlaceholder} />
+        )}
+      </View>
+      <View style={styles.diseasePestContent}>
+        <Text style={styles.diseasePestName} numberOfLines={1}>{item.name}</Text>
+        {item.description !== null && (
+          <Text style={styles.diseasePestDesc} numberOfLines={1}>{item.description}</Text>
+        )}
+        <View style={styles.diseasePestChip}>
+          <Text style={styles.diseasePestChipText}>{item.category}</Text>
+        </View>
+      </View>
+      <Ionicons
+        name="chevron-forward"
+        size={CHEVRON_SIZE}
+        color={colorTextTertiary}
+        accessibilityElementsHidden
+        importantForAccessibility="no"
+      />
+    </TouchableOpacity>
   );
 });
 
@@ -325,5 +376,55 @@ const styles = StyleSheet.create({
   listFooter: {
     padding: spacing4,
     alignItems: 'center',
+  },
+  diseasePestRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    minHeight: 60,
+    paddingHorizontal: spacing4,
+    paddingVertical: spacing3,
+    borderBottomWidth: 1,
+    borderBottomColor: colorBorderLight,
+    gap: spacing3,
+  },
+  diseasePestThumbnailWrapper: {
+    width: THUMBNAIL_SIZE,
+    height: THUMBNAIL_SIZE,
+    borderRadius: radiusMd,
+    overflow: 'hidden',
+    flexShrink: 0,
+  },
+  diseasePestThumbnail: {
+    width: THUMBNAIL_SIZE,
+    height: THUMBNAIL_SIZE,
+  },
+  diseasePestThumbnailPlaceholder: {
+    width: THUMBNAIL_SIZE,
+    height: THUMBNAIL_SIZE,
+    backgroundColor: colorSurfaceMuted,
+  },
+  diseasePestContent: {
+    flex: 1,
+    gap: spacing2,
+  },
+  diseasePestName: {
+    ...textMd,
+    color: colorTextPrimary,
+    fontWeight: '600',
+  },
+  diseasePestDesc: {
+    ...textSm,
+    color: colorTextSecondary,
+  },
+  diseasePestChip: {
+    alignSelf: 'flex-start',
+    backgroundColor: colorSurfaceMuted,
+    borderRadius: radiusSm,
+    paddingHorizontal: spacing2,
+    paddingVertical: 2,
+  },
+  diseasePestChipText: {
+    ...textXs,
+    color: colorTextSecondary,
   },
 });

@@ -51,8 +51,21 @@ function makeDiseasePestsData() {
     pages: [
       {
         items: [
-          { id: 'dp1', slug: 'aphid', name: 'アブラムシ', category: '害虫', description: '新芽に付く小型害虫' },
-          { id: 'dp2', slug: 'spider-mite', name: 'ハダニ', category: '害虫', description: null },
+          { id: 'dp1', slug: 'aphid', name: 'アブラムシ', category: '害虫', description: '新芽に付く小型害虫', imageUrl: 'https://cdn.example.com/aphid.jpg' },
+          { id: 'dp2', slug: 'spider-mite', name: 'ハダニ', category: '害虫', description: null, imageUrl: null },
+        ],
+        nextCursor: null,
+      },
+    ],
+  };
+}
+
+function makeDiseasePestsDataWithRelativeImageUrl() {
+  return {
+    pages: [
+      {
+        items: [
+          { id: 'dp1', slug: 'aphid', name: 'アブラムシ', category: '害虫', description: null, imageUrl: '/images/aphid.jpg' },
         ],
         nextCursor: null,
       },
@@ -170,6 +183,24 @@ describe('PesticidesScreen 病害虫タブ', () => {
     mockDiseasePestsQuery.data = { pages: [{ items: [], nextCursor: null }] };
     renderWithProviders(<PesticidesScreen />);
     expect(screen.getByText('データがありません')).toBeTruthy();
+  });
+
+  it('imageUrl がある病害虫アイテムのサムネイルが表示される', () => {
+    mockDiseasePestsQuery.data = makeDiseasePestsData();
+    renderWithProviders(<PesticidesScreen />);
+    expect(screen.getByLabelText('アブラムシのサムネイル')).toBeTruthy();
+  });
+
+  it('imageUrl が null の病害虫アイテムはサムネイルを表示しない', () => {
+    mockDiseasePestsQuery.data = makeDiseasePestsData();
+    renderWithProviders(<PesticidesScreen />);
+    expect(screen.queryByLabelText('ハダニのサムネイル')).toBeNull();
+  });
+
+  it('imageUrl が相対パスの病害虫アイテムもサムネイルが表示される', () => {
+    mockDiseasePestsQuery.data = makeDiseasePestsDataWithRelativeImageUrl();
+    renderWithProviders(<PesticidesScreen />);
+    expect(screen.getByLabelText('アブラムシのサムネイル')).toBeTruthy();
   });
 
   it('病害虫エラー時に ScreenError が表示される', () => {

@@ -111,8 +111,11 @@ type TreeSpeciesCellProps = { item: TreeSpeciesItem };
 
 const TreeSpeciesCell = memo(function TreeSpeciesCell({ item }: TreeSpeciesCellProps) {
   const handlePress = useCallback(() => {
-    router.push({ pathname: '/fertilizers/tree-species/[slug]', params: { slug: item.slug } });
-  }, [item.slug]);
+    router.push({
+      pathname: '/fertilizers/tree-species/[slug]',
+      params: { slug: item.slug, name: item.name },
+    });
+  }, [item.slug, item.name]);
 
   return (
     <CatalogListItem

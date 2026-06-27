@@ -6,6 +6,7 @@
 
 import React, { useCallback } from 'react';
 import { View, Text, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
+import { Image } from 'expo-image';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { usePesticideDiseasePestDetailQuery } from '@/lib/queries/pesticides';
@@ -14,6 +15,7 @@ import { ScreenLoading } from '@/components/common/ScreenLoading';
 import { ScreenError } from '@/components/common/ScreenError';
 import { useOnlineStatus } from '@/hooks/use-online-status';
 import { ERR_PESTICIDES_LOAD_FAILED } from '@/lib/constants/errors';
+import { resolveApiImageUrl } from '@/lib/utils/resolve-api-image-url';
 import {
   colorBackground,
   colorSurfaceMuted,
@@ -24,7 +26,9 @@ import {
   spacing2,
   spacing3,
   spacing4,
+  spacing6,
   spacing8,
+  radiusMd,
   radiusSm,
   textBase,
   textLg,
@@ -46,6 +50,7 @@ export default function DiseasePestDetailScreen() {
   const slug = typeof rawSlug === 'string' ? rawSlug : Array.isArray(rawSlug) ? rawSlug[0] : '';
 
   const { data, isLoading, isError, refetch } = usePesticideDiseasePestDetailQuery(slug ?? '');
+  const headerImageUri = resolveApiImageUrl(data?.imageUrl);
 
   const handleProductPress = useCallback((productSlug: string) => {
     router.push({ pathname: '/pesticides/products/[slug]', params: { slug: productSlug } });
@@ -78,6 +83,14 @@ export default function DiseasePestDetailScreen() {
           ]}
         >
           {/* ヘッダー */}
+          {headerImageUri !== null && (
+            <Image
+              source={{ uri: headerImageUri }}
+              style={styles.headerImage}
+              contentFit="contain"
+              accessibilityLabel={`${data.name}の画像`}
+            />
+          )}
           <Text style={styles.name}>{data.name}</Text>
           {data.nameKana !== null && (
             <Text style={styles.nameKana}>{data.nameKana}</Text>
@@ -129,6 +142,13 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: spacing4,
     paddingTop: spacing4,
+  },
+  headerImage: {
+    width: '100%',
+    aspectRatio: 16 / 9,
+    borderRadius: radiusMd,
+    backgroundColor: colorSurfaceMuted,
+    marginBottom: spacing6,
   },
   name: {
     ...textXl,

@@ -218,14 +218,14 @@ describe('FertilizersScreen 樹種タブ', () => {
     expect(screen.getByText('欅')).toBeTruthy();
   });
 
-  it('樹種タップでスケジュール画面へ push する', () => {
+  it('樹種タップでスケジュール画面へ push する（name パラメータを含む）', () => {
     mockTreeSpeciesQuery.data = makeTreeSpecies();
     renderWithProviders(<FertilizersScreen />);
     fireEvent.press(screen.getByLabelText('樹種'));
     fireEvent.press(screen.getByLabelText('黒松の施肥スケジュールを見る'));
     expect(mockRouter.push).toHaveBeenCalledWith({
       pathname: '/fertilizers/tree-species/[slug]',
-      params: { slug: 'kuromatsu' },
+      params: { slug: 'kuromatsu', name: '黒松' },
     });
   });
 

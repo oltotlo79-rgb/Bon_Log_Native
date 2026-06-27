@@ -124,6 +124,9 @@ export default function TreeSpeciesScheduleScreen() {
   const rawSlug = params['slug'];
   const slug = typeof rawSlug === 'string' ? rawSlug : Array.isArray(rawSlug) ? rawSlug[0] : '';
 
+  const rawName = params['name'];
+  const treeSpeciesName = typeof rawName === 'string' && rawName.length > 0 ? rawName : slug;
+
   const { data, isLoading, isError, refetch } = useFertilizationScheduleQuery(slug ?? '');
   const [selectedMonth, setSelectedMonth] = useState<number | null>(null);
 
@@ -140,7 +143,7 @@ export default function TreeSpeciesScheduleScreen() {
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <Stack.Screen
         options={{
-          title: `${slug}の施肥スケジュール`,
+          title: `${treeSpeciesName}の施肥スケジュール`,
           headerShown: true,
         }}
       />

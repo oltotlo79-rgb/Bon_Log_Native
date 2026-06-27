@@ -187,6 +187,34 @@ describe('DiseasePestDetailScreen 正常表示', () => {
     renderWithProviders(<DiseasePestDetailScreen />);
     expect(screen.queryByText('あぶらむし')).toBeNull();
   });
+
+  it('imageUrl がある場合はヘッダー画像が表示される', () => {
+    mockDetailQuery.data = makeDiseasePestDetail({ imageUrl: 'https://cdn.example.com/aphid.jpg' });
+    renderWithProviders(<DiseasePestDetailScreen />);
+    expect(screen.getByLabelText('アブラムシの画像')).toBeTruthy();
+  });
+
+  it('imageUrl が null の場合はヘッダー画像が表示されない', () => {
+    mockDetailQuery.data = makeDiseasePestDetail({ imageUrl: null });
+    renderWithProviders(<DiseasePestDetailScreen />);
+    expect(screen.queryByLabelText('アブラムシの画像')).toBeNull();
+  });
+
+  it('imageUrl が相対パスの場合もヘッダー画像が表示される', () => {
+    mockDetailQuery.data = makeDiseasePestDetail({ imageUrl: '/images/aphid.jpg' });
+    renderWithProviders(<DiseasePestDetailScreen />);
+    expect(screen.getByLabelText('アブラムシの画像')).toBeTruthy();
+  });
+
+  it('imageUrl が未定義（imageUrl プロパティなし）の場合はヘッダー画像が表示されない', () => {
+    const dataWithoutImageUrl = makeDiseasePestDetail();
+    // imageUrl フィールドが存在しない場合（undefined）を確認
+    const { imageUrl: _unused, ...dataWithoutField } = dataWithoutImageUrl as Record<string, unknown>;
+    void _unused;
+    mockDetailQuery.data = dataWithoutField;
+    renderWithProviders(<DiseasePestDetailScreen />);
+    expect(screen.queryByLabelText('アブラムシの画像')).toBeNull();
+  });
 });
 
 // ---------------------------------------------------------------------------

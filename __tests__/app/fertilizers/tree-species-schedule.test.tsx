@@ -84,6 +84,36 @@ describe('TreeSpeciesScheduleScreen slug ガード', () => {
 });
 
 // ---------------------------------------------------------------------------
+// name パラメータ（タイトル用ツリー名）
+// ---------------------------------------------------------------------------
+
+describe('TreeSpeciesScheduleScreen name パラメータ', () => {
+  it('name パラメータがあるとき slug ガードを通過する（isError でなければエラーなし）', () => {
+    mockUseLocalSearchParams.mockReturnValue({ slug: 'kuromatsu', name: '黒松' });
+    renderWithProviders(<TreeSpeciesScheduleScreen />);
+    expect(screen.queryByText('施肥情報を読み込めませんでした。')).toBeNull();
+  });
+
+  it('name パラメータが空文字のとき slug をフォールバックとして使用しエラーなし', () => {
+    mockUseLocalSearchParams.mockReturnValue({ slug: 'kuromatsu', name: '' });
+    renderWithProviders(<TreeSpeciesScheduleScreen />);
+    expect(screen.queryByText('施肥情報を読み込めませんでした。')).toBeNull();
+  });
+
+  it('name パラメータが配列のとき slug をフォールバックとして使用しエラーなし', () => {
+    mockUseLocalSearchParams.mockReturnValue({ slug: 'kuromatsu', name: ['黒松', 'other'] });
+    renderWithProviders(<TreeSpeciesScheduleScreen />);
+    expect(screen.queryByText('施肥情報を読み込めませんでした。')).toBeNull();
+  });
+
+  it('name パラメータがないとき slug をフォールバックとして使用しエラーなし', () => {
+    mockUseLocalSearchParams.mockReturnValue({ slug: 'kuromatsu' });
+    renderWithProviders(<TreeSpeciesScheduleScreen />);
+    expect(screen.queryByText('施肥情報を読み込めませんでした。')).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
 // ローディング
 // ---------------------------------------------------------------------------
 
