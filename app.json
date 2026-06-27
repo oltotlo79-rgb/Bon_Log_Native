@@ -81,6 +81,12 @@
           "photosPermission": "投稿や盆栽の記録に使う写真を選ぶため、写真ライブラリへのアクセスを許可してください。",
           "cameraPermission": "写真を撮影して投稿するため、カメラへのアクセスを許可してください。"
         }
+      ],
+      [
+        "@react-native-google-signin/google-signin",
+        {
+          "iosUrlScheme": "com.googleusercontent.apps.placeholder-ios-client-id"
+        }
       ]
     ],
     "experiments": {

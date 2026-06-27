@@ -1,30 +1,29 @@
 /**
  * lib/auth/use-google-auth のユニットテスト。
- * expo-auth-session/providers/google と useGoogleSignInMutation をモックし、
+ * @react-native-google-signin/google-signin と useGoogleSignInMutation をモックし、
  * フックの公開 API（isAvailable, isLoading, error, signIn の全分岐）を検証する。
  *
- * signIn 本体のテストでは beforeEach で EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID を設定し、
- * request を非 null にすることで isAvailable=true を再現する。
+ * GoogleSignin.signIn は setup.ts で一元モック済み。
+ * 各テストでは jest.mocked(GoogleSignin.signIn).mockResolvedValue(...) で戻り値を差し替える。
  */
 
 import { renderHook, act } from '@testing-library/react-native';
 import React from 'react';
 import { QueryClientProvider } from '@tanstack/react-query';
+import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
 import { createTestQueryClient } from '@/__tests__/utils/test-utils';
 import { useGoogleAuth } from '@/lib/auth/use-google-auth';
+import {
+  ERR_GOOGLE_ID_TOKEN_MISSING,
+  ERR_GOOGLE_SIGN_IN_FAILED,
+} from '@/lib/constants/errors';
 
 // ---------------------------------------------------------------------------
 // モック設定
 // ---------------------------------------------------------------------------
 
-const mockPromptAsync = jest.fn();
 const mockMutateAsync = jest.fn();
-const mockUseIdTokenAuthRequest = jest.fn();
 const mockUseGoogleSignInMutation = jest.fn();
-
-jest.mock('expo-auth-session/providers/google', () => ({
-  useIdTokenAuthRequest: (...args: unknown[]) => mockUseIdTokenAuthRequest(...args),
-}));
 
 jest.mock('@/lib/queries/auth', () => ({
   useGoogleSignInMutation: (...args: unknown[]) => mockUseGoogleSignInMutation(...args),
@@ -40,16 +39,6 @@ function createWrapper() {
     return React.createElement(QueryClientProvider, { client: queryClient }, children);
   }
   return { Wrapper };
-}
-
-const FAKE_REQUEST = { url: 'https://accounts.google.com/o/oauth2/auth' };
-
-function setupRequestAndPrompt(
-  request: unknown,
-  promptResult: unknown = { type: 'success', params: { id_token: 'TOKEN' } }
-) {
-  mockPromptAsync.mockResolvedValue(promptResult);
-  mockUseIdTokenAuthRequest.mockReturnValue([request, null, mockPromptAsync]);
 }
 
 function setupMutation({
@@ -76,6 +65,9 @@ function setupMutation({
   });
 }
 
+const mockGoogleSignIn = jest.mocked(GoogleSignin.signIn);
+const mockHasPlayServices = jest.mocked(GoogleSignin.hasPlayServices);
+
 // ---------------------------------------------------------------------------
 // セットアップ
 // ---------------------------------------------------------------------------
@@ -84,7 +76,24 @@ beforeEach(() => {
   jest.clearAllMocks();
   mockMutateAsync.mockResolvedValue(undefined);
   setupMutation();
-  setupRequestAndPrompt(null);
+  // デフォルト: signIn は success + idToken あり
+  mockGoogleSignIn.mockResolvedValue({
+    type: 'success',
+    data: {
+      idToken: 'GOOGLE_ID_TOKEN',
+      serverAuthCode: null,
+      scopes: [],
+      user: {
+        email: 'test@example.com',
+        id: 'user-id',
+        givenName: 'Test',
+        familyName: 'User',
+        photo: null,
+        name: 'Test User',
+      },
+    },
+  });
+  mockHasPlayServices.mockResolvedValue(true);
 });
 
 // ---------------------------------------------------------------------------
@@ -92,19 +101,18 @@ beforeEach(() => {
 // ---------------------------------------------------------------------------
 
 describe('useGoogleAuth - isAvailable', () => {
-  it('request が null のとき isAvailable は false', () => {
-    setupRequestAndPrompt(null);
+  it('EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID が空のとき isAvailable は false', () => {
     const { Wrapper } = createWrapper();
     const { result } = renderHook(() => useGoogleAuth(), { wrapper: Wrapper });
     expect(result.current.isAvailable).toBe(false);
   });
 
-  it('request が非 null でも WEB_CLIENT_ID が空（テスト環境）のとき isAvailable は false', () => {
-    // テスト環境では EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID 未設定 → WEB_CLIENT_ID = ''
-    setupRequestAndPrompt(FAKE_REQUEST);
+  it('EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID が設定されているとき isAvailable は true', () => {
+    process.env['EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID'] = 'test-client-id.apps.googleusercontent.com';
     const { Wrapper } = createWrapper();
     const { result } = renderHook(() => useGoogleAuth(), { wrapper: Wrapper });
-    expect(result.current.isAvailable).toBe(false);
+    expect(result.current.isAvailable).toBe(true);
+    delete process.env['EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID'];
   });
 });
 
@@ -113,8 +121,7 @@ describe('useGoogleAuth - isAvailable', () => {
 // ---------------------------------------------------------------------------
 
 describe('useGoogleAuth - signIn（isAvailable=false）', () => {
-  it('request=null のとき signIn を呼んでも promptAsync は呼ばれない', async () => {
-    setupRequestAndPrompt(null);
+  it('WEB_CLIENT_ID が空のとき signIn を呼んでも hasPlayServices は呼ばれない', async () => {
     const { Wrapper } = createWrapper();
     const { result } = renderHook(() => useGoogleAuth(), { wrapper: Wrapper });
 
@@ -122,25 +129,12 @@ describe('useGoogleAuth - signIn（isAvailable=false）', () => {
       await result.current.signIn();
     });
 
-    expect(mockPromptAsync).not.toHaveBeenCalled();
-    expect(mockMutateAsync).not.toHaveBeenCalled();
-  });
-
-  it('WEB_CLIENT_ID が空のとき signIn を呼んでも promptAsync は呼ばれない', async () => {
-    setupRequestAndPrompt(FAKE_REQUEST);
-    const { Wrapper } = createWrapper();
-    const { result } = renderHook(() => useGoogleAuth(), { wrapper: Wrapper });
-
-    await act(async () => {
-      await result.current.signIn();
-    });
-
-    expect(mockPromptAsync).not.toHaveBeenCalled();
+    expect(mockHasPlayServices).not.toHaveBeenCalled();
+    expect(mockGoogleSignIn).not.toHaveBeenCalled();
     expect(mockMutateAsync).not.toHaveBeenCalled();
   });
 
   it('signIn を呼んでも resolve(undefined) になる（エラーにならない）', async () => {
-    setupRequestAndPrompt(null);
     const { Wrapper } = createWrapper();
     const { result } = renderHook(() => useGoogleAuth(), { wrapper: Wrapper });
 
@@ -156,7 +150,6 @@ describe('useGoogleAuth - signIn（isAvailable=false）', () => {
 
 describe('useGoogleAuth - isLoading', () => {
   it('mutation.isPending が true のとき isLoading が true になる', () => {
-    setupRequestAndPrompt(FAKE_REQUEST);
     setupMutation({ isPending: true });
     const { Wrapper } = createWrapper();
     const { result } = renderHook(() => useGoogleAuth(), { wrapper: Wrapper });
@@ -164,7 +157,6 @@ describe('useGoogleAuth - isLoading', () => {
   });
 
   it('mutation.isPending が false のとき isLoading が false になる', () => {
-    setupRequestAndPrompt(FAKE_REQUEST);
     setupMutation({ isPending: false });
     const { Wrapper } = createWrapper();
     const { result } = renderHook(() => useGoogleAuth(), { wrapper: Wrapper });
@@ -179,7 +171,6 @@ describe('useGoogleAuth - isLoading', () => {
 describe('useGoogleAuth - error', () => {
   it('mutation.error が設定されているとき error に反映される', () => {
     const mutationError = new Error('server validation failed');
-    setupRequestAndPrompt(FAKE_REQUEST);
     setupMutation({ error: mutationError });
     const { Wrapper } = createWrapper();
     const { result } = renderHook(() => useGoogleAuth(), { wrapper: Wrapper });
@@ -187,7 +178,6 @@ describe('useGoogleAuth - error', () => {
   });
 
   it('mutation.error が null のとき error は null', () => {
-    setupRequestAndPrompt(FAKE_REQUEST);
     setupMutation({ error: null });
     const { Wrapper } = createWrapper();
     const { result } = renderHook(() => useGoogleAuth(), { wrapper: Wrapper });
@@ -201,7 +191,6 @@ describe('useGoogleAuth - error', () => {
 
 describe('useGoogleAuth - 戻り値の構造', () => {
   it('signIn, isLoading, isAvailable, error の 4 フィールドを返す', () => {
-    setupRequestAndPrompt(FAKE_REQUEST);
     const { Wrapper } = createWrapper();
     const { result } = renderHook(() => useGoogleAuth(), { wrapper: Wrapper });
 
@@ -213,7 +202,7 @@ describe('useGoogleAuth - 戻り値の構造', () => {
 });
 
 // ---------------------------------------------------------------------------
-// signIn - isAvailable=true（env 設定 + request 非 null）での内部分岐テスト
+// signIn - isAvailable=true での内部分岐テスト
 // ---------------------------------------------------------------------------
 
 describe('useGoogleAuth - signIn（isAvailable=true）', () => {
@@ -221,24 +210,36 @@ describe('useGoogleAuth - signIn（isAvailable=true）', () => {
 
   beforeEach(() => {
     process.env['EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID'] = WEB_CLIENT_ID;
-    setupRequestAndPrompt(FAKE_REQUEST);
   });
 
   afterEach(() => {
     delete process.env['EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID'];
   });
 
-  it('env 設定 + request 非 null のとき isAvailable は true', () => {
+  it('env 設定時に isAvailable は true', () => {
     const { Wrapper } = createWrapper();
     const { result } = renderHook(() => useGoogleAuth(), { wrapper: Wrapper });
     expect(result.current.isAvailable).toBe(true);
   });
 
-  it('type:success かつ id_token あり → mutateAsync が idToken で呼ばれる', async () => {
-    setupRequestAndPrompt(FAKE_REQUEST, {
+  it('type:success かつ idToken あり → mutateAsync が idToken で呼ばれる', async () => {
+    mockGoogleSignIn.mockResolvedValue({
       type: 'success',
-      params: { id_token: 'GOOGLE_ID_TOKEN' },
+      data: {
+        idToken: 'REAL_ID_TOKEN',
+        serverAuthCode: null,
+        scopes: [],
+        user: {
+          email: 'test@example.com',
+          id: 'user-id',
+          givenName: 'Test',
+          familyName: 'User',
+          photo: null,
+          name: 'Test User',
+        },
+      },
     });
+
     const { Wrapper } = createWrapper();
     const { result } = renderHook(() => useGoogleAuth(), { wrapper: Wrapper });
 
@@ -246,78 +247,73 @@ describe('useGoogleAuth - signIn（isAvailable=true）', () => {
       await result.current.signIn();
     });
 
-    expect(mockPromptAsync).toHaveBeenCalledTimes(1);
-    expect(mockMutateAsync).toHaveBeenCalledWith({ idToken: 'GOOGLE_ID_TOKEN' });
+    expect(mockHasPlayServices).toHaveBeenCalledWith({ showPlayServicesUpdateDialog: true });
+    expect(mockGoogleSignIn).toHaveBeenCalledTimes(1);
+    expect(mockMutateAsync).toHaveBeenCalledWith({ idToken: 'REAL_ID_TOKEN' });
   });
 
-  it('type:success かつ id_token が存在しない（空オブジェクト）→ ERR_GOOGLE_ID_TOKEN_MISSING を throw', async () => {
-    setupRequestAndPrompt(FAKE_REQUEST, {
+  it('type:success かつ idToken が null → ERR_GOOGLE_ID_TOKEN_MISSING を throw', async () => {
+    mockGoogleSignIn.mockResolvedValue({
       type: 'success',
-      params: {},
+      data: {
+        idToken: null,
+        serverAuthCode: null,
+        scopes: [],
+        user: {
+          email: 'test@example.com',
+          id: 'user-id',
+          givenName: 'Test',
+          familyName: 'User',
+          photo: null,
+          name: 'Test User',
+        },
+      },
     });
+
     const { Wrapper } = createWrapper();
     const { result } = renderHook(() => useGoogleAuth(), { wrapper: Wrapper });
 
     await act(async () => {
-      await expect(result.current.signIn()).rejects.toThrow(
-        'Google ログインに失敗しました。もう一度お試しください。'
-      );
+      await expect(result.current.signIn()).rejects.toThrow(ERR_GOOGLE_ID_TOKEN_MISSING);
     });
 
     expect(mockMutateAsync).not.toHaveBeenCalled();
   });
 
-  it('type:success かつ id_token が空文字 → ERR_GOOGLE_ID_TOKEN_MISSING を throw', async () => {
-    setupRequestAndPrompt(FAKE_REQUEST, {
+  it('type:success かつ idToken が空文字 → ERR_GOOGLE_ID_TOKEN_MISSING を throw', async () => {
+    mockGoogleSignIn.mockResolvedValue({
       type: 'success',
-      params: { id_token: '' },
+      data: {
+        idToken: '',
+        serverAuthCode: null,
+        scopes: [],
+        user: {
+          email: 'test@example.com',
+          id: 'user-id',
+          givenName: 'Test',
+          familyName: 'User',
+          photo: null,
+          name: 'Test User',
+        },
+      },
     });
+
     const { Wrapper } = createWrapper();
     const { result } = renderHook(() => useGoogleAuth(), { wrapper: Wrapper });
 
     await act(async () => {
-      await expect(result.current.signIn()).rejects.toThrow(
-        'Google ログインに失敗しました。もう一度お試しください。'
-      );
+      await expect(result.current.signIn()).rejects.toThrow(ERR_GOOGLE_ID_TOKEN_MISSING);
     });
 
     expect(mockMutateAsync).not.toHaveBeenCalled();
   });
 
-  it('type:error かつ error.message あり → そのメッセージで throw', async () => {
-    setupRequestAndPrompt(FAKE_REQUEST, {
-      type: 'error',
-      error: { message: 'access_denied' },
-    });
-    const { Wrapper } = createWrapper();
-    const { result } = renderHook(() => useGoogleAuth(), { wrapper: Wrapper });
-
-    await act(async () => {
-      await expect(result.current.signIn()).rejects.toThrow('access_denied');
+  it('type:cancelled → エラーにならず resolve(undefined)、mutateAsync 未呼び出し', async () => {
+    mockGoogleSignIn.mockResolvedValue({
+      type: 'cancelled',
+      data: null,
     });
 
-    expect(mockMutateAsync).not.toHaveBeenCalled();
-  });
-
-  it('type:error かつ error が null → ERR_GOOGLE_SIGN_IN_FAILED を throw', async () => {
-    setupRequestAndPrompt(FAKE_REQUEST, {
-      type: 'error',
-      error: null,
-    });
-    const { Wrapper } = createWrapper();
-    const { result } = renderHook(() => useGoogleAuth(), { wrapper: Wrapper });
-
-    await act(async () => {
-      await expect(result.current.signIn()).rejects.toThrow(
-        'Google ログイン中にエラーが発生しました。再度お試しください。'
-      );
-    });
-
-    expect(mockMutateAsync).not.toHaveBeenCalled();
-  });
-
-  it('type:cancel → エラーにならず resolve(undefined) になり mutateAsync 未呼び出し', async () => {
-    setupRequestAndPrompt(FAKE_REQUEST, { type: 'cancel' });
     const { Wrapper } = createWrapper();
     const { result } = renderHook(() => useGoogleAuth(), { wrapper: Wrapper });
 
@@ -328,8 +324,12 @@ describe('useGoogleAuth - signIn（isAvailable=true）', () => {
     expect(mockMutateAsync).not.toHaveBeenCalled();
   });
 
-  it('type:dismiss → エラーにならず resolve(undefined) になり mutateAsync 未呼び出し', async () => {
-    setupRequestAndPrompt(FAKE_REQUEST, { type: 'dismiss' });
+  it('SIGN_IN_CANCELLED コード付きエラー throw → no-op（キャンセル扱い）', async () => {
+    const cancelError = Object.assign(new Error('sign in cancelled'), {
+      code: statusCodes.SIGN_IN_CANCELLED,
+    });
+    mockGoogleSignIn.mockRejectedValue(cancelError);
+
     const { Wrapper } = createWrapper();
     const { result } = renderHook(() => useGoogleAuth(), { wrapper: Wrapper });
 
@@ -340,8 +340,12 @@ describe('useGoogleAuth - signIn（isAvailable=true）', () => {
     expect(mockMutateAsync).not.toHaveBeenCalled();
   });
 
-  it('type:locked → エラーにならず resolve(undefined) になり mutateAsync 未呼び出し', async () => {
-    setupRequestAndPrompt(FAKE_REQUEST, { type: 'locked' });
+  it('IN_PROGRESS コード付きエラー throw → no-op（進行中扱い）', async () => {
+    const inProgressError = Object.assign(new Error('operation in progress'), {
+      code: statusCodes.IN_PROGRESS,
+    });
+    mockGoogleSignIn.mockRejectedValue(inProgressError);
+
     const { Wrapper } = createWrapper();
     const { result } = renderHook(() => useGoogleAuth(), { wrapper: Wrapper });
 
@@ -352,21 +356,25 @@ describe('useGoogleAuth - signIn（isAvailable=true）', () => {
     expect(mockMutateAsync).not.toHaveBeenCalled();
   });
 
-  it('type:opened → エラーにならず resolve(undefined) になり mutateAsync 未呼び出し', async () => {
-    setupRequestAndPrompt(FAKE_REQUEST, { type: 'opened' });
+  it('その他のコード付きネイティブエラー → そのメッセージで throw', async () => {
+    const nativeError = Object.assign(new Error('play services not available'), {
+      code: statusCodes.PLAY_SERVICES_NOT_AVAILABLE,
+    });
+    mockGoogleSignIn.mockRejectedValue(nativeError);
+
     const { Wrapper } = createWrapper();
     const { result } = renderHook(() => useGoogleAuth(), { wrapper: Wrapper });
 
     await act(async () => {
-      await expect(result.current.signIn()).resolves.toBeUndefined();
+      await expect(result.current.signIn()).rejects.toThrow('play services not available');
     });
 
     expect(mockMutateAsync).not.toHaveBeenCalled();
   });
 
-  it('promptAsync が例外を投げた場合（Error インスタンス）→ そのメッセージで throw', async () => {
-    mockPromptAsync.mockRejectedValue(new Error('network_error'));
-    mockUseIdTokenAuthRequest.mockReturnValue([FAKE_REQUEST, null, mockPromptAsync]);
+  it('Error インスタンスの例外 → そのメッセージで throw', async () => {
+    mockGoogleSignIn.mockRejectedValue(new Error('network_error'));
+
     const { Wrapper } = createWrapper();
     const { result } = renderHook(() => useGoogleAuth(), { wrapper: Wrapper });
 
@@ -377,18 +385,30 @@ describe('useGoogleAuth - signIn（isAvailable=true）', () => {
     expect(mockMutateAsync).not.toHaveBeenCalled();
   });
 
-  it('promptAsync が非 Error 値を reject した場合 → ERR_GOOGLE_SIGN_IN_FAILED を throw', async () => {
-    mockPromptAsync.mockRejectedValue('string_error');
-    mockUseIdTokenAuthRequest.mockReturnValue([FAKE_REQUEST, null, mockPromptAsync]);
+  it('非 Error 値を reject → ERR_GOOGLE_SIGN_IN_FAILED を throw', async () => {
+    mockGoogleSignIn.mockRejectedValue('string_error');
+
     const { Wrapper } = createWrapper();
     const { result } = renderHook(() => useGoogleAuth(), { wrapper: Wrapper });
 
     await act(async () => {
-      await expect(result.current.signIn()).rejects.toThrow(
-        'Google ログイン中にエラーが発生しました。再度お試しください。'
-      );
+      await expect(result.current.signIn()).rejects.toThrow(ERR_GOOGLE_SIGN_IN_FAILED);
     });
 
+    expect(mockMutateAsync).not.toHaveBeenCalled();
+  });
+
+  it('hasPlayServices が例外を投げた場合 → ERR_GOOGLE_SIGN_IN_FAILED を throw', async () => {
+    mockHasPlayServices.mockRejectedValue(new Error('play services check failed'));
+
+    const { Wrapper } = createWrapper();
+    const { result } = renderHook(() => useGoogleAuth(), { wrapper: Wrapper });
+
+    await act(async () => {
+      await expect(result.current.signIn()).rejects.toThrow('play services check failed');
+    });
+
+    expect(mockGoogleSignIn).not.toHaveBeenCalled();
     expect(mockMutateAsync).not.toHaveBeenCalled();
   });
 
@@ -398,5 +418,14 @@ describe('useGoogleAuth - signIn（isAvailable=true）', () => {
     const { result } = renderHook(() => useGoogleAuth(), { wrapper: Wrapper });
     expect(result.current.isLoading).toBe(true);
     expect(result.current.isAvailable).toBe(true);
+  });
+
+  it('GoogleSignin.configure が webClientId で呼ばれる', () => {
+    const mockConfigure = jest.mocked(GoogleSignin.configure);
+    const { Wrapper } = createWrapper();
+    renderHook(() => useGoogleAuth(), { wrapper: Wrapper });
+    expect(mockConfigure).toHaveBeenCalledWith(
+      expect.objectContaining({ webClientId: WEB_CLIENT_ID })
+    );
   });
 });

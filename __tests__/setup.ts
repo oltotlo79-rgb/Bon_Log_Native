@@ -552,6 +552,67 @@ jest.mock('react-native-purchases', () => {
   };
 });
 
+// @react-native-google-signin/google-signin のモック
+// TurboModuleRegistry.getEnforcing('RNGoogleSignin') がテスト環境で存在しないため
+// パッケージ全体をモックして NativeModule 呼び出しをバイパスする。
+// GoogleSignin.signIn はテストごとに jest.fn().mockResolvedValue(...) で差し替え可能。
+jest.mock('@react-native-google-signin/google-signin', () => {
+  const mockSignIn = jest.fn().mockResolvedValue({
+    type: 'success',
+    data: {
+      idToken: 'mock-id-token',
+      serverAuthCode: null,
+      scopes: [],
+      user: {
+        email: 'mock@example.com',
+        id: 'mock-user-id',
+        givenName: 'Mock',
+        familyName: 'User',
+        photo: null,
+        name: 'Mock User',
+      },
+    },
+  });
+  const mockHasPlayServices = jest.fn().mockResolvedValue(true);
+  const mockConfigure = jest.fn().mockResolvedValue(undefined);
+
+  return {
+    GoogleSignin: {
+      configure: mockConfigure,
+      hasPlayServices: mockHasPlayServices,
+      signIn: mockSignIn,
+      signOut: jest.fn().mockResolvedValue(null),
+      revokeAccess: jest.fn().mockResolvedValue(null),
+      isSignedIn: jest.fn().mockReturnValue(false),
+      getCurrentUser: jest.fn().mockReturnValue(null),
+      hasPreviousSignIn: jest.fn().mockReturnValue(false),
+      signInSilently: jest.fn().mockResolvedValue({
+        type: 'success',
+        data: {
+          idToken: 'mock-id-token',
+          serverAuthCode: null,
+          scopes: [],
+          user: {
+            email: 'mock@example.com',
+            id: 'mock-user-id',
+            givenName: 'Mock',
+            familyName: 'User',
+            photo: null,
+            name: 'Mock User',
+          },
+        },
+      }),
+    },
+    statusCodes: {
+      SIGN_IN_CANCELLED: 'SIGN_IN_CANCELLED',
+      IN_PROGRESS: 'IN_PROGRESS',
+      PLAY_SERVICES_NOT_AVAILABLE: 'PLAY_SERVICES_NOT_AVAILABLE',
+      SIGN_IN_REQUIRED: 'SIGN_IN_REQUIRED',
+    },
+    GoogleSigninButton: () => null,
+  };
+});
+
 // expo-font のモック
 // useFonts は loadAsync の非同期完了後に setLoaded(true) を呼ぶ。
 // テスト環境（IS_REACT_ACT_ENVIRONMENT=true）では act 外の setState になり
