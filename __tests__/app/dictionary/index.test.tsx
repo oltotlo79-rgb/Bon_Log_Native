@@ -56,6 +56,28 @@ function makeDictionaryPage(terms: string[], nextCursor: string | null = null) {
   };
 }
 
+/** よみがなを明示的に指定できるファクトリ */
+function makeDictionaryPageWithReadings(
+  items: Array<{ term: string; reading: string; category?: string }>,
+  nextCursor: string | null = null,
+) {
+  return {
+    pages: [
+      {
+        items: items.map((item, i) => ({
+          id: `d${i}`,
+          slug: item.term.toLowerCase(),
+          term: item.term,
+          reading: item.reading,
+          category: item.category ?? '樹形',
+          shortDefinition: '説明',
+        })),
+        nextCursor,
+      },
+    ],
+  };
+}
+
 // ---------------------------------------------------------------------------
 // セットアップ
 // ---------------------------------------------------------------------------
@@ -93,13 +115,13 @@ describe('DictionaryScreen 正常表示', () => {
   it('各用語の accessibilityLabel が設定される', () => {
     mockDictQuery.data = makeDictionaryPage(['黒松']);
     renderWithProviders(<DictionaryScreen />);
-    expect(screen.getByLabelText('黒松（黒松のよみ）')).toBeTruthy();
+    expect(screen.getByLabelText('黒松（黒松のよみ）- 樹木管理')).toBeTruthy();
   });
 
   it('用語タップで詳細画面へ push する', () => {
     mockDictQuery.data = makeDictionaryPage(['黒松']);
     renderWithProviders(<DictionaryScreen />);
-    fireEvent.press(screen.getByLabelText('黒松（黒松のよみ）'));
+    fireEvent.press(screen.getByLabelText('黒松（黒松のよみ）- 樹木管理'));
     expect(mockRouter.push).toHaveBeenCalledWith({
       pathname: '/dictionary/[slug]',
       params: { slug: '黒松' },
@@ -143,8 +165,8 @@ describe('DictionaryScreen フィルタ', () => {
   it('「五十音」タブをタップすると五十音チップが表示される', () => {
     renderWithProviders(<DictionaryScreen />);
     fireEvent.press(screen.getByLabelText('五十音'));
-    expect(screen.getByLabelText('ア')).toBeTruthy();
-    expect(screen.getByLabelText('カ')).toBeTruthy();
+    expect(screen.getByLabelText('あ行')).toBeTruthy();
+    expect(screen.getByLabelText('か行')).toBeTruthy();
   });
 
   it('「カテゴリ」タブをタップするとカテゴリチップが表示される', () => {
@@ -152,7 +174,74 @@ describe('DictionaryScreen フィルタ', () => {
     fireEvent.press(screen.getByLabelText('五十音'));
     fireEvent.press(screen.getByLabelText('カテゴリ'));
     expect(screen.getByLabelText('すべて')).toBeTruthy();
-    expect(screen.getByLabelText('樹木管理')).toBeTruthy();
+    expect(screen.getByLabelText('樹形')).toBeTruthy();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// SectionList 構造
+// ---------------------------------------------------------------------------
+
+describe('DictionaryScreen SectionList 構造', () => {
+  it('バナー後にタイトル「盆栽用語辞典」が表示される', () => {
+    mockDictQuery.data = makeDictionaryPage(['黒松']);
+    renderWithProviders(<DictionaryScreen />);
+    expect(screen.getByText('盆栽用語辞典')).toBeTruthy();
+  });
+
+  it('取得件数が表示される', () => {
+    mockDictQuery.data = makeDictionaryPageWithReadings([
+      { term: '黒松', reading: 'くろまつ' },
+      { term: '五葉松', reading: 'ごようまつ' },
+    ]);
+    renderWithProviders(<DictionaryScreen />);
+    expect(screen.getByText('2件')).toBeTruthy();
+  });
+
+  it('あ行のよみがなでか行のセクションヘッダが表示される', () => {
+    mockDictQuery.data = makeDictionaryPageWithReadings([
+      { term: '黒松', reading: 'くろまつ' },
+    ]);
+    renderWithProviders(<DictionaryScreen />);
+    expect(screen.getByText('か行')).toBeTruthy();
+  });
+
+  it('異なる行のよみがなを持つ用語が別セクションに分類される', () => {
+    mockDictQuery.data = makeDictionaryPageWithReadings([
+      { term: '黒松', reading: 'くろまつ' },
+      { term: '赤松', reading: 'あかまつ' },
+    ]);
+    renderWithProviders(<DictionaryScreen />);
+    expect(screen.getByText('あ行')).toBeTruthy();
+    expect(screen.getByText('か行')).toBeTruthy();
+  });
+
+  it('どの行にも該当しないよみがなは「その他」セクションに分類される', () => {
+    mockDictQuery.data = makeDictionaryPageWithReadings([
+      { term: '黒松', reading: '黒松のよみ' },
+    ]);
+    renderWithProviders(<DictionaryScreen />);
+    expect(screen.getByText('その他')).toBeTruthy();
+  });
+
+  it('1件のとき件数「1件」が表示される', () => {
+    mockDictQuery.data = makeDictionaryPage(['黒松']);
+    renderWithProviders(<DictionaryScreen />);
+    expect(screen.getByText('1件')).toBeTruthy();
+  });
+
+  it('hasNextPage=true かつ isFetchingNextPage=false でリスト末尾に到達すると fetchNextPage が呼ばれる', () => {
+    mockDictQuery.data = makeDictionaryPage(['黒松']);
+    mockDictQuery.hasNextPage = true;
+    mockDictQuery.isFetchingNextPage = false;
+    renderWithProviders(<DictionaryScreen />);
+    // onEndReached はネイティブイベントのため直接呼び出してシミュレーション
+    const sectionList = screen.UNSAFE_queryByType(
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
+      require('react-native').SectionList,
+    );
+    sectionList?.props?.onEndReached?.();
+    expect(mockDictQuery.fetchNextPage).toHaveBeenCalledTimes(1);
   });
 });
 
