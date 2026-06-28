@@ -52,22 +52,22 @@ const mockRouter = jest.requireMock('expo-router').router;
 
 function makeNutrients() {
   return [
-    { id: 'n1', slug: 'nitrogen', name: '窒素', symbol: 'N', description: '葉の成長を促す', category: 'primary' },
-    { id: 'n2', slug: 'phosphorus', name: 'リン', symbol: 'P', description: '開花を促す', category: 'primary' },
+    { id: 'n1', slug: 'nitrogen', name: '窒素', symbol: 'N', description: '葉の成長を促す', category: 'primary', bonsaiRole: '葉と枝の生長を促進する' },
+    { id: 'n2', slug: 'phosphorus', name: 'リン', symbol: 'P', description: '開花を促す', category: 'primary', bonsaiRole: '花芽と根の発達を助ける' },
   ];
 }
 
 function makeCategories() {
   return [
-    { id: 'c1', code: 'primary', name: '多量栄養素', description: '主要な栄養素' },
-    { id: 'c2', code: 'secondary', name: '中量栄養素', description: '二次的な栄養素' },
+    { id: 'c1', code: 'organic', name: '有機肥料', description: '天然素材由来の肥料', merit: '土壌を豊かにする', demerit: '即効性がない', bonsaiUsage: '春先の置き肥に最適' },
+    { id: 'c2', code: 'chemical', name: '化成肥料', description: '化学的に合成された肥料', merit: null, demerit: null, bonsaiUsage: null },
   ];
 }
 
 function makeTreeSpecies() {
   return [
-    { id: 'ts1', slug: 'kuromatsu', name: '黒松', category: '松柏類', description: null, fertilizingPolicy: null },
-    { id: 'ts2', slug: 'keyaki', name: '欅', category: '雑木類', description: null, fertilizingPolicy: null },
+    { id: 'ts1', slug: 'kuromatsu', name: '黒松', category: 'conifer', description: null, fertilizingPolicy: '春と秋に施肥する' },
+    { id: 'ts2', slug: 'keyaki', name: '欅', category: 'deciduous', description: null, fertilizingPolicy: null },
   ];
 }
 
@@ -186,8 +186,8 @@ describe('FertilizersScreen カテゴリタブ', () => {
     mockCategoriesQuery.data = makeCategories();
     renderWithProviders(<FertilizersScreen />);
     fireEvent.press(screen.getByLabelText('カテゴリ'));
-    expect(screen.getByText('多量栄養素')).toBeTruthy();
-    expect(screen.getByText('中量栄養素')).toBeTruthy();
+    expect(screen.getByText('有機肥料')).toBeTruthy();
+    expect(screen.getByText('化成肥料')).toBeTruthy();
   });
 
   it('カテゴリが空（[]）のとき「データがありません」が表示される', () => {
@@ -254,5 +254,58 @@ describe('FertilizersScreen オフライン', () => {
     renderWithProviders(<FertilizersScreen />);
     const { ERR_OFFLINE } = jest.requireActual('@/lib/constants/errors');
     expect(screen.getByText(ERR_OFFLINE)).toBeTruthy();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 季節TIPS — 日付をモックして全季節を決定的にテストする
+// フレークを防ぐため Date.prototype.getMonth を各テストで固定する。
+// ---------------------------------------------------------------------------
+
+describe('FertilizersScreen 季節TIPS', () => {
+  let dateSpy: jest.SpyInstance;
+
+  afterEach(() => {
+    dateSpy?.mockRestore();
+  });
+
+  function mockMonth(month: number) {
+    dateSpy = jest.spyOn(Date.prototype, 'getMonth').mockReturnValue(month - 1);
+  }
+
+  it('3月（春）は春のTIPSタイトルが表示される', () => {
+    mockMonth(3);
+    renderWithProviders(<FertilizersScreen />);
+    expect(screen.getByText('春の施肥 — 成長期の始まり')).toBeTruthy();
+  });
+
+  it('6月（夏）は夏のTIPSタイトルが表示される', () => {
+    mockMonth(6);
+    renderWithProviders(<FertilizersScreen />);
+    expect(screen.getByText('夏の施肥 — 控えめに管理')).toBeTruthy();
+  });
+
+  it('9月（秋）は秋のTIPSタイトルが表示される', () => {
+    mockMonth(9);
+    renderWithProviders(<FertilizersScreen />);
+    expect(screen.getByText('秋の施肥 — 冬越し準備')).toBeTruthy();
+  });
+
+  it('12月（冬）は冬のTIPSタイトルが表示される', () => {
+    mockMonth(12);
+    renderWithProviders(<FertilizersScreen />);
+    expect(screen.getByText('冬の施肥 — 休眠期は原則不要')).toBeTruthy();
+  });
+
+  it('2月（冬）は冬のTIPSタイトルが表示される', () => {
+    mockMonth(2);
+    renderWithProviders(<FertilizersScreen />);
+    expect(screen.getByText('冬の施肥 — 休眠期は原則不要')).toBeTruthy();
+  });
+
+  it('8月（夏）は夏のTIPSタイトルが表示される', () => {
+    mockMonth(8);
+    renderWithProviders(<FertilizersScreen />);
+    expect(screen.getByText('夏の施肥 — 控えめに管理')).toBeTruthy();
   });
 });
