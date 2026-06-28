@@ -1,6 +1,7 @@
 /**
  * app/hormones/index のコンポーネントテスト。
- * 一覧表示・エラー・空状態・タップ遷移・オフラインを検証する。
+ * SectionList（major/secondary セクション）・バナー・HormoneCard・
+ * 4状態（正常・ローディング・エラー・空）・タップ遷移・オフラインを検証する。
  */
 
 import React from 'react';
@@ -32,7 +33,7 @@ jest.mock('@/lib/queries/hormones', () => ({
 const mockRouter = jest.requireMock('expo-router').router;
 
 // ---------------------------------------------------------------------------
-// ヘルパー
+// ヘルパー（新 SectionList 構造に合わせ category を major/secondary で統一）
 // ---------------------------------------------------------------------------
 
 function makeHormones() {
@@ -42,8 +43,9 @@ function makeHormones() {
       slug: 'auxin',
       name: 'オーキシン',
       nameEn: 'Auxin',
-      category: '成長促進',
+      category: 'major',
       description: '根の成長を促進する',
+      chemicalFormula: 'C10H9NO2',
       seasonalLevels: [],
     },
     {
@@ -51,8 +53,9 @@ function makeHormones() {
       slug: 'gibberellin',
       name: 'ジベレリン',
       nameEn: 'Gibberellin',
-      category: '成長促進',
+      category: 'major',
       description: '茎の伸長を促進する',
+      chemicalFormula: 'C19H22O6',
       seasonalLevels: [],
     },
     {
@@ -60,8 +63,34 @@ function makeHormones() {
       slug: 'cytokinin',
       name: 'サイトカイニン',
       nameEn: null,
-      category: '細胞分裂',
+      category: 'major',
       description: null,
+      chemicalFormula: null,
+      seasonalLevels: [],
+    },
+  ];
+}
+
+function makeHormonesWithBothCategories() {
+  return [
+    {
+      id: 'h1',
+      slug: 'auxin',
+      name: 'オーキシン',
+      nameEn: 'Auxin',
+      category: 'major',
+      description: '根の成長を促進する',
+      chemicalFormula: 'C10H9NO2',
+      seasonalLevels: [],
+    },
+    {
+      id: 'h4',
+      slug: 'brassinolide',
+      name: 'ブラシノライド',
+      nameEn: 'Brassinolide',
+      category: 'secondary',
+      description: 'ストレス応答に関与するホルモン',
+      chemicalFormula: null,
       seasonalLevels: [],
     },
   ];
@@ -127,6 +156,62 @@ describe('HormonesScreen 正常表示', () => {
 });
 
 // ---------------------------------------------------------------------------
+// SectionList セクション分け
+// ---------------------------------------------------------------------------
+
+describe('HormonesScreen セクション分け', () => {
+  it('major カテゴリのホルモンが「五大ホルモン」セクションに表示される', () => {
+    mockHormonesQuery.data = makeHormonesWithBothCategories();
+    renderWithProviders(<HormonesScreen />);
+    // セクションヘッダー + HormoneCard バッジの両方に「五大ホルモン」が現れるため getAllByText で存在確認する
+    expect(screen.getAllByText('五大ホルモン').length).toBeGreaterThan(0);
+    expect(screen.getByText('オーキシン')).toBeTruthy();
+  });
+
+  it('secondary カテゴリのホルモンが「二次ホルモン」セクションに表示される', () => {
+    mockHormonesQuery.data = makeHormonesWithBothCategories();
+    renderWithProviders(<HormonesScreen />);
+    // セクションヘッダー + HormoneCard バッジの両方に「二次ホルモン」が現れるため getAllByText で存在確認する
+    expect(screen.getAllByText('二次ホルモン').length).toBeGreaterThan(0);
+    expect(screen.getByText('ブラシノライド')).toBeTruthy();
+  });
+
+  it('major のみのとき「五大ホルモン」関連テキストが存在し「二次ホルモン」セクションサブタイトルは表示されない', () => {
+    mockHormonesQuery.data = makeHormones();
+    renderWithProviders(<HormonesScreen />);
+    expect(screen.getAllByText('五大ホルモン').length).toBeGreaterThan(0);
+    // 二次ホルモン専用のサブタイトルは secondary セクションがない場合は表示されない
+    expect(
+      screen.queryByText(
+        '近年注目されているホルモンで、ストレス応答や成長調節に関与します。',
+      ),
+    ).toBeNull();
+  });
+
+  it('セクションヘッダーのサブタイトルが表示される', () => {
+    mockHormonesQuery.data = makeHormones();
+    renderWithProviders(<HormonesScreen />);
+    expect(
+      screen.getByText('植物の成長・分化・休眠を制御する主要な5つのホルモンです。'),
+    ).toBeTruthy();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// バナーヘッダー
+// ---------------------------------------------------------------------------
+
+describe('HormonesScreen バナーヘッダー', () => {
+  it('ヘッダー説明文が表示される', () => {
+    mockHormonesQuery.data = makeHormones();
+    renderWithProviders(<HormonesScreen />);
+    expect(
+      screen.getByText('盆栽の成長・休眠・発根に関わる植物ホルモンの役割と相互作用を学べます'),
+    ).toBeTruthy();
+  });
+});
+
+// ---------------------------------------------------------------------------
 // ローディング
 // ---------------------------------------------------------------------------
 
@@ -146,8 +231,9 @@ describe('HormonesScreen エラー', () => {
   it('isError=true のとき ScreenError が表示される', () => {
     mockHormonesQuery.isError = true;
     renderWithProviders(<HormonesScreen />);
-    // title と description が同じ文字列なので getAllByText で確認する
-    expect(screen.getAllByText('植物ホルモン情報を読み込めませんでした。').length).toBeGreaterThan(0);
+    expect(
+      screen.getAllByText('植物ホルモン情報を読み込めませんでした。').length,
+    ).toBeGreaterThan(0);
   });
 
   it('エラー時の再試行ボタンが refetch を呼ぶ', async () => {
@@ -167,6 +253,29 @@ describe('HormonesScreen エラー', () => {
 describe('HormonesScreen 空状態', () => {
   it('data が空配列のとき「ホルモン情報はありません」が表示される', () => {
     mockHormonesQuery.data = [];
+    renderWithProviders(<HormonesScreen />);
+    expect(screen.getByText('ホルモン情報はありません')).toBeTruthy();
+  });
+
+  it('data が undefined（初期状態）のとき空状態になる', () => {
+    mockHormonesQuery.data = undefined;
+    renderWithProviders(<HormonesScreen />);
+    expect(screen.getByText('ホルモン情報はありません')).toBeTruthy();
+  });
+
+  it('major/secondary に該当しないカテゴリのみのデータは空状態になる', () => {
+    mockHormonesQuery.data = [
+      {
+        id: 'h99',
+        slug: 'unknown-hormone',
+        name: '未知のホルモン',
+        nameEn: null,
+        category: 'unknown',
+        description: null,
+        chemicalFormula: null,
+        seasonalLevels: [],
+      },
+    ];
     renderWithProviders(<HormonesScreen />);
     expect(screen.getByText('ホルモン情報はありません')).toBeTruthy();
   });
