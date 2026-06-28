@@ -46,15 +46,22 @@ function makeDiseasePestDetail(overrides?: Partial<Record<string, unknown>>) {
     slug: 'aphid',
     name: 'アブラムシ',
     nameKana: 'あぶらむし',
-    category: '害虫',
+    category: 'pest',
     description: '新芽や若葉に集団で付着する小型害虫。',
+    imageUrl: null,
     effects: [
       {
         pesticide: {
           id: 'p1',
           slug: 'product-a',
           name: 'アブラムシ専用殺虫剤',
-          pesticideType: '殺虫剤',
+          pesticideType: 'insecticide',
+        },
+        rating: {
+          preventionLevel: null,
+          treatmentLevel: null,
+          efficacyLevel: 'good',
+          persistenceLevel: 'fair',
         },
       },
       {
@@ -62,7 +69,13 @@ function makeDiseasePestDetail(overrides?: Partial<Record<string, unknown>>) {
           id: 'p2',
           slug: 'product-b',
           name: '総合殺虫剤B',
-          pesticideType: '殺虫剤',
+          pesticideType: 'compound',
+        },
+        rating: {
+          preventionLevel: 'good',
+          treatmentLevel: 'fair',
+          efficacyLevel: 'good',
+          persistenceLevel: null,
         },
       },
     ],
@@ -158,15 +171,15 @@ describe('DiseasePestDetailScreen 正常表示', () => {
     expect(screen.getByText('新芽や若葉に集団で付着する小型害虫。')).toBeTruthy();
   });
 
-  it('関連農薬製品セクションと製品名が表示される', () => {
+  it('効く薬剤セクションと製品名が表示される', () => {
     mockDetailQuery.data = makeDiseasePestDetail();
     renderWithProviders(<DiseasePestDetailScreen />);
-    expect(screen.getByText('関連農薬製品')).toBeTruthy();
+    expect(screen.getByText('効く薬剤')).toBeTruthy();
     expect(screen.getByText('アブラムシ専用殺虫剤')).toBeTruthy();
     expect(screen.getByText('総合殺虫剤B')).toBeTruthy();
   });
 
-  it('関連農薬製品タップで製品詳細へ push する', () => {
+  it('効く薬剤タップで製品詳細へ push する', () => {
     mockDetailQuery.data = makeDiseasePestDetail();
     renderWithProviders(<DiseasePestDetailScreen />);
     fireEvent.press(screen.getByLabelText('アブラムシ専用殺虫剤の詳細を見る'));
@@ -176,10 +189,11 @@ describe('DiseasePestDetailScreen 正常表示', () => {
     });
   });
 
-  it('effects が空のとき「関連農薬製品」セクションが表示されない', () => {
+  it('effects が空のとき薬剤セクションが表示されない', () => {
     mockDetailQuery.data = makeDiseasePestDetail({ effects: [] });
     renderWithProviders(<DiseasePestDetailScreen />);
-    expect(screen.queryByText('関連農薬製品')).toBeNull();
+    expect(screen.queryByText('効く薬剤')).toBeNull();
+    expect(screen.queryByText('関連薬剤')).toBeNull();
   });
 
   it('nameKana が null のとき読みが表示されない', () => {
@@ -214,6 +228,54 @@ describe('DiseasePestDetailScreen 正常表示', () => {
     mockDetailQuery.data = dataWithoutField;
     renderWithProviders(<DiseasePestDetailScreen />);
     expect(screen.queryByLabelText('アブラムシの画像')).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 効果評価バッジ・カテゴリ
+// ---------------------------------------------------------------------------
+
+describe('DiseasePestDetailScreen 効果評価・カテゴリ', () => {
+  it('beneficial_insect カテゴリのとき「関連薬剤」セクションが表示される', () => {
+    mockDetailQuery.data = makeDiseasePestDetail({
+      category: 'beneficial_insect',
+      effects: [
+        {
+          pesticide: {
+            id: 'p1',
+            slug: 'product-a',
+            name: '殺虫剤X',
+            pesticideType: 'insecticide',
+          },
+          rating: {
+            preventionLevel: null,
+            treatmentLevel: null,
+            efficacyLevel: 'poor',
+            persistenceLevel: null,
+          },
+        },
+      ],
+    });
+    renderWithProviders(<DiseasePestDetailScreen />);
+    expect(screen.getByText('関連薬剤')).toBeTruthy();
+  });
+
+  it('disease カテゴリのとき「病害」バッジが表示される', () => {
+    mockDetailQuery.data = makeDiseasePestDetail({ category: 'disease' });
+    renderWithProviders(<DiseasePestDetailScreen />);
+    expect(screen.getByText('病害')).toBeTruthy();
+  });
+
+  it('pest カテゴリのとき「害虫」バッジが表示される', () => {
+    mockDetailQuery.data = makeDiseasePestDetail({ category: 'pest' });
+    renderWithProviders(<DiseasePestDetailScreen />);
+    expect(screen.getByText('害虫')).toBeTruthy();
+  });
+
+  it('description が null のとき概要セクションが表示されない', () => {
+    mockDetailQuery.data = makeDiseasePestDetail({ description: null });
+    renderWithProviders(<DiseasePestDetailScreen />);
+    expect(screen.queryByText('概要')).toBeNull();
   });
 });
 

@@ -16,7 +16,9 @@ import { useOnlineStatus } from '@/hooks/use-online-status';
 import { ERR_PESTICIDES_LOAD_FAILED } from '@/lib/constants/errors';
 import {
   colorBackground,
+  colorSurface,
   colorSurfaceMuted,
+  colorBorder,
   colorBorderLight,
   colorTextPrimary,
   colorTextSecondary,
@@ -26,6 +28,8 @@ import {
   spacing4,
   spacing8,
   radiusSm,
+  radiusMd,
+  shadowWashi,
   textBase,
   textLg,
   textMd,
@@ -88,46 +92,71 @@ export default function IngredientDetailScreen() {
             { paddingBottom: insets.bottom + spacing8 },
           ]}
         >
-          {/* ヘッダー */}
-          <Text style={styles.name}>{data.name}</Text>
-          {data.nameEn !== null && (
-            <Text style={styles.nameEn}>{data.nameEn}</Text>
-          )}
-          <View style={styles.metaRow}>
+          {/* ヘッダー：成分名 + 英名 */}
+          <View style={styles.headerBlock}>
+            <Text style={styles.name}>{data.name}</Text>
+            {data.nameEn !== null && (
+              <Text style={styles.nameEn}>{data.nameEn}</Text>
+            )}
+          </View>
+
+          {/* 基本情報（Web版 <dl> グリッド形式に対応） */}
+          <View style={styles.infoSection}>
+            <Text style={styles.sectionTitle} accessibilityRole="header">
+              基本情報
+            </Text>
             {data.fracCode !== null && (
-              <View style={styles.metaChip}>
-                <Text style={styles.metaChipText}>FRAC: {data.fracCode}</Text>
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>FRACコード</Text>
+                <View style={styles.codeTag}>
+                  <Text style={styles.codeTagText}>{data.fracCode}</Text>
+                </View>
               </View>
             )}
             {data.iracCode !== null && (
-              <View style={styles.metaChip}>
-                <Text style={styles.metaChipText}>IRAC: {data.iracCode}</Text>
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>IRACコード</Text>
+                <View style={styles.codeTag}>
+                  <Text style={styles.codeTagText}>{data.iracCode}</Text>
+                </View>
+              </View>
+            )}
+            {data.ingredientGroup !== null && (
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>原体グループ</Text>
+                <Text style={styles.infoValue}>{data.ingredientGroup}</Text>
               </View>
             )}
             {data.resistanceRisk !== null && (
-              <View style={styles.metaChip}>
-                <Text style={styles.metaChipText}>
-                  耐性: {RESISTANCE_RISK_LABEL[data.resistanceRisk] ?? data.resistanceRisk}
-                </Text>
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>耐性リスク</Text>
+                <View style={styles.codeTag}>
+                  <Text style={styles.codeTagText}>
+                    {RESISTANCE_RISK_LABEL[data.resistanceRisk] ?? data.resistanceRisk}
+                  </Text>
+                </View>
               </View>
             )}
           </View>
 
-          {/* 成分グループ */}
-          {data.ingredientGroup !== null && (
-            <Text style={styles.group}>{data.ingredientGroup}</Text>
-          )}
-
           {/* 説明 */}
           {data.description !== null && (
-            <Text style={styles.description}>{data.description}</Text>
+            <View style={styles.infoSection}>
+              <Text style={styles.sectionTitle} accessibilityRole="header">
+                原体の詳細説明
+              </Text>
+              <Text style={styles.descNote}>
+                以下の説明は、FRAC・IRAC等の公的分類および登録情報に基づく事実のみを記載しています。実際の使用は各製品のラベルに従ってください。
+              </Text>
+              <Text style={styles.description}>{data.description}</Text>
+            </View>
           )}
 
-          {/* 含む製品 */}
+          {/* 含む製品（Web版のリスト形式に対応） */}
           {data.pesticides.length > 0 && (
-            <View style={styles.section}>
+            <View style={styles.infoSection}>
               <Text style={styles.sectionTitle} accessibilityRole="header">
-                含む製品
+                この原体を含む薬剤（{data.pesticides.length}件）
               </Text>
               {data.pesticides.map((p) => (
                 <TouchableOpacity
@@ -139,12 +168,14 @@ export default function IngredientDetailScreen() {
                 >
                   <View style={styles.relatedRowContent}>
                     <Text style={styles.relatedName}>{p.pesticide.name}</Text>
-                    {p.pesticide.formulationTypeName !== null && (
-                      <Text style={styles.relatedType}>{p.pesticide.formulationTypeName}</Text>
-                    )}
-                    {p.contentLabel !== null && (
-                      <Text style={styles.contentLabel}>{p.contentLabel}</Text>
-                    )}
+                    <View style={styles.relatedMeta}>
+                      {p.pesticide.formulationTypeName !== null && (
+                        <Text style={styles.relatedType}>{p.pesticide.formulationTypeName}</Text>
+                      )}
+                      {p.contentLabel !== null && (
+                        <Text style={styles.relatedType}>{p.contentLabel}</Text>
+                      )}
+                    </View>
                   </View>
                 </TouchableOpacity>
               ))}
@@ -164,56 +195,81 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: spacing4,
     paddingTop: spacing4,
+    gap: spacing4,
+  },
+
+  // ヘッダーブロック
+  headerBlock: {
+    gap: spacing2,
   },
   name: {
     ...textXl,
     color: colorTextPrimary,
-    marginBottom: spacing2,
   },
   nameEn: {
     ...textMd,
     color: colorTextSecondary,
-    marginBottom: spacing3,
   },
-  metaRow: {
+
+  // 情報セクション（Web版 rounded-lg border p-4 に対応）
+  infoSection: {
+    borderRadius: radiusMd,
+    borderWidth: 1,
+    borderColor: colorBorder,
+    padding: spacing4,
+    backgroundColor: colorSurface,
+    gap: spacing3,
+    ...shadowWashi,
+  },
+  sectionTitle: {
+    ...textLg,
+    color: colorTextPrimary,
+  },
+
+  // 基本情報 key-value（Web版 <dl> グリッドに対応）
+  infoRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: spacing2,
-    marginBottom: spacing4,
+    gap: spacing4,
+    alignItems: 'center',
+    paddingVertical: spacing2,
+    borderBottomWidth: 1,
+    borderBottomColor: colorBorderLight,
   },
-  metaChip: {
+  infoLabel: {
+    ...textSm,
+    color: colorTextSecondary,
+    width: 80,
+    flexShrink: 0,
+  },
+  infoValue: {
+    ...textSm,
+    color: colorTextPrimary,
+    flex: 1,
+  },
+  codeTag: {
     backgroundColor: colorSurfaceMuted,
     borderRadius: radiusSm,
     paddingHorizontal: spacing2,
     paddingVertical: 2,
   },
-  metaChipText: {
+  codeTagText: {
     ...textXs,
     color: colorTextSecondary,
   },
-  group: {
-    ...textSm,
+
+  // 説明テキスト
+  descNote: {
+    ...textXs,
     color: colorTextSecondary,
-    marginBottom: spacing3,
+    lineHeight: 16,
   },
   description: {
     ...textBase,
     color: colorTextPrimary,
     lineHeight: 22,
-    marginBottom: spacing4,
   },
-  section: {
-    borderTopWidth: 2,
-    borderTopColor: colorBorderLight,
-    paddingTop: spacing4,
-    marginTop: spacing4,
-    gap: spacing2,
-  },
-  sectionTitle: {
-    ...textLg,
-    color: colorTextPrimary,
-    marginBottom: spacing2,
-  },
+
+  // 含む製品リスト
   relatedRow: {
     paddingVertical: spacing3,
     borderBottomWidth: 1,
@@ -224,16 +280,17 @@ const styles = StyleSheet.create({
   relatedRowContent: {
     gap: 2,
   },
+  relatedMeta: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing2,
+  },
   relatedName: {
     ...textMd,
     color: colorTextLink,
     fontWeight: '600',
   },
   relatedType: {
-    ...textXs,
-    color: colorTextSecondary,
-  },
-  contentLabel: {
     ...textXs,
     color: colorTextSecondary,
   },

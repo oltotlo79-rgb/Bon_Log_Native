@@ -51,8 +51,8 @@ function makeDiseasePestsData() {
     pages: [
       {
         items: [
-          { id: 'dp1', slug: 'aphid', name: 'アブラムシ', category: '害虫', description: '新芽に付く小型害虫', imageUrl: 'https://cdn.example.com/aphid.jpg' },
-          { id: 'dp2', slug: 'spider-mite', name: 'ハダニ', category: '害虫', description: null, imageUrl: null },
+          { id: 'dp1', slug: 'aphid', name: 'アブラムシ', category: 'pest', description: '新芽に付く小型害虫', imageUrl: 'https://cdn.example.com/aphid.jpg' },
+          { id: 'dp2', slug: 'spider-mite', name: 'ハダニ', category: 'pest', description: null, imageUrl: null },
         ],
         nextCursor: null,
       },
@@ -65,7 +65,7 @@ function makeDiseasePestsDataWithRelativeImageUrl() {
     pages: [
       {
         items: [
-          { id: 'dp1', slug: 'aphid', name: 'アブラムシ', category: '害虫', description: null, imageUrl: '/images/aphid.jpg' },
+          { id: 'dp1', slug: 'aphid', name: 'アブラムシ', category: 'pest', description: null, imageUrl: '/images/aphid.jpg' },
         ],
         nextCursor: null,
       },
@@ -220,6 +220,44 @@ describe('PesticidesScreen 病害虫タブ', () => {
 });
 
 // ---------------------------------------------------------------------------
+// 病害虫タブ 追加ケース
+// ---------------------------------------------------------------------------
+
+describe('PesticidesScreen 病害虫タブ 追加', () => {
+  it('病害虫ローディング時に ScreenLoading が表示される', () => {
+    mockDiseasePestsQuery.isLoading = true;
+    renderWithProviders(<PesticidesScreen />);
+    expect(screen.getByLabelText('読み込み中')).toBeTruthy();
+  });
+
+  it('disease カテゴリの病害虫も表示される', () => {
+    mockDiseasePestsQuery.data = {
+      pages: [{
+        items: [
+          { id: 'dp3', slug: 'fungal', name: 'うどん粉病', category: 'disease', description: 'カビによる病害', imageUrl: null },
+        ],
+        nextCursor: null,
+      }],
+    };
+    renderWithProviders(<PesticidesScreen />);
+    expect(screen.getByText('うどん粉病')).toBeTruthy();
+  });
+
+  it('beneficial_insect カテゴリの益虫も表示される', () => {
+    mockDiseasePestsQuery.data = {
+      pages: [{
+        items: [
+          { id: 'dp4', slug: 'ladybug', name: 'テントウムシ', category: 'beneficial_insect', description: null, imageUrl: null },
+        ],
+        nextCursor: null,
+      }],
+    };
+    renderWithProviders(<PesticidesScreen />);
+    expect(screen.getByText('テントウムシ')).toBeTruthy();
+  });
+});
+
+// ---------------------------------------------------------------------------
 // 農薬製品タブ
 // ---------------------------------------------------------------------------
 
@@ -255,6 +293,23 @@ describe('PesticidesScreen 農薬製品タブ', () => {
     renderWithProviders(<PesticidesScreen />);
     fireEvent.press(screen.getByLabelText('農薬製品'));
     expect(screen.getByText('図鑑を読み込めませんでした。')).toBeTruthy();
+  });
+
+  it('農薬製品エラー時の再試行ボタンが refetch を呼ぶ', async () => {
+    mockProductsQuery.isError = true;
+    renderWithProviders(<PesticidesScreen />);
+    fireEvent.press(screen.getByLabelText('農薬製品'));
+    fireEvent.press(screen.getByLabelText('再試行する'));
+    await waitFor(() => {
+      expect(mockProductsQuery.refetch).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it('農薬製品ローディング時に ScreenLoading が表示される', () => {
+    mockProductsQuery.isLoading = true;
+    renderWithProviders(<PesticidesScreen />);
+    fireEvent.press(screen.getByLabelText('農薬製品'));
+    expect(screen.getByLabelText('読み込み中')).toBeTruthy();
   });
 });
 
@@ -294,6 +349,23 @@ describe('PesticidesScreen 農薬成分タブ', () => {
     renderWithProviders(<PesticidesScreen />);
     fireEvent.press(screen.getByLabelText('農薬成分'));
     expect(screen.getByText('図鑑を読み込めませんでした。')).toBeTruthy();
+  });
+
+  it('農薬成分エラー時の再試行ボタンが refetch を呼ぶ', async () => {
+    mockIngredientsQuery.isError = true;
+    renderWithProviders(<PesticidesScreen />);
+    fireEvent.press(screen.getByLabelText('農薬成分'));
+    fireEvent.press(screen.getByLabelText('再試行する'));
+    await waitFor(() => {
+      expect(mockIngredientsQuery.refetch).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  it('農薬成分ローディング時に ScreenLoading が表示される', () => {
+    mockIngredientsQuery.isLoading = true;
+    renderWithProviders(<PesticidesScreen />);
+    fireEvent.press(screen.getByLabelText('農薬成分'));
+    expect(screen.getByLabelText('読み込み中')).toBeTruthy();
   });
 });
 

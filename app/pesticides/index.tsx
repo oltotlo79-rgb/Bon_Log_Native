@@ -13,11 +13,11 @@ import {
   ActivityIndicator,
   RefreshControl,
   TouchableOpacity,
+  useWindowDimensions,
 } from 'react-native';
 import { Image } from 'expo-image';
 import { Stack, router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
 import {
   usePesticideDiseasePestsQuery,
   usePesticideProductsQuery,
@@ -36,18 +36,18 @@ import { resolveApiImageUrl } from '@/lib/utils/resolve-api-image-url';
 import {
   colorBackground,
   colorActionPrimary,
+  colorSurface,
   colorSurfaceMuted,
   colorTextPrimary,
   colorTextSecondary,
-  colorTextTertiary,
-  colorBorderLight,
+  colorBorder,
   spacing2,
   spacing3,
   spacing4,
   spacing6,
   radiusSm,
   radiusMd,
-  textMd,
+  shadowWashi,
   textSm,
   textXs,
 } from '@/lib/constants/design-tokens';
@@ -59,6 +59,7 @@ import {
 type DiseasePestItem = components['schemas']['DiseasePestItem'];
 type PesticideItem = components['schemas']['PesticideItem'];
 type IngredientItem = components['schemas']['IngredientItem'];
+type DiseasePestCategory = components['schemas']['DiseasePestCategory'];
 
 // ---------------------------------------------------------------------------
 // タブ定義
@@ -73,14 +74,39 @@ const TABS = [
 type TabKey = typeof TABS[number]['key'];
 
 // ---------------------------------------------------------------------------
-// セルコンポーネント
+// カテゴリバッジ定義（Web版の CATEGORY_BADGE を RN カラーで移植）
 // ---------------------------------------------------------------------------
 
-const THUMBNAIL_SIZE = 52;
-const CHEVRON_SIZE = 16;
+const CATEGORY_BADGE: Record<DiseasePestCategory, { label: string; bg: string; text: string }> = {
+  disease:           { label: '病害', bg: '#fee2e2', text: '#b91c1c' },
+  pest:              { label: '害虫', bg: '#fef3c7', text: '#b45309' },
+  beneficial_insect: { label: '益虫', bg: '#d1fae5', text: '#065f46' },
+};
 
-const DiseasePestCell = memo(function DiseasePestCell({ item }: { item: DiseasePestItem }) {
+// カテゴリ絵文字（画像がない場合のプレースホルダー）
+const CATEGORY_EMOJI: Record<DiseasePestCategory, string> = {
+  disease:           '🦠',
+  pest:              '🐛',
+  beneficial_insect: '🐝',
+};
+
+// ---------------------------------------------------------------------------
+// 病害虫カードコンポーネント（Web版 DiseasePestList の2カラムカードに合わせる）
+// ---------------------------------------------------------------------------
+
+const CARD_IMAGE_SIZE = 64;
+const CARD_COLUMNS = 2;
+const CARD_GAP = spacing3;
+
+type DiseasePestCardProps = {
+  item: DiseasePestItem;
+  cardWidth: number;
+};
+
+const DiseasePestCard = memo(function DiseasePestCard({ item, cardWidth }: DiseasePestCardProps) {
   const thumbnailUri = resolveApiImageUrl(item.imageUrl);
+  const badge = CATEGORY_BADGE[item.category];
+  const emoji = CATEGORY_EMOJI[item.category];
 
   const handlePress = useCallback(() => {
     router.push({ pathname: '/pesticides/disease-pests/[slug]', params: { slug: item.slug } });
@@ -88,40 +114,37 @@ const DiseasePestCell = memo(function DiseasePestCell({ item }: { item: DiseaseP
 
   return (
     <TouchableOpacity
-      style={styles.diseasePestRow}
+      style={[styles.card, { width: cardWidth }]}
       onPress={handlePress}
       activeOpacity={0.7}
       accessibilityRole="button"
       accessibilityLabel={`${item.name}の詳細を見る`}
     >
-      <View style={styles.diseasePestThumbnailWrapper}>
+      <View style={styles.cardImageWrapper}>
         {thumbnailUri !== null ? (
           <Image
             source={{ uri: thumbnailUri }}
-            style={styles.diseasePestThumbnail}
+            style={styles.cardImage}
             contentFit="cover"
             accessibilityLabel={`${item.name}のサムネイル`}
           />
         ) : (
-          <View style={styles.diseasePestThumbnailPlaceholder} />
+          <View style={styles.cardImagePlaceholder}>
+            <Text style={styles.cardEmoji} accessibilityElementsHidden>{emoji}</Text>
+          </View>
         )}
       </View>
-      <View style={styles.diseasePestContent}>
-        <Text style={styles.diseasePestName} numberOfLines={1}>{item.name}</Text>
-        {item.description !== null && (
-          <Text style={styles.diseasePestDesc} numberOfLines={1}>{item.description}</Text>
-        )}
-        <View style={styles.diseasePestChip}>
-          <Text style={styles.diseasePestChipText}>{item.category}</Text>
+      <View style={styles.cardBody}>
+        <View style={styles.cardTitleRow}>
+          <Text style={styles.cardName} numberOfLines={2}>{item.name}</Text>
+          <View style={[styles.categoryBadge, { backgroundColor: badge.bg }]}>
+            <Text style={[styles.categoryBadgeText, { color: badge.text }]}>{badge.label}</Text>
+          </View>
         </View>
+        {item.description !== null && (
+          <Text style={styles.cardDesc} numberOfLines={2}>{item.description}</Text>
+        )}
       </View>
-      <Ionicons
-        name="chevron-forward"
-        size={CHEVRON_SIZE}
-        color={colorTextTertiary}
-        accessibilityElementsHidden
-        importantForAccessibility="no"
-      />
     </TouchableOpacity>
   );
 });
@@ -163,6 +186,7 @@ const IngredientCell = memo(function IngredientCell({ item }: { item: Ingredient
 
 function DiseasePestsTab({ isActive }: { isActive: boolean }) {
   const insets = useSafeAreaInsets();
+  const { width: windowWidth } = useWindowDimensions();
   const {
     data,
     isLoading,
@@ -180,6 +204,11 @@ function DiseasePestsTab({ isActive }: { isActive: boolean }) {
   }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   const items = data?.pages.flatMap((p) => p.items) ?? [];
+
+  // 2カラムグリッド。左右padding + カラム間gapを引いてカード幅を算出
+  const cardWidth = Math.floor(
+    (windowWidth - spacing4 * 2 - CARD_GAP * (CARD_COLUMNS - 1)) / CARD_COLUMNS
+  );
 
   const ListFooter = useCallback(() => {
     if (!isFetchingNextPage) return null;
@@ -207,11 +236,13 @@ function DiseasePestsTab({ isActive }: { isActive: boolean }) {
     <FlatList
       data={items}
       keyExtractor={(item) => item.id}
-      renderItem={({ item }) => <DiseasePestCell item={item} />}
+      numColumns={CARD_COLUMNS}
+      columnWrapperStyle={styles.gridRow}
+      renderItem={({ item }) => <DiseasePestCard item={item} cardWidth={cardWidth} />}
       onEndReached={handleEndReached}
       onEndReachedThreshold={0.3}
       ListFooterComponent={ListFooter}
-      contentContainerStyle={{ paddingBottom: insets.bottom + spacing6 }}
+      contentContainerStyle={[styles.gridContent, { paddingBottom: insets.bottom + spacing6 }]}
       refreshControl={
         <RefreshControl refreshing={false} onRefresh={() => void refetch()} />
       }
@@ -336,6 +367,26 @@ function IngredientsTab({ isActive }: { isActive: boolean }) {
 }
 
 // ---------------------------------------------------------------------------
+// ヘッダーバナー（Web版 page.tsx の aspect-[21/9] 画像ブロックに対応）
+// ---------------------------------------------------------------------------
+
+// ライトモード専用バナー。将来のダークモード対応で header-pesticide-dark.webp を追加する
+const BANNER_LIGHT = require('@/assets/images/pesticides/header-pesticide.webp') as number;
+
+const PesticidesBanner = memo(function PesticidesBanner() {
+  return (
+    <View style={styles.banner}>
+      <Image
+        source={BANNER_LIGHT}
+        style={styles.bannerImage}
+        contentFit="cover"
+        accessibilityLabel="農薬・病害虫図鑑"
+      />
+    </View>
+  );
+});
+
+// ---------------------------------------------------------------------------
 // Screen
 // ---------------------------------------------------------------------------
 
@@ -349,6 +400,8 @@ export default function PesticidesScreen() {
       <Stack.Screen options={{ title: '農薬・病害虫図鑑', headerShown: true }} />
 
       <OfflineBanner isVisible={!isOnline} />
+
+      <PesticidesBanner />
 
       <CatalogTabs
         tabs={TABS.map((t) => ({ key: t.key, label: t.label }))}
@@ -377,54 +430,86 @@ const styles = StyleSheet.create({
     padding: spacing4,
     alignItems: 'center',
   },
-  diseasePestRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    minHeight: 60,
-    paddingHorizontal: spacing4,
-    paddingVertical: spacing3,
-    borderBottomWidth: 1,
-    borderBottomColor: colorBorderLight,
-    gap: spacing3,
-  },
-  diseasePestThumbnailWrapper: {
-    width: THUMBNAIL_SIZE,
-    height: THUMBNAIL_SIZE,
-    borderRadius: radiusMd,
+
+  // ヘッダーバナー（Web版 aspect-[21/9] 相当）
+  banner: {
+    width: '100%',
+    aspectRatio: 21 / 9,
     overflow: 'hidden',
-    flexShrink: 0,
   },
-  diseasePestThumbnail: {
-    width: THUMBNAIL_SIZE,
-    height: THUMBNAIL_SIZE,
+  bannerImage: {
+    width: '100%',
+    height: '100%',
   },
-  diseasePestThumbnailPlaceholder: {
-    width: THUMBNAIL_SIZE,
-    height: THUMBNAIL_SIZE,
+
+  // 2カラムグリッド
+  gridContent: {
+    paddingHorizontal: spacing4,
+    paddingTop: spacing4,
+    gap: CARD_GAP,
+  },
+  gridRow: {
+    gap: CARD_GAP,
+    marginBottom: CARD_GAP,
+  },
+
+  // 病害虫カード（Web版 DiseasePestList のグリッドカードに合わせた）
+  card: {
+    backgroundColor: colorSurface,
+    borderRadius: radiusMd,
+    borderWidth: 1,
+    borderColor: colorBorder,
+    overflow: 'hidden',
+    ...shadowWashi,
+  },
+  cardImageWrapper: {
+    width: '100%',
+    height: CARD_IMAGE_SIZE,
     backgroundColor: colorSurfaceMuted,
   },
-  diseasePestContent: {
-    flex: 1,
+  cardImage: {
+    width: '100%',
+    height: CARD_IMAGE_SIZE,
+  },
+  cardImagePlaceholder: {
+    width: '100%',
+    height: CARD_IMAGE_SIZE,
+    backgroundColor: colorSurfaceMuted,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  cardEmoji: {
+    fontSize: 28,
+  },
+  cardBody: {
+    padding: spacing3,
     gap: spacing2,
   },
-  diseasePestName: {
-    ...textMd,
+  cardTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+    gap: spacing2,
+  },
+  cardName: {
+    ...textSm,
     color: colorTextPrimary,
     fontWeight: '600',
+    flex: 1,
   },
-  diseasePestDesc: {
-    ...textSm,
-    color: colorTextSecondary,
-  },
-  diseasePestChip: {
-    alignSelf: 'flex-start',
-    backgroundColor: colorSurfaceMuted,
+  categoryBadge: {
     borderRadius: radiusSm,
     paddingHorizontal: spacing2,
     paddingVertical: 2,
+    flexShrink: 0,
   },
-  diseasePestChipText: {
+  categoryBadgeText: {
+    ...textXs,
+    fontWeight: '600',
+  },
+  cardDesc: {
     ...textXs,
     color: colorTextSecondary,
+    lineHeight: 16,
   },
 });

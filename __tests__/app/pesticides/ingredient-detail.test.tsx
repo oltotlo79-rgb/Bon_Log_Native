@@ -151,7 +151,8 @@ describe('IngredientDetailScreen 正常表示', () => {
   it('IRAC コードのチップが表示される', () => {
     mockDetailQuery.data = makeIngredientDetail();
     renderWithProviders(<IngredientDetailScreen />);
-    expect(screen.getByText('IRAC: IRAC-1A')).toBeTruthy();
+    expect(screen.getByText('IRACコード')).toBeTruthy();
+    expect(screen.getByText('IRAC-1A')).toBeTruthy();
   });
 
   it('成分グループが表示される', () => {
@@ -169,7 +170,7 @@ describe('IngredientDetailScreen 正常表示', () => {
   it('含む製品セクションが表示される', () => {
     mockDetailQuery.data = makeIngredientDetail();
     renderWithProviders(<IngredientDetailScreen />);
-    expect(screen.getByText('含む製品')).toBeTruthy();
+    expect(screen.getByText('この原体を含む薬剤（1件）')).toBeTruthy();
     expect(screen.getByText('アブラムシ殺虫剤A')).toBeTruthy();
   });
 
@@ -186,7 +187,7 @@ describe('IngredientDetailScreen 正常表示', () => {
   it('含む製品が空のとき「含む製品」セクションが表示されない', () => {
     mockDetailQuery.data = makeIngredientDetail({ pesticides: [] });
     renderWithProviders(<IngredientDetailScreen />);
-    expect(screen.queryByText('含む製品')).toBeNull();
+    expect(screen.queryByText(/この原体を含む薬剤/)).toBeNull();
   });
 
   it('英名が null のとき英名が表示されない', () => {
@@ -198,7 +199,8 @@ describe('IngredientDetailScreen 正常表示', () => {
   it('低耐性リスクの日本語ラベルが表示される', () => {
     mockDetailQuery.data = makeIngredientDetail({ resistanceRisk: 'low' });
     renderWithProviders(<IngredientDetailScreen />);
-    expect(screen.getByText('耐性: つきにくい')).toBeTruthy();
+    expect(screen.getByText('耐性リスク')).toBeTruthy();
+    expect(screen.getByText('つきにくい')).toBeTruthy();
   });
 });
 

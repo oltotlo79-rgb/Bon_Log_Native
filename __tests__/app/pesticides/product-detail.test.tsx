@@ -141,7 +141,7 @@ describe('ProductDetailScreen 正常表示', () => {
   it('登録番号が表示される', () => {
     mockDetailQuery.data = makeProductDetail();
     renderWithProviders(<ProductDetailScreen />);
-    expect(screen.getByText('登録番号: 農林水産省登録 第12345号')).toBeTruthy();
+    expect(screen.getByText('農林水産省登録 第12345号')).toBeTruthy();
   });
 
   it('説明が表示される', () => {
@@ -170,7 +170,7 @@ describe('ProductDetailScreen 正常表示', () => {
   it('対象病害虫セクションが表示される', () => {
     mockDetailQuery.data = makeProductDetail();
     renderWithProviders(<ProductDetailScreen />);
-    expect(screen.getByText('対象病害虫')).toBeTruthy();
+    expect(screen.getByText('効果のある病害虫')).toBeTruthy();
     expect(screen.getByText('アブラムシ')).toBeTruthy();
   });
 
@@ -187,7 +187,7 @@ describe('ProductDetailScreen 正常表示', () => {
   it('混用不可農薬セクションが表示される', () => {
     mockDetailQuery.data = makeProductDetail();
     renderWithProviders(<ProductDetailScreen />);
-    expect(screen.getByText('混用不可農薬')).toBeTruthy();
+    expect(screen.getByText('混用不可の農薬（代表例）')).toBeTruthy();
     expect(screen.getByText('○○殺菌剤')).toBeTruthy();
   });
 
@@ -201,6 +201,40 @@ describe('ProductDetailScreen 正常表示', () => {
     mockDetailQuery.data = makeProductDetail({ registrationNumber: null });
     renderWithProviders(<ProductDetailScreen />);
     expect(screen.queryByText(/登録番号/)).toBeNull();
+  });
+
+  it('formulationType が null のとき剤型セクションが表示されない', () => {
+    mockDetailQuery.data = makeProductDetail({ formulationType: null });
+    renderWithProviders(<ProductDetailScreen />);
+    expect(screen.queryByText('剤型')).toBeNull();
+  });
+
+  it('混用不可農薬が空のとき「特に登録・記載されている混用不可情報はありません。」が表示される', () => {
+    mockDetailQuery.data = makeProductDetail({ incompatibilities: [] });
+    renderWithProviders(<ProductDetailScreen />);
+    expect(screen.getByText('特に登録・記載されている混用不可情報はありません。')).toBeTruthy();
+  });
+
+  it('fracCode が null のとき FRAC タグが表示されない', () => {
+    mockDetailQuery.data = makeProductDetail({
+      activeIngredients: [
+        { id: 'i1', slug: 'ingredient-a', name: 'ピリミカルブ', fracCode: null, iracCode: null, resistanceRisk: null },
+      ],
+    });
+    renderWithProviders(<ProductDetailScreen />);
+    expect(screen.queryByText(/FRAC:/)).toBeNull();
+  });
+
+  it('description が null のとき説明テキストが表示されない', () => {
+    mockDetailQuery.data = makeProductDetail({ description: null });
+    renderWithProviders(<ProductDetailScreen />);
+    expect(screen.queryByText('接触型の殺虫剤。速効性がある。')).toBeNull();
+  });
+
+  it('effects が空のとき「効果のある病害虫」セクションが表示されない', () => {
+    mockDetailQuery.data = makeProductDetail({ effects: [] });
+    renderWithProviders(<ProductDetailScreen />);
+    expect(screen.queryByText('効果のある病害虫')).toBeNull();
   });
 });
 
