@@ -1,31 +1,33 @@
-import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
+/**
+ * @module app/(tabs)/profile/index
+ * 自分のプロフィール画面。
+ * プロフィールヘッダーを FlatList の ListHeaderComponent として配置し、
+ * ユーザーの投稿一覧を無限スクロールで表示する。
+ * ユーザー投稿一覧クエリはサーバー未実装のため投稿一覧は非表示（core 差し戻し参照）。
+ */
+
+import React, { useCallback } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, FlatList, RefreshControl } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useCurrentUserQuery } from '@/lib/queries/auth';
+import { useUserProfileQuery } from '@/lib/queries/users';
+import { useOnlineStatus } from '@/hooks/use-online-status';
 import { ScreenLoading } from '@/components/common/ScreenLoading';
 import { ScreenError } from '@/components/common/ScreenError';
-import { UserAvatar } from '@/components/common/UserAvatar';
+import { ScreenEmpty } from '@/components/common/ScreenEmpty';
+import { OfflineBanner } from '@/components/common/OfflineBanner';
+import { ProfileHeader } from '@/components/profile/ProfileHeader';
 import {
   colorBackground,
-  colorSurface,
   colorSurfaceWashi,
-  colorSurfaceMuted,
   colorTextPrimary,
-  colorTextSecondary,
   colorBorderLight,
-  colorActionPrimary,
-  spacing2,
-  spacing3,
   spacing4,
   spacing6,
-  textBase,
   textLg,
-  textSm,
   letterSpacingWidest,
-  radiusFull,
-  radiusMd,
-  radiusLg,
 } from '@/lib/constants/design-tokens';
 import { ERR_PROFILE_LOAD_FAILED } from '@/lib/constants/errors';
 import { routes } from '@/lib/constants/routes';
@@ -34,126 +36,165 @@ import { routes } from '@/lib/constants/routes';
 // 定数
 // ---------------------------------------------------------------------------
 
-const AVATAR_SIZE = 72;
-const PREMIUM_BADGE_SIZE = 20;
+// isPremium は useCurrentUserQuery 由来。プロフィール詳細（headerUrl 等）は useUserProfileQuery が返す。
+// 2 クエリを使うのは API の設計上避けられない（GET /api/v1/users/me は isPremium を持ち、
+// GET /api/v1/users/{id} は headerUrl / bonsaiStartYear 等を持つ）。
 
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
 
 export default function ProfileScreen() {
-  const { data: user, isLoading, isError, refetch } = useCurrentUserQuery();
+  const isOffline = !useOnlineStatus();
+
+  const {
+    data: me,
+    isLoading: meLoading,
+    isError: meError,
+    refetch: refetchMe,
+  } = useCurrentUserQuery();
+
+  const userId = me?.id ?? '';
+
+  const {
+    data: profile,
+    isLoading: profileLoading,
+    isError: profileError,
+    refetch: refetchProfile,
+  } = useUserProfileQuery(userId);
+
+  const isLoading = meLoading || (userId.length > 0 && profileLoading);
+  const isError = meError || profileError;
+
+  const refetchAll = useCallback(() => {
+    void refetchMe();
+    void refetchProfile();
+  }, [refetchMe, refetchProfile]);
+
+  const renderHeader = (
+    <View style={styles.navBar}>
+      <Text style={styles.navTitle} accessibilityRole="header">
+        プロフィール
+      </Text>
+      <TouchableOpacity
+        style={styles.settingsButton}
+        onPress={() => router.push(routes.settings)}
+        accessibilityRole="button"
+        accessibilityLabel="設定を開く"
+        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+      >
+        <Ionicons
+          name="settings-outline"
+          size={22}
+          color={colorTextPrimary}
+          accessibilityElementsHidden
+          importantForAccessibility="no"
+        />
+      </TouchableOpacity>
+    </View>
+  );
 
   if (isLoading) {
     return (
       <SafeAreaView style={styles.safeArea} edges={['top']}>
-        <View style={styles.header}>
-          <Text style={styles.headerTitle} accessibilityRole="header">
-            プロフィール
-          </Text>
-          <View style={styles.settingsPlaceholder} />
-        </View>
-        <ScreenLoading variant="skeleton" skeletonCount={2} />
+        {renderHeader}
+        <ScreenLoading variant="skeleton" skeletonCount={3} />
       </SafeAreaView>
     );
   }
 
-  if (isError || user === undefined) {
+  if (isError || me === undefined) {
     return (
       <SafeAreaView style={styles.safeArea} edges={['top']}>
-        <View style={styles.header}>
-          <Text style={styles.headerTitle} accessibilityRole="header">
-            プロフィール
-          </Text>
-          <View style={styles.settingsPlaceholder} />
-        </View>
+        {renderHeader}
+        <OfflineBanner isVisible={isOffline} />
         <ScreenError
           description={ERR_PROFILE_LOAD_FAILED}
-          onRetry={() => { void refetch(); }}
+          onRetry={refetchAll}
         />
       </SafeAreaView>
     );
   }
 
+  // profile が undefined（userId 空やエラー）の場合でも基本情報だけ表示する
+  const isPremium = me.isPremium;
+  const nickname = profile?.nickname ?? me.nickname;
+  const avatarUrl = profile?.avatarUrl ?? me.avatarUrl;
+  const headerUrl = profile?.headerUrl ?? null;
+  const bio = profile?.bio ?? me.bio;
+  const location = profile?.location ?? null;
+  const bonsaiStartYear = profile?.bonsaiStartYear ?? null;
+  const bonsaiStartMonth = profile?.bonsaiStartMonth ?? null;
+  const createdAt = profile?.createdAt ?? new Date().toISOString();
+  const isPublic = profile?.isPublic ?? true;
+  const postsCount = profile?.postsCount ?? 0;
+  const followersCount = profile?.followersCount ?? 0;
+  const followingCount = profile?.followingCount ?? 0;
+
+  const profileHeaderComponent = (
+    <ProfileHeader
+      id={me.id}
+      nickname={nickname}
+      avatarUrl={avatarUrl}
+      headerUrl={headerUrl}
+      bio={bio}
+      location={location}
+      bonsaiStartYear={bonsaiStartYear}
+      bonsaiStartMonth={bonsaiStartMonth}
+      createdAt={createdAt}
+      isPublic={isPublic}
+      isPremium={isPremium}
+      postsCount={postsCount}
+      followersCount={followersCount}
+      followingCount={followingCount}
+      isSelf
+      following={false}
+      requested={false}
+      currentUserId={me.id}
+    />
+  );
+
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
-      <View style={styles.header}>
-        <Text style={styles.headerTitle} accessibilityRole="header">
-          プロフィール
-        </Text>
-        <TouchableOpacity
-          style={styles.settingsButton}
-          onPress={() => router.push(routes.settings)}
-          accessibilityRole="button"
-          accessibilityLabel="設定を開く"
-          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-        >
-          <Ionicons
-            name="settings-outline"
-            size={22}
-            color={colorTextPrimary}
-            accessibilityElementsHidden
-            importantForAccessibility="no"
+      {renderHeader}
+      <OfflineBanner isVisible={isOffline} />
+      <FlatList
+        data={[]}
+        keyExtractor={() => ''}
+        renderItem={null}
+        ListHeaderComponent={profileHeaderComponent}
+        ListEmptyComponent={
+          <ScreenEmpty
+            iconName="document-text-outline"
+            title="まだ投稿がありません"
+            description="最初の投稿を作成してみましょう。"
+            actionLabel="投稿する"
+            onAction={() => router.push(routes.postNew)}
           />
-        </TouchableOpacity>
-      </View>
-
-      <View style={styles.content}>
-        <View style={styles.profileCard}>
-          <View style={styles.avatarWrapper}>
-            <UserAvatar
-              avatarUrl={user.avatarUrl}
-              userId={user.id}
-              size={AVATAR_SIZE}
-              accessibilityLabel={`${user.nickname} のアバター`}
-            />
-
-            {user.isPremium && (
-              <View
-                style={styles.premiumBadge}
-                accessibilityLabel="プレミアム会員"
-                accessibilityRole="image"
-              >
-                <Ionicons
-                  name="star"
-                  size={PREMIUM_BADGE_SIZE * 0.6}
-                  color="#ffffff"
-                  accessibilityElementsHidden
-                  importantForAccessibility="no"
-                />
-              </View>
-            )}
-          </View>
-
-          <View style={styles.userInfo}>
-            <Text style={styles.nickname} accessibilityRole="text">
-              {user.nickname}
-            </Text>
-
-            {user.isPremium && (
-              <View style={styles.premiumLabel}>
-                <Text style={styles.premiumLabelText}>プレミアム</Text>
-              </View>
-            )}
-
-            {user.bio !== null && user.bio !== undefined && user.bio.length > 0 && (
-              <Text style={styles.bio} accessibilityRole="text">
-                {user.bio}
-              </Text>
-            )}
-          </View>
-        </View>
-      </View>
+        }
+        contentContainerStyle={styles.listContent}
+        refreshControl={
+          <RefreshControl
+            refreshing={false}
+            onRefresh={refetchAll}
+            accessibilityLabel="引き下げて更新"
+          />
+        }
+      />
     </SafeAreaView>
   );
 }
+
+// ---------------------------------------------------------------------------
+// スタイル
+// ---------------------------------------------------------------------------
 
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: colorBackground,
   },
-  header: {
+  navBar: {
     height: 48,
     backgroundColor: colorSurfaceWashi,
     borderBottomWidth: 1,
@@ -163,7 +204,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingHorizontal: spacing4,
   },
-  headerTitle: {
+  navTitle: {
     ...textLg,
     color: colorTextPrimary,
     letterSpacing: letterSpacingWidest,
@@ -178,66 +219,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  settingsPlaceholder: {
-    position: 'absolute',
-    right: spacing4,
-    height: 44,
-    width: 44,
-  },
-  content: {
-    flex: 1,
-    padding: spacing4,
-  },
-  profileCard: {
-    backgroundColor: colorSurface,
-    borderRadius: radiusLg,
-    padding: spacing4,
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: spacing4,
-  },
-  avatarWrapper: {
-    position: 'relative',
-  },
-  premiumBadge: {
-    position: 'absolute',
-    bottom: 0,
-    right: 0,
-    width: PREMIUM_BADGE_SIZE,
-    height: PREMIUM_BADGE_SIZE,
-    borderRadius: radiusFull,
-    backgroundColor: colorActionPrimary,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  userInfo: {
-    flex: 1,
-    gap: spacing2,
-  },
-  nickname: {
-    ...textLg,
-    color: colorTextPrimary,
-  },
-  premiumLabel: {
-    alignSelf: 'flex-start',
-    backgroundColor: colorActionPrimary,
-    borderRadius: radiusMd,
-    paddingHorizontal: spacing3,
-    paddingVertical: spacing2,
-  },
-  premiumLabelText: {
-    ...textSm,
-    color: '#ffffff',
-    fontWeight: '600',
-  },
-  bio: {
-    ...textBase,
-    color: colorTextSecondary,
-    marginTop: spacing2,
-  },
-  placeholder: {
-    ...textLg,
-    color: colorTextPrimary,
-    marginBottom: spacing6,
+  listContent: {
+    paddingBottom: spacing6,
+    flexGrow: 1,
   },
 });

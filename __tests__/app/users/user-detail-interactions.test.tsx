@@ -45,6 +45,11 @@ jest.mock('@/lib/queries/users', () => ({
   useUserProfileQuery: () => mockUseUserProfileQuery(),
 }));
 
+const mockUseCurrentUserQuery = jest.fn();
+jest.mock('@/lib/queries/auth', () => ({
+  useCurrentUserQuery: () => mockUseCurrentUserQuery(),
+}));
+
 const mockRefetch = jest.fn();
 
 const defaultProfileState = {
@@ -58,6 +63,9 @@ const defaultProfileState = {
 beforeEach(() => {
   jest.clearAllMocks();
   mockUseLocalSearchParams.mockReturnValue({ id: 'user-xyz-456' });
+  mockUseCurrentUserQuery.mockReturnValue({
+    data: { id: 'me-1', nickname: '自分', avatarUrl: null, bio: null, isPremium: false },
+  });
 });
 
 describe('UserDetailContent - 戻るボタン', () => {

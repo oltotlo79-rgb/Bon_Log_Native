@@ -20,6 +20,11 @@ jest.mock('@/lib/queries/users', () => ({
   useUserProfileQuery: () => mockUseUserProfileQuery(),
 }));
 
+const mockUseCurrentUserQuery = jest.fn();
+jest.mock('@/lib/queries/auth', () => ({
+  useCurrentUserQuery: () => mockUseCurrentUserQuery(),
+}));
+
 const defaultProfileState = {
   data: makeUserProfile({ isSelf: false }),
   isLoading: false,
@@ -35,11 +40,16 @@ describe('UserDetailScreen', () => {
     beforeEach(() => {
       mockUseLocalSearchParams.mockReturnValue({ id: 'user-xyz-456' });
       mockUseUserProfileQuery.mockReturnValue(defaultProfileState);
+      mockUseCurrentUserQuery.mockReturnValue({
+        data: { id: 'me-1', nickname: '自分', avatarUrl: null, bio: null, isPremium: false },
+      });
     });
 
     it('ヘッダーに「プロフィール」またはニックネームが表示される', () => {
       renderWithProviders(<UserDetailScreen />);
-      expect(screen.getByRole('header')).toBeTruthy();
+      // ProfileHeader の nickname も header ロールを持つため getAllByRole を使う
+      const headers = screen.getAllByRole('header');
+      expect(headers.length).toBeGreaterThanOrEqual(1);
     });
 
     it('戻るボタンが表示される', () => {
