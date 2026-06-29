@@ -1,10 +1,12 @@
 /**
  * @module app/shops/index
- * 盆栽園マップ一覧画面。sortBy フィルタ + FAB で新規登録。
+ * 盆栽園マップ一覧画面。
+ * キーワード検索 / ジャンルフィルタ / ソートバー + FAB で新規登録。
+ * Web 版 ShopsPage に寄せた構造（バナー / 検索フォーム / ソート / 一覧）。
  * 仕様: docs/design/shops.md §2
  */
 
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useState, useRef } from 'react';
 import {
   View,
   Text,
@@ -14,11 +16,14 @@ import {
   Pressable,
   ScrollView,
   ActivityIndicator,
+  TextInput,
+  Platform,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useShopsListQuery } from '@/lib/queries/shops';
+import { useShopsListQuery, useGenresQuery } from '@/lib/queries/shops';
 import type { ShopListResponse } from '@/lib/queries/shops';
 import { useCurrentUserQuery } from '@/lib/queries/auth';
 import { useOnlineStatus } from '@/hooks/use-online-status';
@@ -29,21 +34,26 @@ import { ScreenError } from '@/components/common/ScreenError';
 import { OfflineBanner } from '@/components/common/OfflineBanner';
 import {
   colorBackground,
+  colorSurface,
   colorSurfaceWashi,
   colorTextPrimary,
   colorTextSecondary,
+  colorTextTertiary,
   colorActionPrimary,
   colorActionPrimaryText,
   colorActionSecondary,
   colorActionSecondaryText,
   colorBorderLight,
   spacing1,
+  spacing2,
   spacing3,
   spacing4,
   spacing6,
   radiusFull,
   radiusSm,
+  radiusLg,
   shadowWashi,
+  textBase,
   textLg,
   textSm,
 } from '@/lib/constants/design-tokens';
@@ -58,6 +68,13 @@ const FAB_SIZE = 56;
 const FAB_ICON_SIZE = 24;
 const CHIP_HEIGHT = 36;
 const CHIP_HIT_SLOP = { top: 4, bottom: 4, left: 4, right: 4 };
+const BANNER_HEIGHT = 96;
+const SEARCH_ICON_SIZE = 16;
+const CLEAR_ICON_SIZE = 16;
+const BACK_HIT_SLOP = { top: 8, bottom: 8, left: 8, right: 8 };
+
+// バナー画像はモバイル用を使用（map-header-mobile.webp: cfw ui/ からコピー済み）
+const BANNER_SOURCE = require('@/assets/images/map-header-mobile.webp');
 
 type SortOption = {
   label: string;
@@ -68,7 +85,7 @@ const SORT_OPTIONS: SortOption[] = [
   { label: '評価順', value: 'rating' },
   { label: '名前順', value: 'name' },
   { label: '新着順', value: 'newest' },
-  { label: '近い順', value: 'location' },
+  { label: '北から順', value: 'location' },
 ];
 
 // ---------------------------------------------------------------------------
@@ -87,7 +104,15 @@ export default function ShopsScreen() {
   const { data: currentUser } = useCurrentUserQuery();
   const isLoggedIn = currentUser !== undefined;
 
+  const [search, setSearch] = useState('');
+  const [committedSearch, setCommittedSearch] = useState<string | undefined>(undefined);
+  const [genreId, setGenreId] = useState<string | undefined>(undefined);
   const [sortBy, setSortBy] = useState<ShopsListParams['sortBy']>('rating');
+
+  const searchInputRef = useRef<TextInput>(null);
+
+  const { data: genreData } = useGenresQuery('shop');
+  const genres = genreData?.items ?? [];
 
   const {
     data,
@@ -98,9 +123,20 @@ export default function ShopsScreen() {
     hasNextPage,
     isFetchingNextPage,
     isRefetching,
-  } = useShopsListQuery({ sortBy });
+  } = useShopsListQuery({ search: committedSearch, genreId, sortBy });
 
   const allItems: ShopListItem[] = data?.pages.flatMap((page) => page.items) ?? [];
+
+  const handleSearch = useCallback(() => {
+    const trimmed = search.trim();
+    setCommittedSearch(trimmed.length > 0 ? trimmed : undefined);
+    searchInputRef.current?.blur();
+  }, [search]);
+
+  const handleClearSearch = useCallback(() => {
+    setSearch('');
+    setCommittedSearch(undefined);
+  }, []);
 
   const handleRefresh = useCallback(() => {
     void refetch();
@@ -118,6 +154,9 @@ export default function ShopsScreen() {
         id={item.id}
         name={item.name}
         address={item.address}
+        phone={item.phone}
+        businessHours={item.businessHours}
+        closedDays={item.closedDays}
         genres={item.genres.map((g) => g.name)}
         averageRating={item.averageRating}
         reviewCount={item.reviewCount}
@@ -138,11 +177,30 @@ export default function ShopsScreen() {
     );
   }, [isFetchingNextPage]);
 
+  const hasActiveFilter =
+    (committedSearch !== undefined && committedSearch.length > 0) ||
+    genreId !== undefined ||
+    sortBy !== 'rating';
+
   if (isLoading) {
     return (
       <View style={[styles.container, { paddingTop: insets.top }]}>
         <ShopsHeader />
-        <SortBar sortBy={sortBy} onSelectSort={setSortBy} />
+        <BannerImage />
+        <SearchForm
+          search={search}
+          onChangeSearch={setSearch}
+          onSubmitSearch={handleSearch}
+          onClearSearch={handleClearSearch}
+          searchInputRef={searchInputRef}
+        />
+        <SortAndFilterBar
+          sortBy={sortBy}
+          onSelectSort={setSortBy}
+          genres={genres}
+          selectedGenreId={genreId}
+          onSelectGenre={setGenreId}
+        />
         <ScreenLoading variant="skeleton" />
       </View>
     );
@@ -152,7 +210,21 @@ export default function ShopsScreen() {
     return (
       <View style={[styles.container, { paddingTop: insets.top }]}>
         <ShopsHeader />
-        <SortBar sortBy={sortBy} onSelectSort={setSortBy} />
+        <BannerImage />
+        <SearchForm
+          search={search}
+          onChangeSearch={setSearch}
+          onSubmitSearch={handleSearch}
+          onClearSearch={handleClearSearch}
+          searchInputRef={searchInputRef}
+        />
+        <SortAndFilterBar
+          sortBy={sortBy}
+          onSelectSort={setSortBy}
+          genres={genres}
+          selectedGenreId={genreId}
+          onSelectGenre={setGenreId}
+        />
         <ScreenError
           title="読み込めませんでした"
           onRetry={() => void refetch()}
@@ -165,13 +237,38 @@ export default function ShopsScreen() {
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <OfflineBanner isVisible={!isOnline} />
       <ShopsHeader />
-      <SortBar sortBy={sortBy} onSelectSort={setSortBy} />
+      <BannerImage />
+      <SearchForm
+        search={search}
+        onChangeSearch={setSearch}
+        onSubmitSearch={handleSearch}
+        onClearSearch={handleClearSearch}
+        searchInputRef={searchInputRef}
+      />
+      <SortAndFilterBar
+        sortBy={sortBy}
+        onSelectSort={setSortBy}
+        genres={genres}
+        selectedGenreId={genreId}
+        onSelectGenre={setGenreId}
+        hasActiveFilter={hasActiveFilter}
+        onReset={() => {
+          setSearch('');
+          setCommittedSearch(undefined);
+          setGenreId(undefined);
+          setSortBy('rating');
+        }}
+      />
 
       {allItems.length === 0 ? (
         <ScreenEmpty
           iconName="map-outline"
           title="盆栽園が登録されていません"
-          description="右下のボタンから盆栽園を登録してみましょう。"
+          description={
+            hasActiveFilter
+              ? '条件を変えて再検索してみましょう。'
+              : '右下のボタンから盆栽園を登録してみましょう。'
+          }
         />
       ) : (
         <FlatList
@@ -181,6 +278,11 @@ export default function ShopsScreen() {
           onEndReached={handleLoadMore}
           onEndReachedThreshold={0.3}
           ListFooterComponent={renderFooter}
+          ListHeaderComponent={
+            <Text style={styles.resultCount}>
+              {allItems.length}件
+            </Text>
+          }
           contentContainerStyle={[
             styles.listContent,
             { paddingBottom: insets.bottom + FAB_SIZE + spacing6 * 2 },
@@ -202,7 +304,7 @@ export default function ShopsScreen() {
           style={[styles.fab, { bottom: insets.bottom + spacing4 }]}
           onPress={() => router.push({ pathname: '/shops/new' })}
           accessibilityRole="button"
-          accessibilityLabel="店舗を登録する"
+          accessibilityLabel="盆栽園を登録する"
         >
           <Ionicons
             name="add"
@@ -229,7 +331,7 @@ function ShopsHeader() {
         accessibilityRole="button"
         accessibilityLabel="戻る"
         style={styles.backButton}
-        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        hitSlop={BACK_HIT_SLOP}
       >
         <Text style={styles.backButtonText}>‹ 戻る</Text>
       </Pressable>
@@ -240,22 +342,124 @@ function ShopsHeader() {
 }
 
 // ---------------------------------------------------------------------------
-// SortBar
+// バナー
 // ---------------------------------------------------------------------------
 
-type SortBarProps = {
-  sortBy: ShopsListParams['sortBy'];
-  onSelectSort: (value: ShopsListParams['sortBy']) => void;
+function BannerImage() {
+  return (
+    <Image
+      source={BANNER_SOURCE}
+      style={styles.banner}
+      contentFit="cover"
+      accessibilityLabel=""
+      accessibilityElementsHidden
+      importantForAccessibility="no"
+    />
+  );
+}
+
+// ---------------------------------------------------------------------------
+// 検索フォーム（Web 版の上部検索バーに対応）
+// ---------------------------------------------------------------------------
+
+type SearchFormProps = {
+  search: string;
+  onChangeSearch: (text: string) => void;
+  onSubmitSearch: () => void;
+  onClearSearch: () => void;
+  searchInputRef: React.RefObject<TextInput | null>;
 };
 
-function SortBar({ sortBy, onSelectSort }: SortBarProps) {
+function SearchForm({
+  search,
+  onChangeSearch,
+  onSubmitSearch,
+  onClearSearch,
+  searchInputRef,
+}: SearchFormProps) {
   return (
-    <View style={styles.sortBar}>
+    <View style={styles.searchContainer}>
+      <View style={styles.searchInputWrapper}>
+        <Ionicons
+          name="search-outline"
+          size={SEARCH_ICON_SIZE}
+          color={colorTextTertiary}
+          style={styles.searchIcon}
+          accessibilityElementsHidden
+          importantForAccessibility="no"
+        />
+        <TextInput
+          ref={searchInputRef}
+          style={styles.searchInput}
+          value={search}
+          onChangeText={onChangeSearch}
+          onSubmitEditing={onSubmitSearch}
+          placeholder="名前または住所で検索..."
+          placeholderTextColor={colorTextTertiary}
+          returnKeyType="search"
+          clearButtonMode="never"
+          accessibilityLabel="盆栽園を名前または住所で検索"
+        />
+        {search.length > 0 && (
+          <Pressable
+            onPress={onClearSearch}
+            hitSlop={CHIP_HIT_SLOP}
+            accessibilityRole="button"
+            accessibilityLabel="検索をクリア"
+          >
+            <Ionicons
+              name="close-circle"
+              size={CLEAR_ICON_SIZE}
+              color={colorTextTertiary}
+            />
+          </Pressable>
+        )}
+      </View>
+      <Pressable
+        style={({ pressed }) => [styles.searchButton, pressed && styles.searchButtonPressed]}
+        onPress={onSubmitSearch}
+        accessibilityRole="button"
+        accessibilityLabel="検索する"
+      >
+        <Text style={styles.searchButtonText}>検索</Text>
+      </Pressable>
+    </View>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// ソート + ジャンルフィルタバー（Web 版の flex-wrap フィルタ行に対応）
+// ---------------------------------------------------------------------------
+
+type Genre = { id: string; name: string };
+
+type SortAndFilterBarProps = {
+  sortBy: ShopsListParams['sortBy'];
+  onSelectSort: (value: ShopsListParams['sortBy']) => void;
+  genres: Genre[];
+  selectedGenreId: string | undefined;
+  onSelectGenre: (id: string | undefined) => void;
+  hasActiveFilter?: boolean;
+  onReset?: () => void;
+};
+
+function SortAndFilterBar({
+  sortBy,
+  onSelectSort,
+  genres,
+  selectedGenreId,
+  onSelectGenre,
+  hasActiveFilter = false,
+  onReset,
+}: SortAndFilterBarProps) {
+  return (
+    <View style={styles.filterBar}>
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.sortBarContent}
+        contentContainerStyle={styles.filterBarContent}
       >
+        {/* ソートチップ */}
         {SORT_OPTIONS.map((opt) => {
           const isSelected = sortBy === opt.value;
           return (
@@ -274,6 +478,55 @@ function SortBar({ sortBy, onSelectSort }: SortBarProps) {
             </Pressable>
           );
         })}
+
+        {/* セパレーター */}
+        <View style={styles.separator} />
+
+        {/* ジャンルフィルタチップ（すべて + 各ジャンル） */}
+        <Pressable
+          style={[styles.chip, selectedGenreId === undefined && styles.chipSelected]}
+          onPress={() => onSelectGenre(undefined)}
+          hitSlop={CHIP_HIT_SLOP}
+          accessibilityRole="radio"
+          accessibilityState={{ selected: selectedGenreId === undefined }}
+          accessibilityLabel="すべてのジャンル"
+        >
+          <Text style={[styles.chipText, selectedGenreId === undefined && styles.chipTextSelected]}>
+            すべて
+          </Text>
+        </Pressable>
+
+        {genres.map((g) => {
+          const isSelected = selectedGenreId === g.id;
+          return (
+            <Pressable
+              key={g.id}
+              style={[styles.chip, isSelected && styles.chipSelected]}
+              onPress={() => onSelectGenre(g.id)}
+              hitSlop={CHIP_HIT_SLOP}
+              accessibilityRole="radio"
+              accessibilityState={{ selected: isSelected }}
+              accessibilityLabel={`${g.name}で絞り込む`}
+            >
+              <Text style={[styles.chipText, isSelected && styles.chipTextSelected]}>
+                {g.name}
+              </Text>
+            </Pressable>
+          );
+        })}
+
+        {/* リセットボタン（フィルタが有効な時のみ表示） */}
+        {hasActiveFilter && onReset !== undefined && (
+          <Pressable
+            style={styles.resetButton}
+            onPress={onReset}
+            hitSlop={CHIP_HIT_SLOP}
+            accessibilityRole="button"
+            accessibilityLabel="絞り込みをリセット"
+          >
+            <Text style={styles.resetText}>リセット</Text>
+          </Pressable>
+        )}
       </ScrollView>
     </View>
   );
@@ -288,6 +541,8 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colorBackground,
   },
+
+  // ヘッダー
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -315,14 +570,72 @@ const styles = StyleSheet.create({
   headerRight: {
     minWidth: 60,
   },
-  sortBar: {
-    height: 44,
+
+  // バナー
+  banner: {
+    width: '100%',
+    height: BANNER_HEIGHT,
+  },
+
+  // 検索フォーム
+  searchContainer: {
+    flexDirection: 'row',
+    gap: spacing2,
+    paddingHorizontal: spacing4,
+    paddingVertical: spacing3,
+    backgroundColor: colorSurfaceWashi,
+    borderBottomWidth: 1,
+    borderBottomColor: colorBorderLight,
+  },
+  searchInputWrapper: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: colorSurface,
+    borderWidth: 1,
+    borderColor: colorBorderLight,
+    borderRadius: radiusLg,
+    paddingHorizontal: spacing3,
+    gap: spacing2,
+    minHeight: 44,
+  },
+  searchIcon: {
+    flexShrink: 0,
+  },
+  searchInput: {
+    flex: 1,
+    ...textBase,
+    color: colorTextPrimary,
+    // Android と iOS でパディングが異なるため Platform で統一
+    paddingVertical: Platform.OS === 'android' ? spacing1 : spacing2,
+  },
+  searchButton: {
+    backgroundColor: colorActionPrimary,
+    borderRadius: radiusLg,
+    paddingHorizontal: spacing4,
+    justifyContent: 'center',
+    alignItems: 'center',
+    minWidth: 60,
+    minHeight: 44,
+  },
+  searchButtonPressed: {
+    opacity: 0.8,
+  },
+  searchButtonText: {
+    ...textSm,
+    color: colorActionPrimaryText,
+    fontWeight: '600',
+  },
+
+  // フィルタバー
+  filterBar: {
+    height: 48,
     backgroundColor: colorSurfaceWashi,
     borderBottomWidth: 1,
     borderBottomColor: colorBorderLight,
     justifyContent: 'center',
   },
-  sortBarContent: {
+  filterBarContent: {
     paddingHorizontal: spacing4,
     gap: spacing1,
     alignItems: 'center',
@@ -345,6 +658,29 @@ const styles = StyleSheet.create({
   chipTextSelected: {
     color: colorActionPrimaryText,
   },
+  separator: {
+    width: 1,
+    height: CHIP_HEIGHT,
+    backgroundColor: colorBorderLight,
+    marginHorizontal: spacing1,
+  },
+  resetButton: {
+    height: CHIP_HEIGHT,
+    paddingHorizontal: spacing3,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  resetText: {
+    ...textSm,
+    color: colorTextSecondary,
+  },
+
+  // リスト
+  resultCount: {
+    ...textSm,
+    color: colorTextTertiary,
+    paddingBottom: spacing2,
+  },
   listContent: {
     paddingHorizontal: spacing4,
     paddingTop: spacing3,
@@ -353,6 +689,8 @@ const styles = StyleSheet.create({
     paddingVertical: spacing4,
     alignItems: 'center',
   },
+
+  // FAB
   fab: {
     position: 'absolute',
     right: spacing4,
@@ -364,4 +702,5 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     ...shadowWashi,
   },
+
 });
