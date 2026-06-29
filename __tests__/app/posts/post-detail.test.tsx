@@ -70,14 +70,20 @@ describe('PostDetailScreen', () => {
       mockUseLocalSearchParams.mockReturnValue({ id: 'post-abc-123' });
     });
 
-    it('ヘッダーに「投稿」と表示される', () => {
+    it('ヘッダーにパンくずエリアが表示される（戻るボタンと共有ボタンが両方存在する）', () => {
       renderWithProviders(<PostDetailScreen />);
-      expect(screen.getByRole('header', { name: '投稿' })).toBeTruthy();
+      expect(screen.getByLabelText('戻る')).toBeTruthy();
+      expect(screen.getByLabelText('この投稿を共有')).toBeTruthy();
     });
 
     it('戻るボタンが表示される', () => {
       renderWithProviders(<PostDetailScreen />);
       expect(screen.getByRole('button', { name: '戻る' })).toBeTruthy();
+    });
+
+    it('共有ボタンが表示される', () => {
+      renderWithProviders(<PostDetailScreen />);
+      expect(screen.getByRole('button', { name: 'この投稿を共有' })).toBeTruthy();
     });
   });
 

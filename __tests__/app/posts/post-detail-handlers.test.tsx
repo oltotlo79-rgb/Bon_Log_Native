@@ -480,13 +480,13 @@ describe('PostDetailScreen - handleRefetch（プルトゥリフレッシュ）',
 });
 
 describe('PostDetailScreen - コメントローディング中', () => {
-  it('コメントローディング中もヘッダーが表示される', () => {
+  it('コメントローディング中も共有ボタンが表示される', () => {
     mockUseCommentsQuery.mockReturnValue({
       ...defaultCommentsState,
       isLoading: true,
     });
     renderWithProviders(<PostDetailScreen />);
-    expect(screen.getByRole('header', { name: '投稿' })).toBeTruthy();
+    expect(screen.getByLabelText('この投稿を共有')).toBeTruthy();
   });
 });
 

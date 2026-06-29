@@ -9,6 +9,7 @@ import {
   Platform,
   Alert,
   Modal,
+  Share,
 } from 'react-native';
 import { Text } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -24,6 +25,7 @@ import {
   colorBorderLight,
   colorError,
   colorActionPrimary,
+  colorTextLink,
   spacing2,
   spacing4,
   spacing6,
@@ -34,6 +36,7 @@ import {
   textLg,
   textMd,
   textSm,
+  textXs,
   letterSpacingWidest,
 } from '@/lib/constants/design-tokens';
 import {
@@ -43,7 +46,7 @@ import {
   ERR_COMMENT_DELETE_FAILED,
   ERR_OFFLINE_ACTION,
 } from '@/lib/constants/errors';
-import { ROUTE_FEED, routePostEdit } from '@/lib/constants/routes';
+import { ROUTE_FEED, routePostEdit, routeUserDetail } from '@/lib/constants/routes';
 import { ScreenLoading } from '@/components/common/ScreenLoading';
 import { ScreenError } from '@/components/common/ScreenError';
 import { ScreenEmpty } from '@/components/common/ScreenEmpty';
@@ -61,6 +64,9 @@ import { useCurrentUserQuery } from '@/lib/queries/auth';
 import { mapToPostCardProps } from '@/hooks/use-post-card-props';
 import type { ReplyTarget } from '@/components/comment/CommentItem';
 import type { CommentSubmitParams } from '@/components/comment/CommentInput';
+
+// 投稿公開 URL のベース（Share API で使用）
+const WEB_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL ?? 'https://www.bon-log.com';
 
 // ---------------------------------------------------------------------------
 // 型ガード: useLocalSearchParams の値を string に絞る
@@ -494,6 +500,94 @@ function PostDetailContent({ postId }: PostDetailContentProps) {
 }
 
 // ---------------------------------------------------------------------------
+// 有効な postId を持つ場合のページ全体
+// パンくず・共有ボタンを含むヘッダーと PostDetailContent を管理する。
+// usePostQuery をここで呼ぶことでキャッシュを共有し、PostDetailContent の
+// フェッチ結果が即座にヘッダーに反映される。
+// ---------------------------------------------------------------------------
+
+type PostDetailPageProps = {
+  postId: string;
+};
+
+function PostDetailPage({ postId }: PostDetailPageProps) {
+  const { data: post } = usePostQuery(postId);
+
+  const authorNickname = post?.user.nickname;
+  const authorId = post?.user.id;
+
+  const handleShare = useCallback(async () => {
+    const postUrl = `${WEB_BASE_URL}/posts/${postId}`;
+    try {
+      await Share.share({
+        message: postUrl,
+        url: postUrl,
+      });
+    } catch {
+      // Share.share が reject した場合（システムエラー等）は無視する。
+      // ユーザーキャンセルは dismissedAction として resolve されるため、ここには到達しない。
+    }
+  }, [postId]);
+
+  return (
+    <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
+      {/* ヘッダー: パンくず（ホーム > 投稿者の投稿）+ 共有ボタン */}
+      <View style={styles.header}>
+        <Pressable
+          style={styles.backButton}
+          onPress={() => router.back()}
+          accessibilityRole="button"
+          accessibilityLabel="戻る"
+        >
+          <Text style={styles.backButtonText}>← 戻る</Text>
+        </Pressable>
+
+        {/* パンくず: 中央に「ホーム > 投稿者名の投稿」 */}
+        <View style={styles.breadcrumbArea} accessibilityRole="none" importantForAccessibility="no-hide-descendants">
+          <Pressable
+            onPress={() => router.push(ROUTE_FEED)}
+            accessibilityRole="link"
+            accessibilityLabel="ホームへ移動"
+          >
+            <Text style={styles.breadcrumbLink}>ホーム</Text>
+          </Pressable>
+          <Text style={styles.breadcrumbSeparator} accessibilityElementsHidden importantForAccessibility="no">
+            {' › '}
+          </Text>
+          {authorId !== undefined && authorNickname !== undefined ? (
+            <Pressable
+              onPress={() => router.push(routeUserDetail(authorId))}
+              accessibilityRole="link"
+              accessibilityLabel={`${authorNickname}のプロフィールへ移動`}
+            >
+              <Text style={styles.breadcrumbLink} numberOfLines={1}>
+                {authorNickname}の投稿
+              </Text>
+            </Pressable>
+          ) : (
+            <Text style={styles.breadcrumbCurrent} numberOfLines={1}>
+              投稿
+            </Text>
+          )}
+        </View>
+
+        {/* 共有ボタン */}
+        <Pressable
+          style={({ pressed }) => [styles.shareButton, pressed && styles.shareButtonPressed]}
+          onPress={() => { void handleShare(); }}
+          accessibilityRole="button"
+          accessibilityLabel="この投稿を共有"
+        >
+          <Ionicons name="share-outline" size={22} color={colorTextPrimary} accessibilityElementsHidden importantForAccessibility="no" />
+        </Pressable>
+      </View>
+
+      <PostDetailContent postId={postId} />
+    </SafeAreaView>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Screen
 // ---------------------------------------------------------------------------
 
@@ -533,28 +627,7 @@ export default function PostDetailScreen() {
     );
   }
 
-  const postId = rawId;
-
-  return (
-    <SafeAreaView style={styles.safeArea} edges={['top', 'bottom']}>
-      <View style={styles.header}>
-        <Pressable
-          style={styles.backButton}
-          onPress={() => router.back()}
-          accessibilityRole="button"
-          accessibilityLabel="戻る"
-        >
-          <Text style={styles.backButtonText}>← 戻る</Text>
-        </Pressable>
-        <Text style={styles.headerTitle} accessibilityRole="header">
-          投稿
-        </Text>
-        <View style={styles.headerRight} />
-      </View>
-
-      <PostDetailContent postId={postId} />
-    </SafeAreaView>
-  );
+  return <PostDetailPage postId={rawId} />;
 }
 
 // ---------------------------------------------------------------------------
@@ -652,6 +725,35 @@ const styles = StyleSheet.create({
   },
   headerRight: {
     minWidth: 44,
+  },
+  breadcrumbArea: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: spacing2,
+    overflow: 'hidden',
+  },
+  breadcrumbLink: {
+    ...textXs,
+    color: colorTextLink,
+  },
+  breadcrumbSeparator: {
+    ...textXs,
+    color: colorTextSecondary,
+  },
+  breadcrumbCurrent: {
+    ...textXs,
+    color: colorTextSecondary,
+  },
+  shareButton: {
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  shareButtonPressed: {
+    opacity: 0.6,
   },
   content: {
     flex: 1,

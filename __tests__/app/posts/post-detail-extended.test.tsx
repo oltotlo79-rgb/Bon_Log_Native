@@ -101,9 +101,15 @@ describe('PostDetailScreen - 拡張テスト', () => {
   });
 
   describe('投稿ローディング', () => {
-    it('投稿ローディング中もヘッダーが表示される', () => {
+    it('投稿ローディング中もヘッダーの戻るボタンと共有ボタンが表示される', () => {
       renderWithProviders(<PostDetailScreen />);
-      expect(screen.getByRole('header', { name: '投稿' })).toBeTruthy();
+      expect(screen.getByLabelText('戻る')).toBeTruthy();
+      expect(screen.getByLabelText('この投稿を共有')).toBeTruthy();
+    });
+
+    it('投稿ローディング中も共有ボタンが表示される', () => {
+      renderWithProviders(<PostDetailScreen />);
+      expect(screen.getByRole('button', { name: 'この投稿を共有' })).toBeTruthy();
     });
   });
 
