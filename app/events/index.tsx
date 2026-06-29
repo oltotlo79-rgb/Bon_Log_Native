@@ -32,12 +32,14 @@ import {
   colorSurfaceWashi,
   colorTextPrimary,
   colorTextSecondary,
+  colorTextTertiary,
   colorActionPrimary,
   colorActionPrimaryText,
   colorActionSecondary,
   colorActionSecondaryText,
   colorBorderLight,
   spacing1,
+  spacing2,
   spacing3,
   spacing4,
   spacing6,
@@ -45,6 +47,7 @@ import {
   radiusSm,
   shadowWashi,
   textLg,
+  textMd,
   textSm,
 } from '@/lib/constants/design-tokens';
 import { routeEventDetail } from '@/lib/constants/routes';
@@ -126,8 +129,10 @@ export default function EventsScreen() {
         id={item.id}
         title={item.title}
         startDate={item.startDate}
+        endDate={item.endDate}
         venue={item.venue}
         prefecture={item.prefecture}
+        city={item.city}
         admissionFee={item.admissionFee}
         hasSales={item.hasSales}
         onPress={() => router.push(routeEventDetail(item.id))}
@@ -146,6 +151,15 @@ export default function EventsScreen() {
       </View>
     );
   }, [isFetchingNextPage]);
+
+  const renderListHeader = useCallback(() => (
+    <View style={styles.listHeader}>
+      <Text style={styles.listHeaderTitle}>イベント一覧</Text>
+      <Text style={styles.listHeaderCount}>
+        {allItems.length}件
+      </Text>
+    </View>
+  ), [allItems.length]);
 
   if (isLoading) {
     return (
@@ -196,6 +210,7 @@ export default function EventsScreen() {
           renderItem={renderItem}
           onEndReached={handleLoadMore}
           onEndReachedThreshold={0.3}
+          ListHeaderComponent={renderListHeader}
           ListFooterComponent={renderFooter}
           contentContainerStyle={[
             styles.listContent,
@@ -364,6 +379,21 @@ const styles = StyleSheet.create({
   listContent: {
     paddingHorizontal: spacing4,
     paddingTop: spacing3,
+  },
+  listHeader: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: spacing2,
+    marginBottom: spacing3,
+  },
+  listHeaderTitle: {
+    ...textMd,
+    fontWeight: '600',
+    color: colorTextPrimary,
+  },
+  listHeaderCount: {
+    ...textSm,
+    color: colorTextTertiary,
   },
   footer: {
     paddingVertical: spacing4,

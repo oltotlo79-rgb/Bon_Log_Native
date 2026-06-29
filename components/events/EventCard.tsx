@@ -1,6 +1,7 @@
 /**
  * @module components/events/EventCard
  * イベント一覧の各行に表示するカード。
+ * Web 版 EventCard の表示要素（バッジ・city・終了判定）を移植。
  * 仕様: docs/design/events.md §2.3
  */
 
@@ -14,10 +15,15 @@ import {
   colorTextTertiary,
   colorBorderLight,
   colorActionPrimary,
+  colorActionPrimaryText,
+  colorSurfaceMuted,
+  colorSuccess,
+  colorSuccessBg,
   spacing2,
   spacing3,
   spacing4,
   radiusLg,
+  radiusFull,
   shadowWashi,
   textMd,
   textSm,
@@ -32,6 +38,7 @@ import {
 const DATE_BLOCK_WIDTH = 48;
 const CHEVRON_SIZE = 16;
 const LEFT_BORDER_WIDTH = 2;
+const BADGE_GAP = 4;
 
 // ---------------------------------------------------------------------------
 // ユーティリティ
@@ -48,6 +55,11 @@ function formatEventDate(dateStr: string): { month: string; day: string; weekday
   };
 }
 
+function formatEndDateShort(endDateStr: string): string {
+  const d = new Date(endDateStr);
+  return `〜${d.getMonth() + 1}/${d.getDate()}`;
+}
+
 // ---------------------------------------------------------------------------
 // Props
 // ---------------------------------------------------------------------------
@@ -56,8 +68,10 @@ export type EventCardProps = {
   id: string;
   title: string;
   startDate: string;
+  endDate?: string | null;
   venue?: string | null;
   prefecture?: string | null;
+  city?: string | null;
   admissionFee?: string | null;
   hasSales: boolean;
   onPress: () => void;
@@ -70,23 +84,39 @@ export type EventCardProps = {
 function EventCardInner({
   title,
   startDate,
+  endDate,
   venue,
   prefecture,
+  city,
   admissionFee,
   hasSales,
   onPress,
 }: EventCardProps) {
   const { month, day, weekday } = formatEventDate(startDate);
 
-  const admissionText = admissionFee !== undefined && admissionFee !== null && admissionFee.length > 0
-    ? admissionFee
-    : hasSales
-    ? '販売あり'
-    : '無料';
+  const now = new Date();
+  const start = new Date(startDate);
+  const end = endDate != null ? new Date(endDate) : null;
+
+  const isEnded = end != null ? end < now : start < now;
+  // 終了日がない単日イベントは「開催中」にしない（Web 版と同じ判定）
+  const isOngoing = !isEnded && start <= now && end != null && end >= now;
+
+  const locationParts: string[] = [];
+  if (prefecture != null && prefecture.length > 0) locationParts.push(prefecture);
+  if (city != null && city.length > 0) locationParts.push(city);
+  if (venue != null && venue.length > 0) locationParts.push(venue);
+  const locationText = locationParts.join(' ');
+
+  const hasBadge = isEnded || isOngoing || hasSales;
 
   return (
     <Pressable
-      style={({ pressed }) => [styles.card, pressed && styles.cardPressed]}
+      style={({ pressed }) => [
+        styles.card,
+        isEnded && styles.cardEnded,
+        pressed && styles.cardPressed,
+      ]}
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={`${title}の詳細を見る`}
@@ -96,18 +126,51 @@ function EventCardInner({
         <Text style={styles.dateMonth}>{month}</Text>
         <Text style={styles.dateDay}>{day}</Text>
         <Text style={styles.dateWeekday}>（{weekday}）</Text>
+        {end != null && !isEnded && (
+          <Text style={styles.dateEndShort}>{formatEndDateShort(endDate ?? '')}</Text>
+        )}
       </View>
 
       {/* 情報エリア */}
       <View style={styles.info}>
         <Text style={styles.title} numberOfLines={2}>{title}</Text>
-        {venue !== undefined && venue !== null && venue.length > 0 && (
-          <Text style={styles.venue} numberOfLines={1}>{venue}</Text>
+
+        {locationText.length > 0 && (
+          <View style={styles.locationRow}>
+            <Ionicons
+              name="location-outline"
+              size={12}
+              color={colorTextTertiary}
+              accessibilityElementsHidden
+              importantForAccessibility="no"
+            />
+            <Text style={styles.locationText} numberOfLines={1}>{locationText}</Text>
+          </View>
         )}
-        {prefecture !== undefined && prefecture !== null && prefecture.length > 0 && (
-          <Text style={styles.prefecture} numberOfLines={1}>{prefecture}</Text>
+
+        {admissionFee != null && admissionFee.length > 0 && (
+          <Text style={styles.admission}>{admissionFee}</Text>
         )}
-        <Text style={styles.admission}>{admissionText}</Text>
+
+        {hasBadge && (
+          <View style={styles.badgeRow}>
+            {isEnded && (
+              <View style={styles.badgeEnded}>
+                <Text style={styles.badgeEndedText}>終了</Text>
+              </View>
+            )}
+            {isOngoing && (
+              <View style={styles.badgeOngoing}>
+                <Text style={styles.badgeOngoingText}>開催中</Text>
+              </View>
+            )}
+            {hasSales && (
+              <View style={styles.badgeSales}>
+                <Text style={styles.badgeSalesText}>即売あり</Text>
+              </View>
+            )}
+          </View>
+        )}
       </View>
 
       {/* 右端シェブロン */}
@@ -131,7 +194,7 @@ export const EventCard = React.memo(EventCardInner);
 const styles = StyleSheet.create({
   card: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     backgroundColor: colorSurface,
     borderRadius: radiusLg,
     paddingVertical: spacing3,
@@ -141,6 +204,9 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: colorBorderLight,
     ...shadowWashi,
+  },
+  cardEnded: {
+    opacity: 0.6,
   },
   cardPressed: {
     opacity: 0.85,
@@ -152,6 +218,7 @@ const styles = StyleSheet.create({
     borderLeftColor: colorActionPrimary,
     paddingLeft: spacing2,
     flexShrink: 0,
+    paddingTop: spacing2,
   },
   dateMonth: {
     ...textSm,
@@ -165,25 +232,69 @@ const styles = StyleSheet.create({
     ...textXs,
     color: colorTextTertiary,
   },
+  dateEndShort: {
+    ...textXs,
+    color: colorTextTertiary,
+    marginTop: 2,
+  },
   info: {
     flex: 1,
-    gap: 2,
+    gap: spacing2,
+    paddingTop: spacing2,
   },
   title: {
     ...textMd,
     fontWeight: '600',
     color: colorTextPrimary,
   },
-  venue: {
-    ...textSm,
-    color: colorTextSecondary,
+  locationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: BADGE_GAP,
   },
-  prefecture: {
+  locationText: {
     ...textXs,
     color: colorTextTertiary,
+    flex: 1,
   },
   admission: {
     ...textSm,
     color: colorTextSecondary,
+  },
+  badgeRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: BADGE_GAP,
+    marginTop: spacing2,
+  },
+  badgeEnded: {
+    paddingHorizontal: spacing2,
+    paddingVertical: 2,
+    borderRadius: radiusFull,
+    backgroundColor: colorSurfaceMuted,
+  },
+  badgeEndedText: {
+    ...textXs,
+    color: colorTextTertiary,
+  },
+  badgeOngoing: {
+    paddingHorizontal: spacing2,
+    paddingVertical: 2,
+    borderRadius: radiusFull,
+    backgroundColor: colorSuccessBg,
+  },
+  badgeOngoingText: {
+    ...textXs,
+    color: colorSuccess,
+  },
+  badgeSales: {
+    paddingHorizontal: spacing2,
+    paddingVertical: 2,
+    borderRadius: radiusFull,
+    backgroundColor: colorActionPrimary,
+  },
+  badgeSalesText: {
+    ...textXs,
+    color: colorActionPrimaryText,
   },
 });

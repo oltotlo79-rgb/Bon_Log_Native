@@ -1,6 +1,7 @@
 /**
  * app/events/[id]/index のイベント詳細画面テスト。
- * ローディング・エラー（not-found/forbidden/汎用）・正常表示・作成者メニュー表示を検証する。
+ * ローディング・エラー（not-found/forbidden/汎用）・正常表示・開催状態バッジ・
+ * 場所結合表示・入場料・作成者（登録者）セクションを検証する。
  */
 
 import React from 'react';
@@ -37,6 +38,13 @@ jest.mock('expo-web-browser', () => ({
 jest.mock('@sentry/react-native', () => ({
   captureException: jest.fn(),
 }));
+
+// テスト基準日から相対日付を生成するヘルパー
+function daysFromNow(days: number): string {
+  const d = new Date();
+  d.setDate(d.getDate() + days);
+  return d.toISOString().slice(0, 10);
+}
 
 function makeEvent(overrides = {}) {
   return {
@@ -155,16 +163,41 @@ describe('EventDetailScreen', () => {
       expect(screen.getByText('秋の盆栽展')).toBeTruthy();
     });
 
-    it('会場名が表示される', () => {
+    it('prefecture・city・venue が結合されて1行に表示される', () => {
       mockUseEventDetailQuery.mockReturnValue({
-        data: makeEvent({ venue: '東京ギャラリー' }),
+        data: makeEvent({ prefecture: '東京都', city: '台東区', venue: '東京ギャラリー' }),
         isLoading: false,
         isError: false,
         error: null,
         refetch: jest.fn(),
       });
       renderWithProviders(<EventDetailScreen />);
-      expect(screen.getByText('東京ギャラリー')).toBeTruthy();
+      // 結合形式: "東京都 台東区 東京ギャラリー"
+      expect(screen.getByText('東京都 台東区 東京ギャラリー')).toBeTruthy();
+    });
+
+    it('prefecture のみのとき prefecture が表示される', () => {
+      mockUseEventDetailQuery.mockReturnValue({
+        data: makeEvent({ prefecture: '京都府', city: null, venue: null }),
+        isLoading: false,
+        isError: false,
+        error: null,
+        refetch: jest.fn(),
+      });
+      renderWithProviders(<EventDetailScreen />);
+      expect(screen.getByText('京都府')).toBeTruthy();
+    });
+
+    it('venue のみのとき venue が表示される', () => {
+      mockUseEventDetailQuery.mockReturnValue({
+        data: makeEvent({ prefecture: null, city: null, venue: '会館ホール' }),
+        isLoading: false,
+        isError: false,
+        error: null,
+        refetch: jest.fn(),
+      });
+      renderWithProviders(<EventDetailScreen />);
+      expect(screen.getByText('会館ホール')).toBeTruthy();
     });
 
     it('admissionFee が null のとき「無料」が表示される', () => {
@@ -179,7 +212,7 @@ describe('EventDetailScreen', () => {
       expect(screen.getByText('無料')).toBeTruthy();
     });
 
-    it('admissionFee が指定されているとき入場料が表示される', () => {
+    it('admissionFee が指定されているとき「入場料: 大人500円」形式で表示される', () => {
       mockUseEventDetailQuery.mockReturnValue({
         data: makeEvent({ admissionFee: '大人500円' }),
         isLoading: false,
@@ -188,7 +221,7 @@ describe('EventDetailScreen', () => {
         refetch: jest.fn(),
       });
       renderWithProviders(<EventDetailScreen />);
-      expect(screen.getByText('大人500円')).toBeTruthy();
+      expect(screen.getByText('入場料: 大人500円')).toBeTruthy();
     });
 
     it('「戻る」ボタンが表示される', () => {
@@ -201,6 +234,149 @@ describe('EventDetailScreen', () => {
       });
       renderWithProviders(<EventDetailScreen />);
       expect(screen.getByRole('button', { name: '戻る' })).toBeTruthy();
+    });
+
+    it('description がある場合「詳細」見出しとテキストが表示される', () => {
+      mockUseEventDetailQuery.mockReturnValue({
+        data: makeEvent({ description: '会場の盆栽を鑑賞できます。' }),
+        isLoading: false,
+        isError: false,
+        error: null,
+        refetch: jest.fn(),
+      });
+      renderWithProviders(<EventDetailScreen />);
+      expect(screen.getByText('詳細')).toBeTruthy();
+      expect(screen.getByText('会場の盆栽を鑑賞できます。')).toBeTruthy();
+    });
+
+    it('description が null のとき「詳細」見出しは表示されない', () => {
+      mockUseEventDetailQuery.mockReturnValue({
+        data: makeEvent({ description: null }),
+        isLoading: false,
+        isError: false,
+        error: null,
+        refetch: jest.fn(),
+      });
+      renderWithProviders(<EventDetailScreen />);
+      expect(screen.queryByText('詳細')).toBeNull();
+    });
+  });
+
+  describe('登録者（creator）セクション', () => {
+    it('creator がある場合「登録者」ラベルとニックネームが表示される', () => {
+      mockUseEventDetailQuery.mockReturnValue({
+        data: makeEvent({ creator: { id: 'user-1', nickname: '松の匠', avatarUrl: null } }),
+        isLoading: false,
+        isError: false,
+        error: null,
+        refetch: jest.fn(),
+      });
+      renderWithProviders(<EventDetailScreen />);
+      expect(screen.getByText('登録者')).toBeTruthy();
+      expect(screen.getByText('松の匠')).toBeTruthy();
+    });
+
+    it('creator が null のとき「登録者」セクションは表示されない', () => {
+      mockUseEventDetailQuery.mockReturnValue({
+        data: makeEvent({ creator: null }),
+        isLoading: false,
+        isError: false,
+        error: null,
+        refetch: jest.fn(),
+      });
+      renderWithProviders(<EventDetailScreen />);
+      expect(screen.queryByText('登録者')).toBeNull();
+    });
+  });
+
+  describe('開催状態バッジ', () => {
+    it('開始日・終了日ともに過去のとき「終了」バッジが表示される', () => {
+      mockUseEventDetailQuery.mockReturnValue({
+        data: makeEvent({ startDate: '2025-01-01', endDate: '2025-01-03' }),
+        isLoading: false,
+        isError: false,
+        error: null,
+        refetch: jest.fn(),
+      });
+      renderWithProviders(<EventDetailScreen />);
+      expect(screen.getByText('終了')).toBeTruthy();
+    });
+
+    it('単日イベント（endDate なし）で開始日が過去のとき「終了」バッジが表示される', () => {
+      mockUseEventDetailQuery.mockReturnValue({
+        data: makeEvent({ startDate: '2025-01-01', endDate: null }),
+        isLoading: false,
+        isError: false,
+        error: null,
+        refetch: jest.fn(),
+      });
+      renderWithProviders(<EventDetailScreen />);
+      expect(screen.getByText('終了')).toBeTruthy();
+    });
+
+    it('単日イベント（endDate なし）で開始日が過去のとき「開催中」バッジは表示されない', () => {
+      mockUseEventDetailQuery.mockReturnValue({
+        data: makeEvent({ startDate: '2025-01-01', endDate: null }),
+        isLoading: false,
+        isError: false,
+        error: null,
+        refetch: jest.fn(),
+      });
+      renderWithProviders(<EventDetailScreen />);
+      expect(screen.queryByText('開催中')).toBeNull();
+    });
+
+    it('開始が過去・終了が未来の複数日イベントのとき「開催中」バッジが表示される', () => {
+      const start = daysFromNow(-1);
+      const end = daysFromNow(2);
+      mockUseEventDetailQuery.mockReturnValue({
+        data: makeEvent({ startDate: start, endDate: end }),
+        isLoading: false,
+        isError: false,
+        error: null,
+        refetch: jest.fn(),
+      });
+      renderWithProviders(<EventDetailScreen />);
+      expect(screen.getByText('開催中')).toBeTruthy();
+    });
+
+    it('hasSales=true のとき「即売あり」バッジが表示される', () => {
+      mockUseEventDetailQuery.mockReturnValue({
+        data: makeEvent({ hasSales: true }),
+        isLoading: false,
+        isError: false,
+        error: null,
+        refetch: jest.fn(),
+      });
+      renderWithProviders(<EventDetailScreen />);
+      expect(screen.getByText('即売あり')).toBeTruthy();
+    });
+
+    it('終了かつ即売ありのとき「終了」と「即売あり」が同時に表示される', () => {
+      mockUseEventDetailQuery.mockReturnValue({
+        data: makeEvent({ startDate: '2025-01-01', endDate: '2025-01-03', hasSales: true }),
+        isLoading: false,
+        isError: false,
+        error: null,
+        refetch: jest.fn(),
+      });
+      renderWithProviders(<EventDetailScreen />);
+      expect(screen.getByText('終了')).toBeTruthy();
+      expect(screen.getByText('即売あり')).toBeTruthy();
+    });
+
+    it('未来の単日イベントでバッジなし（hasSales=false）のとき、バッジ行は表示されない', () => {
+      mockUseEventDetailQuery.mockReturnValue({
+        data: makeEvent({ startDate: daysFromNow(3), endDate: null, hasSales: false }),
+        isLoading: false,
+        isError: false,
+        error: null,
+        refetch: jest.fn(),
+      });
+      renderWithProviders(<EventDetailScreen />);
+      expect(screen.queryByText('終了')).toBeNull();
+      expect(screen.queryByText('開催中')).toBeNull();
+      expect(screen.queryByText('即売あり')).toBeNull();
     });
   });
 
@@ -272,7 +448,6 @@ describe('EventDetailScreen', () => {
       });
       renderWithProviders(<EventDetailScreen />);
       fireEvent.press(screen.getByRole('link', { name: '詳細ページを開く（外部リンク）' }));
-      // handleOpenExternalUrl は async なので呼ばれたことを確認
       await Promise.resolve();
       expect(openBrowserAsync).toHaveBeenCalledWith('https://event.example.com');
     });

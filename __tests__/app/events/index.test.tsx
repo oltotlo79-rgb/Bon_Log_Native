@@ -153,39 +153,109 @@ describe('EventsScreen', () => {
   });
 
   describe('データ表示', () => {
-    it('イベントカードが表示される', () => {
-      mockUseEventsListQuery.mockReturnValue({
-        ...defaultQuery,
-        data: {
-          pages: [
+    const oneItemData = {
+      pages: [
+        {
+          items: [
             {
-              items: [
-                {
-                  id: 'event-1',
-                  title: '秋の盆栽展',
-                  startDate: '2025-09-15',
-                  endDate: null,
-                  prefecture: '東京都',
-                  city: null,
-                  venue: null,
-                  organizer: null,
-                  admissionFee: null,
-                  hasSales: false,
-                  externalUrl: null,
-                  description: null,
-                  createdAt: '2025-06-01T00:00:00Z',
-                  updatedAt: '2025-06-01T00:00:00Z',
-                  userId: 'user-1',
-                },
-              ],
-              nextCursor: null,
+              id: 'event-1',
+              title: '秋の盆栽展',
+              startDate: '2025-09-15',
+              endDate: null,
+              prefecture: '東京都',
+              city: null,
+              venue: null,
+              organizer: null,
+              admissionFee: null,
+              hasSales: false,
+              externalUrl: null,
+              description: null,
+              createdAt: '2025-06-01T00:00:00Z',
+              updatedAt: '2025-06-01T00:00:00Z',
+              userId: 'user-1',
             },
           ],
-          pageParams: [undefined],
+          nextCursor: null,
         },
-      });
+      ],
+      pageParams: [undefined],
+    };
+
+    it('イベントカードが表示される', () => {
+      mockUseEventsListQuery.mockReturnValue({ ...defaultQuery, data: oneItemData });
       renderWithProviders(<EventsScreen />);
       expect(screen.getByText('秋の盆栽展')).toBeTruthy();
+    });
+
+    it('件数「1件」がリストヘッダーに表示される', () => {
+      mockUseEventsListQuery.mockReturnValue({ ...defaultQuery, data: oneItemData });
+      renderWithProviders(<EventsScreen />);
+      expect(screen.getByText('1件')).toBeTruthy();
+    });
+
+    it('複数ページのデータは結合した件数で表示される', () => {
+      function makeItem(id: string, title: string, startDate: string) {
+        return {
+          id,
+          title,
+          startDate,
+          endDate: null,
+          prefecture: null,
+          city: null,
+          venue: null,
+          organizer: null,
+          admissionFee: null,
+          hasSales: false,
+          externalUrl: null,
+          description: null,
+          createdAt: '2025-06-01T00:00:00Z',
+          updatedAt: '2025-06-01T00:00:00Z',
+          userId: 'u1',
+        };
+      }
+      const twoPageData = {
+        pages: [
+          { items: [makeItem('e1', '展覧会1', '2025-09-01')], nextCursor: 'cursor1' },
+          { items: [makeItem('e2', '展覧会2', '2025-09-10')], nextCursor: null },
+        ],
+        pageParams: [undefined, 'cursor1'],
+      };
+      mockUseEventsListQuery.mockReturnValue({ ...defaultQuery, data: twoPageData });
+      renderWithProviders(<EventsScreen />);
+      expect(screen.getByText('2件')).toBeTruthy();
+    });
+
+    it('EventCard に endDate と city が渡される（props 伝達確認）', () => {
+      const dataWithEndDateCity = {
+        pages: [
+          {
+            items: [
+              {
+                id: 'event-2',
+                title: '春の盆栽まつり',
+                startDate: '2025-04-01',
+                endDate: '2025-04-05',
+                prefecture: '大阪府',
+                city: '大阪市',
+                venue: '大阪城公園',
+                organizer: null,
+                admissionFee: null,
+                hasSales: true,
+                externalUrl: null,
+                description: null,
+                createdAt: '2025-03-01T00:00:00Z',
+                updatedAt: '2025-03-01T00:00:00Z',
+                userId: 'user-2',
+              },
+            ],
+            nextCursor: null,
+          },
+        ] as const,
+        pageParams: [undefined] as const,
+      };
+      mockUseEventsListQuery.mockReturnValue({ ...defaultQuery, data: dataWithEndDateCity });
+      renderWithProviders(<EventsScreen />);
+      expect(screen.getByText('春の盆栽まつり')).toBeTruthy();
     });
   });
 

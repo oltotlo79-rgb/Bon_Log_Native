@@ -25,6 +25,7 @@ import { ScreenLoading } from '@/components/common/ScreenLoading';
 import { ScreenError } from '@/components/common/ScreenError';
 import { OfflineBanner } from '@/components/common/OfflineBanner';
 import { Toast } from '@/components/common/Toast';
+import { UserAvatar } from '@/components/common/UserAvatar';
 import {
   colorBackground,
   colorSurfaceWashi,
@@ -33,14 +34,21 @@ import {
   colorTextTertiary,
   colorBorderLight,
   colorError,
+  colorSurfaceMuted,
+  colorSuccess,
+  colorSuccessBg,
+  colorActionPrimary,
+  colorActionPrimaryText,
   spacing2,
   spacing3,
   spacing4,
   spacing8,
+  radiusFull,
   radiusLg,
   shadowWashi,
   textBase,
   textSm,
+  textXs,
   textLg,
   textXl,
 } from '@/lib/constants/design-tokens';
@@ -57,6 +65,7 @@ import {
 // ---------------------------------------------------------------------------
 
 const ICON_SIZE = 18;
+const AVATAR_SIZE = 20;
 
 // ---------------------------------------------------------------------------
 // 型ガード
@@ -86,6 +95,15 @@ export default function EventDetailScreen() {
 
   const isCreator = event !== undefined && currentUser !== undefined
     && event.creator?.id === currentUser.id;
+
+  const now = new Date();
+  const startDate = event !== undefined ? new Date(event.startDate) : null;
+  const endDate = event !== undefined && event.endDate != null ? new Date(event.endDate) : null;
+  const isEnded = startDate !== null
+    ? (endDate != null ? endDate < now : startDate < now)
+    : false;
+  // 終了日がない単日イベントは「開催中」にしない（Web 版と同じ判定）
+  const isOngoing = !isEnded && startDate !== null && startDate <= now && endDate != null && endDate >= now;
 
   const handleDelete = useCallback(() => {
     Alert.alert(
@@ -190,37 +208,64 @@ export default function EventDetailScreen() {
       <ScrollView
         contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + spacing8 }]}
       >
-        {/* イベント名 */}
-        <Text style={styles.eventTitle}>{event.title}</Text>
+        {/* 開催状態バッジ + イベント名 */}
+        <View style={styles.titleSection}>
+          {(isEnded || isOngoing || event.hasSales) && (
+            <View style={styles.badgeRow}>
+              {isEnded && (
+                <View style={styles.badgeEnded}>
+                  <Text style={styles.badgeEndedText}>終了</Text>
+                </View>
+              )}
+              {isOngoing && (
+                <View style={styles.badgeOngoing}>
+                  <Text style={styles.badgeOngoingText}>開催中</Text>
+                </View>
+              )}
+              {event.hasSales && (
+                <View style={styles.badgeSales}>
+                  <Text style={styles.badgeSalesText}>即売あり</Text>
+                </View>
+              )}
+            </View>
+          )}
+          <Text style={styles.eventTitle}>{event.title}</Text>
+        </View>
 
         {/* 情報セクション */}
         <View style={styles.infoSection}>
           <InfoRow iconName="calendar-outline" text={formatDateRange(event.startDate, event.endDate)} />
-          {event.venue !== undefined && event.venue !== null && event.venue.length > 0 && (
-            <InfoRow iconName="location-outline" text={event.venue} />
+
+          {/* 都道府県・市区町村・会場をまとめて表示（Web 版の分割レイアウトを1行に集約） */}
+          {(event.prefecture != null || event.city != null || event.venue != null) && (
+            <InfoRow
+              iconName="location-outline"
+              text={[event.prefecture, event.city, event.venue].filter(Boolean).join(' ')}
+            />
           )}
-          {event.prefecture !== undefined && event.prefecture !== null && event.prefecture.length > 0 && (
-            <InfoRow iconName="map-outline" text={event.prefecture} />
-          )}
+
           <InfoRow
             iconName="ticket-outline"
-            text={event.admissionFee !== undefined && event.admissionFee !== null && event.admissionFee.length > 0
-              ? event.admissionFee
+            text={event.admissionFee != null && event.admissionFee.length > 0
+              ? `入場料: ${event.admissionFee}`
               : '無料'
             }
           />
-          {event.organizer !== undefined && event.organizer !== null && event.organizer.length > 0 && (
+          {event.organizer != null && event.organizer.length > 0 && (
             <InfoRow iconName="person-outline" text={`主催: ${event.organizer}`} />
           )}
         </View>
 
         {/* 説明 */}
-        {event.description !== undefined && event.description !== null && event.description.length > 0 && (
-          <Text style={styles.description}>{event.description}</Text>
+        {event.description != null && event.description.length > 0 && (
+          <View style={styles.descriptionSection}>
+            <Text style={styles.descriptionHeading}>詳細</Text>
+            <Text style={styles.description}>{event.description}</Text>
+          </View>
         )}
 
         {/* 外部URL */}
-        {event.externalUrl !== undefined && event.externalUrl !== null && event.externalUrl.length > 0 && (
+        {event.externalUrl != null && event.externalUrl.length > 0 && (
           <Pressable
             style={({ pressed }) => [styles.externalLinkRow, pressed && styles.externalLinkPressed, shadowWashi]}
             onPress={() => void handleOpenExternalUrl(event.externalUrl ?? '')}
@@ -243,6 +288,22 @@ export default function EventDetailScreen() {
               importantForAccessibility="no"
             />
           </Pressable>
+        )}
+
+        {/* 登録者情報 */}
+        {event.creator != null && (
+          <View style={styles.creatorSection}>
+            <Text style={styles.creatorLabel}>登録者</Text>
+            <View style={styles.creatorRow}>
+              <UserAvatar
+                avatarUrl={event.creator.avatarUrl}
+                userId={event.creator.id}
+                size={AVATAR_SIZE}
+                accessibilityLabel={`${event.creator.nickname}のアバター`}
+              />
+              <Text style={styles.creatorNickname}>{event.creator.nickname}</Text>
+            </View>
+          </View>
         )}
 
         {/* 削除エラー */}
@@ -393,6 +454,44 @@ const styles = StyleSheet.create({
     paddingTop: spacing4,
     gap: spacing4,
   },
+  titleSection: {
+    gap: spacing2,
+  },
+  badgeRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 4,
+  },
+  badgeEnded: {
+    paddingHorizontal: spacing2,
+    paddingVertical: 2,
+    borderRadius: radiusFull,
+    backgroundColor: colorSurfaceMuted,
+  },
+  badgeEndedText: {
+    ...textXs,
+    color: colorTextTertiary,
+  },
+  badgeOngoing: {
+    paddingHorizontal: spacing2,
+    paddingVertical: 2,
+    borderRadius: radiusFull,
+    backgroundColor: colorSuccessBg,
+  },
+  badgeOngoingText: {
+    ...textXs,
+    color: colorSuccess,
+  },
+  badgeSales: {
+    paddingHorizontal: spacing2,
+    paddingVertical: 2,
+    borderRadius: radiusFull,
+    backgroundColor: colorActionPrimary,
+  },
+  badgeSalesText: {
+    ...textXs,
+    color: colorActionPrimaryText,
+  },
   eventTitle: {
     ...textXl,
     color: colorTextPrimary,
@@ -417,10 +516,19 @@ const styles = StyleSheet.create({
     color: colorTextPrimary,
     flex: 1,
   },
+  descriptionSection: {
+    gap: spacing2,
+    borderTopWidth: 1,
+    borderTopColor: colorBorderLight,
+    paddingTop: spacing3,
+  },
+  descriptionHeading: {
+    ...textLg,
+    color: colorTextPrimary,
+  },
   description: {
     ...textBase,
-    color: colorTextPrimary,
-    paddingTop: spacing2,
+    color: colorTextSecondary,
   },
   externalLinkRow: {
     flexDirection: 'row',
@@ -439,6 +547,26 @@ const styles = StyleSheet.create({
     ...textBase,
     color: colorTextPrimary,
     flex: 1,
+  },
+  creatorSection: {
+    gap: spacing2,
+    borderTopWidth: 1,
+    borderTopColor: colorBorderLight,
+    paddingTop: spacing3,
+  },
+  creatorLabel: {
+    ...textSm,
+    color: colorTextTertiary,
+  },
+  creatorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing2,
+    minHeight: 44,
+  },
+  creatorNickname: {
+    ...textSm,
+    color: colorTextPrimary,
   },
   deleteError: {
     ...textSm,
