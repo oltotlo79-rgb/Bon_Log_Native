@@ -147,6 +147,7 @@ const TermCardCell = memo(function TermCardCell({ item }: TermCardCellProps) {
       term={item.term}
       reading={item.reading}
       category={item.category}
+      description={item.description}
       onPress={handlePress}
       accessibilityLabel={`${item.term}（${item.reading}）- ${item.category}`}
     />

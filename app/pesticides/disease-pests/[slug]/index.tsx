@@ -243,12 +243,30 @@ export default function DiseasePestDetailScreen() {
                   >
                     <View style={styles.effectCardHeader}>
                       <Text style={styles.effectProductName} numberOfLines={1}>{p.name}</Text>
-                      <View style={[styles.pestTypeBadge, { backgroundColor: typeBadge.bg }]}>
-                        <Text style={[styles.pestTypeBadgeText, { color: typeBadge.text }]}>
-                          {typeBadge.label}
-                        </Text>
+                      <View style={styles.effectCardBadgeGroup}>
+                        {p.formulationType !== null && (
+                          <Text style={styles.formulationTypeText}>{p.formulationType.name}</Text>
+                        )}
+                        <View style={[styles.pestTypeBadge, { backgroundColor: typeBadge.bg }]}>
+                          <Text style={[styles.pestTypeBadgeText, { color: typeBadge.text }]}>
+                            {typeBadge.label}
+                          </Text>
+                        </View>
                       </View>
                     </View>
+                    {p.activeIngredients.length > 0 && (
+                      <View style={styles.ingredientTagRow}>
+                        {p.activeIngredients.map((ing) => (
+                          <View key={ing.id} style={styles.ingredientTag}>
+                            <Text style={styles.ingredientTagText}>
+                              {ing.name}
+                              {ing.fracCode !== null ? `  FRAC:${ing.fracCode}` : ''}
+                              {ing.iracCode !== null ? `  IRAC:${ing.iracCode}` : ''}
+                            </Text>
+                          </View>
+                        ))}
+                      </View>
+                    )}
                     <View style={styles.ratingRow}>
                       {(isFungicideOrCompound || p.pesticideType === 'compound') && (
                         <>
@@ -422,6 +440,16 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     flex: 1,
   },
+  effectCardBadgeGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing2,
+    flexShrink: 0,
+  },
+  formulationTypeText: {
+    ...textXs,
+    color: colorTextSecondary,
+  },
   pestTypeBadge: {
     borderRadius: radiusSm,
     paddingHorizontal: spacing2,
@@ -431,6 +459,22 @@ const styles = StyleSheet.create({
   pestTypeBadgeText: {
     ...textXs,
     fontWeight: '600',
+  },
+  ingredientTagRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing2,
+  },
+  ingredientTag: {
+    borderRadius: radiusSm,
+    borderWidth: 1,
+    borderColor: colorBorderLight,
+    paddingHorizontal: spacing2,
+    paddingVertical: 2,
+  },
+  ingredientTagText: {
+    ...textXs,
+    color: colorTextSecondary,
   },
 
   // 効果評価バッジ

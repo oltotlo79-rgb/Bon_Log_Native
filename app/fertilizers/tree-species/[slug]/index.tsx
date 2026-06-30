@@ -125,9 +125,11 @@ export default function TreeSpeciesScheduleScreen() {
   const slug = typeof rawSlug === 'string' ? rawSlug : Array.isArray(rawSlug) ? rawSlug[0] : '';
 
   const rawName = params['name'];
-  const treeSpeciesName = typeof rawName === 'string' && rawName.length > 0 ? rawName : slug;
+  const fallbackName = typeof rawName === 'string' && rawName.length > 0 ? rawName : slug;
 
   const { data, isLoading, isError, refetch } = useFertilizationScheduleQuery(slug ?? '');
+  // サーバー応答の treeSpeciesName が権威ある表記。取得前はルートパラメータか slug をフォールバックとする。
+  const treeSpeciesName = data?.treeSpeciesName ?? fallbackName;
   const [selectedMonth, setSelectedMonth] = useState<number | null>(null);
 
   const handleMonthPress = useCallback((month: FertilizationMonth) => {
