@@ -24,6 +24,9 @@
 | 投稿更新（`useUpdatePostMutation`） | `queryKeys.posts.detail(id)` / `queryKeys.posts.feed()`（onSettled） | 詳細とフィードの内容を同期するため。楽観更新なし |
 | 投稿削除（`useDeletePostMutation`） | `queryKeys.posts.all` / 自分の `queryKeys.users.detail(currentUserId)`（onSettled） | 投稿系を一括 invalidate し、プロフィールのカウントも更新するため |
 | いいね・いいね取り消し（`useToggleLikeMutation`） | `queryKeys.posts.detail(id)` のみ（onSettled で invalidate） | フィード・検索は楽観更新 + onSuccess で setQueryData による確定反映を優先。フィード再取得は重いため invalidate しない |
+| リポスト・リポスト解除（`useToggleRepostMutation`） | `queryKeys.posts.detail(postId)` のみ（onSettled で invalidate） | フィード・詳細の isReposted / repostCount は onMutate で楽観更新、onError でロールバック。フィード再取得は重いため invalidate しない |
+| 引用投稿作成（`useQuotePostMutation`） | `queryKeys.posts.feed()` / 自分の `queryKeys.users.posts(currentUserId)`（onSettled） | 楽観更新なし。自分の投稿一覧（ユーザー投稿タブ）に新規引用投稿が追加されるため users.posts も invalidate |
+| アンケート投票（`useVotePollMutation`） | `queryKeys.posts.detail(postId)`（postId あり時・onSettled）/ `queryKeys.posts.all`（postId なし時・onSettled） | 楽観更新なし（二重投票・期限切れ・不正 optionId の拒否があるため）。投票後の最新集計は投稿詳細のリフェッチで反映する |
 | コメント作成（`useCreateCommentMutation`） | `queryKeys.comments.byPost(postId)` / `queryKeys.posts.detail(postId)`（onSettled） | コメント数カウントも投稿詳細に含まれるため。楽観更新なし |
 | コメント削除（`useDeleteCommentMutation`） | `queryKeys.comments.byPost(postId)` / `queryKeys.posts.detail(postId)`（onSettled） | 同上 |
 | フォロー・フォロー解除（`useToggleFollowMutation`） | 対象の `queryKeys.users.detail(targetId)` / `queryKeys.posts.feed()`（onSettled で invalidate） | onMutate で users.detail の following/requested/followersCount と search.users キャッシュ内の該当 item を楽観更新。onSuccess で FollowResponse 確定値（following/requested/followerCount）を users.detail と search.users item に書き込む。onSettled で users.detail と posts.feed を invalidate |
@@ -109,8 +112,9 @@
 
 | クエリキー | フック | 無効化タイミング |
 |-----------|--------|----------------|
-| `queryKeys.posts.feed()` | `useFeedQuery` | 投稿作成・削除・フォロー変更・ブロック・ミュート時 |
-| `queryKeys.posts.detail(id)` | `usePostQuery` | 投稿更新・削除・いいね後の整合時 |
+| `queryKeys.posts.feed()` | `useFeedQuery` | 投稿作成・削除・フォロー変更・ブロック・ミュート・引用投稿作成時 |
+| `queryKeys.posts.detail(id)` | `usePostQuery` | 投稿更新・削除・いいね後の整合・リポスト後の整合・アンケート投票後 |
+| `queryKeys.users.posts(userId)` | `useUserPostsQuery` | 引用投稿作成後（自分の投稿一覧タブに表示されるため） |
 | `queryKeys.comments.byPost(postId)` | `useCommentsQuery` | コメント作成・削除時 |
 | `queryKeys.users.meProfile` | `useCurrentUserProfileQuery` | プロフィール更新成功時（useUpdateProfileMutation の onSuccess で setQueryData + invalidate） |
 | `queryKeys.users.detail(id)` | `useUserProfileQuery` | フォロー変更・プロフィール更新・ブロック・ミュート時 |
