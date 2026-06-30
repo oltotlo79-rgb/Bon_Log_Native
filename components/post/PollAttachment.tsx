@@ -35,14 +35,12 @@ import {
   textBase,
   textXs,
 } from '@/lib/constants/design-tokens';
-
-// ---------------------------------------------------------------------------
-// 定数（Web cfw lib/constants/limits/post.ts の値を踏襲）
-// ---------------------------------------------------------------------------
-
-const MIN_POLL_OPTIONS = 2;
-const MAX_POLL_OPTIONS = 10;
-const MAX_POLL_OPTION_LENGTH = 50;
+import {
+  MIN_POLL_OPTIONS,
+  MAX_POLL_OPTIONS,
+  MAX_POLL_OPTION_LENGTH,
+  DEFAULT_POLL_DURATION_SECONDS,
+} from '@/lib/constants/limits/post';
 
 const DURATION_OPTIONS: readonly { label: string; value: number }[] = [
   { label: '1時間', value: 3600 },
@@ -52,8 +50,6 @@ const DURATION_OPTIONS: readonly { label: string; value: number }[] = [
   { label: '3日', value: 259200 },
   { label: '7日', value: 604800 },
 ] as const;
-
-const DEFAULT_DURATION_SECONDS = 86400;
 
 // ---------------------------------------------------------------------------
 // 型
@@ -78,7 +74,7 @@ export type PollAttachmentProps = {
 export function createDefaultPollValue(): PollAttachmentValue {
   return {
     options: ['', ''],
-    durationSeconds: DEFAULT_DURATION_SECONDS,
+    durationSeconds: DEFAULT_POLL_DURATION_SECONDS,
   };
 }
 

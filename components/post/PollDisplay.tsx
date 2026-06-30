@@ -32,14 +32,11 @@ import {
 } from '@/lib/constants/design-tokens';
 import { useVotePollMutation, type PollVoteResponse } from '@/lib/queries/posts';
 import { isApiError } from '@/lib/api/errors';
-
-// ---------------------------------------------------------------------------
-// アンケート投票に関するエラー文言（core の errors.ts に不足のため仮定数化）
-// ---------------------------------------------------------------------------
-
-const MSG_VOTE_ALREADY_VOTED = '既に投票済みです。';
-const MSG_VOTE_ENDED = 'このアンケートは終了しています。';
-const MSG_VOTE_FAILED = '投票に失敗しました。再度お試しください。';
+import {
+  ERR_POLL_VOTE_FAILED,
+  ERR_POLL_ALREADY_VOTED,
+  ERR_POLL_ENDED,
+} from '@/lib/constants/errors';
 
 // ---------------------------------------------------------------------------
 // 型定義 + 型ガード（スキーマ上 unknown のため維持）
@@ -161,15 +158,15 @@ function PollDisplayInner({ poll, postId }: PollDisplayInnerProps) {
         onError: (error) => {
           if (isApiError(error)) {
             if (error.code === 'CONFLICT') {
-              setVoteError(MSG_VOTE_ALREADY_VOTED);
+              setVoteError(ERR_POLL_ALREADY_VOTED);
               return;
             }
             if (error.code === 'NOT_FOUND') {
-              setVoteError(MSG_VOTE_ENDED);
+              setVoteError(ERR_POLL_ENDED);
               return;
             }
           }
-          setVoteError(MSG_VOTE_FAILED);
+          setVoteError(ERR_POLL_VOTE_FAILED);
         },
       }
     );
