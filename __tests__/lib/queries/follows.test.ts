@@ -93,6 +93,7 @@ function makeUserProfile(overrides?: Partial<UserProfileResponse>): UserProfileR
     requested: false,
     isSelf: false,
     isBlocked: false,
+    isPremium: false,
     isMuted: false,
     ...overrides,
   };
