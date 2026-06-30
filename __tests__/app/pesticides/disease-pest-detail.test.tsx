@@ -56,6 +56,8 @@ function makeDiseasePestDetail(overrides?: Partial<Record<string, unknown>>) {
           slug: 'product-a',
           name: 'アブラムシ専用殺虫剤',
           pesticideType: 'insecticide',
+          formulationType: null,
+          activeIngredients: [],
         },
         rating: {
           preventionLevel: null,
@@ -70,6 +72,8 @@ function makeDiseasePestDetail(overrides?: Partial<Record<string, unknown>>) {
           slug: 'product-b',
           name: '総合殺虫剤B',
           pesticideType: 'compound',
+          formulationType: null,
+          activeIngredients: [],
         },
         rating: {
           preventionLevel: 'good',
@@ -246,6 +250,8 @@ describe('DiseasePestDetailScreen 効果評価・カテゴリ', () => {
             slug: 'product-a',
             name: '殺虫剤X',
             pesticideType: 'insecticide',
+            formulationType: null,
+            activeIngredients: [],
           },
           rating: {
             preventionLevel: null,

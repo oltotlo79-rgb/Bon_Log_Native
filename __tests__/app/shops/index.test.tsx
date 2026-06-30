@@ -705,10 +705,10 @@ describe('ShopsScreen', () => {
       );
     });
 
-    it('モーダルの accessibilityLabel が「都道府県フィルタ: すべての都道府県」を含む', () => {
+    it('モーダルの accessibilityLabel が「都道府県フィルタ: すべて」を含む', () => {
       renderWithProviders(<ShopsScreen />);
       expect(
-        screen.getByRole('button', { name: '都道府県フィルタ: すべての都道府県' })
+        screen.getByRole('button', { name: '都道府県フィルタ: すべて' })
       ).toBeTruthy();
     });
 
