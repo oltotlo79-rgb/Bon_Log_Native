@@ -89,10 +89,12 @@ export const queryKeys = {
   search: {
     /** ルートキー */
     all: ['search'] as const,
-    /** 投稿検索 */
-    posts: (query: string) => ['search', 'posts', query] as const,
+    /** 投稿検索（フィルタ付き。フィルタが異なると別キャッシュになる） */
+    posts: (query: string, filter?: SearchPostsFilter) => ['search', 'posts', query, filter ?? {}] as const,
     /** ユーザー検索 */
     users: (query: string) => ['search', 'users', query] as const,
+    /** ハッシュタグ候補検索（オートコンプリート） */
+    hashtags: (query: string, limit?: number) => ['search', 'hashtags', query, limit] as const,
   },
 
   /** 発見（explore） */
@@ -307,4 +309,13 @@ export type ExplorePostsParams =
 export type CareLogsParams = {
   from?: string;
   to?: string;
+};
+
+/** 投稿検索の追加フィルタ（mediaType は API スキーマのリテラルユニオンをミラー） */
+export type SearchPostsFilter = {
+  genreId?: string;
+  dateFrom?: string;
+  dateTo?: string;
+  minLikes?: number;
+  mediaType?: 'image' | 'video' | 'none';
 };

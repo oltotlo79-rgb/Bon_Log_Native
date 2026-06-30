@@ -120,8 +120,9 @@
 | `queryKeys.users.detail(id)` | `useUserProfileQuery` | フォロー変更・プロフィール更新・ブロック・ミュート時 |
 | `queryKeys.users.blocks` | `useBlockedUsersQuery` | ブロック・ブロック解除時 |
 | `queryKeys.users.mutes` | `useMutedUsersQuery` | ミュート・ミュート解除時 |
-| `queryKeys.search.posts(q)` | `useSearchPostsQuery` | 投稿削除・大幅更新時（検索キャッシュは低優先） |
+| `queryKeys.search.posts(q, filter)` | `useSearchPostsQuery` | 投稿削除・大幅更新時（検索キャッシュは低優先）。フィルタが異なると別キャッシュ |
 | `queryKeys.search.users(q)` | `useSearchUsersQuery` | ユーザー名変更・削除・ブロック時（低優先） |
+| `queryKeys.search.hashtags(q, limit)` | `useSearchHashtagsQuery` | 投稿作成・削除後（ハッシュタグの count が変わる場合）。search.all で一括 invalidate 可 |
 | `queryKeys.notifications.list()` | `useNotificationsQuery` | 通知既読操作時（Batch 2b）・ブロック・ミュート時・フォローリクエスト承認時 |
 | `queryKeys.notifications.unreadCount` | `useUnreadCountQuery` | 通知既読操作・新規通知受信時（Batch 2b）・フォローリクエスト承認時 |
 | `queryKeys.notifications.settings` | `useNotificationSettingsQuery` | 通知設定更新時 |

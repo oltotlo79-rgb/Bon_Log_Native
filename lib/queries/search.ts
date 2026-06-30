@@ -1,29 +1,32 @@
 /**
  * @module lib/queries/search
- * 投稿・ユーザー検索の無限スクロールクエリフック。
+ * 投稿・ユーザー・ハッシュタグ検索のクエリフック。
  */
 
-import { useInfiniteQuery, type InfiniteData } from '@tanstack/react-query';
+import { useInfiniteQuery, useQuery, type InfiniteData } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api/client';
-import { queryKeys } from '@/lib/queries/keys';
+import { queryKeys, type SearchPostsFilter } from '@/lib/queries/keys';
 import { STALE_TIME_SEARCH } from '@/lib/constants/query';
 import { FEED_PAGE_SIZE, USERS_PAGE_SIZE } from '@/lib/constants/limits/pagination';
 import type { components } from '@/lib/api/generated/schema.d.ts';
 
 export type SearchPostItem = components['schemas']['SearchPostsResponse']['items'][number];
 export type SearchUserItem = components['schemas']['SearchUsersResponse']['items'][number];
+export type SearchHashtagItem = components['schemas']['HashtagSearchResponse']['items'][number];
 
 type SearchPostsResponse = components['schemas']['SearchPostsResponse'];
 type SearchUsersResponse = components['schemas']['SearchUsersResponse'];
+type HashtagSearchResponse = components['schemas']['HashtagSearchResponse'];
 
 /**
  * 投稿検索の無限スクロールクエリ。
  * q が空文字の場合はフェッチを行わない（enabled=false）。
  * ブロック済みユーザーの投稿はサーバー側で除外済み。
+ * 未指定フィルタはリクエストに含めない（undefined をそのまま渡す）。
  */
-export function useSearchPostsQuery(q: string) {
+export function useSearchPostsQuery(q: string, filter?: SearchPostsFilter) {
   return useInfiniteQuery<SearchPostsResponse, Error, InfiniteData<SearchPostsResponse>, ReturnType<typeof queryKeys.search.posts>, string | undefined>({
-    queryKey: queryKeys.search.posts(q),
+    queryKey: queryKeys.search.posts(q, filter),
     queryFn: async ({ pageParam }) => {
       const { data, error } = await apiClient.GET('/api/v1/search/posts', {
         params: {
@@ -31,6 +34,11 @@ export function useSearchPostsQuery(q: string) {
             q,
             cursor: pageParam ?? undefined,
             limit: FEED_PAGE_SIZE,
+            genreId: filter?.genreId,
+            dateFrom: filter?.dateFrom,
+            dateTo: filter?.dateTo,
+            minLikes: filter?.minLikes,
+            mediaType: filter?.mediaType,
           },
         },
       });
@@ -42,6 +50,35 @@ export function useSearchPostsQuery(q: string) {
     initialPageParam: undefined,
     getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
     staleTime: STALE_TIME_SEARCH,
+    enabled: q.length > 0,
+  });
+}
+
+/**
+ * ハッシュタグ候補検索クエリ（オートコンプリート用）。
+ * q が空文字の場合はフェッチを行わない（enabled=false）。
+ * デバウンスは呼び出し側（frontend）の責務。
+ * ゲスト可（サーバー仕様: Bearer 認証必須だがゲストトークンで呼び出し可）。
+ */
+export function useSearchHashtagsQuery(q: string, limit?: number) {
+  return useQuery<HashtagSearchResponse, Error>({
+    queryKey: queryKeys.search.hashtags(q, limit),
+    queryFn: async () => {
+      const { data, error } = await apiClient.GET('/api/v1/search/hashtags', {
+        params: {
+          query: {
+            q,
+            limit,
+          },
+        },
+      });
+      if (error !== undefined || data === undefined) {
+        throw error ?? new Error('Unexpected error searching hashtags');
+      }
+      return data;
+    },
+    staleTime: STALE_TIME_SEARCH,
+    // q が空のときはフェッチしない。デバウンス後の q を受け取る前提
     enabled: q.length > 0,
   });
 }
