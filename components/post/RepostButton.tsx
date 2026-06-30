@@ -1,13 +1,14 @@
 /**
  * @module components/post/RepostButton
- * リポストトグルボタン。楽観更新は useToggleRepostMutation のキャッシュ書き換えに依存する。
- * フック側が onMutate でキャッシュを即時更新するため、ローカル楽観 state は不要。
+ * リポスト / 引用 の選択メニュー付きボタン。
+ * タップでアクションシートを開き、「リポスト」か「引用」を選択できる。
+ * Web: components/post/RepostButton.tsx の DropdownMenu 方式を Android/iOS 向けに ActionSheetIOS / Alert で再現する。
  * 未認証ユーザーはタップでログイン画面へ誘導する。
  * オフライン中はトーストのみ表示し API を呼ばない。
  */
 
 import React, { useCallback } from 'react';
-import { Pressable, Text, StyleSheet, View } from 'react-native';
+import { Pressable, Text, StyleSheet, View, ActionSheetIOS, Alert, Platform } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useToggleRepostMutation } from '@/lib/queries/posts';
@@ -27,7 +28,7 @@ import {
   ERR_OFFLINE_ACTION,
   ERR_GENERIC,
 } from '@/lib/constants/errors';
-import { ROUTE_LOGIN } from '@/lib/constants/routes';
+import { ROUTE_LOGIN, routePostQuote } from '@/lib/constants/routes';
 
 // ---------------------------------------------------------------------------
 // 定数
@@ -61,12 +62,7 @@ export function RepostButton({
   const { toast, showToast, hideToast } = useToast();
   const { mutate } = useToggleRepostMutation();
 
-  const handlePress = useCallback(() => {
-    if (currentUserId === undefined) {
-      router.push(ROUTE_LOGIN);
-      return;
-    }
-
+  const handleRepost = useCallback(() => {
     if (!isOnline) {
       showToast(ERR_OFFLINE_ACTION, 'warning');
       return;
@@ -84,27 +80,55 @@ export function RepostButton({
         },
       }
     );
-  }, [
-    currentUserId,
-    isOnline,
-    isReposted,
-    postId,
-    mutate,
-    showToast,
-  ]);
+  }, [isOnline, isReposted, postId, mutate, showToast]);
+
+  const handleQuote = useCallback(() => {
+    router.push(routePostQuote(postId));
+  }, [postId]);
+
+  const showMenu = useCallback(() => {
+    if (currentUserId === undefined) {
+      router.push(ROUTE_LOGIN);
+      return;
+    }
+
+    const repostLabel = isReposted ? 'リポストを取り消す' : 'リポスト';
+
+    // iOS は ActionSheetIOS、Android は Alert でメニューを再現する
+    if (Platform.OS === 'ios') {
+      ActionSheetIOS.showActionSheetWithOptions(
+        {
+          options: [repostLabel, '引用', 'キャンセル'],
+          cancelButtonIndex: 2,
+          // 取り消し操作は destructive スタイルにして視覚的に区別する
+          destructiveButtonIndex: isReposted ? 0 : undefined,
+        },
+        (buttonIndex) => {
+          if (buttonIndex === 0) handleRepost();
+          if (buttonIndex === 1) handleQuote();
+        }
+      );
+    } else {
+      Alert.alert('', '', [
+        { text: repostLabel, onPress: handleRepost, style: isReposted ? 'destructive' : 'default' },
+        { text: '引用', onPress: handleQuote },
+        { text: 'キャンセル', style: 'cancel' },
+      ]);
+    }
+  }, [currentUserId, isReposted, handleRepost, handleQuote]);
 
   const accessibilityLabel =
     currentUserId === undefined
       ? `ログインしてリポストする。現在 ${repostCount} 件`
       : isReposted
-        ? `リポストを取り消す。現在 ${repostCount} 件`
-        : `リポストする。現在 ${repostCount} 件`;
+        ? `リポスト済み。現在 ${repostCount} 件。メニューを開く`
+        : `リポストする。現在 ${repostCount} 件。メニューを開く`;
 
   return (
     <View>
       <Pressable
         style={styles.button}
-        onPress={handlePress}
+        onPress={showMenu}
         hitSlop={ACTION_HIT_SLOP}
         accessibilityRole="button"
         accessibilityLabel={accessibilityLabel}

@@ -415,6 +415,17 @@ export function routeExplorePostsByGenre(genreId: string): {
 }
 
 /**
+ * 引用投稿作成画面へのパスを返す。
+ * Expo Router の dynamic route: `app/posts/[id]/quote/index.tsx`
+ *
+ * 使い方: `router.push(routePostQuote('abc123'))`
+ * href 文字列形式を採用。typed routes の静的型は開発サーバー起動時に自動更新される。
+ */
+export function routePostQuote(id: string): `/posts/${string}/quote` {
+  return `/posts/${id}/quote`;
+}
+
+/**
  * 盆栽成長記録 新規追加画面へのパスを返す。
  * Expo Router の dynamic route: `app/bonsai/[id]/records/new/index.tsx`
  *
@@ -491,6 +502,7 @@ export const routes = {
   // dynamic helpers
   postDetail: routePostDetail,
   postEdit: routePostEdit,
+  postQuote: routePostQuote,
   userDetail: routeUserDetail,
   searchByQuery: routeSearchByQuery,
   searchByGenre: routeSearchByGenre,
