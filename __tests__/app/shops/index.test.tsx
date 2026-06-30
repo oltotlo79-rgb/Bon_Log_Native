@@ -2,6 +2,7 @@
  * app/shops/index の画面テスト。
  * 刷新後の要素（バナー / 検索バー / ジャンルフィルタ / リセット / 件数 / フィルタ時空状態）
  * および既存の4状態（ローディング / 空 / エラー / 正常）を網羅する。
+ * 都道府県フィルタ（PrefecturePickerModal 連携 / useShopsListQuery への prefecture 引数伝播）を含む。
  * useGenresQuery('shop') もモック済み。
  */
 
@@ -515,6 +516,226 @@ describe('ShopsScreen', () => {
       });
       renderWithProviders(<ShopsScreen />);
       expect(screen.getByLabelText(/オフライン/)).toBeTruthy();
+    });
+  });
+
+  describe('都道府県フィルタ（PrefecturePickerModal 連携）', () => {
+    it('初期状態で都道府県フィルタボタンが表示される', () => {
+      renderWithProviders(<ShopsScreen />);
+      expect(screen.getByRole('button', { name: /都道府県フィルタ/ })).toBeTruthy();
+    });
+
+    it('初期状態のフィルタボタンに「都道府県: すべて」テキストが表示される', () => {
+      renderWithProviders(<ShopsScreen />);
+      expect(screen.getByText('都道府県: すべて')).toBeTruthy();
+    });
+
+    it('初期状態で都道府県クリアボタンが表示されない', () => {
+      renderWithProviders(<ShopsScreen />);
+      expect(screen.queryByRole('button', { name: '都道府県フィルタをクリア' })).toBeNull();
+    });
+
+    it('都道府県フィルタボタンをタップするとモーダルが開く（「都道府県を選択」が表示される）', () => {
+      renderWithProviders(<ShopsScreen />);
+      fireEvent.press(screen.getByRole('button', { name: /都道府県フィルタ/ }));
+      expect(screen.getByText('都道府県を選択')).toBeTruthy();
+    });
+
+    it('モーダルで都道府県を選ぶと useShopsListQuery に prefecture が渡される', () => {
+      mockUseShopsListQuery.mockReturnValue({
+        ...defaultQuery,
+        data: { pages: [{ items: [], nextCursor: null }], pageParams: [undefined] },
+      });
+      renderWithProviders(<ShopsScreen />);
+      fireEvent.press(screen.getByRole('button', { name: /都道府県フィルタ/ }));
+      fireEvent.press(screen.getByRole('radio', { name: '東京都' }));
+      expect(mockUseShopsListQuery).toHaveBeenCalledWith(
+        expect.objectContaining({ prefecture: '東京都' })
+      );
+    });
+
+    it('都道府県を選択するとフィルタボタンに選択した都道府県名が表示される', () => {
+      mockUseShopsListQuery.mockReturnValue({
+        ...defaultQuery,
+        data: { pages: [{ items: [], nextCursor: null }], pageParams: [undefined] },
+      });
+      renderWithProviders(<ShopsScreen />);
+      fireEvent.press(screen.getByRole('button', { name: /都道府県フィルタ/ }));
+      // FlatList initialNumToRender=20 の範囲内（北海道=1番目）を選択する
+      fireEvent.press(screen.getByRole('radio', { name: '北海道' }));
+      expect(screen.getByText('北海道')).toBeTruthy();
+    });
+
+    it('都道府県を選択すると「都道府県: すべて」テキストが消える', () => {
+      mockUseShopsListQuery.mockReturnValue({
+        ...defaultQuery,
+        data: { pages: [{ items: [], nextCursor: null }], pageParams: [undefined] },
+      });
+      renderWithProviders(<ShopsScreen />);
+      fireEvent.press(screen.getByRole('button', { name: /都道府県フィルタ/ }));
+      fireEvent.press(screen.getByRole('radio', { name: '北海道' }));
+      expect(screen.queryByText('都道府県: すべて')).toBeNull();
+    });
+
+    it('都道府県を選択するとクリアボタンが表示される', () => {
+      mockUseShopsListQuery.mockReturnValue({
+        ...defaultQuery,
+        data: { pages: [{ items: [], nextCursor: null }], pageParams: [undefined] },
+      });
+      renderWithProviders(<ShopsScreen />);
+      fireEvent.press(screen.getByRole('button', { name: /都道府県フィルタ/ }));
+      // FlatList の initialNumToRender=20 の範囲内（茨城県=8番目）を選択する
+      fireEvent.press(screen.getByRole('radio', { name: '茨城県' }));
+      expect(screen.getByRole('button', { name: '都道府県フィルタをクリア' })).toBeTruthy();
+    });
+
+    it('クリアボタンをタップすると useShopsListQuery に prefecture=undefined が渡される', () => {
+      mockUseShopsListQuery.mockReturnValue({
+        ...defaultQuery,
+        data: { pages: [{ items: [], nextCursor: null }], pageParams: [undefined] },
+      });
+      renderWithProviders(<ShopsScreen />);
+      // 1. フィルタで都道府県を選択する
+      fireEvent.press(screen.getByRole('button', { name: /都道府県フィルタ/ }));
+      fireEvent.press(screen.getByRole('radio', { name: '埼玉県' }));
+      // 2. クリアボタンをタップする
+      fireEvent.press(screen.getByRole('button', { name: '都道府県フィルタをクリア' }));
+      expect(mockUseShopsListQuery).toHaveBeenCalledWith(
+        expect.objectContaining({ prefecture: undefined })
+      );
+    });
+
+    it('クリアボタンをタップするとクリアボタン自体が非表示になる', () => {
+      mockUseShopsListQuery.mockReturnValue({
+        ...defaultQuery,
+        data: { pages: [{ items: [], nextCursor: null }], pageParams: [undefined] },
+      });
+      renderWithProviders(<ShopsScreen />);
+      fireEvent.press(screen.getByRole('button', { name: /都道府県フィルタ/ }));
+      // FlatList の initialNumToRender=20 の範囲内（群馬県=10番目）を選択する
+      fireEvent.press(screen.getByRole('radio', { name: '群馬県' }));
+      fireEvent.press(screen.getByRole('button', { name: '都道府県フィルタをクリア' }));
+      expect(screen.queryByRole('button', { name: '都道府県フィルタをクリア' })).toBeNull();
+    });
+
+    it('クリア後は「都道府県: すべて」テキストが復活する', () => {
+      mockUseShopsListQuery.mockReturnValue({
+        ...defaultQuery,
+        data: { pages: [{ items: [], nextCursor: null }], pageParams: [undefined] },
+      });
+      renderWithProviders(<ShopsScreen />);
+      fireEvent.press(screen.getByRole('button', { name: /都道府県フィルタ/ }));
+      // FlatList の initialNumToRender=20 の範囲内（千葉県=12番目）を選択する
+      fireEvent.press(screen.getByRole('radio', { name: '千葉県' }));
+      fireEvent.press(screen.getByRole('button', { name: '都道府県フィルタをクリア' }));
+      expect(screen.getByText('都道府県: すべて')).toBeTruthy();
+    });
+
+    it('リセットボタンをタップすると prefecture が undefined に戻る', () => {
+      mockUseShopsListQuery.mockReturnValue({
+        ...defaultQuery,
+        data: { pages: [{ items: [], nextCursor: null }], pageParams: [undefined] },
+      });
+      renderWithProviders(<ShopsScreen />);
+      // 都道府県を選ぶ（hasActiveFilter を true にするため）
+      // FlatList の initialNumToRender=20 の範囲内（宮城県=4番目）を選択する
+      fireEvent.press(screen.getByRole('button', { name: /都道府県フィルタ/ }));
+      fireEvent.press(screen.getByRole('radio', { name: '宮城県' }));
+      // リセット
+      fireEvent.press(screen.getByRole('button', { name: '絞り込みをリセット' }));
+      expect(mockUseShopsListQuery).toHaveBeenCalledWith(
+        expect.objectContaining({ prefecture: undefined })
+      );
+    });
+
+    it('リセットボタンをタップするとクリアボタンが非表示になる', () => {
+      mockUseShopsListQuery.mockReturnValue({
+        ...defaultQuery,
+        data: { pages: [{ items: [], nextCursor: null }], pageParams: [undefined] },
+      });
+      renderWithProviders(<ShopsScreen />);
+      // FlatList の initialNumToRender=20 の範囲内（秋田県=5番目）を選択する
+      fireEvent.press(screen.getByRole('button', { name: /都道府県フィルタ/ }));
+      fireEvent.press(screen.getByRole('radio', { name: '秋田県' }));
+      fireEvent.press(screen.getByRole('button', { name: '絞り込みをリセット' }));
+      expect(screen.queryByRole('button', { name: '都道府県フィルタをクリア' })).toBeNull();
+    });
+
+    it('都道府県選択中はフィルタ有効状態としてリセットボタンが表示される', () => {
+      mockUseShopsListQuery.mockReturnValue({
+        ...defaultQuery,
+        data: { pages: [{ items: [], nextCursor: null }], pageParams: [undefined] },
+      });
+      renderWithProviders(<ShopsScreen />);
+      // FlatList の initialNumToRender=20 の範囲内（山形県=6番目）を選択する
+      fireEvent.press(screen.getByRole('button', { name: /都道府県フィルタ/ }));
+      fireEvent.press(screen.getByRole('radio', { name: '山形県' }));
+      expect(screen.getByRole('button', { name: '絞り込みをリセット' })).toBeTruthy();
+    });
+
+    it('都道府県選択中の空状態では「条件を変えて再検索」が表示される', () => {
+      mockUseShopsListQuery.mockReturnValue({
+        ...defaultQuery,
+        data: { pages: [{ items: [], nextCursor: null }], pageParams: [undefined] },
+      });
+      renderWithProviders(<ShopsScreen />);
+      // FlatList の initialNumToRender=20 の範囲内（福島県=7番目）を選択する
+      fireEvent.press(screen.getByRole('button', { name: /都道府県フィルタ/ }));
+      fireEvent.press(screen.getByRole('radio', { name: '福島県' }));
+      expect(screen.getByText('条件を変えて再検索してみましょう。')).toBeTruthy();
+    });
+
+    it('モーダルで「すべて」をタップすると useShopsListQuery に prefecture=undefined が渡される', () => {
+      mockUseShopsListQuery.mockReturnValue({
+        ...defaultQuery,
+        data: { pages: [{ items: [], nextCursor: null }], pageParams: [undefined] },
+      });
+      renderWithProviders(<ShopsScreen />);
+      fireEvent.press(screen.getByRole('button', { name: /都道府県フィルタ/ }));
+      fireEvent.press(screen.getByRole('radio', { name: 'すべて' }));
+      expect(mockUseShopsListQuery).toHaveBeenCalledWith(
+        expect.objectContaining({ prefecture: undefined })
+      );
+    });
+
+    it('初期状態で useShopsListQuery は prefecture=undefined で呼ばれる', () => {
+      renderWithProviders(<ShopsScreen />);
+      expect(mockUseShopsListQuery).toHaveBeenCalledWith(
+        expect.objectContaining({ prefecture: undefined })
+      );
+    });
+
+    it('モーダルの accessibilityLabel が「都道府県フィルタ: すべての都道府県」を含む', () => {
+      renderWithProviders(<ShopsScreen />);
+      expect(
+        screen.getByRole('button', { name: '都道府県フィルタ: すべての都道府県' })
+      ).toBeTruthy();
+    });
+
+    it('都道府県選択後のフィルタボタン accessibilityLabel に選択都道府県名が含まれる', () => {
+      mockUseShopsListQuery.mockReturnValue({
+        ...defaultQuery,
+        data: { pages: [{ items: [], nextCursor: null }], pageParams: [undefined] },
+      });
+      renderWithProviders(<ShopsScreen />);
+      // FlatList の initialNumToRender=20 の範囲内（岩手県=3番目）を選択する
+      fireEvent.press(screen.getByRole('button', { name: /都道府県フィルタ/ }));
+      fireEvent.press(screen.getByRole('radio', { name: '岩手県' }));
+      expect(
+        screen.getByRole('button', { name: '都道府県フィルタ: 岩手県' })
+      ).toBeTruthy();
+    });
+
+    it('ローディング中も都道府県フィルタボタンが表示される', () => {
+      mockUseShopsListQuery.mockReturnValue({ ...defaultQuery, isLoading: true });
+      renderWithProviders(<ShopsScreen />);
+      expect(screen.getByRole('button', { name: /都道府県フィルタ/ })).toBeTruthy();
+    });
+
+    it('エラー中も都道府県フィルタボタンが表示される', () => {
+      mockUseShopsListQuery.mockReturnValue({ ...defaultQuery, isError: true });
+      renderWithProviders(<ShopsScreen />);
+      expect(screen.getByRole('button', { name: /都道府県フィルタ/ })).toBeTruthy();
     });
   });
 
