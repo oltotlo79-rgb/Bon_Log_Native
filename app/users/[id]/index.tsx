@@ -1,13 +1,13 @@
 /**
  * @module app/users/[id]/index
  * 他者プロフィール画面。
- * プロフィールヘッダーを FlatList の ListHeaderComponent として配置する。
- * ユーザー投稿一覧クエリはサーバー未実装のため投稿一覧は非表示（core 差し戻し参照）。
+ * プロフィールヘッダーを UserPostsList の ListHeaderComponent として配置し、
+ * ユーザーの投稿一覧を無限スクロールで表示する。
  * store-compliance.md の UGC 要件として通報・ブロック・ミュートメニューを提供する。
  */
 
 import React, { useState, useCallback } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, FlatList, RefreshControl } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -20,6 +20,7 @@ import { ScreenEmpty } from '@/components/common/ScreenEmpty';
 import { OfflineBanner } from '@/components/common/OfflineBanner';
 import { UserActionMenu } from '@/components/user/UserActionMenu';
 import { ProfileHeader } from '@/components/profile/ProfileHeader';
+import { UserPostsList } from '@/components/profile/UserPostsList';
 import { isApiError } from '@/lib/api/errors';
 import {
   colorBackground,
@@ -27,7 +28,6 @@ import {
   colorTextPrimary,
   colorBorderLight,
   spacing4,
-  spacing6,
   textBase,
   textLg,
   letterSpacingWidest,
@@ -222,12 +222,11 @@ function UserDetailContent({ userId, isOffline }: UserDetailContentProps) {
         showMenu={showMenu}
         onMenuPress={showMenu ? handleOpenMenu : undefined}
       />
-      <FlatList
-        data={[]}
-        keyExtractor={() => ''}
-        renderItem={null}
+      <UserPostsList
+        userId={userId}
+        currentUserId={currentUserId}
         ListHeaderComponent={profileHeaderComponent}
-        ListEmptyComponent={
+        emptyComponent={
           data.isPublic || data.isSelf || data.following ? (
             <ScreenEmpty
               iconName="document-text-outline"
@@ -237,14 +236,7 @@ function UserDetailContent({ userId, isOffline }: UserDetailContentProps) {
             <PrivateAccountNotice />
           )
         }
-        contentContainerStyle={styles.listContent}
-        refreshControl={
-          <RefreshControl
-            refreshing={false}
-            onRefresh={handleRefetch}
-            accessibilityLabel="引き下げて更新"
-          />
-        }
+        isOffline={isOffline}
       />
 
       {menuVisible && !data.isSelf && (
@@ -324,10 +316,6 @@ const styles = StyleSheet.create({
   },
   menuPlaceholder: {
     width: 44,
-  },
-  listContent: {
-    paddingBottom: spacing6,
-    flexGrow: 1,
   },
   errorContainer: {
     flex: 1,

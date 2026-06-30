@@ -1,13 +1,12 @@
 /**
  * @module app/(tabs)/profile/index
  * 自分のプロフィール画面。
- * プロフィールヘッダーを FlatList の ListHeaderComponent として配置し、
+ * プロフィールヘッダーを UserPostsList の ListHeaderComponent として配置し、
  * ユーザーの投稿一覧を無限スクロールで表示する。
- * ユーザー投稿一覧クエリはサーバー未実装のため投稿一覧は非表示（core 差し戻し参照）。
  */
 
 import React, { useCallback } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, FlatList, RefreshControl } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -19,26 +18,18 @@ import { ScreenError } from '@/components/common/ScreenError';
 import { ScreenEmpty } from '@/components/common/ScreenEmpty';
 import { OfflineBanner } from '@/components/common/OfflineBanner';
 import { ProfileHeader } from '@/components/profile/ProfileHeader';
+import { UserPostsList } from '@/components/profile/UserPostsList';
 import {
   colorBackground,
   colorSurfaceWashi,
   colorTextPrimary,
   colorBorderLight,
   spacing4,
-  spacing6,
   textLg,
   letterSpacingWidest,
 } from '@/lib/constants/design-tokens';
 import { ERR_PROFILE_LOAD_FAILED } from '@/lib/constants/errors';
 import { routes } from '@/lib/constants/routes';
-
-// ---------------------------------------------------------------------------
-// 定数
-// ---------------------------------------------------------------------------
-
-// isPremium は useCurrentUserQuery 由来。プロフィール詳細（headerUrl 等）は useUserProfileQuery が返す。
-// 2 クエリを使うのは API の設計上避けられない（GET /api/v1/users/me は isPremium を持ち、
-// GET /api/v1/users/{id} は headerUrl / bonsaiStartYear 等を持つ）。
 
 // ---------------------------------------------------------------------------
 // Component
@@ -158,12 +149,11 @@ export default function ProfileScreen() {
     <SafeAreaView style={styles.safeArea} edges={['top']}>
       {renderHeader}
       <OfflineBanner isVisible={isOffline} />
-      <FlatList
-        data={[]}
-        keyExtractor={() => ''}
-        renderItem={null}
+      <UserPostsList
+        userId={me.id}
+        currentUserId={me.id}
         ListHeaderComponent={profileHeaderComponent}
-        ListEmptyComponent={
+        emptyComponent={
           <ScreenEmpty
             iconName="document-text-outline"
             title="まだ投稿がありません"
@@ -172,14 +162,7 @@ export default function ProfileScreen() {
             onAction={() => router.push(routes.postNew)}
           />
         }
-        contentContainerStyle={styles.listContent}
-        refreshControl={
-          <RefreshControl
-            refreshing={false}
-            onRefresh={refetchAll}
-            accessibilityLabel="引き下げて更新"
-          />
-        }
+        isOffline={isOffline}
       />
     </SafeAreaView>
   );
@@ -218,9 +201,5 @@ const styles = StyleSheet.create({
     width: 44,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  listContent: {
-    paddingBottom: spacing6,
-    flexGrow: 1,
   },
 });

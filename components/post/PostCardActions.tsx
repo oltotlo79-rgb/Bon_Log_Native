@@ -1,7 +1,8 @@
 /**
  * @module components/post/PostCardActions
- * PostCard のアクション行（いいね・コメント・ブックマーク）。
+ * PostCard のアクション行（いいね・コメント・リポスト・ブックマーク）。
  * いいねは LikeButton に委譲し、楽観更新・アニメーション・デバウンスをそこで完結させる。
+ * リポストは RepostButton に委譲し、楽観更新をそこで完結させる。
  * ブックマークは useToggleBookmarkMutation の楽観更新を使う。
  * 仕様: docs/design/post-card.md §10 / docs/design/bookmarks.md §2.3
  */
@@ -12,13 +13,13 @@ import { Ionicons } from '@expo/vector-icons';
 import {
   colorTextSecondary,
   colorActionPrimary,
-  colorSuccess,
   spacing1,
   spacing2,
   spacing4,
   textSm,
 } from '@/lib/constants/design-tokens';
 import { LikeButton } from './LikeButton';
+import { RepostButton } from './RepostButton';
 import { useToggleBookmarkMutation } from '@/lib/queries/bookmarks';
 
 // ---------------------------------------------------------------------------
@@ -98,25 +99,12 @@ export function PostCardActions({
           )}
         </Pressable>
 
-        {/* リポスト数（読み取り専用表示。投票操作は近日対応予定）*/}
-        <View
-          style={styles.actionButton}
-          accessibilityRole="text"
-          accessibilityLabel={`リポスト ${repostCount}件${isReposted ? '、リポスト済み' : ''}`}
-        >
-          <Ionicons
-            name="repeat"
-            size={ICON_SIZE}
-            color={isReposted ? colorSuccess : colorTextSecondary}
-            accessibilityElementsHidden
-            importantForAccessibility="no"
-          />
-          {repostCount > 0 && (
-            <Text style={[styles.countText, isReposted && styles.countTextReposted]}>
-              {repostCount}
-            </Text>
-          )}
-        </View>
+        <RepostButton
+          postId={postId}
+          isReposted={isReposted}
+          repostCount={repostCount}
+          currentUserId={currentUserId}
+        />
       </View>
 
       {/* 右寄せ: ブックマーク */}
@@ -170,8 +158,5 @@ const styles = StyleSheet.create({
   countText: {
     ...textSm,
     color: colorTextSecondary,
-  },
-  countTextReposted: {
-    color: colorSuccess,
   },
 });
