@@ -39,6 +39,7 @@ import {
   colorBackground,
   colorSurface,
   colorSurfaceWashi,
+  colorSurfaceMuted,
   colorTextPrimary,
   colorTextSecondary,
   colorBorderLight,
@@ -53,6 +54,7 @@ import {
   radiusMd,
   textMd,
   textSm,
+  textXs,
   textLg,
   letterSpacingWidest,
 } from '@/lib/constants/design-tokens';
@@ -96,31 +98,36 @@ const TagChip = memo(function TagChip({ item }: TagChipProps) {
 });
 
 // ---------------------------------------------------------------------------
-// ジャンルチップ
+// ジャンル行（縦リスト・番号付き — Web 準拠）
 // ---------------------------------------------------------------------------
 
 type GenreItem = TrendingGenresResponse['items'][number];
 
-type GenreChipProps = {
+type GenreRowProps = {
   item: GenreItem;
+  rank: number;
 };
 
-const GenreChip = memo(function GenreChip({ item }: GenreChipProps) {
+const GenreRow = memo(function GenreRow({ item, rank }: GenreRowProps) {
   const handlePress = useCallback(() => {
     router.push(routeExplorePostsByGenre(item.id));
   }, [item.id]);
 
   return (
     <TouchableOpacity
-      style={styles.chip}
+      style={styles.genreRow}
       onPress={handlePress}
       activeOpacity={0.7}
-      hitSlop={CHIP_HIT_SLOP}
       accessibilityRole="button"
-      accessibilityLabel={`${item.name}の投稿を見る（${item.postCount}件）`}
+      accessibilityLabel={`${rank}位 ${item.name} ${item.postCount}件の投稿`}
     >
-      <Text style={styles.chipName}>{item.name}</Text>
-      <Text style={styles.chipCount}>（{item.postCount}件）</Text>
+      <View style={styles.rankBadge}>
+        <Text style={styles.rankText}>{rank}</Text>
+      </View>
+      <View style={styles.genreInfo}>
+        <Text style={styles.genreName}>{item.name}</Text>
+        <Text style={styles.genrePostCount}>{item.postCount}件の投稿</Text>
+      </View>
     </TouchableOpacity>
   );
 });
@@ -267,7 +274,7 @@ export default function ExploreScreen() {
         {/* セクション 1: トレンドタグ */}
         {(hashtagsQuery.isLoading || hashtags.length > 0 || hashtagsQuery.isError) && (
           <View style={styles.section}>
-            <ExploreSectionHeader title="トレンド" />
+            <ExploreSectionHeader title="トレンドハッシュタグ" />
             {hashtagsQuery.isLoading ? (
               <ActivityIndicator
                 size="small"
@@ -293,10 +300,10 @@ export default function ExploreScreen() {
           </View>
         )}
 
-        {/* セクション 2: トレンドジャンル */}
+        {/* セクション 2: トレンドジャンル（番号付き縦リスト — Web 準拠） */}
         {(genresQuery.isLoading || genres.length > 0 || genresQuery.isError) && (
           <View style={styles.section}>
-            <ExploreSectionHeader title="ジャンル" />
+            <ExploreSectionHeader title="トレンドジャンル" />
             {genresQuery.isLoading ? (
               <ActivityIndicator
                 size="small"
@@ -309,15 +316,11 @@ export default function ExploreScreen() {
                 onRetry={() => void genresQuery.refetch()}
               />
             ) : (
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.chipsRow}
-              >
-                {genres.map((genre: GenreItem) => (
-                  <GenreChip key={genre.id} item={genre} />
+              <View style={styles.genreListContainer}>
+                {genres.map((genre: GenreItem, index: number) => (
+                  <GenreRow key={genre.id} item={genre} rank={index + 1} />
                 ))}
-              </ScrollView>
+              </View>
             )}
           </View>
         )}
@@ -434,6 +437,50 @@ const styles = StyleSheet.create({
   },
   chipCount: {
     ...textSm,
+    color: colorTextSecondary,
+  },
+  genreListContainer: {
+    borderRadius: radiusMd,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: colorBorderLight,
+    backgroundColor: colorSurface,
+  },
+  genreRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    minHeight: 56,
+    paddingHorizontal: spacing4,
+    paddingVertical: spacing3,
+    borderBottomWidth: 1,
+    borderBottomColor: colorBorderLight,
+    gap: spacing3,
+  },
+  rankBadge: {
+    width: 24,
+    height: 24,
+    borderRadius: radiusFull,
+    backgroundColor: colorSurfaceMuted,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  rankText: {
+    ...textXs,
+    color: colorTextSecondary,
+    fontWeight: '600',
+  },
+  genreInfo: {
+    flex: 1,
+    gap: 2,
+  },
+  genreName: {
+    ...textSm,
+    color: colorTextPrimary,
+    fontWeight: '600',
+  },
+  genrePostCount: {
+    ...textXs,
     color: colorTextSecondary,
   },
   userListContainer: {
