@@ -142,6 +142,56 @@ export function makeFollowRequestItem(overrides?: Partial<FollowRequestItem>): F
 }
 
 // ---------------------------------------------------------------------------
+// PostResponse（投稿詳細・引用投稿・リポスト等のテスト用）
+// ---------------------------------------------------------------------------
+
+export type PostResponse = components['schemas']['PostResponse'];
+
+export function makePostResponse(overrides?: Partial<PostResponse>): PostResponse {
+  return {
+    id: 'post-1',
+    content: '黒松の春管理',
+    createdAt: '2025-06-01T10:00:00Z',
+    updatedAt: '2025-06-01T10:00:00Z',
+    userId: 'user-1',
+    user: { id: 'user-1', nickname: '松の匠', avatarUrl: null, isBlocked: false, isMuted: false },
+    media: [],
+    genres: [],
+    likeCount: 0,
+    commentCount: 0,
+    repostCount: 0,
+    isLiked: false,
+    isBookmarked: false,
+    isReposted: false,
+    quotePost: null,
+    repostPost: null,
+    mentionedUsers: [],
+    ...overrides,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// PollVoteResponse（アンケート投票後の集計結果テスト用）
+// ---------------------------------------------------------------------------
+
+export type PollVoteResponse = components['schemas']['PollVoteResponse'];
+
+export function makePollVoteResponse(overrides?: Partial<PollVoteResponse>): PollVoteResponse {
+  return {
+    id: 'poll-1',
+    expiresAt: '2025-06-08T10:00:00Z',
+    isExpired: false,
+    totalVotes: 10,
+    userVoteOptionId: 'option-1',
+    options: [
+      { id: 'option-1', text: '黒松', voteCount: 7, percentage: 70.0 },
+      { id: 'option-2', text: '五葉松', voteCount: 3, percentage: 30.0 },
+    ],
+    ...overrides,
+  };
+}
+
+// ---------------------------------------------------------------------------
 // FeedItem / PostDetail（use-post-card-props テスト用）
 // ---------------------------------------------------------------------------
 
