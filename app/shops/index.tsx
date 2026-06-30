@@ -29,11 +29,13 @@ import { useCurrentUserQuery } from '@/lib/queries/auth';
 import { useOnlineStatus } from '@/hooks/use-online-status';
 import { ShopCard } from '@/components/shops/ShopCard';
 import { PrefecturePickerModal } from '@/components/shops/PrefecturePickerModal';
+import { RegionPickerModal } from '@/components/shops/RegionPickerModal';
 import { ScreenLoading } from '@/components/common/ScreenLoading';
 import { ScreenEmpty } from '@/components/common/ScreenEmpty';
 import { ScreenError } from '@/components/common/ScreenError';
 import { OfflineBanner } from '@/components/common/OfflineBanner';
 import { type PrefectureName } from '@/lib/constants/prefectures';
+import { type RegionName } from '@/lib/constants/regions';
 import {
   colorBackground,
   colorSurface,
@@ -77,6 +79,8 @@ const CLEAR_ICON_SIZE = 16;
 const BACK_HIT_SLOP = { top: 8, bottom: 8, left: 8, right: 8 };
 const PREFECTURE_ICON_SIZE = 14;
 const PREFECTURE_CLEAR_HIT_SLOP = { top: 6, bottom: 6, left: 6, right: 6 };
+const REGION_ICON_SIZE = 14;
+const REGION_CLEAR_HIT_SLOP = { top: 6, bottom: 6, left: 6, right: 6 };
 
 // バナー画像はモバイル用を使用（map-header-mobile.webp: cfw ui/ からコピー済み）
 const BANNER_SOURCE = require('@/assets/images/map-header-mobile.webp');
@@ -114,9 +118,34 @@ export default function ShopsScreen() {
   const [genreId, setGenreId] = useState<string | undefined>(undefined);
   const [sortBy, setSortBy] = useState<ShopsListParams['sortBy']>('rating');
   const [prefecture, setPrefecture] = useState<PrefectureName | undefined>(undefined);
+  const [region, setRegion] = useState<RegionName | undefined>(undefined);
   const [isPrefectureModalVisible, setIsPrefectureModalVisible] = useState(false);
+  const [isRegionModalVisible, setIsRegionModalVisible] = useState(false);
 
   const searchInputRef = useRef<TextInput>(null);
+
+  // 地方を選択したときは都道府県をリセットする（Web 版の動作に準拠）。
+  // サーバー仕様上 prefecture が優先されるため、地方で絞った後に都道府県で更に絞るのではなく
+  // 地方 ↔ 都道府県を排他的に切り替える方が UX 上自然なため。
+  const handleSelectRegion = useCallback(
+    (newRegion: RegionName | undefined) => {
+      setRegion(newRegion);
+      setPrefecture(undefined);
+    },
+    []
+  );
+
+  // 都道府県を選択したときは地方をリセットする。
+  // 両方指定時はサーバー側で prefecture が優先されるが、UI 上は排他として表示する。
+  const handleSelectPrefecture = useCallback(
+    (newPrefecture: PrefectureName | undefined) => {
+      setPrefecture(newPrefecture);
+      if (newPrefecture !== undefined) {
+        setRegion(undefined);
+      }
+    },
+    []
+  );
 
   const { data: genreData } = useGenresQuery('shop');
   const genres = genreData?.items ?? [];
@@ -130,7 +159,7 @@ export default function ShopsScreen() {
     hasNextPage,
     isFetchingNextPage,
     isRefetching,
-  } = useShopsListQuery({ search: committedSearch, genreId, sortBy, prefecture });
+  } = useShopsListQuery({ search: committedSearch, genreId, sortBy, prefecture, region });
 
   const allItems: ShopListItem[] = data?.pages.flatMap((page) => page.items) ?? [];
 
@@ -188,6 +217,7 @@ export default function ShopsScreen() {
     (committedSearch !== undefined && committedSearch.length > 0) ||
     genreId !== undefined ||
     prefecture !== undefined ||
+    region !== undefined ||
     sortBy !== 'rating';
 
   if (isLoading) {
@@ -211,6 +241,9 @@ export default function ShopsScreen() {
           selectedPrefecture={prefecture}
           onOpenPrefecturePicker={() => setIsPrefectureModalVisible(true)}
           onClearPrefecture={() => setPrefecture(undefined)}
+          selectedRegion={region}
+          onOpenRegionPicker={() => setIsRegionModalVisible(true)}
+          onClearRegion={() => setRegion(undefined)}
         />
         <ScreenLoading variant="skeleton" />
       </View>
@@ -238,6 +271,9 @@ export default function ShopsScreen() {
           selectedPrefecture={prefecture}
           onOpenPrefecturePicker={() => setIsPrefectureModalVisible(true)}
           onClearPrefecture={() => setPrefecture(undefined)}
+          selectedRegion={region}
+          onOpenRegionPicker={() => setIsRegionModalVisible(true)}
+          onClearRegion={() => setRegion(undefined)}
         />
         <ScreenError
           title="読み込めませんでした"
@@ -268,20 +304,30 @@ export default function ShopsScreen() {
         selectedPrefecture={prefecture}
         onOpenPrefecturePicker={() => setIsPrefectureModalVisible(true)}
         onClearPrefecture={() => setPrefecture(undefined)}
+        selectedRegion={region}
+        onOpenRegionPicker={() => setIsRegionModalVisible(true)}
+        onClearRegion={() => setRegion(undefined)}
         hasActiveFilter={hasActiveFilter}
         onReset={() => {
           setSearch('');
           setCommittedSearch(undefined);
           setGenreId(undefined);
           setPrefecture(undefined);
+          setRegion(undefined);
           setSortBy('rating');
         }}
       />
       <PrefecturePickerModal
         visible={isPrefectureModalVisible}
         selectedPrefecture={prefecture}
-        onSelect={setPrefecture}
+        onSelect={handleSelectPrefecture}
         onClose={() => setIsPrefectureModalVisible(false)}
+      />
+      <RegionPickerModal
+        visible={isRegionModalVisible}
+        selectedRegion={region}
+        onSelect={handleSelectRegion}
+        onClose={() => setIsRegionModalVisible(false)}
       />
 
       {allItems.length === 0 ? (
@@ -466,6 +512,9 @@ type SortAndFilterBarProps = {
   selectedPrefecture: PrefectureName | undefined;
   onOpenPrefecturePicker: () => void;
   onClearPrefecture: () => void;
+  selectedRegion: RegionName | undefined;
+  onOpenRegionPicker: () => void;
+  onClearRegion: () => void;
   hasActiveFilter?: boolean;
   onReset?: () => void;
 };
@@ -479,15 +528,76 @@ function SortAndFilterBar({
   selectedPrefecture,
   onOpenPrefecturePicker,
   onClearPrefecture,
+  selectedRegion,
+  onOpenRegionPicker,
+  onClearRegion,
   hasActiveFilter = false,
   onReset,
 }: SortAndFilterBarProps) {
-  const prefectureLabel =
-    selectedPrefecture !== undefined ? selectedPrefecture : 'すべての都道府県';
-
   return (
     <View style={styles.filterBarOuter}>
-      {/* 都道府県フィルタ行（独立した行に配置してボタンサイズを確保） */}
+      {/* 地方ブロックフィルタ行 */}
+      <View style={styles.prefectureRow}>
+        <Pressable
+          style={({ pressed }) => [
+            styles.prefectureButton,
+            selectedRegion !== undefined && styles.prefectureButtonActive,
+            pressed && styles.prefectureButtonPressed,
+          ]}
+          onPress={onOpenRegionPicker}
+          accessibilityRole="button"
+          accessibilityLabel={`地方フィルタ: ${selectedRegion ?? 'すべて'}`}
+          hitSlop={CHIP_HIT_SLOP}
+        >
+          <Ionicons
+            name="map-outline"
+            size={REGION_ICON_SIZE}
+            color={
+              selectedRegion !== undefined ? colorActionPrimaryText : colorTextSecondary
+            }
+            accessibilityElementsHidden
+            importantForAccessibility="no"
+          />
+          <Text
+            style={[
+              styles.prefectureButtonText,
+              selectedRegion !== undefined && styles.prefectureButtonTextActive,
+            ]}
+          >
+            {selectedRegion !== undefined ? selectedRegion : '地方: すべて'}
+          </Text>
+          <Ionicons
+            name="chevron-down"
+            size={REGION_ICON_SIZE}
+            color={
+              selectedRegion !== undefined ? colorActionPrimaryText : colorTextTertiary
+            }
+            accessibilityElementsHidden
+            importantForAccessibility="no"
+          />
+        </Pressable>
+
+        {selectedRegion !== undefined && (
+          <Pressable
+            style={styles.prefectureClearButton}
+            onPress={onClearRegion}
+            hitSlop={REGION_CLEAR_HIT_SLOP}
+            accessibilityRole="button"
+            accessibilityLabel="地方フィルタをクリア"
+          >
+            <Ionicons
+              name="close-circle"
+              size={REGION_ICON_SIZE}
+              color={colorTextTertiary}
+              accessibilityElementsHidden
+              importantForAccessibility="no"
+            />
+            <Text style={styles.prefectureClearText}>クリア</Text>
+          </Pressable>
+        )}
+      </View>
+
+      {/* 都道府県フィルタ行（地方の下に置き、都道府県が優先されることをレイアウト上も示す） */}
       <View style={styles.prefectureRow}>
         <Pressable
           style={({ pressed }) => [
@@ -497,7 +607,7 @@ function SortAndFilterBar({
           ]}
           onPress={onOpenPrefecturePicker}
           accessibilityRole="button"
-          accessibilityLabel={`都道府県フィルタ: ${prefectureLabel}`}
+          accessibilityLabel={`都道府県フィルタ: ${selectedPrefecture ?? 'すべて'}`}
           hitSlop={CHIP_HIT_SLOP}
         >
           <Ionicons
