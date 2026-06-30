@@ -28,10 +28,12 @@ import type { ShopListResponse } from '@/lib/queries/shops';
 import { useCurrentUserQuery } from '@/lib/queries/auth';
 import { useOnlineStatus } from '@/hooks/use-online-status';
 import { ShopCard } from '@/components/shops/ShopCard';
+import { PrefecturePickerModal } from '@/components/shops/PrefecturePickerModal';
 import { ScreenLoading } from '@/components/common/ScreenLoading';
 import { ScreenEmpty } from '@/components/common/ScreenEmpty';
 import { ScreenError } from '@/components/common/ScreenError';
 import { OfflineBanner } from '@/components/common/OfflineBanner';
+import { type PrefectureName } from '@/lib/constants/prefectures';
 import {
   colorBackground,
   colorSurface,
@@ -56,6 +58,7 @@ import {
   textBase,
   textLg,
   textSm,
+  textXs,
 } from '@/lib/constants/design-tokens';
 import { routeShopDetail } from '@/lib/constants/routes';
 import type { ShopsListParams } from '@/lib/queries/keys';
@@ -72,6 +75,8 @@ const BANNER_HEIGHT = 96;
 const SEARCH_ICON_SIZE = 16;
 const CLEAR_ICON_SIZE = 16;
 const BACK_HIT_SLOP = { top: 8, bottom: 8, left: 8, right: 8 };
+const PREFECTURE_ICON_SIZE = 14;
+const PREFECTURE_CLEAR_HIT_SLOP = { top: 6, bottom: 6, left: 6, right: 6 };
 
 // バナー画像はモバイル用を使用（map-header-mobile.webp: cfw ui/ からコピー済み）
 const BANNER_SOURCE = require('@/assets/images/map-header-mobile.webp');
@@ -108,6 +113,8 @@ export default function ShopsScreen() {
   const [committedSearch, setCommittedSearch] = useState<string | undefined>(undefined);
   const [genreId, setGenreId] = useState<string | undefined>(undefined);
   const [sortBy, setSortBy] = useState<ShopsListParams['sortBy']>('rating');
+  const [prefecture, setPrefecture] = useState<PrefectureName | undefined>(undefined);
+  const [isPrefectureModalVisible, setIsPrefectureModalVisible] = useState(false);
 
   const searchInputRef = useRef<TextInput>(null);
 
@@ -123,7 +130,7 @@ export default function ShopsScreen() {
     hasNextPage,
     isFetchingNextPage,
     isRefetching,
-  } = useShopsListQuery({ search: committedSearch, genreId, sortBy });
+  } = useShopsListQuery({ search: committedSearch, genreId, sortBy, prefecture });
 
   const allItems: ShopListItem[] = data?.pages.flatMap((page) => page.items) ?? [];
 
@@ -180,6 +187,7 @@ export default function ShopsScreen() {
   const hasActiveFilter =
     (committedSearch !== undefined && committedSearch.length > 0) ||
     genreId !== undefined ||
+    prefecture !== undefined ||
     sortBy !== 'rating';
 
   if (isLoading) {
@@ -200,6 +208,9 @@ export default function ShopsScreen() {
           genres={genres}
           selectedGenreId={genreId}
           onSelectGenre={setGenreId}
+          selectedPrefecture={prefecture}
+          onOpenPrefecturePicker={() => setIsPrefectureModalVisible(true)}
+          onClearPrefecture={() => setPrefecture(undefined)}
         />
         <ScreenLoading variant="skeleton" />
       </View>
@@ -224,6 +235,9 @@ export default function ShopsScreen() {
           genres={genres}
           selectedGenreId={genreId}
           onSelectGenre={setGenreId}
+          selectedPrefecture={prefecture}
+          onOpenPrefecturePicker={() => setIsPrefectureModalVisible(true)}
+          onClearPrefecture={() => setPrefecture(undefined)}
         />
         <ScreenError
           title="読み込めませんでした"
@@ -251,13 +265,23 @@ export default function ShopsScreen() {
         genres={genres}
         selectedGenreId={genreId}
         onSelectGenre={setGenreId}
+        selectedPrefecture={prefecture}
+        onOpenPrefecturePicker={() => setIsPrefectureModalVisible(true)}
+        onClearPrefecture={() => setPrefecture(undefined)}
         hasActiveFilter={hasActiveFilter}
         onReset={() => {
           setSearch('');
           setCommittedSearch(undefined);
           setGenreId(undefined);
+          setPrefecture(undefined);
           setSortBy('rating');
         }}
+      />
+      <PrefecturePickerModal
+        visible={isPrefectureModalVisible}
+        selectedPrefecture={prefecture}
+        onSelect={setPrefecture}
+        onClose={() => setIsPrefectureModalVisible(false)}
       />
 
       {allItems.length === 0 ? (
@@ -439,6 +463,9 @@ type SortAndFilterBarProps = {
   genres: Genre[];
   selectedGenreId: string | undefined;
   onSelectGenre: (id: string | undefined) => void;
+  selectedPrefecture: PrefectureName | undefined;
+  onOpenPrefecturePicker: () => void;
+  onClearPrefecture: () => void;
   hasActiveFilter?: boolean;
   onReset?: () => void;
 };
@@ -449,85 +476,156 @@ function SortAndFilterBar({
   genres,
   selectedGenreId,
   onSelectGenre,
+  selectedPrefecture,
+  onOpenPrefecturePicker,
+  onClearPrefecture,
   hasActiveFilter = false,
   onReset,
 }: SortAndFilterBarProps) {
+  const prefectureLabel =
+    selectedPrefecture !== undefined ? selectedPrefecture : 'すべての都道府県';
+
   return (
-    <View style={styles.filterBar}>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.filterBarContent}
-      >
-        {/* ソートチップ */}
-        {SORT_OPTIONS.map((opt) => {
-          const isSelected = sortBy === opt.value;
-          return (
-            <Pressable
-              key={opt.value ?? 'default'}
-              style={[styles.chip, isSelected && styles.chipSelected]}
-              onPress={() => onSelectSort(opt.value)}
-              hitSlop={CHIP_HIT_SLOP}
-              accessibilityRole="radio"
-              accessibilityState={{ selected: isSelected }}
-              accessibilityLabel={opt.label}
-            >
-              <Text style={[styles.chipText, isSelected && styles.chipTextSelected]}>
-                {opt.label}
-              </Text>
-            </Pressable>
-          );
-        })}
-
-        {/* セパレーター */}
-        <View style={styles.separator} />
-
-        {/* ジャンルフィルタチップ（すべて + 各ジャンル） */}
+    <View style={styles.filterBarOuter}>
+      {/* 都道府県フィルタ行（独立した行に配置してボタンサイズを確保） */}
+      <View style={styles.prefectureRow}>
         <Pressable
-          style={[styles.chip, selectedGenreId === undefined && styles.chipSelected]}
-          onPress={() => onSelectGenre(undefined)}
+          style={({ pressed }) => [
+            styles.prefectureButton,
+            selectedPrefecture !== undefined && styles.prefectureButtonActive,
+            pressed && styles.prefectureButtonPressed,
+          ]}
+          onPress={onOpenPrefecturePicker}
+          accessibilityRole="button"
+          accessibilityLabel={`都道府県フィルタ: ${prefectureLabel}`}
           hitSlop={CHIP_HIT_SLOP}
-          accessibilityRole="radio"
-          accessibilityState={{ selected: selectedGenreId === undefined }}
-          accessibilityLabel="すべてのジャンル"
         >
-          <Text style={[styles.chipText, selectedGenreId === undefined && styles.chipTextSelected]}>
-            すべて
+          <Ionicons
+            name="location-outline"
+            size={PREFECTURE_ICON_SIZE}
+            color={
+              selectedPrefecture !== undefined ? colorActionPrimaryText : colorTextSecondary
+            }
+            accessibilityElementsHidden
+            importantForAccessibility="no"
+          />
+          <Text
+            style={[
+              styles.prefectureButtonText,
+              selectedPrefecture !== undefined && styles.prefectureButtonTextActive,
+            ]}
+          >
+            {selectedPrefecture !== undefined ? selectedPrefecture : '都道府県: すべて'}
           </Text>
+          <Ionicons
+            name="chevron-down"
+            size={PREFECTURE_ICON_SIZE}
+            color={
+              selectedPrefecture !== undefined ? colorActionPrimaryText : colorTextTertiary
+            }
+            accessibilityElementsHidden
+            importantForAccessibility="no"
+          />
         </Pressable>
 
-        {genres.map((g) => {
-          const isSelected = selectedGenreId === g.id;
-          return (
-            <Pressable
-              key={g.id}
-              style={[styles.chip, isSelected && styles.chipSelected]}
-              onPress={() => onSelectGenre(g.id)}
-              hitSlop={CHIP_HIT_SLOP}
-              accessibilityRole="radio"
-              accessibilityState={{ selected: isSelected }}
-              accessibilityLabel={`${g.name}で絞り込む`}
-            >
-              <Text style={[styles.chipText, isSelected && styles.chipTextSelected]}>
-                {g.name}
-              </Text>
-            </Pressable>
-          );
-        })}
-
-        {/* リセットボタン（フィルタが有効な時のみ表示） */}
-        {hasActiveFilter && onReset !== undefined && (
+        {/* 都道府県が選択中のときだけクリアボタンを表示 */}
+        {selectedPrefecture !== undefined && (
           <Pressable
-            style={styles.resetButton}
-            onPress={onReset}
-            hitSlop={CHIP_HIT_SLOP}
+            style={styles.prefectureClearButton}
+            onPress={onClearPrefecture}
+            hitSlop={PREFECTURE_CLEAR_HIT_SLOP}
             accessibilityRole="button"
-            accessibilityLabel="絞り込みをリセット"
+            accessibilityLabel="都道府県フィルタをクリア"
           >
-            <Text style={styles.resetText}>リセット</Text>
+            <Ionicons
+              name="close-circle"
+              size={PREFECTURE_ICON_SIZE}
+              color={colorTextTertiary}
+              accessibilityElementsHidden
+              importantForAccessibility="no"
+            />
+            <Text style={styles.prefectureClearText}>クリア</Text>
           </Pressable>
         )}
-      </ScrollView>
+      </View>
+
+      {/* ソート + ジャンルチップ行（横スクロール） */}
+      <View style={styles.filterBar}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.filterBarContent}
+        >
+          {/* ソートチップ */}
+          {SORT_OPTIONS.map((opt) => {
+            const isSelected = sortBy === opt.value;
+            return (
+              <Pressable
+                key={opt.value ?? 'default'}
+                style={[styles.chip, isSelected && styles.chipSelected]}
+                onPress={() => onSelectSort(opt.value)}
+                hitSlop={CHIP_HIT_SLOP}
+                accessibilityRole="radio"
+                accessibilityState={{ selected: isSelected }}
+                accessibilityLabel={opt.label}
+              >
+                <Text style={[styles.chipText, isSelected && styles.chipTextSelected]}>
+                  {opt.label}
+                </Text>
+              </Pressable>
+            );
+          })}
+
+          {/* セパレーター */}
+          <View style={styles.separator} />
+
+          {/* ジャンルフィルタチップ（すべて + 各ジャンル） */}
+          <Pressable
+            style={[styles.chip, selectedGenreId === undefined && styles.chipSelected]}
+            onPress={() => onSelectGenre(undefined)}
+            hitSlop={CHIP_HIT_SLOP}
+            accessibilityRole="radio"
+            accessibilityState={{ selected: selectedGenreId === undefined }}
+            accessibilityLabel="すべてのジャンル"
+          >
+            <Text style={[styles.chipText, selectedGenreId === undefined && styles.chipTextSelected]}>
+              すべて
+            </Text>
+          </Pressable>
+
+          {genres.map((g) => {
+            const isSelected = selectedGenreId === g.id;
+            return (
+              <Pressable
+                key={g.id}
+                style={[styles.chip, isSelected && styles.chipSelected]}
+                onPress={() => onSelectGenre(g.id)}
+                hitSlop={CHIP_HIT_SLOP}
+                accessibilityRole="radio"
+                accessibilityState={{ selected: isSelected }}
+                accessibilityLabel={`${g.name}で絞り込む`}
+              >
+                <Text style={[styles.chipText, isSelected && styles.chipTextSelected]}>
+                  {g.name}
+                </Text>
+              </Pressable>
+            );
+          })}
+
+          {/* リセットボタン（フィルタが有効な時のみ表示） */}
+          {hasActiveFilter && onReset !== undefined && (
+            <Pressable
+              style={styles.resetButton}
+              onPress={onReset}
+              hitSlop={CHIP_HIT_SLOP}
+              accessibilityRole="button"
+              accessibilityLabel="絞り込みをリセット"
+            >
+              <Text style={styles.resetText}>リセット</Text>
+            </Pressable>
+          )}
+        </ScrollView>
+      </View>
     </View>
   );
 }
@@ -627,12 +725,60 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 
-  // フィルタバー
-  filterBar: {
-    height: 48,
+  // フィルタバー（都道府県行 + チップ行をまとめる外側コンテナ）
+  filterBarOuter: {
     backgroundColor: colorSurfaceWashi,
     borderBottomWidth: 1,
     borderBottomColor: colorBorderLight,
+  },
+
+  // 都道府県フィルタ行
+  prefectureRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing4,
+    paddingTop: spacing2,
+    paddingBottom: spacing1,
+    gap: spacing2,
+  },
+  prefectureButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing1,
+    backgroundColor: colorActionSecondary,
+    borderRadius: radiusSm,
+    paddingHorizontal: spacing3,
+    minHeight: 36,
+    paddingVertical: spacing1,
+  },
+  prefectureButtonActive: {
+    backgroundColor: colorActionPrimary,
+  },
+  prefectureButtonPressed: {
+    opacity: 0.75,
+  },
+  prefectureButtonText: {
+    ...textXs,
+    color: colorTextSecondary,
+  },
+  prefectureButtonTextActive: {
+    color: colorActionPrimaryText,
+  },
+  prefectureClearButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing1,
+    minHeight: 36,
+    paddingHorizontal: spacing2,
+  },
+  prefectureClearText: {
+    ...textXs,
+    color: colorTextTertiary,
+  },
+
+  // ソート+ジャンルチップ横スクロール行
+  filterBar: {
+    height: 48,
     justifyContent: 'center',
   },
   filterBarContent: {

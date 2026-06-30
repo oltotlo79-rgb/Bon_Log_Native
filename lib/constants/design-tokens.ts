@@ -198,6 +198,12 @@ export const colorNavLabelInactive = '#12121266';
 export const colorScrim = 'rgba(0, 0, 0, 0.92)';
 
 /**
+ * モーダル・ボトムシートの背景スクリム。黒の40%不透明度。
+ * 92% の colorScrim（画像ビューア用）と区別するために Light サフィックスを付ける。
+ */
+export const colorScrimLight = 'rgba(0, 0, 0, 0.40)';
+
+/**
  * スクリム上のテキスト・アイコン色（フルスクリーン画像ビューアで使用）。
  * 純白は暗背景で強すぎるため、和紙（鳥の子）を意識した生成り白を採用。
  */
