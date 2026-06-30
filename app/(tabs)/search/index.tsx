@@ -1,6 +1,8 @@
 /**
  * @module app/(tabs)/search/index
- * 検索画面 — 投稿・ユーザーの横断検索（search-screen.md §2 準拠）。
+ * 検索画面 — 投稿・ユーザー・タグの横断検索（search-screen.md §2 準拠）。
+ * 投稿タブにはジャンル/期間/いいね数/メディア種別フィルタを持つ。
+ * タグタブはデバウンスしたハッシュタグ候補検索。
  */
 
 import React, { useState, useCallback, useRef } from 'react';
@@ -20,12 +22,15 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useSearchPostsQuery, useSearchUsersQuery, type SearchPostItem, type SearchUserItem } from '@/lib/queries/search';
+import type { SearchPostsFilter } from '@/lib/queries/keys';
 import { useDebounce } from '@/hooks/use-debounce';
 import { useOnlineStatus } from '@/hooks/use-online-status';
 import { mapToPostCardProps } from '@/hooks/use-post-card-props';
 import { useCurrentUserQuery } from '@/lib/queries/auth';
 import { PostCard } from '@/components/post/PostCard';
 import { UserResultItem, ITEM_MIN_HEIGHT } from '@/components/user/UserResultItem';
+import { PostSearchFilterPanel } from '@/components/search/PostSearchFilterPanel';
+import { HashtagSearchResults } from '@/components/search/HashtagSearchResults';
 import { ScreenEmpty } from '@/components/common/ScreenEmpty';
 import { ScreenError } from '@/components/common/ScreenError';
 import { ScreenLoading } from '@/components/common/ScreenLoading';
@@ -61,13 +66,13 @@ import { routes } from '@/lib/constants/routes';
 // 定数
 // ---------------------------------------------------------------------------
 
-type SearchSegment = 'posts' | 'users';
+type SearchSegment = 'posts' | 'users' | 'tags';
 
 const SEGMENT_TABS: { key: SearchSegment; label: string }[] = [
   { key: 'posts', label: '投稿' },
   { key: 'users', label: 'ユーザー' },
+  { key: 'tags', label: 'タグ' },
 ];
-
 
 // ---------------------------------------------------------------------------
 // SearchBar サブコンポーネント
@@ -78,9 +83,10 @@ type SearchBarProps = {
   onChangeText: (text: string) => void;
   onSubmit: (text: string) => void;
   onClear: () => void;
+  inputRef?: React.RefObject<TextInput | null>;
 };
 
-function SearchBar({ value, onChangeText, onSubmit, onClear }: SearchBarProps) {
+function SearchBar({ value, onChangeText, onSubmit, onClear, inputRef }: SearchBarProps) {
   const [isFocused, setIsFocused] = useState(false);
 
   return (
@@ -99,21 +105,20 @@ function SearchBar({ value, onChangeText, onSubmit, onClear }: SearchBarProps) {
         importantForAccessibility="no"
       />
       <TextInput
+        ref={inputRef}
         style={styles.searchInput}
         value={value}
         onChangeText={onChangeText}
         onSubmitEditing={() => onSubmit(value)}
         onFocus={() => setIsFocused(true)}
         onBlur={() => setIsFocused(false)}
-        placeholder="ユーザーや投稿を検索..."
+        placeholder="投稿・ユーザー・タグを検索..."
         placeholderTextColor={colorTextTertiary}
         returnKeyType="search"
         blurOnSubmit
         accessibilityRole="search"
-        accessibilityLabel="ユーザーや投稿を検索"
-        // Android のデフォルト下線を非表示にする
+        accessibilityLabel="投稿・ユーザー・タグを検索"
         underlineColorAndroid="transparent"
-        // iOS はライトモード前提
         keyboardAppearance={Platform.OS === 'ios' ? 'light' : undefined}
       />
       {value.length > 0 && (
@@ -185,10 +190,19 @@ function SearchSegmentTabs({ activeSegment, onSelect }: SearchSegmentTabsProps) 
 
 type PostSearchResultsProps = {
   query: string;
+  filter: SearchPostsFilter;
   currentUserId: string | undefined;
+  onFilterApply: (filter: SearchPostsFilter) => void;
+  onFilterReset: () => void;
 };
 
-function PostSearchResults({ query, currentUserId }: PostSearchResultsProps) {
+function PostSearchResults({
+  query,
+  filter,
+  currentUserId,
+  onFilterApply,
+  onFilterReset,
+}: PostSearchResultsProps) {
   const {
     data,
     isLoading,
@@ -199,7 +213,7 @@ function PostSearchResults({ query, currentUserId }: PostSearchResultsProps) {
     hasNextPage,
     isFetchingNextPage,
     isRefetching,
-  } = useSearchPostsQuery(query);
+  } = useSearchPostsQuery(query, filter);
 
   const handleLoadMore = useCallback(() => {
     if (hasNextPage === true && !isFetchingNextPage) {
@@ -208,32 +222,6 @@ function PostSearchResults({ query, currentUserId }: PostSearchResultsProps) {
   }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   const posts = data?.pages.flatMap((page) => page.items) ?? [];
-
-  if (isLoading) {
-    return <ScreenLoading variant="skeleton" skeletonCount={3} />;
-  }
-
-  if (isError) {
-    const debugMsg = error instanceof Error ? error.message : undefined;
-    return (
-      <ScreenError
-        title="検索できませんでした"
-        description={ERR_SEARCH_FAILED}
-        onRetry={() => void refetch()}
-        debugMessage={debugMsg}
-      />
-    );
-  }
-
-  if (posts.length === 0) {
-    return (
-      <ScreenEmpty
-        variant="search"
-        title={`「${query}」の投稿は見つかりませんでした`}
-        description="別のキーワードでお試しください"
-      />
-    );
-  }
 
   const renderItem = ({ item }: ListRenderItemInfo<SearchPostItem>) => {
     const props = mapToPostCardProps(
@@ -250,12 +238,58 @@ function PostSearchResults({ query, currentUserId }: PostSearchResultsProps) {
 
   const keyExtractor = (item: SearchPostItem) => item.id;
 
+  const ListHeader = (
+    <PostSearchFilterPanel
+      currentFilter={filter}
+      onApply={onFilterApply}
+      onReset={onFilterReset}
+    />
+  );
+
+  if (isLoading) {
+    return (
+      <View style={styles.resultsContainer}>
+        {ListHeader}
+        <ScreenLoading variant="skeleton" skeletonCount={3} />
+      </View>
+    );
+  }
+
+  if (isError) {
+    const debugMsg = error instanceof Error ? error.message : undefined;
+    return (
+      <View style={styles.resultsContainer}>
+        {ListHeader}
+        <ScreenError
+          title="検索できませんでした"
+          description={ERR_SEARCH_FAILED}
+          onRetry={() => void refetch()}
+          debugMessage={debugMsg}
+        />
+      </View>
+    );
+  }
+
+  if (posts.length === 0) {
+    return (
+      <View style={styles.resultsContainer}>
+        {ListHeader}
+        <ScreenEmpty
+          variant="search"
+          title={`「${query}」の投稿は見つかりませんでした`}
+          description="フィルターを変えるか、別のキーワードでお試しください"
+        />
+      </View>
+    );
+  }
+
   return (
     <FlatList
       data={posts}
       keyExtractor={keyExtractor}
       renderItem={renderItem}
       contentContainerStyle={styles.listContent}
+      ListHeaderComponent={ListHeader}
       removeClippedSubviews
       maxToRenderPerBatch={10}
       keyboardDismissMode="on-drag"
@@ -395,6 +429,7 @@ export default function SearchScreen() {
 
   const [inputValue, setInputValue] = useState('');
   const [activeSegment, setActiveSegment] = useState<SearchSegment>('posts');
+  const [postFilter, setPostFilter] = useState<SearchPostsFilter>({});
   const isOffline = !useOnlineStatus();
   const textInputRef = useRef<TextInput>(null);
 
@@ -404,13 +439,19 @@ export default function SearchScreen() {
 
   const handleClear = useCallback(() => {
     setInputValue('');
-    // クリア後もフォーカスを残す（search-screen.md §3.3）
     textInputRef.current?.focus();
   }, []);
 
   const handleSubmit = useCallback((text: string) => {
-    // return 押下は debounce を待たず即時検索（debouncedQuery との差を setInputValue が埋める）
     setInputValue(text);
+  }, []);
+
+  const handleFilterApply = useCallback((filter: SearchPostsFilter) => {
+    setPostFilter(filter);
+  }, []);
+
+  const handleFilterReset = useCallback(() => {
+    setPostFilter({});
   }, []);
 
   const showInitialView = inputValue.length === 0 && debouncedQuery.length === 0;
@@ -433,6 +474,7 @@ export default function SearchScreen() {
           onChangeText={setInputValue}
           onSubmit={handleSubmit}
           onClear={handleClear}
+          inputRef={textInputRef}
         />
       </View>
 
@@ -441,7 +483,7 @@ export default function SearchScreen() {
           <ScreenEmpty
             iconName="search"
             title="検索してみましょう"
-            description="ニックネームやキーワードを入力してください"
+            description="ニックネーム、キーワード、#タグを入力してください"
           />
         ) : (
           <>
@@ -456,22 +498,28 @@ export default function SearchScreen() {
                 title="オフライン中"
                 description={ERR_OFFLINE_ACTION}
               />
-            ) : activeQuery.length > 0 ? (
+            ) : activeQuery.length > 0 || activeSegment === 'tags' ? (
               <View style={styles.resultsContainer}>
                 {activeSegment === 'posts' ? (
                   <PostSearchResults
                     query={activeQuery}
+                    filter={postFilter}
                     currentUserId={currentUserId}
+                    onFilterApply={handleFilterApply}
+                    onFilterReset={handleFilterReset}
                   />
-                ) : (
+                ) : activeSegment === 'users' ? (
                   <UserSearchResults
                     query={activeQuery}
                     currentUserId={currentUserId}
                   />
+                ) : (
+                  /* タグタブは入力値をそのまま渡す（内部でデバウンス処理） */
+                  <HashtagSearchResults rawQuery={inputValue} />
                 )}
               </View>
             ) : (
-              // デバウンス待ち中のローディング
+              /* デバウンス待ち中のローディング（タグタブ以外） */
               <ScreenLoading variant="skeleton" skeletonCount={3} />
             )}
           </>
@@ -532,7 +580,6 @@ const styles = StyleSheet.create({
     flex: 1,
     ...textBase,
     color: colorTextPrimary,
-    // Android のデフォルト下線除去は TextInput の prop で制御
     paddingVertical: 0,
   },
   clearButton: {
