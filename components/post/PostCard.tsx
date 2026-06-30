@@ -194,7 +194,7 @@ function PostCardInner({
         {/* アンケート表示（poll がある場合のみ） */}
         {poll !== undefined && (
           <View style={styles.pollArea}>
-            <PollDisplay poll={poll} />
+            <PollDisplay poll={poll} postId={displayPostId} />
           </View>
         )}
 

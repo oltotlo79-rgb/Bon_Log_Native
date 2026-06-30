@@ -54,6 +54,7 @@ import { GenreSelector } from './GenreSelector';
 import { ImageAttachmentGrid } from './ImageAttachmentGrid';
 import { VideoAttachmentArea } from './VideoAttachmentArea';
 import { ComposerFormError } from './ComposerFormError';
+import { PollAttachment, createDefaultPollValue, type PollAttachmentValue } from './PollAttachment';
 import { Toast } from '@/components/common/Toast';
 import { OfflineBanner } from '@/components/common/OfflineBanner';
 import { isApiError } from '@/lib/api/errors';
@@ -139,13 +140,18 @@ export function PostComposer({
 
   const [formError, setFormError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [pollValue, setPollValue] = useState<PollAttachmentValue | null>(null);
 
   const createMutation = useCreatePostMutation(currentUserId);
   const updateMutation = useUpdatePostMutation();
 
   const isContentOverLimit = content.length > maxLength;
   const hasContent = content.trim().length > 0 || images.length > 0;
-  const canSubmit = hasContent && !isContentOverLimit && !isSubmitting;
+  // アンケートが添付されている場合、有効な選択肢（2つ以上、かつすべて非空）が必要
+  const isPollValid =
+    pollValue === null ||
+    (pollValue.options.length >= 2 && pollValue.options.every((o) => o.trim().length > 0));
+  const canSubmit = hasContent && !isContentOverLimit && !isSubmitting && isPollValid;
 
   const handlePressCancel = useCallback(() => {
     if (!isDirty) {
@@ -222,6 +228,9 @@ export function PostComposer({
           genreIds: selectedGenres,
           mediaUrls,
           mediaTypes,
+          poll: pollValue !== null
+            ? { options: pollValue.options, durationSeconds: pollValue.durationSeconds }
+            : undefined,
         });
         showToast('投稿しました');
         router.dismiss();
@@ -261,6 +270,7 @@ export function PostComposer({
     updateMutation,
     postId,
     showToast,
+    pollValue,
   ]);
 
   const title = mode === 'create' ? '新規投稿' : '投稿を編集';
@@ -365,6 +375,34 @@ export function PostComposer({
           isDisabled={isSubmitting}
         />
 
+        {/* アンケートセクション（新規投稿のみ） */}
+        {mode === 'create' && (
+          <View style={styles.pollSection}>
+            {pollValue !== null ? (
+              <PollAttachment
+                value={pollValue}
+                onChange={setPollValue}
+                onRemove={() => setPollValue(null)}
+                isDisabled={isSubmitting}
+              />
+            ) : (
+              <Pressable
+                style={({ pressed }) => [
+                  styles.addPollButton,
+                  pressed && styles.addPollButtonPressed,
+                ]}
+                onPress={() => setPollValue(createDefaultPollValue())}
+                disabled={isSubmitting}
+                accessibilityRole="button"
+                accessibilityLabel="アンケートを追加"
+                accessibilityState={{ disabled: isSubmitting }}
+              >
+                <Text style={styles.addPollText}>アンケートを追加</Text>
+              </Pressable>
+            )}
+          </View>
+        )}
+
         {/* フォームエラーバナー */}
         <ComposerFormError message={formError} />
 
@@ -438,5 +476,26 @@ const styles = StyleSheet.create({
     height: 1,
     backgroundColor: colorBorderLight,
     marginHorizontal: spacing3,
+  },
+  pollSection: {
+    paddingHorizontal: spacing3,
+    paddingTop: spacing3,
+  },
+  addPollButton: {
+    borderWidth: 1,
+    borderColor: colorBorderLight,
+    borderRadius: 8,
+    paddingVertical: spacing3,
+    paddingHorizontal: spacing4,
+    alignItems: 'center',
+    minHeight: 44,
+    justifyContent: 'center',
+  },
+  addPollButtonPressed: {
+    opacity: 0.6,
+  },
+  addPollText: {
+    ...textMd,
+    color: colorTextSecondary,
   },
 });
