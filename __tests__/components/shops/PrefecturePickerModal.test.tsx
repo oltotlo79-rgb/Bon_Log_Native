@@ -18,17 +18,24 @@ import { renderWithProviders } from '@/__tests__/utils/test-utils';
 // FlatList 仮想化を無効化し、全件を同期レンダーする。
 // data / renderItem / keyExtractor / ItemSeparatorComponent だけを取り出して
 // ScrollView + map で全件描画するシンプルな代替実装に置き換える。
-// jest.mock ファクトリ内の型注釈は TypeScript の制約により使えないため JS スタイルで記述する。
+type MockFlatListProps = {
+  data: unknown[];
+  renderItem: (info: { item: unknown; index: number }) => React.ReactNode;
+  keyExtractor?: (item: unknown, index: number) => string;
+  ItemSeparatorComponent?: React.ComponentType;
+  accessibilityRole?: string;
+};
+
 jest.mock('react-native/Libraries/Lists/FlatList', () => {
   const mockReact = require('react');
   const mockRN = require('react-native');
 
-  function MockFlatList(props) {
+  function MockFlatList(props: MockFlatListProps) {
     const { data, renderItem, keyExtractor, ItemSeparatorComponent, accessibilityRole } = props;
     return mockReact.createElement(
       mockRN.ScrollView,
       { accessibilityRole },
-      (data ?? []).map((item, index) => {
+      (data ?? []).map((item: unknown, index: number) => {
         const mockKey = keyExtractor ? keyExtractor(item, index) : String(index);
         const mockSeparator =
           ItemSeparatorComponent && index < data.length - 1

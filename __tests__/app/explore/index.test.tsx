@@ -1,6 +1,7 @@
 /**
  * app/explore/index のコンポーネントテスト。
  * トレンドタグ・ジャンル・おすすめユーザー表示・エラー・空状態・オフラインを検証する。
+ * ジャンルは順位番号付き縦リスト（GenreRow）形式。
  */
 
 import React from 'react';
@@ -82,6 +83,7 @@ function makeGenresData() {
     items: [
       { id: 'g1', name: '松柏類', postCount: 200 },
       { id: 'g2', name: '雑木類', postCount: 150 },
+      { id: 'g3', name: '草もの', postCount: 90 },
     ],
   };
 }
@@ -158,14 +160,14 @@ describe('ExploreScreen セクション見出し', () => {
     mockUsersQuery.data = makeUsersData();
   });
 
-  it('「トレンド」セクション見出しが表示される', () => {
+  it('「トレンドハッシュタグ」セクション見出しが表示される', () => {
     renderWithProviders(<ExploreScreen />);
-    expect(screen.getByRole('header', { name: 'トレンド' })).toBeTruthy();
+    expect(screen.getByRole('header', { name: 'トレンドハッシュタグ' })).toBeTruthy();
   });
 
-  it('「ジャンル」セクション見出しが表示される', () => {
+  it('「トレンドジャンル」セクション見出しが表示される', () => {
     renderWithProviders(<ExploreScreen />);
-    expect(screen.getByRole('header', { name: 'ジャンル' })).toBeTruthy();
+    expect(screen.getByRole('header', { name: 'トレンドジャンル' })).toBeTruthy();
   });
 
   it('「おすすめユーザー」セクション見出しが表示される', () => {
@@ -175,7 +177,7 @@ describe('ExploreScreen セクション見出し', () => {
 });
 
 // ---------------------------------------------------------------------------
-// トレンドハッシュタグ
+// トレンドハッシュタグ（横並びチップ・番号なし）
 // ---------------------------------------------------------------------------
 
 describe('ExploreScreen トレンドハッシュタグ', () => {
@@ -210,30 +212,84 @@ describe('ExploreScreen トレンドハッシュタグ', () => {
 });
 
 // ---------------------------------------------------------------------------
-// ジャンル
+// トレンドジャンル（順位番号付き縦リスト）
 // ---------------------------------------------------------------------------
 
-describe('ExploreScreen ジャンル', () => {
-  it('ジャンルのアクセシビリティラベルが表示される', () => {
+describe('ExploreScreen トレンドジャンル（縦リスト）', () => {
+  it('ジャンルが縦リストで表示される（ジャンル名テキストが存在する）', () => {
     mockGenresQuery.data = makeGenresData();
     renderWithProviders(<ExploreScreen />);
-    expect(screen.getByLabelText('松柏類の投稿を見る（200件）')).toBeTruthy();
-    expect(screen.getByLabelText('雑木類の投稿を見る（150件）')).toBeTruthy();
+    expect(screen.getByText('松柏類')).toBeTruthy();
+    expect(screen.getByText('雑木類')).toBeTruthy();
+    expect(screen.getByText('草もの')).toBeTruthy();
+  });
+
+  it('1位 2位 3位 の順位番号が順番どおり表示される', () => {
+    mockGenresQuery.data = makeGenresData();
+    renderWithProviders(<ExploreScreen />);
+    const rankBadge1 = screen.getByText('1');
+    const rankBadge2 = screen.getByText('2');
+    const rankBadge3 = screen.getByText('3');
+    expect(rankBadge1).toBeTruthy();
+    expect(rankBadge2).toBeTruthy();
+    expect(rankBadge3).toBeTruthy();
+  });
+
+  it('accessibilityLabel に「1位 松柏類 200件の投稿」が入る', () => {
+    mockGenresQuery.data = makeGenresData();
+    renderWithProviders(<ExploreScreen />);
+    expect(screen.getByLabelText('1位 松柏類 200件の投稿')).toBeTruthy();
+  });
+
+  it('accessibilityLabel に「2位 雑木類 150件の投稿」が入る', () => {
+    mockGenresQuery.data = makeGenresData();
+    renderWithProviders(<ExploreScreen />);
+    expect(screen.getByLabelText('2位 雑木類 150件の投稿')).toBeTruthy();
+  });
+
+  it('accessibilityLabel に「3位 草もの 90件の投稿」が入る', () => {
+    mockGenresQuery.data = makeGenresData();
+    renderWithProviders(<ExploreScreen />);
+    expect(screen.getByLabelText('3位 草もの 90件の投稿')).toBeTruthy();
+  });
+
+  it('accessibilityLabel に順位が含まれる（1位から始まる）', () => {
+    mockGenresQuery.data = makeGenresData();
+    renderWithProviders(<ExploreScreen />);
+    const firstGenreEl = screen.getByLabelText('1位 松柏類 200件の投稿');
+    expect(firstGenreEl.props.accessibilityLabel).toContain('1位');
   });
 
   it('ジャンルタップで routeExplorePostsByGenre へ遷移する', () => {
     mockGenresQuery.data = makeGenresData();
     renderWithProviders(<ExploreScreen />);
-    fireEvent.press(screen.getByLabelText('松柏類の投稿を見る（200件）'));
+    fireEvent.press(screen.getByLabelText('1位 松柏類 200件の投稿'));
     expect(mockRouter.push).toHaveBeenCalledWith(
       expect.objectContaining({ params: expect.objectContaining({ genreId: 'g1' }) })
     );
   });
 
-  it('ジャンルのカウントが表示される', () => {
+  it('2位ジャンルタップで routeExplorePostsByGenre へ遷移する', () => {
     mockGenresQuery.data = makeGenresData();
     renderWithProviders(<ExploreScreen />);
-    expect(screen.getByText('（200件）')).toBeTruthy();
+    fireEvent.press(screen.getByLabelText('2位 雑木類 150件の投稿'));
+    expect(mockRouter.push).toHaveBeenCalledWith(
+      expect.objectContaining({ params: expect.objectContaining({ genreId: 'g2' }) })
+    );
+  });
+
+  it('ジャンルの投稿数テキストが表示される', () => {
+    mockGenresQuery.data = makeGenresData();
+    renderWithProviders(<ExploreScreen />);
+    expect(screen.getByText('200件の投稿')).toBeTruthy();
+    expect(screen.getByText('150件の投稿')).toBeTruthy();
+  });
+
+  it('ジャンルセクションにエラーが表示される', () => {
+    mockGenresQuery.isError = true;
+    mockGenresQuery.data = undefined;
+    renderWithProviders(<ExploreScreen />);
+    expect(screen.getAllByText('発見コンテンツを読み込めませんでした。')[0]).toBeTruthy();
   });
 });
 
