@@ -284,6 +284,8 @@ export type ShopsListParams = {
   search?: string;
   genreId?: string;
   prefecture?: string;
+  /** 地方ブロック名でフィルタ。prefecture と同時指定した場合は prefecture が優先される */
+  region?: string;
   sortBy?: 'rating' | 'name' | 'newest' | 'location';
 };
 

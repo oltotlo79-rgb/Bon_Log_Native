@@ -45,6 +45,7 @@ export function useShopsListQuery(params: ShopsListParams = {}) {
             search: params.search,
             genreId: params.genreId,
             prefecture: params.prefecture,
+            region: params.region,
             sortBy: params.sortBy,
           },
         },
