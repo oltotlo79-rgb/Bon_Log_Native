@@ -8,7 +8,7 @@
  * mentionUsers はスペック未同梱のため空 Map を渡す（PM 決定事項）。
  */
 
-import type { PostCardProps } from '@/components/post/PostCard';
+import type { PostCardProps, QuotedPostData } from '@/components/post/PostCard';
 import type { PostImageMedia } from '@/components/post/PostImageGallery';
 import type { FeedItem } from '@/lib/queries/feed';
 import type { PostDetail } from '@/lib/queries/posts';
@@ -16,6 +16,36 @@ import type { PostDetail } from '@/lib/queries/posts';
 /** スキーマの media.type は string 型のため、PostImageMedia の union に絞る型ガード */
 function toMediaType(value: string): 'image' | 'video' {
   return value === 'video' ? 'video' : 'image';
+}
+
+/**
+ * repostPost / quotePost の media 配列を QuotedPostData の型に変換する。
+ * スキーマ上 optional で type は string のためそのまま渡す（表示側で絞る）。
+ */
+function toQuotedPostData(
+  raw: {
+    id: string;
+    content: string;
+    user: { id: string; nickname: string; avatarUrl: string | null };
+    media?: { id: string; url: string; type: string; sortOrder: number }[];
+  } | null
+): QuotedPostData | null {
+  if (raw === null) return null;
+  return {
+    id: raw.id,
+    content: raw.content,
+    user: {
+      id: raw.user.id,
+      nickname: raw.user.nickname,
+      avatarUrl: raw.user.avatarUrl,
+    },
+    media: raw.media?.map((m) => ({
+      id: m.id,
+      url: m.url,
+      type: m.type,
+      sortOrder: m.sortOrder,
+    })),
+  };
 }
 
 /** FeedItem / PostDetail に共通するフィールドの最小型 */
@@ -67,8 +97,13 @@ export function mapToPostCardProps(
     })),
     likeCount: post.likeCount,
     commentCount: post.commentCount,
+    repostCount: post.repostCount,
     isLiked: post.isLiked,
     isBookmarked: post.isBookmarked,
+    isReposted: post.isReposted,
+    repostPost: toQuotedPostData(post.repostPost),
+    quotePost: toQuotedPostData(post.quotePost),
+    poll: post.poll,
     currentUserId,
     disableNavigation: options?.disableNavigation ?? false,
     mentionUsers: new Map(),

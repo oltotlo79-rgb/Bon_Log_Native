@@ -1,6 +1,7 @@
 /**
  * components/post/PostCard のコンポーネントテスト。
- * React.memo による再レンダー抑制、disableNavigation、content=null の防衛表示を確認する。
+ * React.memo による再レンダー抑制、disableNavigation、content=null の防衛表示、
+ * repostPost・quotePost・poll 新フィールドを確認する。
  * PostCard → PostCardActions → LikeButton → useToggleLikeMutation の連鎖があるため
  * renderWithProviders で QueryClientProvider を提供する。
  */
@@ -10,6 +11,7 @@ import { screen, fireEvent } from '@testing-library/react-native';
 import { PostCard } from '@/components/post/PostCard';
 import { makePostCardProps, makeMedia, makeGenre, makeUser } from '@/__tests__/utils/post-card-factory';
 import { renderWithProviders } from '@/__tests__/utils/test-utils';
+import type { QuotedPostData } from '@/components/post/PostCard';
 
 const mockRouter = jest.requireMock('expo-router').router;
 
@@ -200,6 +202,268 @@ describe('PostCard', () => {
 
       rerender(<PostCard {...makePostCardProps({ content: '更新コンテンツ' })} />);
       expect(screen.getByText('更新コンテンツ')).toBeTruthy();
+    });
+  });
+
+  describe('repostPost（リポスト）', () => {
+    function makeQuotedPostData(overrides?: Partial<QuotedPostData>): QuotedPostData {
+      return {
+        id: 'original-post-1',
+        content: '元投稿の本文',
+        user: {
+          id: 'original-user-1',
+          nickname: '元投稿の著者',
+          avatarUrl: null,
+        },
+        ...overrides,
+      };
+    }
+
+    it('repostPost がある場合、リポストインジケーターが表示される', () => {
+      const reposterUser = makeUser({ id: 'reposter-1', nickname: 'リポストした人' });
+      renderWithProviders(
+        <PostCard
+          {...makePostCardProps({
+            user: reposterUser,
+            repostPost: makeQuotedPostData(),
+          })}
+        />
+      );
+      expect(screen.getByText('がリポスト')).toBeTruthy();
+    });
+
+    it('repostPost がある場合、リポストユーザーのニックネームがインジケーターに表示される', () => {
+      const reposterUser = makeUser({ id: 'reposter-1', nickname: 'リポストした人' });
+      renderWithProviders(
+        <PostCard
+          {...makePostCardProps({
+            user: reposterUser,
+            repostPost: makeQuotedPostData(),
+          })}
+        />
+      );
+      expect(screen.getByText('リポストした人')).toBeTruthy();
+    });
+
+    it('repostPost がある場合、元投稿の本文が表示される', () => {
+      renderWithProviders(
+        <PostCard
+          {...makePostCardProps({
+            content: 'リポスト投稿の本文（非表示になるべき）',
+            repostPost: makeQuotedPostData({ content: '元投稿の本文' }),
+          })}
+        />
+      );
+      expect(screen.getByText('元投稿の本文')).toBeTruthy();
+    });
+
+    it('repostPost がある場合、元投稿の著者ニックネームがヘッダーに表示される', () => {
+      renderWithProviders(
+        <PostCard
+          {...makePostCardProps({
+            user: makeUser({ nickname: 'リポストした人' }),
+            repostPost: makeQuotedPostData({ user: { id: 'orig-user', nickname: '元著者', avatarUrl: null } }),
+          })}
+        />
+      );
+      expect(screen.getByText('元著者')).toBeTruthy();
+    });
+
+    it('repostPost がある場合、カードタップで元投稿の詳細画面に遷移する', () => {
+      const mockRouter = jest.requireMock('expo-router').router;
+      renderWithProviders(
+        <PostCard
+          {...makePostCardProps({
+            id: 'repost-id',
+            repostPost: makeQuotedPostData({ id: 'original-post-99' }),
+          })}
+        />
+      );
+      fireEvent.press(screen.getByTestId('post-card'));
+      expect(mockRouter.push).toHaveBeenCalledWith('/posts/original-post-99');
+    });
+
+    it('repostPost が null のとき（通常投稿）リポストインジケーターが表示されない', () => {
+      renderWithProviders(
+        <PostCard {...makePostCardProps({ repostPost: null })} />
+      );
+      expect(screen.queryByText('がリポスト')).toBeNull();
+    });
+
+    it('repostPost がない（undefined）のとき（通常投稿）リポストインジケーターが表示されない', () => {
+      renderWithProviders(
+        <PostCard {...makePostCardProps()} />
+      );
+      expect(screen.queryByText('がリポスト')).toBeNull();
+    });
+
+    it('repostPost がある場合、元投稿に画像があれば画像が表示される', () => {
+      renderWithProviders(
+        <PostCard
+          {...makePostCardProps({
+            user: makeUser({ nickname: 'リポストした人' }),
+            repostPost: makeQuotedPostData({
+              user: { id: 'orig-user', nickname: '元著者', avatarUrl: null },
+              media: [{ id: 'img-1', url: 'https://example.com/img.jpg', type: 'image', sortOrder: 0 }],
+            }),
+          })}
+        />
+      );
+      expect(screen.getByLabelText('元著者の投稿画像 1枚中 1枚目')).toBeTruthy();
+    });
+  });
+
+  describe('quotePost（引用投稿）', () => {
+    function makeQuotedPostData(overrides?: Partial<QuotedPostData>): QuotedPostData {
+      return {
+        id: 'quoted-post-1',
+        content: '引用元の本文',
+        user: {
+          id: 'quoted-user-1',
+          nickname: '引用元著者',
+          avatarUrl: null,
+        },
+        ...overrides,
+      };
+    }
+
+    it('quotePost があるとき引用カードが表示される', () => {
+      renderWithProviders(
+        <PostCard
+          {...makePostCardProps({
+            quotePost: makeQuotedPostData(),
+          })}
+        />
+      );
+      expect(screen.getByText('引用元の本文')).toBeTruthy();
+    });
+
+    it('quotePost がある場合、引用元のニックネームが表示される', () => {
+      renderWithProviders(
+        <PostCard
+          {...makePostCardProps({
+            quotePost: makeQuotedPostData({ user: { id: 'q-user', nickname: '引用元著者', avatarUrl: null } }),
+          })}
+        />
+      );
+      expect(screen.getByText('引用元著者')).toBeTruthy();
+    });
+
+    it('quotePost が null のとき引用カードが表示されない', () => {
+      renderWithProviders(
+        <PostCard {...makePostCardProps({ quotePost: null })} />
+      );
+      expect(screen.queryByLabelText(/の引用元投稿を表示/)).toBeNull();
+    });
+
+    it('quotePost タップで引用元投稿詳細に遷移する', () => {
+      const mockRouter = jest.requireMock('expo-router').router;
+      renderWithProviders(
+        <PostCard
+          {...makePostCardProps({
+            quotePost: makeQuotedPostData({
+              id: 'quoted-post-xyz',
+              user: { id: 'q-user', nickname: '引用元著者', avatarUrl: null },
+            }),
+          })}
+        />
+      );
+      // PostCard 全体も button ロールを持つため getAllByRole で末尾の引用カード要素を選択する
+      const buttons = screen.getAllByRole('button', { name: '引用元著者の引用元投稿を表示' });
+      fireEvent.press(buttons[buttons.length - 1]);
+      expect(mockRouter.push).toHaveBeenCalledWith('/posts/quoted-post-xyz');
+    });
+  });
+
+  describe('poll（アンケート）', () => {
+    function makePollData() {
+      return {
+        id: 'poll-1',
+        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+        options: [
+          { id: 'opt-1', text: '松柏類', _count: { votes: 6 } },
+          { id: 'opt-2', text: '雑木類', _count: { votes: 4 } },
+        ],
+        _count: { votes: 10 },
+      };
+    }
+
+    it('poll があるとき選択肢が表示される', () => {
+      renderWithProviders(
+        <PostCard {...makePostCardProps({ poll: makePollData() })} />
+      );
+      expect(screen.getByText('松柏類')).toBeTruthy();
+      expect(screen.getByText('雑木類')).toBeTruthy();
+    });
+
+    it('poll があるとき票数が表示される', () => {
+      renderWithProviders(
+        <PostCard {...makePostCardProps({ poll: makePollData() })} />
+      );
+      expect(screen.getByText('10票')).toBeTruthy();
+    });
+
+    it('poll が undefined のとき PollDisplay は表示されない', () => {
+      renderWithProviders(
+        <PostCard {...makePostCardProps({ poll: undefined })} />
+      );
+      expect(screen.queryByText('10票')).toBeNull();
+      expect(screen.queryByText('投票機能は近日対応予定')).toBeNull();
+    });
+
+    it('poll が不正な型（文字列）のとき PollDisplay は何も表示しない', () => {
+      renderWithProviders(
+        <PostCard {...makePostCardProps({ poll: 'invalid-poll-data' })} />
+      );
+      expect(screen.queryByText('松柏類')).toBeNull();
+    });
+
+    it('poll が不正な型（空オブジェクト）のとき PollDisplay は何も表示しない', () => {
+      renderWithProviders(
+        <PostCard {...makePostCardProps({ poll: {} })} />
+      );
+      expect(screen.queryByText('0票')).toBeNull();
+    });
+  });
+
+  describe('repostCount と isReposted の表示', () => {
+    it('repostCount が 0 のとき数値テキストが表示されない', () => {
+      renderWithProviders(
+        <PostCard {...makePostCardProps({ repostCount: 0 })} />
+      );
+      // リポストカウントの「0」表示がないことを確認（PostCardActions のリポスト欄）
+      const repostArea = screen.queryByLabelText('リポスト 0件');
+      if (repostArea !== null) {
+        expect(screen.queryByText('0')).toBeNull();
+      }
+    });
+
+    it('repostCount が 5 のとき「5」が表示される', () => {
+      renderWithProviders(
+        <PostCard {...makePostCardProps({ repostCount: 5 })} />
+      );
+      expect(screen.getByText('5')).toBeTruthy();
+    });
+
+    it('isReposted=true のとき accessibilityLabel に「リポスト済み」が含まれる', () => {
+      renderWithProviders(
+        <PostCard
+          {...makePostCardProps({ repostCount: 3, isReposted: true })}
+        />
+      );
+      expect(
+        screen.getByLabelText('リポスト 3件、リポスト済み')
+      ).toBeTruthy();
+    });
+
+    it('isReposted=false のとき accessibilityLabel に「リポスト済み」が含まれない', () => {
+      renderWithProviders(
+        <PostCard
+          {...makePostCardProps({ repostCount: 2, isReposted: false })}
+        />
+      );
+      expect(screen.getByLabelText('リポスト 2件')).toBeTruthy();
+      expect(screen.queryByLabelText('リポスト 2件、リポスト済み')).toBeNull();
     });
   });
 });

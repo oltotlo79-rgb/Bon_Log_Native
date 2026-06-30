@@ -25,14 +25,21 @@ import { PostCardContent } from './PostCardContent';
 import { PostImageGallery } from './PostImageGallery';
 import { PostGenreTags } from './PostGenreTags';
 import { PostCardActions } from './PostCardActions';
+import { RepostIndicator } from './RepostIndicator';
+import { QuotedPostCard } from './QuotedPostCard';
+import { PollDisplay } from './PollDisplay';
 import { UserActionMenu } from '@/components/user/UserActionMenu';
 import type { PostCardHeaderUser } from './PostCardHeader';
 import type { PostImageMedia } from './PostImageGallery';
 import type { PostGenre } from './PostGenreTags';
+import type { QuotedPostCardProps } from './QuotedPostCard';
 
 // ---------------------------------------------------------------------------
 // 型定義
 // ---------------------------------------------------------------------------
+
+/** QuotedPostCard に渡す引用投稿データの型 */
+export type QuotedPostData = QuotedPostCardProps['post'];
 
 export type PostCardProps = {
   id: string;
@@ -45,8 +52,16 @@ export type PostCardProps = {
   genres: readonly PostGenre[];
   likeCount: number;
   commentCount: number;
+  repostCount?: number;
   isLiked: boolean;
   isBookmarked: boolean;
+  isReposted?: boolean;
+  /** リポスト投稿のとき、元投稿データ。通常投稿は null */
+  repostPost?: QuotedPostData | null;
+  /** 引用投稿データ。引用でない場合は null */
+  quotePost?: QuotedPostData | null;
+  /** アンケートデータ（スキーマ上 unknown）。アンケートなし投稿は undefined */
+  poll?: unknown;
   /** 閲覧者のユーザー ID（未認証は undefined）*/
   currentUserId: string | undefined;
   /** true のとき投稿詳細遷移を無効化（投稿詳細画面での使用時）*/
@@ -72,8 +87,13 @@ function PostCardInner({
   genres,
   likeCount,
   commentCount,
+  repostCount = 0,
   isLiked,
   isBookmarked,
+  isReposted = false,
+  repostPost = null,
+  quotePost = null,
+  poll,
   currentUserId,
   disableNavigation = false,
   mentionUsers,
@@ -82,13 +102,28 @@ function PostCardInner({
 }: PostCardProps) {
   const [menuVisible, setMenuVisible] = useState(false);
 
-  const isOwnPost = currentUserId !== undefined && currentUserId === user.id;
+  const isRepost = repostPost !== null;
+
+  // リポストのとき本文・メディア・ヘッダーは元投稿側を使う（Web の displayPost に相当）
+  const displayUser = isRepost ? repostPost.user : user;
+  const displayContent = isRepost ? repostPost.content : content;
+  const displayMedia = isRepost
+    ? (repostPost.media?.filter(
+        (m): m is { id: string; url: string; type: 'image' | 'video'; sortOrder: number } =>
+          m.type === 'image' || m.type === 'video'
+      ) ?? [])
+    : media;
+  // リポスト元の詳細画面に遷移するため ID も切り替える
+  const displayPostId = isRepost ? repostPost.id : id;
+
+  const isOwnPost =
+    currentUserId !== undefined && currentUserId === displayUser.id;
 
   const handlePressCard = useCallback(() => {
     if (!disableNavigation) {
-      router.push(routePostDetail(id));
+      router.push(routePostDetail(displayPostId));
     }
-  }, [id, disableNavigation]);
+  }, [displayPostId, disableNavigation]);
 
   const handleMenuPress = useCallback(() => {
     if (onMenuPress !== undefined) {
@@ -99,7 +134,7 @@ function PostCardInner({
     }
   }, [onMenuPress, isOwnPost, currentUserId]);
 
-  const cardAccessibilityLabel = `${user.nickname}の投稿。${(content ?? '').slice(0, 50)}`;
+  const cardAccessibilityLabel = `${displayUser.nickname}の投稿。${(displayContent ?? '').slice(0, 50)}`;
 
   return (
     <View>
@@ -113,9 +148,28 @@ function PostCardInner({
         accessibilityLabel={disableNavigation ? undefined : cardAccessibilityLabel}
         testID="post-card"
       >
+        {/* リポスト表示: 「{nickname} がリポスト」ヘッダー行 */}
+        {isRepost && (
+          <RepostIndicator
+            reposterUserId={user.id}
+            reposterNickname={user.nickname}
+          />
+        )}
+
         {/* ヘッダー: アバター / ユーザー名 / 日時 / 固定バッジ */}
         <PostCardHeader
-          user={user}
+          user={
+            isRepost
+              ? {
+                  id: repostPost.user.id,
+                  nickname: repostPost.user.nickname,
+                  avatarUrl: repostPost.user.avatarUrl,
+                  // リポスト元著者の block/mute 状態は FeedItem では提供されないため false 固定
+                  isBlocked: false,
+                  isMuted: false,
+                }
+              : user
+          }
           createdAt={createdAt}
           editedAt={editedAt}
           isPinned={isPinned}
@@ -131,19 +185,33 @@ function PostCardInner({
         {/* 本文（メンション・ハッシュタグ・続きを読む） */}
         <View style={styles.contentArea}>
           <PostCardContent
-            content={content}
+            content={displayContent}
             disableNavigation={disableNavigation}
             mentionUsers={mentionUsers}
           />
         </View>
 
+        {/* アンケート表示（poll がある場合のみ） */}
+        {poll !== undefined && (
+          <View style={styles.pollArea}>
+            <PollDisplay poll={poll} />
+          </View>
+        )}
+
         {/* 画像グリッド */}
-        {media.length > 0 && (
+        {displayMedia.length > 0 && (
           <View style={styles.galleryArea}>
             <PostImageGallery
-              media={media}
-              authorNickname={user.nickname}
+              media={displayMedia}
+              authorNickname={displayUser.nickname}
             />
+          </View>
+        )}
+
+        {/* 引用投稿カード */}
+        {quotePost !== null && (
+          <View style={styles.quoteArea}>
+            <QuotedPostCard post={quotePost} />
           </View>
         )}
 
@@ -154,13 +222,15 @@ function PostCardInner({
           </View>
         )}
 
-        {/* アクション行（いいね・コメント・ブックマーク）*/}
+        {/* アクション行（いいね・コメント・リポスト数・ブックマーク）*/}
         <PostCardActions
-          postId={id}
+          postId={displayPostId}
           likeCount={likeCount}
           commentCount={commentCount}
+          repostCount={repostCount}
           isLiked={isLiked}
           isBookmarked={isBookmarked}
+          isReposted={isReposted}
           currentUserId={currentUserId}
           onComment={onComment}
         />
@@ -168,13 +238,13 @@ function PostCardInner({
 
       {menuVisible && (
         <UserActionMenu
-          targetUserId={user.id}
-          targetUserNickname={user.nickname}
+          targetUserId={displayUser.id}
+          targetUserNickname={displayUser.nickname}
           isOwnContent={isOwnPost}
           contentType="post"
-          contentId={id}
-          isBlocked={user.isBlocked}
-          isMuted={user.isMuted}
+          contentId={displayPostId}
+          isBlocked={isRepost ? false : user.isBlocked}
+          isMuted={isRepost ? false : user.isMuted}
           onClose={() => setMenuVisible(false)}
         />
       )}
@@ -205,6 +275,12 @@ const styles = StyleSheet.create({
     marginBottom: spacing3,
   },
   galleryArea: {
+    marginBottom: spacing3,
+  },
+  pollArea: {
+    marginBottom: spacing3,
+  },
+  quoteArea: {
     marginBottom: spacing3,
   },
   genreArea: {

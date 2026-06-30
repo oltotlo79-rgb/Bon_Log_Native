@@ -2,6 +2,7 @@
  * components/post/PostCardActions のコンポーネントテスト。
  * いいねは LikeButton に委譲されたため、PostCardActions はコメントボタンのみテストする。
  * いいねボタンの挙動は LikeButton のテストで検証する（tester 管轄）。
+ * repostCount と isReposted の表示を含む新フィールドも網羅する。
  * PostCardActions → LikeButton → useToggleLikeMutation の呼び出しがあるため
  * renderWithProviders で QueryClientProvider を提供する。
  */
@@ -133,6 +134,49 @@ describe('PostCardActions', () => {
       renderActions({ currentUserId: 'user-1', isBookmarked: false, postId: 'post-123' });
       fireEvent.press(screen.getByRole('button', { name: 'ブックマークに追加' }));
       expect(mockMutate).toHaveBeenCalledWith({ postId: 'post-123', currentlyBookmarked: false });
+    });
+  });
+
+  describe('リポスト表示（repostCount / isReposted）', () => {
+    it('repostCount=0 のときリポスト数テキストが表示されない', () => {
+      renderActions({ repostCount: 0, isReposted: false });
+      expect(screen.queryByText('0')).toBeNull();
+    });
+
+    it('repostCount=3 のとき「3」が表示される', () => {
+      renderActions({ repostCount: 3, isReposted: false });
+      expect(screen.getByText('3')).toBeTruthy();
+    });
+
+    it('repostCount=100 のとき「100」が表示される', () => {
+      renderActions({ repostCount: 100, isReposted: false });
+      expect(screen.getByText('100')).toBeTruthy();
+    });
+
+    it('isReposted=true のとき accessibilityLabel に「リポスト済み」が含まれる', () => {
+      renderActions({ repostCount: 5, isReposted: true });
+      expect(screen.getByLabelText('リポスト 5件、リポスト済み')).toBeTruthy();
+    });
+
+    it('isReposted=false のとき accessibilityLabel に「リポスト済み」が含まれない', () => {
+      renderActions({ repostCount: 5, isReposted: false });
+      expect(screen.getByLabelText('リポスト 5件')).toBeTruthy();
+      expect(screen.queryByLabelText('リポスト 5件、リポスト済み')).toBeNull();
+    });
+
+    it('repostCount が省略されたとき（デフォルト 0）リポスト数テキストが表示されない', () => {
+      renderActions({});
+      expect(screen.queryByText('0')).toBeNull();
+    });
+
+    it('isReposted が省略されたとき（デフォルト false）accessibilityLabel が正しい', () => {
+      renderActions({ repostCount: 2 });
+      expect(screen.getByLabelText('リポスト 2件')).toBeTruthy();
+    });
+
+    it('isReposted=true かつ repostCount=0 のとき accessibilityLabel に「リポスト済み」が含まれる', () => {
+      renderActions({ repostCount: 0, isReposted: true });
+      expect(screen.getByLabelText('リポスト 0件、リポスト済み')).toBeTruthy();
     });
   });
 });

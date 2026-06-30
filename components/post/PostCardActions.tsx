@@ -12,6 +12,7 @@ import { Ionicons } from '@expo/vector-icons';
 import {
   colorTextSecondary,
   colorActionPrimary,
+  colorSuccess,
   spacing1,
   spacing2,
   spacing4,
@@ -28,8 +29,10 @@ export type PostCardActionsProps = {
   postId: string;
   likeCount: number;
   commentCount: number;
+  repostCount?: number;
   isLiked: boolean;
   isBookmarked: boolean;
+  isReposted?: boolean;
   currentUserId: string | undefined;
   onComment: () => void;
 };
@@ -46,8 +49,10 @@ export function PostCardActions({
   postId,
   likeCount,
   commentCount,
+  repostCount = 0,
   isLiked,
   isBookmarked,
+  isReposted = false,
   currentUserId,
   onComment,
 }: PostCardActionsProps) {
@@ -92,6 +97,26 @@ export function PostCardActions({
             <Text style={styles.countText}>{commentCount}</Text>
           )}
         </Pressable>
+
+        {/* リポスト数（読み取り専用表示。投票操作は近日対応予定）*/}
+        <View
+          style={styles.actionButton}
+          accessibilityRole="text"
+          accessibilityLabel={`リポスト ${repostCount}件${isReposted ? '、リポスト済み' : ''}`}
+        >
+          <Ionicons
+            name="repeat"
+            size={ICON_SIZE}
+            color={isReposted ? colorSuccess : colorTextSecondary}
+            accessibilityElementsHidden
+            importantForAccessibility="no"
+          />
+          {repostCount > 0 && (
+            <Text style={[styles.countText, isReposted && styles.countTextReposted]}>
+              {repostCount}
+            </Text>
+          )}
+        </View>
       </View>
 
       {/* 右寄せ: ブックマーク */}
@@ -145,5 +170,8 @@ const styles = StyleSheet.create({
   countText: {
     ...textSm,
     color: colorTextSecondary,
+  },
+  countTextReposted: {
+    color: colorSuccess,
   },
 });

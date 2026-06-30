@@ -1,7 +1,8 @@
 /**
  * @module __tests__/hooks/use-post-card-props
  * mapToPostCardProps の変換ロジックテスト。
- * editedAt 判定・isPinned 固定・mentionUsers 空 Map・media type 変換を検証する。
+ * editedAt 判定・isPinned 固定・mentionUsers 空 Map・media type 変換、
+ * および repostCount・isReposted・repostPost・quotePost・poll の 5 新フィールドを検証する。
  * onLike は LikeButton に委譲されたため callbacks から除外済み。
  */
 
@@ -193,6 +194,152 @@ describe('mapToPostCardProps', () => {
       const props = mapToPostCardProps(post, undefined, baseCallbacks);
       expect(props.user.isBlocked).toBe(false);
       expect(props.user.isMuted).toBe(false);
+    });
+  });
+
+  describe('repostCount / isReposted（新フィールド）', () => {
+    it('repostCount=5 のとき props.repostCount に 5 が設定される', () => {
+      const post = makeFeedItem({ repostCount: 5 });
+      const props = mapToPostCardProps(post, undefined, baseCallbacks);
+      expect(props.repostCount).toBe(5);
+    });
+
+    it('repostCount=0 のとき props.repostCount に 0 が設定される', () => {
+      const post = makeFeedItem({ repostCount: 0 });
+      const props = mapToPostCardProps(post, undefined, baseCallbacks);
+      expect(props.repostCount).toBe(0);
+    });
+
+    it('isReposted=true のとき props.isReposted に true が設定される', () => {
+      const post = makeFeedItem({ isReposted: true });
+      const props = mapToPostCardProps(post, undefined, baseCallbacks);
+      expect(props.isReposted).toBe(true);
+    });
+
+    it('isReposted=false のとき props.isReposted に false が設定される', () => {
+      const post = makeFeedItem({ isReposted: false });
+      const props = mapToPostCardProps(post, undefined, baseCallbacks);
+      expect(props.isReposted).toBe(false);
+    });
+  });
+
+  describe('repostPost（新フィールド）', () => {
+    const repostPostData = {
+      id: 'original-post-1',
+      content: '元投稿の本文',
+      user: { id: 'original-user-1', nickname: '元著者', avatarUrl: null },
+      media: [{ id: 'media-1', url: 'https://example.com/img.jpg', type: 'image', sortOrder: 0 }],
+    };
+
+    it('repostPost が設定されているとき props.repostPost に変換される', () => {
+      const post = makeFeedItem({ repostPost: repostPostData });
+      const props = mapToPostCardProps(post, undefined, baseCallbacks);
+      expect(props.repostPost).not.toBeNull();
+      expect(props.repostPost?.id).toBe('original-post-1');
+      expect(props.repostPost?.content).toBe('元投稿の本文');
+    });
+
+    it('repostPost.user が正しく変換される', () => {
+      const post = makeFeedItem({ repostPost: repostPostData });
+      const props = mapToPostCardProps(post, undefined, baseCallbacks);
+      expect(props.repostPost?.user.id).toBe('original-user-1');
+      expect(props.repostPost?.user.nickname).toBe('元著者');
+      expect(props.repostPost?.user.avatarUrl).toBeNull();
+    });
+
+    it('repostPost.media が変換される', () => {
+      const post = makeFeedItem({ repostPost: repostPostData });
+      const props = mapToPostCardProps(post, undefined, baseCallbacks);
+      expect(props.repostPost?.media).toHaveLength(1);
+      expect(props.repostPost?.media?.[0]?.id).toBe('media-1');
+      expect(props.repostPost?.media?.[0]?.type).toBe('image');
+    });
+
+    it('repostPost が null のとき props.repostPost は null になる', () => {
+      const post = makeFeedItem({ repostPost: null });
+      const props = mapToPostCardProps(post, undefined, baseCallbacks);
+      expect(props.repostPost).toBeNull();
+    });
+
+    it('repostPost.media がない場合は props.repostPost.media が undefined になる', () => {
+      const postWithoutMedia = {
+        id: 'original-post-2',
+        content: '元投稿',
+        user: { id: 'u-1', nickname: '元著者', avatarUrl: null },
+      };
+      const post = makeFeedItem({ repostPost: postWithoutMedia });
+      const props = mapToPostCardProps(post, undefined, baseCallbacks);
+      expect(props.repostPost?.media).toBeUndefined();
+    });
+  });
+
+  describe('quotePost（新フィールド）', () => {
+    const quotePostData = {
+      id: 'quoted-post-1',
+      content: '引用元の本文',
+      user: { id: 'quoted-user-1', nickname: '引用元著者', avatarUrl: 'https://example.com/avatar.jpg' },
+    };
+
+    it('quotePost が設定されているとき props.quotePost に変換される', () => {
+      const post = makeFeedItem({ quotePost: quotePostData });
+      const props = mapToPostCardProps(post, undefined, baseCallbacks);
+      expect(props.quotePost).not.toBeNull();
+      expect(props.quotePost?.id).toBe('quoted-post-1');
+      expect(props.quotePost?.content).toBe('引用元の本文');
+    });
+
+    it('quotePost.user が正しく変換される', () => {
+      const post = makeFeedItem({ quotePost: quotePostData });
+      const props = mapToPostCardProps(post, undefined, baseCallbacks);
+      expect(props.quotePost?.user.id).toBe('quoted-user-1');
+      expect(props.quotePost?.user.nickname).toBe('引用元著者');
+      expect(props.quotePost?.user.avatarUrl).toBe('https://example.com/avatar.jpg');
+    });
+
+    it('quotePost が null のとき props.quotePost は null になる', () => {
+      const post = makeFeedItem({ quotePost: null });
+      const props = mapToPostCardProps(post, undefined, baseCallbacks);
+      expect(props.quotePost).toBeNull();
+    });
+
+    it('quotePost と repostPost が両方設定されているとき両方変換される', () => {
+      const post = makeFeedItem({
+        quotePost: quotePostData,
+        repostPost: {
+          id: 'repost-original',
+          content: '元リポスト本文',
+          user: { id: 'repost-orig-user', nickname: '元リポスト著者', avatarUrl: null },
+        },
+      });
+      const props = mapToPostCardProps(post, undefined, baseCallbacks);
+      expect(props.quotePost?.id).toBe('quoted-post-1');
+      expect(props.repostPost?.id).toBe('repost-original');
+    });
+  });
+
+  describe('poll（新フィールド）', () => {
+    it('poll が設定されているとき props.poll に渡される', () => {
+      const pollData = {
+        id: 'poll-1',
+        expiresAt: '2025-12-31T23:59:59Z',
+        options: [{ id: 'opt-1', text: '松柏類', _count: { votes: 5 } }],
+        _count: { votes: 5 },
+      };
+      const post = makeFeedItem({ poll: pollData });
+      const props = mapToPostCardProps(post, undefined, baseCallbacks);
+      expect(props.poll).toEqual(pollData);
+    });
+
+    it('poll が undefined のとき props.poll は undefined になる', () => {
+      const post = makeFeedItem();
+      const props = mapToPostCardProps(post, undefined, baseCallbacks);
+      expect(props.poll).toBeUndefined();
+    });
+
+    it('poll に不正な型が渡された場合もそのまま props.poll に渡される（型ガードは PollDisplay 側）', () => {
+      const post = makeFeedItem({ poll: 'invalid' });
+      const props = mapToPostCardProps(post, undefined, baseCallbacks);
+      expect(props.poll).toBe('invalid');
     });
   });
 });
