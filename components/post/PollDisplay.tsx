@@ -104,7 +104,7 @@ function PollDisplayInner({ poll }: PollDisplayInnerProps) {
     if (diffHours < 24) return `残り約 ${diffHours} 時間`;
     const diffDays = Math.ceil(diffHours / 24);
     return `残り約 ${diffDays} 日`;
-  }, [poll.expiresAt, isExpired, nowMs, expiresAtMs]);
+  }, [isExpired, nowMs, expiresAtMs]);
 
   return (
     <View style={styles.container}>
