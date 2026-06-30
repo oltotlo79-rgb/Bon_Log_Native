@@ -43,3 +43,15 @@ export type GenreCategory = (typeof GENRE_CATEGORY_ORDER)[number];
 
 /** 手入れログのメモ最大文字数 */
 export const MAX_CARE_LOG_NOTE_LENGTH = 500;
+
+/** アンケート選択肢の最小数 */
+export const MIN_POLL_OPTIONS = 2;
+
+/** アンケート選択肢の最大数 */
+export const MAX_POLL_OPTIONS = 10;
+
+/** アンケート選択肢の最大文字数 */
+export const MAX_POLL_OPTION_LENGTH = 50;
+
+/** アンケートのデフォルト投票期間（秒）: 1日 */
+export const DEFAULT_POLL_DURATION_SECONDS = 86400;
