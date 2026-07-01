@@ -181,6 +181,22 @@ export const queryKeys = {
     all: ['analytics'] as const,
     /** 分析サマリ */
     summary: (days: AnalyticsDays) => ['analytics', 'summary', days] as const,
+    /** 投稿分析 */
+    posts: (days: AnalyticsPeriod) => ['analytics', 'posts', days] as const,
+    /** いいね分析 */
+    likes: (days: AnalyticsPeriod) => ['analytics', 'likes', days] as const,
+    /** 引用・リポスト分析（全期間。days パラメータなし） */
+    quotes: ['analytics', 'quotes'] as const,
+    /** キーワード分析 */
+    keywords: (days: AnalyticsPeriod) => ['analytics', 'keywords', days] as const,
+    /** 日次エンゲージメント推移 */
+    engagementTrend: (days: AnalyticsPeriod) => ['analytics', 'engagementTrend', days] as const,
+    /** ジャンル別パフォーマンス */
+    genrePerformance: (days: AnalyticsPeriod) => ['analytics', 'genrePerformance', days] as const,
+    /** フォロワー増加推移 */
+    followerGrowth: (days: AnalyticsPeriod) => ['analytics', 'followerGrowth', days] as const,
+    /** 期間比較 */
+    periodComparison: (days: AnalyticsPeriod) => ['analytics', 'periodComparison', days] as const,
   },
 
   /** ブックマーク */
@@ -271,8 +287,14 @@ export type DictionaryListParams = {
 /** 農薬系一覧の共通フィルタ（未使用フィールドは undefined） */
 export type PesticideListParams = Record<string, string | number | undefined>;
 
-/** アナリティクス集計期間 */
+/** アナリティクス集計期間（文字列。サーバー API クエリパラメータの型） */
 export type AnalyticsDays = '7' | '30' | '90';
+
+/**
+ * アナリティクス集計期間（数値リテラルユニオン。frontend 向け公開 I/F）。
+ * queryFn 内で AnalyticsDays への文字列変換を行う。
+ */
+export type AnalyticsPeriod = 7 | 30 | 90;
 
 /** イベント一覧フィルタ */
 export type EventsFilter = {

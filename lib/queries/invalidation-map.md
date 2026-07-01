@@ -138,6 +138,14 @@
 | `queryKeys.pesticides.*` | `usePesticide*Query` 各種 | マスタ系（変更なし想定） |
 | `queryKeys.legal.list` / `queryKeys.legal.document(slug)` | `useLegalListQuery` / `useLegalDocumentQuery` | マスタ系（変更なし想定） |
 | `queryKeys.analytics.summary(days)` | `useAnalyticsSummaryQuery` | 投稿・フォロワー変動後に invalidate すると最新値に追従できる（任意） |
+| `queryKeys.analytics.posts(days)` | `useAnalyticsPostsQuery` | 投稿作成・削除後に invalidate すると最新値に追従できる（任意） |
+| `queryKeys.analytics.likes(days)` | `useAnalyticsLikesQuery` | いいね変動後に invalidate すると最新値に追従できる（任意） |
+| `queryKeys.analytics.quotes` | `useAnalyticsQuotesQuery` | 引用・リポスト変動後に invalidate すると最新値に追従できる（任意） |
+| `queryKeys.analytics.keywords(days)` | `useAnalyticsKeywordsQuery` | 投稿作成・削除後に invalidate すると最新値に追従できる（任意） |
+| `queryKeys.analytics.engagementTrend(days)` | `useAnalyticsEngagementTrendQuery` | 投稿・いいね・コメント変動後に invalidate すると最新値に追従できる（任意） |
+| `queryKeys.analytics.genrePerformance(days)` | `useAnalyticsGenrePerformanceQuery` | 投稿作成・削除後に invalidate すると最新値に追従できる（任意） |
+| `queryKeys.analytics.followerGrowth(days)` | `useAnalyticsFollowerGrowthQuery` | フォロー変動後に invalidate すると最新値に追従できる（任意） |
+| `queryKeys.analytics.periodComparison(days)` | `useAnalyticsPeriodComparisonQuery` | 投稿・フォロワー変動後に invalidate すると最新値に追従できる（任意） |
 | `queryKeys.bookmarks.list()` | `useBookmarksQuery` | ブックマーク追加・解除時 |
 | `queryKeys.bonsai.list()` | `useBonsaiListQuery` | 盆栽作成・削除・成長記録追加時 |
 | `queryKeys.bonsai.detail(id)` | `useBonsaiDetailQuery` | 盆栽更新・成長記録追加・更新・削除時 |
