@@ -13,6 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import { useUserProfileQuery } from '@/lib/queries/users';
 import { useCurrentUserQuery } from '@/lib/queries/auth';
+import { useStartConversationMutation } from '@/lib/queries/messages';
 import { useOnlineStatus } from '@/hooks/use-online-status';
 import { ScreenLoading } from '@/components/common/ScreenLoading';
 import { ScreenError } from '@/components/common/ScreenError';
@@ -22,6 +23,7 @@ import { UserActionMenu } from '@/components/user/UserActionMenu';
 import { ProfileHeader } from '@/components/profile/ProfileHeader';
 import { UserPostsList } from '@/components/profile/UserPostsList';
 import { isApiError } from '@/lib/api/errors';
+import { routeMessageThread } from '@/lib/constants/routes';
 import {
   colorBackground,
   colorSurfaceWashi,
@@ -134,6 +136,8 @@ function UserDetailContent({ userId, isOffline }: UserDetailContentProps) {
   const { data, isLoading, isError, error, refetch } = useUserProfileQuery(userId);
   const { data: me } = useCurrentUserQuery();
   const currentUserId = me?.id;
+  const { mutate: startConversation, isPending: isStartingConversation } =
+    useStartConversationMutation();
 
   const [menuVisible, setMenuVisible] = useState(false);
 
@@ -148,6 +152,18 @@ function UserDetailContent({ userId, isOffline }: UserDetailContentProps) {
   const handleCloseMenu = useCallback(() => {
     setMenuVisible(false);
   }, []);
+
+  const handleMessagePress = useCallback(() => {
+    if (isStartingConversation) return;
+    startConversation(
+      { targetUserId: userId },
+      {
+        onSuccess: (result) => {
+          router.push(routeMessageThread(result.conversationId));
+        },
+      }
+    );
+  }, [userId, startConversation, isStartingConversation]);
 
   if (isLoading) {
     return (
@@ -189,6 +205,8 @@ function UserDetailContent({ userId, isOffline }: UserDetailContentProps) {
   }
 
   const showMenu = !data.isSelf && currentUserId !== undefined;
+  // 他者のプロフィールかつログイン済みの場合のみメッセージボタンを表示する
+  const showMessageButton = !data.isSelf && currentUserId !== undefined;
 
   const profileHeaderComponent = (
     <ProfileHeader
@@ -211,6 +229,7 @@ function UserDetailContent({ userId, isOffline }: UserDetailContentProps) {
       requested={data.requested}
       currentUserId={currentUserId}
       onOpenMenu={showMenu ? handleOpenMenu : undefined}
+      onMessagePress={showMessageButton ? handleMessagePress : undefined}
     />
   );
 

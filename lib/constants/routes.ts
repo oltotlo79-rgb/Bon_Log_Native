@@ -465,6 +465,26 @@ export function routeShopReviewNew(id: string): {
 }
 
 // ---------------------------------------------------------------------------
+// DM（ダイレクトメッセージ）
+// ---------------------------------------------------------------------------
+
+/** DM 会話一覧画面 */
+export const ROUTE_MESSAGES = '/messages' as const;
+
+/**
+ * DM 会話スレッド画面へのパスを返す。
+ * Expo Router の dynamic route: `app/messages/[conversationId]/index.tsx`
+ *
+ * 使い方: `router.push(routeMessageThread('abc123'))`
+ */
+export function routeMessageThread(conversationId: string): {
+  pathname: '/messages/[conversationId]';
+  params: { conversationId: string };
+} {
+  return { pathname: '/messages/[conversationId]', params: { conversationId } };
+}
+
+// ---------------------------------------------------------------------------
 // 後方互換エイリアス（frontend が `routes.xxx` 形式で参照する契約に対応）
 // ---------------------------------------------------------------------------
 
@@ -554,4 +574,8 @@ export const routes = {
   scheduledPostEdit: routeScheduledPostEdit,
   explorePostsByHashtag: routeExplorePostsByHashtag,
   explorePostsByGenre: routeExplorePostsByGenre,
+
+  // DM
+  messages: ROUTE_MESSAGES,
+  messageThread: routeMessageThread,
 } as const;

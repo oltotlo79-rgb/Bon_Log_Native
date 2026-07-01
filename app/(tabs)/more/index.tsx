@@ -24,6 +24,7 @@ import { MoreMenuGroup } from '@/components/common/MoreMenuGroup';
 import { MoreMenuItem } from '@/components/common/MoreMenuItem';
 import {
   ROUTE_PROFILE,
+  ROUTE_MESSAGES,
   routes,
 } from '@/lib/constants/routes';
 import { HELP_URL } from '@/lib/constants/external-links';
@@ -126,6 +127,16 @@ export default function MoreScreen() {
             }
             onPress={() => router.navigate(ROUTE_PROFILE)}
             accessibilityLabel="プロフィールを見る"
+            showBorder
+          />
+          <MoreMenuItem
+            label="メッセージ"
+            icon={
+              <Ionicons name="chatbubble-ellipses-outline" size={ICON_SIZE} color={colorTextSecondary} />
+            }
+            rightElement="chevron"
+            onPress={() => router.push(ROUTE_MESSAGES)}
+            accessibilityLabel="メッセージ一覧を開く"
             showBorder
           />
           <MoreMenuItem

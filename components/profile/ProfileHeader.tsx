@@ -113,6 +113,8 @@ export type ProfileHeaderProps = {
   requested: boolean;
   currentUserId: string | undefined;
   onOpenMenu?: () => void;
+  /** 他者プロフィールのみ。タップで DM 会話を開始する。自分自身やゲストには渡さない */
+  onMessagePress?: () => void;
 };
 
 // ---------------------------------------------------------------------------
@@ -157,6 +159,7 @@ function ProfileHeaderInner({
   requested,
   currentUserId,
   onOpenMenu,
+  onMessagePress,
 }: ProfileHeaderProps) {
   const bonsaiExperience = calculateBonsaiExperience(bonsaiStartYear, bonsaiStartMonth);
   const joinDate = formatJoinDate(createdAt);
@@ -221,6 +224,22 @@ function ProfileHeaderInner({
                 size="default"
                 targetNickname={nickname}
               />
+              {onMessagePress !== undefined && (
+                <TouchableOpacity
+                  style={styles.menuButton}
+                  onPress={onMessagePress}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${nickname}にメッセージを送る`}
+                >
+                  <Ionicons
+                    name="chatbubble-ellipses-outline"
+                    size={18}
+                    color={colorTextPrimary}
+                    accessibilityElementsHidden
+                    importantForAccessibility="no"
+                  />
+                </TouchableOpacity>
+              )}
               {onOpenMenu !== undefined && (
                 <TouchableOpacity
                   style={styles.menuButton}
