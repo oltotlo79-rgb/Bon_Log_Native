@@ -37,8 +37,27 @@ const mockUseCommentsQuery = jest.fn();
 jest.mock('@/lib/queries/posts', () => ({
   usePostQuery: () => mockUsePostQuery(),
   useDeletePostMutation: jest.fn(() => ({
+    mutate: jest.fn(),
     mutateAsync: jest.fn(),
     isPending: false,
+  })),
+  useToggleRepostMutation: jest.fn(() => ({
+    mutate: jest.fn(),
+    isPending: false,
+  })),
+  useVotePollMutation: jest.fn(() => ({
+    mutate: jest.fn(),
+    isPending: false,
+  })),
+  useUserPostsQuery: jest.fn(() => ({
+    data: undefined,
+    isLoading: false,
+    isError: false,
+    fetchNextPage: jest.fn(),
+    hasNextPage: false,
+    isFetchingNextPage: false,
+    refetch: jest.fn(),
+    isRefetching: false,
   })),
 }));
 

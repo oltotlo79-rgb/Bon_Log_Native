@@ -34,6 +34,14 @@ jest.mock('@/lib/queries/bookmarks', () => ({
   })),
 }));
 
+// リポスト mutation のモック（ネットワークに出ない）
+jest.mock('@/lib/queries/posts', () => ({
+  useToggleRepostMutation: jest.fn(() => ({
+    mutate: jest.fn(),
+    isPending: false,
+  })),
+}));
+
 describe('PostCardActions', () => {
   describe('いいねボタン', () => {
     it('isLiked=false のとき accessibilityLabel に「いいねする」が含まれる', () => {
@@ -139,44 +147,44 @@ describe('PostCardActions', () => {
 
   describe('リポスト表示（repostCount / isReposted）', () => {
     it('repostCount=0 のときリポスト数テキストが表示されない', () => {
-      renderActions({ repostCount: 0, isReposted: false });
+      renderActions({ repostCount: 0, isReposted: false, currentUserId: 'user-1' });
       expect(screen.queryByText('0')).toBeNull();
     });
 
     it('repostCount=3 のとき「3」が表示される', () => {
-      renderActions({ repostCount: 3, isReposted: false });
+      renderActions({ repostCount: 3, isReposted: false, currentUserId: 'user-1' });
       expect(screen.getByText('3')).toBeTruthy();
     });
 
     it('repostCount=100 のとき「100」が表示される', () => {
-      renderActions({ repostCount: 100, isReposted: false });
+      renderActions({ repostCount: 100, isReposted: false, currentUserId: 'user-1' });
       expect(screen.getByText('100')).toBeTruthy();
     });
 
     it('isReposted=true のとき accessibilityLabel に「リポスト済み」が含まれる', () => {
-      renderActions({ repostCount: 5, isReposted: true });
-      expect(screen.getByLabelText('リポスト 5件、リポスト済み')).toBeTruthy();
+      renderActions({ repostCount: 5, isReposted: true, currentUserId: 'user-1' });
+      expect(screen.getByLabelText('リポスト済み。現在 5 件。メニューを開く')).toBeTruthy();
     });
 
     it('isReposted=false のとき accessibilityLabel に「リポスト済み」が含まれない', () => {
-      renderActions({ repostCount: 5, isReposted: false });
-      expect(screen.getByLabelText('リポスト 5件')).toBeTruthy();
-      expect(screen.queryByLabelText('リポスト 5件、リポスト済み')).toBeNull();
+      renderActions({ repostCount: 5, isReposted: false, currentUserId: 'user-1' });
+      expect(screen.getByLabelText('リポストする。現在 5 件。メニューを開く')).toBeTruthy();
+      expect(screen.queryByLabelText('リポスト済み。現在 5 件。メニューを開く')).toBeNull();
     });
 
     it('repostCount が省略されたとき（デフォルト 0）リポスト数テキストが表示されない', () => {
-      renderActions({});
+      renderActions({ currentUserId: 'user-1' });
       expect(screen.queryByText('0')).toBeNull();
     });
 
     it('isReposted が省略されたとき（デフォルト false）accessibilityLabel が正しい', () => {
-      renderActions({ repostCount: 2 });
-      expect(screen.getByLabelText('リポスト 2件')).toBeTruthy();
+      renderActions({ repostCount: 2, currentUserId: 'user-1' });
+      expect(screen.getByLabelText('リポストする。現在 2 件。メニューを開く')).toBeTruthy();
     });
 
-    it('isReposted=true かつ repostCount=0 のとき accessibilityLabel に「リポスト済み」が含まれる', () => {
-      renderActions({ repostCount: 0, isReposted: true });
-      expect(screen.getByLabelText('リポスト 0件、リポスト済み')).toBeTruthy();
+    it('未認証（currentUserId=undefined）のとき accessibilityLabel に「ログインして」が含まれる', () => {
+      renderActions({ repostCount: 0, isReposted: false, currentUserId: undefined });
+      expect(screen.getByLabelText('ログインしてリポストする。現在 0 件')).toBeTruthy();
     });
   });
 });

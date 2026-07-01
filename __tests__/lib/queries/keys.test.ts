@@ -76,7 +76,7 @@ describe('queryKeys.search', () => {
   });
 
   it('posts は query を含むキーを生成する', () => {
-    expect(queryKeys.search.posts('松')).toEqual(['search', 'posts', '松']);
+    expect(queryKeys.search.posts('松')).toEqual(['search', 'posts', '松', {}]);
   });
 
   it('users は query を含むキーを生成する', () => {
@@ -90,7 +90,7 @@ describe('queryKeys.search', () => {
   });
 
   it('空文字クエリでも正しいキーを生成する', () => {
-    expect(queryKeys.search.posts('')).toEqual(['search', 'posts', '']);
+    expect(queryKeys.search.posts('')).toEqual(['search', 'posts', '', {}]);
   });
 });
 

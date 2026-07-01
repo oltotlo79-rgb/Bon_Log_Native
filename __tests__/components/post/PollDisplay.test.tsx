@@ -8,6 +8,13 @@ import { screen } from '@testing-library/react-native';
 import { PollDisplay } from '@/components/post/PollDisplay';
 import { renderWithProviders } from '@/__tests__/utils/test-utils';
 
+jest.mock('@/lib/queries/posts', () => ({
+  useVotePollMutation: jest.fn(() => ({
+    mutate: jest.fn(),
+    isPending: false,
+  })),
+}));
+
 function makePollData(overrides?: {
   id?: string;
   expiresAt?: string;
@@ -148,10 +155,12 @@ describe('PollDisplay', () => {
   });
 
   describe('票数・割合の計算', () => {
-    it('totalVotes が 0 のとき全選択肢の割合が 0% になる', () => {
+    it('totalVotes が 0 のとき全選択肢の割合が 0% になる（期限切れポール）', () => {
+      const expiredAt = new Date(Date.now() - 60 * 1000).toISOString();
       renderWithProviders(
         <PollDisplay
           poll={makePollData({
+            expiresAt: expiredAt,
             options: [
               { id: 'opt-1', text: '松柏類', _count: { votes: 0 } },
               { id: 'opt-2', text: '雑木類', _count: { votes: 0 } },
@@ -164,8 +173,9 @@ describe('PollDisplay', () => {
       expect(percentages.length).toBe(2);
     });
 
-    it('合計10票のとき60%/40%が正しく計算される', () => {
-      renderWithProviders(<PollDisplay poll={makePollData()} />);
+    it('合計10票のとき60%/40%が正しく計算される（期限切れポール）', () => {
+      const expiredAt = new Date(Date.now() - 60 * 1000).toISOString();
+      renderWithProviders(<PollDisplay poll={makePollData({ expiresAt: expiredAt })} />);
       expect(screen.getByText('60%')).toBeTruthy();
       expect(screen.getByText('40%')).toBeTruthy();
     });
@@ -187,10 +197,12 @@ describe('PollDisplay', () => {
       expect(screen.getByText('0票')).toBeTruthy();
     });
 
-    it('割合は Math.round で丸められる（1/3 ≈ 33%）', () => {
+    it('割合は Math.round で丸められる（1/3 ≈ 33%）（期限切れポール）', () => {
+      const expiredAt = new Date(Date.now() - 60 * 1000).toISOString();
       renderWithProviders(
         <PollDisplay
           poll={makePollData({
+            expiresAt: expiredAt,
             options: [
               { id: 'opt-1', text: '選択肢A', _count: { votes: 1 } },
               { id: 'opt-2', text: '選択肢B', _count: { votes: 2 } },
@@ -229,20 +241,30 @@ describe('PollDisplay', () => {
       expect(screen.getByText('残り約 3 日')).toBeTruthy();
     });
 
-    it('期限が来ていない場合「投票機能は近日対応予定」が表示される', () => {
+    it('未投票かつ未期限のとき「投票する」ボタンが表示される', () => {
       const futureAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
       renderWithProviders(
         <PollDisplay poll={makePollData({ expiresAt: futureAt })} />
       );
-      expect(screen.getByText('投票機能は近日対応予定')).toBeTruthy();
+      expect(screen.getByRole('button', { name: '投票する' })).toBeTruthy();
     });
 
-    it('期限切れの場合「投票機能は近日対応予定」が表示されない', () => {
+    it('未投票かつ未期限のとき割合（%）は表示されない', () => {
+      const futureAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+      renderWithProviders(
+        <PollDisplay poll={makePollData({ expiresAt: futureAt })} />
+      );
+      expect(screen.queryByText('60%')).toBeNull();
+      expect(screen.queryByText('40%')).toBeNull();
+    });
+
+    it('期限切れの場合「終了済み」が表示され割合が出る', () => {
       const expiredAt = new Date(Date.now() - 60 * 1000).toISOString();
       renderWithProviders(
         <PollDisplay poll={makePollData({ expiresAt: expiredAt })} />
       );
-      expect(screen.queryByText('投票機能は近日対応予定')).toBeNull();
+      expect(screen.getByText('終了済み')).toBeTruthy();
+      expect(screen.getByText('60%')).toBeTruthy();
     });
   });
 

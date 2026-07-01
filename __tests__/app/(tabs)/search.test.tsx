@@ -23,11 +23,32 @@ jest.mock('@/lib/queries/auth', () => ({
   })),
 }));
 
+jest.mock('@/lib/queries/posts', () => ({
+  useToggleRepostMutation: jest.fn(() => ({
+    mutate: jest.fn(),
+    isPending: false,
+  })),
+  useVotePollMutation: jest.fn(() => ({
+    mutate: jest.fn(),
+    isPending: false,
+  })),
+  useUserPostsQuery: jest.fn(() => ({
+    data: undefined,
+    isLoading: false,
+    isError: false,
+    fetchNextPage: jest.fn(),
+    hasNextPage: false,
+    isFetchingNextPage: false,
+    refetch: jest.fn(),
+    isRefetching: false,
+  })),
+}));
+
 const mockUseSearchPostsQuery = jest.fn();
 const mockUseSearchUsersQuery = jest.fn();
 
 jest.mock('@/lib/queries/search', () => ({
-  useSearchPostsQuery: (_q: string) => mockUseSearchPostsQuery(),
+  useSearchPostsQuery: (_q: string, _filter?: unknown) => mockUseSearchPostsQuery(),
   useSearchUsersQuery: (_q: string) => mockUseSearchUsersQuery(),
 }));
 
@@ -68,7 +89,7 @@ describe('SearchScreen', () => {
 
     it('入力なしのとき説明文が表示される', () => {
       renderWithProviders(<SearchScreen />);
-      expect(screen.getByText('ニックネームやキーワードを入力してください')).toBeTruthy();
+      expect(screen.getByText('ニックネーム、キーワード、#タグを入力してください')).toBeTruthy();
     });
   });
 

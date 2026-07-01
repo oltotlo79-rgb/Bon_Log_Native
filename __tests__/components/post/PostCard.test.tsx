@@ -15,6 +15,18 @@ import type { QuotedPostData } from '@/components/post/PostCard';
 
 const mockRouter = jest.requireMock('expo-router').router;
 
+// リポスト mutation のモック（ネットワークに出ない）
+jest.mock('@/lib/queries/posts', () => ({
+  useToggleRepostMutation: jest.fn(() => ({
+    mutate: jest.fn(),
+    isPending: false,
+  })),
+  useVotePollMutation: jest.fn(() => ({
+    mutate: jest.fn(),
+    isPending: false,
+  })),
+}));
+
 describe('PostCard', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -431,11 +443,8 @@ describe('PostCard', () => {
       renderWithProviders(
         <PostCard {...makePostCardProps({ repostCount: 0 })} />
       );
-      // リポストカウントの「0」表示がないことを確認（PostCardActions のリポスト欄）
-      const repostArea = screen.queryByLabelText('リポスト 0件');
-      if (repostArea !== null) {
-        expect(screen.queryByText('0')).toBeNull();
-      }
+      // repostCount=0 のときカウント「0」テキストは表示されない
+      expect(screen.queryByText('0')).toBeNull();
     });
 
     it('repostCount が 5 のとき「5」が表示される', () => {
@@ -445,25 +454,25 @@ describe('PostCard', () => {
       expect(screen.getByText('5')).toBeTruthy();
     });
 
-    it('isReposted=true のとき accessibilityLabel に「リポスト済み」が含まれる', () => {
+    it('isReposted=true かつ currentUserId ありのとき accessibilityLabel に「リポスト済み」が含まれる', () => {
       renderWithProviders(
         <PostCard
-          {...makePostCardProps({ repostCount: 3, isReposted: true })}
+          {...makePostCardProps({ repostCount: 3, isReposted: true, currentUserId: 'user-1' })}
         />
       );
       expect(
-        screen.getByLabelText('リポスト 3件、リポスト済み')
+        screen.getByLabelText('リポスト済み。現在 3 件。メニューを開く')
       ).toBeTruthy();
     });
 
-    it('isReposted=false のとき accessibilityLabel に「リポスト済み」が含まれない', () => {
+    it('isReposted=false かつ currentUserId ありのとき accessibilityLabel に「リポスト済み」が含まれない', () => {
       renderWithProviders(
         <PostCard
-          {...makePostCardProps({ repostCount: 2, isReposted: false })}
+          {...makePostCardProps({ repostCount: 2, isReposted: false, currentUserId: 'user-1' })}
         />
       );
-      expect(screen.getByLabelText('リポスト 2件')).toBeTruthy();
-      expect(screen.queryByLabelText('リポスト 2件、リポスト済み')).toBeNull();
+      expect(screen.getByLabelText('リポストする。現在 2 件。メニューを開く')).toBeTruthy();
+      expect(screen.queryByLabelText('リポスト済み。現在 2 件。メニューを開く')).toBeNull();
     });
   });
 });
