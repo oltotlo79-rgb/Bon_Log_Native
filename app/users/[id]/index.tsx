@@ -159,11 +159,19 @@ function UserDetailContent({ userId, isOffline }: UserDetailContentProps) {
       { targetUserId: userId },
       {
         onSuccess: (result) => {
-          router.push(routeMessageThread(result.conversationId));
+          const otherUser =
+            data !== undefined
+              ? {
+                  nickname: data.nickname,
+                  avatarUrl: data.avatarUrl,
+                  userId,
+                }
+              : undefined;
+          router.push(routeMessageThread(result.conversationId, otherUser));
         },
       }
     );
-  }, [userId, startConversation, isStartingConversation]);
+  }, [userId, startConversation, isStartingConversation, data]);
 
   if (isLoading) {
     return (

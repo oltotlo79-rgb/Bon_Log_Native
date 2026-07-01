@@ -52,8 +52,16 @@ export default function MessagesScreen() {
     void refetch();
   }, [refetch]);
 
-  const handleRowPress = useCallback((conversationId: string) => {
-    router.push(routeMessageThread(conversationId));
+  const handleRowPress = useCallback((conversationId: string, item: ConversationItem) => {
+    const otherUser =
+      item.otherUser !== null
+        ? {
+            nickname: item.otherUser.nickname,
+            avatarUrl: item.otherUser.avatarUrl,
+            userId: item.otherUser.id,
+          }
+        : undefined;
+    router.push(routeMessageThread(conversationId, otherUser));
   }, []);
 
   const handleEndReached = useCallback(() => {

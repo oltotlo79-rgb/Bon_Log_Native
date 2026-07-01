@@ -165,7 +165,25 @@ export default function ConversationThreadScreen() {
     );
   }
 
-  return <ConversationThreadContent conversationId={rawId} />;
+  // 遷移元から渡された相手情報をクエリパラメータから型ガードで取り出す。
+  // メッセージ 0 件でもヘッダーに相手名を表示するための補完情報。
+  const rawNickname = params['nickname'];
+  const rawAvatarUrl = params['avatarUrl'];
+  const rawUserId = params['userId'];
+
+  const paramOtherUser: OtherUser =
+    typeof rawNickname === 'string' && rawNickname.length > 0 &&
+    typeof rawUserId === 'string' && rawUserId.length > 0
+      ? {
+          id: rawUserId,
+          nickname: rawNickname,
+          avatarUrl: typeof rawAvatarUrl === 'string' && rawAvatarUrl.length > 0
+            ? rawAvatarUrl
+            : null,
+        }
+      : null;
+
+  return <ConversationThreadContent conversationId={rawId} paramOtherUser={paramOtherUser} />;
 }
 
 // ---------------------------------------------------------------------------
@@ -180,9 +198,10 @@ type OtherUser = {
 
 type ConversationThreadContentProps = {
   conversationId: string;
+  paramOtherUser: OtherUser;
 };
 
-function ConversationThreadContent({ conversationId }: ConversationThreadContentProps) {
+function ConversationThreadContent({ conversationId, paramOtherUser }: ConversationThreadContentProps) {
   const isOffline = !useOnlineStatus();
 
   const {
@@ -212,8 +231,10 @@ function ConversationThreadContent({ conversationId }: ConversationThreadContent
     messagesError.status === 403 &&
     messagesError.code === 'NOT_FOUND';
 
-  // ヘッダーに表示する相手情報（最初のページの最初のメッセージから取得）
-  const otherUser: OtherUser = resolveOtherUser(messagesData?.pages, currentUserId);
+  // ヘッダーに表示する相手情報。パラメータで渡された値を第一候補とし、
+  // パラメータがない場合はメッセージ送信者から逆引きしてフォールバックする。
+  const resolvedOtherUser = resolveOtherUser(messagesData?.pages, currentUserId);
+  const otherUser: OtherUser = paramOtherUser ?? resolvedOtherUser;
 
   const listItems: MessageListItem[] =
     messagesData !== undefined ? buildListItems(messagesData.pages) : [];
@@ -279,11 +300,12 @@ function ConversationThreadContent({ conversationId }: ConversationThreadContent
     return item.data.id;
   }, []);
 
-  // ローディング状態
+  // ローディング状態。パラメータで相手情報があれば即時表示する
   if (isMessagesLoading) {
+    const loadingTitle = paramOtherUser !== null ? paramOtherUser.nickname : '読み込み中...';
     return (
       <SafeAreaView style={styles.safeArea} edges={['top']}>
-        <NavBar title="読み込み中..." otherUser={null} />
+        <NavBar title={loadingTitle} otherUser={paramOtherUser} />
         <ScreenLoading variant="spinner" />
       </SafeAreaView>
     );

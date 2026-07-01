@@ -58,7 +58,7 @@ function formatRelativeTime(dateStr: string): string {
 
 type ConversationRowProps = {
   item: ConversationItem;
-  onPress: (conversationId: string) => void;
+  onPress: (conversationId: string, item: ConversationItem) => void;
 };
 
 // ---------------------------------------------------------------------------
@@ -73,7 +73,7 @@ function ConversationRowInner({ item, onPress }: ConversationRowProps) {
   return (
     <TouchableOpacity
       style={styles.row}
-      onPress={() => onPress(item.id)}
+      onPress={() => onPress(item.id, item)}
       accessibilityRole="button"
       accessibilityLabel={`${nickname}との会話${item.hasUnread ? '（未読あり）' : ''}`}
       activeOpacity={0.7}

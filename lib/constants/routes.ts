@@ -475,13 +475,28 @@ export const ROUTE_MESSAGES = '/messages' as const;
  * DM 会話スレッド画面へのパスを返す。
  * Expo Router の dynamic route: `app/messages/[conversationId]/index.tsx`
  *
- * 使い方: `router.push(routeMessageThread('abc123'))`
+ * otherUser を渡すと、メッセージが 0 件でも相手名をヘッダーに即時表示できる。
+ * パラメータが欠落した場合はスレッド画面がメッセージ送信者から逆引きしてフォールバックする。
+ *
+ * 使い方: `router.push(routeMessageThread('abc123', { nickname: '松太郎', avatarUrl: '...', userId: 'u1' }))`
  */
-export function routeMessageThread(conversationId: string): {
+export function routeMessageThread(
+  conversationId: string,
+  otherUser?: { nickname: string; avatarUrl: string | null; userId: string }
+): {
   pathname: '/messages/[conversationId]';
-  params: { conversationId: string };
+  params: { conversationId: string; nickname?: string; avatarUrl?: string; userId?: string };
 } {
-  return { pathname: '/messages/[conversationId]', params: { conversationId } };
+  const params: { conversationId: string; nickname?: string; avatarUrl?: string; userId?: string } =
+    { conversationId };
+  if (otherUser !== undefined) {
+    params.nickname = otherUser.nickname;
+    if (otherUser.avatarUrl !== null) {
+      params.avatarUrl = otherUser.avatarUrl;
+    }
+    params.userId = otherUser.userId;
+  }
+  return { pathname: '/messages/[conversationId]', params };
 }
 
 // ---------------------------------------------------------------------------
