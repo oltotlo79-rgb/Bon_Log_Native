@@ -106,6 +106,18 @@
 | 手入れログ更新（`useUpdateCareLogMutation`） | `queryKeys.bonsai.all`（onSettled） | 同上 |
 | 手入れログ削除（`useDeleteCareLogMutation`） | `queryKeys.bonsai.all`（onSettled） | 同上 |
 
+## DM 系（lib/queries/messages.ts）
+
+| ミューテーション | 無効化するキー | 備考 |
+|----------------|--------------|------|
+| 会話開始（`useStartConversationMutation`） | `queryKeys.messages.conversations()`（onSuccess） | 既存会話取得（冪等）でも invalidate する。ブロック関係は 403 NOT_FOUND として伝播 |
+| メッセージ送信（`useSendMessageMutation`） | `queryKeys.messages.conversationMessages(conversationId)` / `queryKeys.messages.conversations()`（onSuccess） | 楽観更新なし。送信後に最新メッセージ一覧と会話一覧（lastMessage / unread）を同期 |
+| メッセージ削除（`useDeleteMessageMutation`） | `queryKeys.messages.conversationMessages(conversationId)` / `queryKeys.messages.conversations()`（onSuccess） | 送信者のみ削除可。他人のメッセージは 403 NOT_FOUND として伝播 |
+| 会話既読化（`useMarkConversationReadMutation`） | `queryKeys.messages.conversations()`（onSuccess） | GET /messages でも自動既読化されるため、通知タップ等で画面を開かずに既読化する場合に使う |
+
+クエリ側の副作用:
+- `useMessagesQuery`: queryFn 成功時に `messages.conversations()` を invalidate（サーバーが GET で自動既読化するため未読バッジを同期）
+
 ## 読み取り系クエリの参照（lib/queries/ 各フック）
 
 無効化が必要な場面のために対応表を記録する。
@@ -159,3 +171,5 @@
 | `queryKeys.genres.list(type)` | `useGenresQuery` | マスタ系（変更なし想定） |
 | `queryKeys.scheduledPosts.list()` | `useScheduledPostsQuery` | 予約投稿作成・更新・削除・キャンセル時 |
 | `queryKeys.scheduledPosts.detail(id)` | `useScheduledPostDetailQuery` | 予約投稿更新・キャンセル時 |
+| `queryKeys.messages.conversations()` | `useConversationsQuery` | 会話開始・メッセージ送信・削除・既読化・メッセージ取得時（自動既読同期） |
+| `queryKeys.messages.conversationMessages(id)` | `useMessagesQuery` | メッセージ送信・削除時 |

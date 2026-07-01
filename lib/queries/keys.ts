@@ -271,6 +271,20 @@ export const queryKeys = {
      */
     offering: ['subscription', 'offering'] as const,
   },
+
+  /** DM（ダイレクトメッセージ） */
+  messages: {
+    /** ルートキー（messages 系の一括 invalidate 用） */
+    all: ['messages'] as const,
+    /** 会話一覧（無限スクロール） */
+    conversations: () => ['messages', 'conversations'] as const,
+    /**
+     * 会話内メッセージ一覧（無限スクロール）。
+     * nextCursor は最古メッセージの id（上向きページネーション）。
+     */
+    conversationMessages: (conversationId: string) =>
+      ['messages', 'conversations', conversationId, 'messages'] as const,
+  },
 } as const;
 
 // ---------------------------------------------------------------------------

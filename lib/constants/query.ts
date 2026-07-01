@@ -80,3 +80,15 @@ export const REQUEST_TIMEOUT_MS = 10 * 1000;
  * Push 通知実装後は Push 受信時の invalidate に切り替えることで不要になり得る。
  */
 export const UNREAD_COUNT_REFETCH_INTERVAL_MS = 30 * 1000;
+
+/**
+ * DM 会話一覧のポーリング間隔（15秒）。
+ * 未読バッジの更新頻度はメッセージ本文より低く設定し、サーバー負荷を抑える。
+ */
+export const DM_CONVERSATIONS_REFETCH_INTERVAL_MS = 15 * 1000;
+
+/**
+ * DM メッセージ一覧のポーリング間隔（5秒）。
+ * 会話画面では新着メッセージを素早く表示するため短い間隔を使う。
+ */
+export const DM_MESSAGES_REFETCH_INTERVAL_MS = 5 * 1000;

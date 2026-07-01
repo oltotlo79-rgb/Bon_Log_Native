@@ -72,3 +72,9 @@ export const FOLLOW_REQUESTS_PAGE_SIZE = 20;
 
 /** ユーザー投稿一覧のページ取得件数 */
 export const USER_POSTS_PAGE_SIZE = 20;
+
+/** DM 会話一覧のページ取得件数 */
+export const DM_CONVERSATIONS_PAGE_SIZE = 20;
+
+/** DM メッセージ一覧のページ取得件数（サーバーデフォルト 50） */
+export const DM_MESSAGES_PAGE_SIZE = 50;
