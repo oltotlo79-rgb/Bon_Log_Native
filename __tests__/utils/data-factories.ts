@@ -165,7 +165,31 @@ export function makePostResponse(overrides?: Partial<PostResponse>): PostRespons
     isReposted: false,
     quotePost: null,
     repostPost: null,
+    poll: null,
     mentionedUsers: [],
+    ...overrides,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// PostPoll（アンケート埋め込み型 PostResponse.poll の完全形テスト用）
+// ---------------------------------------------------------------------------
+
+export type PostPoll = components['schemas']['PostPoll'];
+
+export function makePostPoll(overrides?: Partial<PostPoll>): PostPoll {
+  return {
+    id: 'poll-1',
+    postId: 'post-1',
+    duration: 86400,
+    expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+    createdAt: '2025-06-01T10:00:00Z',
+    options: [
+      { id: 'option-1', pollId: 'poll-1', text: '黒松', sortOrder: 0, _count: { votes: 7 } },
+      { id: 'option-2', pollId: 'poll-1', text: '五葉松', sortOrder: 1, _count: { votes: 3 } },
+    ],
+    votes: [],
+    _count: { votes: 10 },
     ...overrides,
   };
 }
@@ -287,6 +311,7 @@ export function makeFeedItem(overrides?: Partial<FeedItemData>): FeedItemData {
     isReposted: false,
     quotePost: null,
     repostPost: null,
+    poll: null,
     mentionedUsers: [],
     ...overrides,
   };

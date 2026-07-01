@@ -1,7 +1,7 @@
 /**
  * @module __tests__/components/post/PollDisplayVoting
  * PollDisplay コンポーネントの投票操作テスト。
- * 既存の PollDisplay.test.tsx（型ガード・表示確認）とは別に、
+ * 既存の PollDisplay.test.tsx（null ガード・表示確認）とは別に、
  * 投票ミューテーション呼び出し・投票済み/期限切れの結果表示・エラー文言を検証する。
  * モック境界: useVotePollMutation をモック。ネットワークに出ない。
  */
@@ -16,7 +16,7 @@ import {
 } from '@/lib/constants/errors';
 import { ApiError } from '@/lib/api/errors';
 import { renderWithProviders } from '@/__tests__/utils/test-utils';
-import { makePollVoteResponse } from '@/__tests__/utils/data-factories';
+import { makePollVoteResponse, makePostPoll } from '@/__tests__/utils/data-factories';
 
 // ---------------------------------------------------------------------------
 // モック設定
@@ -37,46 +37,47 @@ jest.mock('@/lib/queries/posts', () => ({
 
 function makeActivePoll(overrides?: {
   id?: string;
-  options?: { id: string; text: string; _count: { votes: number } }[];
+  options?: { id: string; pollId: string; text: string; sortOrder: number; _count: { votes: number } }[];
   _count?: { votes: number };
-  userVoteOptionId?: string | null;
 }) {
-  return {
+  return makePostPoll({
     id: overrides?.id ?? 'poll-1',
     expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
     options: overrides?.options ?? [
-      { id: 'opt-1', text: '松柏類', _count: { votes: 6 } },
-      { id: 'opt-2', text: '雑木類', _count: { votes: 4 } },
+      { id: 'opt-1', pollId: 'poll-1', text: '松柏類', sortOrder: 0, _count: { votes: 6 } },
+      { id: 'opt-2', pollId: 'poll-1', text: '雑木類', sortOrder: 1, _count: { votes: 4 } },
     ],
     _count: overrides?._count ?? { votes: 10 },
-    userVoteOptionId: overrides?.userVoteOptionId ?? null,
-  };
+    votes: [],
+  });
 }
 
 function makeExpiredPoll() {
-  return {
+  return makePostPoll({
     id: 'poll-expired',
     expiresAt: new Date(Date.now() - 60 * 1000).toISOString(),
     options: [
-      { id: 'opt-1', text: '松柏類', _count: { votes: 7 } },
-      { id: 'opt-2', text: '雑木類', _count: { votes: 3 } },
+      { id: 'opt-1', pollId: 'poll-expired', text: '松柏類', sortOrder: 0, _count: { votes: 7 } },
+      { id: 'opt-2', pollId: 'poll-expired', text: '雑木類', sortOrder: 1, _count: { votes: 3 } },
     ],
     _count: { votes: 10 },
-    userVoteOptionId: null,
-  };
+    votes: [],
+  });
 }
 
 function makeVotedPoll(votedOptionId: string) {
-  return {
+  return makePostPoll({
     id: 'poll-voted',
     expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
     options: [
-      { id: 'opt-1', text: '松柏類', _count: { votes: 7 } },
-      { id: 'opt-2', text: '雑木類', _count: { votes: 3 } },
+      { id: 'opt-1', pollId: 'poll-voted', text: '松柏類', sortOrder: 0, _count: { votes: 7 } },
+      { id: 'opt-2', pollId: 'poll-voted', text: '雑木類', sortOrder: 1, _count: { votes: 3 } },
     ],
     _count: { votes: 10 },
-    userVoteOptionId: votedOptionId,
-  };
+    votes: [
+      { id: 'vote-1', pollId: 'poll-voted', optionId: votedOptionId, userId: 'user-1', createdAt: '2025-06-01T10:00:00Z' },
+    ],
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -216,11 +217,9 @@ describe('PollDisplay 投票操作', () => {
       expect(await screen.findByText('30%')).toBeTruthy();
     });
 
-    it('投票済み（userVoteOptionId あり）の場合は最初から結果表示になる', () => {
+    it('投票済み（votes[0].optionId あり）の場合は最初から結果表示になる', () => {
       renderWithProviders(<PollDisplay poll={makeVotedPoll('opt-1')} />);
-      // 投票ボタンが存在しないことで結果表示であることを確認
       expect(screen.queryByRole('button', { name: '投票する' })).toBeNull();
-      // 割合テキストが表示される（rawOptions からのフォールバック計算: 7/10=70%, 3/10=30%）
       expect(screen.getByText('70%')).toBeTruthy();
       expect(screen.getByText('30%')).toBeTruthy();
     });
@@ -233,7 +232,6 @@ describe('PollDisplay 投票操作', () => {
 
     it('投票していない選択肢の accessibilityLabel に「あなたの選択」が含まれない', () => {
       renderWithProviders(<PollDisplay poll={makeVotedPoll('opt-1')} />);
-      // opt-2 は投票していないため「あなたの選択」が含まれない
       const notVotedLabel = screen.getByLabelText('雑木類 30%');
       expect(notVotedLabel).toBeTruthy();
     });
@@ -352,13 +350,22 @@ describe('PollDisplay 投票操作', () => {
 
   describe('境界値', () => {
     it('投票合計が0のとき全選択肢の割合が0%になる', () => {
-      const zeroPoll = makeVotedPoll('opt-1');
-      zeroPoll.options = [
-        { id: 'opt-1', text: '松柏類', _count: { votes: 0 } },
-        { id: 'opt-2', text: '雑木類', _count: { votes: 0 } },
-      ];
-      zeroPoll._count = { votes: 0 };
-      renderWithProviders(<PollDisplay poll={zeroPoll} />);
+      renderWithProviders(
+        <PollDisplay
+          poll={makePostPoll({
+            id: 'poll-voted',
+            expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+            options: [
+              { id: 'opt-1', pollId: 'poll-voted', text: '松柏類', sortOrder: 0, _count: { votes: 0 } },
+              { id: 'opt-2', pollId: 'poll-voted', text: '雑木類', sortOrder: 1, _count: { votes: 0 } },
+            ],
+            _count: { votes: 0 },
+            votes: [
+              { id: 'vote-1', pollId: 'poll-voted', optionId: 'opt-1', userId: 'user-1', createdAt: '2025-06-01T10:00:00Z' },
+            ],
+          })}
+        />
+      );
       const zeros = screen.getAllByText('0%');
       expect(zeros.length).toBe(2);
     });

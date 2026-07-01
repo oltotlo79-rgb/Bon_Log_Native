@@ -391,11 +391,15 @@ describe('PostCard', () => {
     function makePollData() {
       return {
         id: 'poll-1',
+        postId: 'post-1',
+        duration: 86400,
+        createdAt: '2025-06-01T10:00:00Z',
         expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
         options: [
-          { id: 'opt-1', text: '松柏類', _count: { votes: 6 } },
-          { id: 'opt-2', text: '雑木類', _count: { votes: 4 } },
+          { id: 'opt-1', pollId: 'poll-1', text: '松柏類', sortOrder: 0, _count: { votes: 6 } },
+          { id: 'opt-2', pollId: 'poll-1', text: '雑木類', sortOrder: 1, _count: { votes: 4 } },
         ],
+        votes: [],
         _count: { votes: 10 },
       };
     }
@@ -423,16 +427,16 @@ describe('PostCard', () => {
       expect(screen.queryByText('投票機能は近日対応予定')).toBeNull();
     });
 
-    it('poll が不正な型（文字列）のとき PollDisplay は何も表示しない', () => {
+    it('poll が null のとき PollDisplay は何も表示しない', () => {
       renderWithProviders(
-        <PostCard {...makePostCardProps({ poll: 'invalid-poll-data' })} />
+        <PostCard {...makePostCardProps({ poll: null })} />
       );
       expect(screen.queryByText('松柏類')).toBeNull();
     });
 
-    it('poll が不正な型（空オブジェクト）のとき PollDisplay は何も表示しない', () => {
+    it('poll が undefined のとき PollDisplay は何も表示しない', () => {
       renderWithProviders(
-        <PostCard {...makePostCardProps({ poll: {} })} />
+        <PostCard {...makePostCardProps({ poll: undefined })} />
       );
       expect(screen.queryByText('0票')).toBeNull();
     });

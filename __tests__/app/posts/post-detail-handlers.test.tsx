@@ -95,6 +95,7 @@ const makePostDetail = (overrides?: Partial<PostDetail>): PostDetail => ({
   isReposted: false,
   quotePost: null,
   repostPost: null,
+  poll: null,
   mentionedUsers: [],
   ...overrides,
 });

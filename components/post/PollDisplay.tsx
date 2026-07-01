@@ -1,8 +1,7 @@
 /**
  * @module components/post/PollDisplay
  * アンケートの投票 UI と結果表示。
- * スキーマの poll フィールドは unknown 型のため型ガードで安全に絞り込む。
- * 投票後は useVotePollMutation の戻り値（PollVoteResponse）を優先表示し、
+ * 初期表示は PostPoll（生成型）から、投票後は PollVoteResponse から共通表示モデルへ正規化して描画する。
  * onSettled の invalidate で最終的にサーバー値へ収束する。
  */
 
@@ -37,48 +36,73 @@ import {
   ERR_POLL_ALREADY_VOTED,
   ERR_POLL_ENDED,
 } from '@/lib/constants/errors';
+import type { components } from '@/lib/api/generated/schema.d.ts';
 
 // ---------------------------------------------------------------------------
-// 型定義 + 型ガード（スキーマ上 unknown のため維持）
+// 型
 // ---------------------------------------------------------------------------
 
-type RawPollOption = {
+export type PostPoll = components['schemas']['PostPoll'];
+
+// ---------------------------------------------------------------------------
+// 表示モデル（PostPoll と PollVoteResponse を統合した内部表現）
+// ---------------------------------------------------------------------------
+
+type PollDisplayOption = {
   id: string;
   text: string;
-  _count: { votes: number };
+  voteCount: number;
+  percentage: number;
 };
 
-type RawPollData = {
-  id: string;
+type PollDisplayModel = {
+  options: PollDisplayOption[];
+  totalVotes: number;
+  userVoteOptionId: string | null;
   expiresAt: string;
-  options: RawPollOption[];
-  _count: { votes: number };
-  /** サーバーからログインユーザーの投票情報が含まれる場合 */
-  userVoteOptionId?: string | null;
+  isExpired: boolean;
 };
 
-function isRawPollOption(value: unknown): value is RawPollOption {
-  if (typeof value !== 'object' || value === null) return false;
-  const obj = value as Record<string, unknown>;
-  if (typeof obj['id'] !== 'string') return false;
-  if (typeof obj['text'] !== 'string') return false;
-  const count = obj['_count'];
-  if (typeof count !== 'object' || count === null) return false;
-  const countObj = count as Record<string, unknown>;
-  return typeof countObj['votes'] === 'number';
+/**
+ * PostPoll（サーバー初期値）から表示モデルへ正規化する。
+ * 投票済み判定は votes[0].optionId、総得票数は _count.votes、
+ * 選択肢得票数は各 option._count.votes、期限切れは expiresAt と現在時刻の比較。
+ */
+function normalizeFromPostPoll(poll: PostPoll, nowMs: number): PollDisplayModel {
+  const totalVotes = poll._count.votes;
+  const userVoteOptionId = poll.votes !== undefined && poll.votes.length > 0
+    ? poll.votes[0].optionId
+    : null;
+  const isExpired = nowMs >= new Date(poll.expiresAt).getTime();
+
+  const options: PollDisplayOption[] = poll.options.map((opt) => {
+    const voteCount = opt._count.votes;
+    const percentage = totalVotes > 0 ? Math.round((voteCount / totalVotes) * 100) : 0;
+    return { id: opt.id, text: opt.text, voteCount, percentage };
+  });
+
+  return { options, totalVotes, userVoteOptionId, expiresAt: poll.expiresAt, isExpired };
 }
 
-function isRawPollData(value: unknown): value is RawPollData {
-  if (typeof value !== 'object' || value === null) return false;
-  const obj = value as Record<string, unknown>;
-  if (typeof obj['id'] !== 'string') return false;
-  if (typeof obj['expiresAt'] !== 'string') return false;
-  if (!Array.isArray(obj['options'])) return false;
-  if (!obj['options'].every(isRawPollOption)) return false;
-  const count = obj['_count'];
-  if (typeof count !== 'object' || count === null) return false;
-  const countObj = count as Record<string, unknown>;
-  return typeof countObj['votes'] === 'number';
+/**
+ * PollVoteResponse（投票直後のサーバー応答）から表示モデルへ正規化する。
+ * voteCount / percentage / totalVotes / userVoteOptionId / isExpired を直接使用する。
+ */
+function normalizeFromVoteResponse(res: PollVoteResponse): PollDisplayModel {
+  const options: PollDisplayOption[] = res.options.map((opt) => ({
+    id: opt.id,
+    text: opt.text,
+    voteCount: opt.voteCount,
+    percentage: opt.percentage,
+  }));
+
+  return {
+    options,
+    totalVotes: res.totalVotes,
+    userVoteOptionId: res.userVoteOptionId,
+    expiresAt: res.expiresAt,
+    isExpired: res.isExpired,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -86,8 +110,8 @@ function isRawPollData(value: unknown): value is RawPollData {
 // ---------------------------------------------------------------------------
 
 export type PollDisplayProps = {
-  /** スキーマ上 unknown。型ガードで安全に使用する */
-  poll: unknown;
+  /** PostResponse.poll の型（生成型 PostPoll）。null のときは描画しない */
+  poll: PostPoll | null;
   /** 関連投稿の ID。投票後に posts.detail(postId) を invalidate するために使用 */
   postId?: string;
 };
@@ -97,12 +121,12 @@ export type PollDisplayProps = {
 // ---------------------------------------------------------------------------
 
 export const PollDisplay = React.memo(function PollDisplay({ poll, postId }: PollDisplayProps) {
-  if (!isRawPollData(poll)) return null;
+  if (poll === null) return null;
   return <PollDisplayInner poll={poll} postId={postId} />;
 });
 
 type PollDisplayInnerProps = {
-  poll: RawPollData;
+  poll: PostPoll;
   postId?: string;
 };
 
@@ -114,31 +138,24 @@ function PollDisplayInner({ poll, postId }: PollDisplayInnerProps) {
 
   const voteMutation = useVotePollMutation();
 
-  const expiresAtMs = new Date(poll.expiresAt).getTime();
+  const displayModel = useMemo<PollDisplayModel>(() => {
+    if (voteResult !== null) return normalizeFromVoteResponse(voteResult);
+    return normalizeFromPostPoll(poll, nowMs);
+  }, [voteResult, poll, nowMs]);
 
-  // 投票レスポンスが届いたらそちらの期限判定を優先する
-  const isExpired = useMemo(
-    () => voteResult?.isExpired ?? nowMs >= expiresAtMs,
-    [voteResult, nowMs, expiresAtMs]
-  );
+  const { isExpired, userVoteOptionId, totalVotes, expiresAt, options } = displayModel;
 
-  // 投票済み判定: サーバーからの userVoteOptionId またはミューテーション成功後
-  const userVoteOptionId = voteResult?.userVoteOptionId ?? poll.userVoteOptionId ?? null;
   const hasVoted = userVoteOptionId !== null;
-
   const showResults = hasVoted || isExpired;
 
   const timeLabel = useMemo(() => {
     if (isExpired) return '終了済み';
-    const targetMs = voteResult !== null ? new Date(voteResult.expiresAt).getTime() : expiresAtMs;
-    const diffMs = targetMs - nowMs;
+    const diffMs = new Date(expiresAt).getTime() - nowMs;
     const diffHours = Math.ceil(diffMs / (1000 * 60 * 60));
     if (diffHours < 24) return `残り約 ${diffHours} 時間`;
     const diffDays = Math.ceil(diffHours / 24);
     return `残り約 ${diffDays} 日`;
-  }, [isExpired, nowMs, expiresAtMs, voteResult]);
-
-  const totalVotes = voteResult?.totalVotes ?? poll._count.votes;
+  }, [isExpired, expiresAt, nowMs]);
 
   const handleOptionSelect = useCallback((optionId: string) => {
     if (showResults || voteMutation.isPending) return;
@@ -176,9 +193,7 @@ function PollDisplayInner({ poll, postId }: PollDisplayInnerProps) {
     <View style={styles.container}>
       {showResults ? (
         <ResultView
-          options={voteResult?.options ?? null}
-          rawOptions={poll.options}
-          totalVotes={totalVotes}
+          options={options}
           userVoteOptionId={userVoteOptionId}
         />
       ) : (
@@ -210,8 +225,13 @@ function PollDisplayInner({ poll, postId }: PollDisplayInnerProps) {
 // 投票 UI（未投票かつ未終了）
 // ---------------------------------------------------------------------------
 
+type VoteViewOption = {
+  id: string;
+  text: string;
+};
+
 type VoteViewProps = {
-  options: RawPollOption[];
+  options: readonly VoteViewOption[];
   selectedOptionId: string | null;
   onSelect: (id: string) => void;
   onVote: () => void;
@@ -274,35 +294,14 @@ function VoteView({ options, selectedOptionId, onSelect, onVote, isPending }: Vo
 // ---------------------------------------------------------------------------
 
 type ResultViewProps = {
-  /** ミューテーション戻り値の options（null のときは raw データから計算） */
-  options: PollVoteResponse['options'] | null;
-  rawOptions: RawPollOption[];
-  totalVotes: number;
+  options: PollDisplayOption[];
   userVoteOptionId: string | null;
 };
 
-function ResultView({ options, rawOptions, totalVotes, userVoteOptionId }: ResultViewProps) {
-  // PollVoteResponse の options があればそちら（voteCount / percentage 付き）を優先する
-  const displayOptions = useMemo(() => {
-    if (options !== null) {
-      return options.map((o) => ({
-        id: o.id,
-        text: o.text,
-        voteCount: o.voteCount,
-        percentage: o.percentage,
-      }));
-    }
-    // フォールバック: rawOptions から計算
-    return rawOptions.map((o) => {
-      const count = o._count.votes;
-      const pct = totalVotes > 0 ? Math.round((count / totalVotes) * 100) : 0;
-      return { id: o.id, text: o.text, voteCount: count, percentage: pct };
-    });
-  }, [options, rawOptions, totalVotes]);
-
+function ResultView({ options, userVoteOptionId }: ResultViewProps) {
   return (
     <View style={styles.resultContainer}>
-      {displayOptions.map((option) => {
+      {options.map((option) => {
         const isUserVote = userVoteOptionId === option.id;
         const pct = Math.round(option.percentage);
 

@@ -321,8 +321,12 @@ describe('mapToPostCardProps', () => {
     it('poll が設定されているとき props.poll に渡される', () => {
       const pollData = {
         id: 'poll-1',
+        postId: 'post-1',
+        duration: 86400,
+        createdAt: '2025-06-01T10:00:00Z',
         expiresAt: '2025-12-31T23:59:59Z',
-        options: [{ id: 'opt-1', text: '松柏類', _count: { votes: 5 } }],
+        options: [{ id: 'opt-1', pollId: 'poll-1', text: '松柏類', sortOrder: 0, _count: { votes: 5 } }],
+        votes: [],
         _count: { votes: 5 },
       };
       const post = makeFeedItem({ poll: pollData });
@@ -330,14 +334,15 @@ describe('mapToPostCardProps', () => {
       expect(props.poll).toEqual(pollData);
     });
 
-    it('poll が undefined のとき props.poll は undefined になる', () => {
-      const post = makeFeedItem();
+    it('poll が null のとき props.poll は null になる', () => {
+      const post = makeFeedItem({ poll: null });
       const props = mapToPostCardProps(post, undefined, baseCallbacks);
-      expect(props.poll).toBeUndefined();
+      expect(props.poll).toBeNull();
     });
 
     it('poll に不正な型が渡された場合もそのまま props.poll に渡される（型ガードは PollDisplay 側）', () => {
-      const post = makeFeedItem({ poll: 'invalid' });
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any -- 不正型ガードテストのため意図的に渡す
+      const post = makeFeedItem({ poll: 'invalid' as any });
       const props = mapToPostCardProps(post, undefined, baseCallbacks);
       expect(props.poll).toBe('invalid');
     });

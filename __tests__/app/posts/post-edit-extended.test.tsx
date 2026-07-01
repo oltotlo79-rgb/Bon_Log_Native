@@ -65,6 +65,7 @@ const MOCK_POST: PostDetail = {
   isReposted: false,
   quotePost: null,
   repostPost: null,
+  poll: null,
   mentionedUsers: [],
 };
 

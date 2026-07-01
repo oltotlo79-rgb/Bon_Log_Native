@@ -33,6 +33,7 @@ import type { PostCardHeaderUser } from './PostCardHeader';
 import type { PostImageMedia } from './PostImageGallery';
 import type { PostGenre } from './PostGenreTags';
 import type { QuotedPostCardProps } from './QuotedPostCard';
+import type { PostPoll } from './PollDisplay';
 
 // ---------------------------------------------------------------------------
 // 型定義
@@ -60,8 +61,8 @@ export type PostCardProps = {
   repostPost?: QuotedPostData | null;
   /** 引用投稿データ。引用でない場合は null */
   quotePost?: QuotedPostData | null;
-  /** アンケートデータ（スキーマ上 unknown）。アンケートなし投稿は undefined */
-  poll?: unknown;
+  /** アンケートデータ。アンケートなし投稿は undefined、あり投稿は PostPoll、サーバーが null を返した場合は null */
+  poll?: PostPoll | null;
   /** 閲覧者のユーザー ID（未認証は undefined）*/
   currentUserId: string | undefined;
   /** true のとき投稿詳細遷移を無効化（投稿詳細画面での使用時）*/
@@ -191,8 +192,8 @@ function PostCardInner({
           />
         </View>
 
-        {/* アンケート表示（poll がある場合のみ） */}
-        {poll !== undefined && (
+        {/* アンケート付き投稿のみ表示（undefined は未アンケート投稿、null はサーバー除外済み） */}
+        {poll != null && (
           <View style={styles.pollArea}>
             <PollDisplay poll={poll} postId={displayPostId} />
           </View>

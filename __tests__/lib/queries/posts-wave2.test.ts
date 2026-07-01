@@ -101,6 +101,7 @@ function makeUserPostsPage(
       isReposted: false,
       quotePost: null,
       repostPost: null,
+      poll: null,
       mentionedUsers: [],
     })),
     nextCursor,
@@ -129,6 +130,7 @@ function makeFeedItem(
     isReposted,
     quotePost: null,
     repostPost: null,
+    poll: null,
     mentionedUsers: [],
   };
 }

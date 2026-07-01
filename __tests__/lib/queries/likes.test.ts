@@ -82,6 +82,7 @@ function makeFeedItem(id: string, isLiked: boolean, likeCount: number): FeedResp
     isReposted: false,
     quotePost: null,
     repostPost: null,
+    poll: null,
     mentionedUsers: [],
   };
 }
@@ -111,6 +112,7 @@ function makePostDetail(id: string, isLiked: boolean, likeCount: number): PostRe
     isReposted: false,
     quotePost: null,
     repostPost: null,
+    poll: null,
     mentionedUsers: [],
   };
 }
@@ -140,6 +142,7 @@ function makeSearchPostItem(id: string, isLiked: boolean, likeCount: number): Se
     isReposted: false,
     quotePost: null,
     repostPost: null,
+    poll: null,
     mentionedUsers: [],
   };
 }

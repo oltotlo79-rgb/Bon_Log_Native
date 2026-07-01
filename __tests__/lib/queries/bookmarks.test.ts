@@ -83,6 +83,7 @@ function makeFeedItem(id: string, isBookmarked: boolean): FeedResponse['items'][
     isReposted: false,
     quotePost: null,
     repostPost: null,
+    poll: null,
     mentionedUsers: [],
   };
 }
@@ -112,6 +113,7 @@ function makePostDetail(id: string, isBookmarked: boolean): PostResponse {
     isReposted: false,
     quotePost: null,
     repostPost: null,
+    poll: null,
     mentionedUsers: [],
   };
 }
@@ -134,6 +136,7 @@ function makeBookmarkItem(id: string): BookmarkItem {
     isReposted: false,
     quotePost: null,
     repostPost: null,
+    poll: null,
     mentionedUsers: [],
   };
 }
@@ -163,6 +166,7 @@ function makeSearchItem(id: string, isBookmarked: boolean): SearchPostsResponse[
     isReposted: false,
     quotePost: null,
     repostPost: null,
+    poll: null,
     mentionedUsers: [],
   };
 }

@@ -11215,7 +11215,35 @@ export interface components {
                         sortOrder: number;
                     }[];
                 } | null;
-                poll?: unknown;
+                poll: {
+                    id: string;
+                    postId: string;
+                    duration: number;
+                    /** Format: date-time */
+                    expiresAt: string;
+                    /** Format: date-time */
+                    createdAt: string;
+                    options: {
+                        id: string;
+                        pollId: string;
+                        text: string;
+                        sortOrder: number;
+                        _count: {
+                            votes: number;
+                        };
+                    }[];
+                    votes?: {
+                        id: string;
+                        pollId: string;
+                        optionId: string;
+                        userId: string;
+                        /** Format: date-time */
+                        createdAt: string;
+                    }[];
+                    _count: {
+                        votes: number;
+                    };
+                } | null;
                 mentionedUsers: {
                     id: string;
                     nickname: string;
@@ -11228,6 +11256,63 @@ export interface components {
         RepostResponse: {
             reposted: boolean;
             repostCount: number;
+        };
+        /**
+         * @description PostResponse に埋め込まれるアンケート選択肢。Prisma 生形をそのまま JSON 化したもの。
+         *     voteCount は _count.votes で取得する。
+         */
+        PostPollOption: {
+            id: string;
+            pollId: string;
+            text: string;
+            sortOrder: number;
+            _count: {
+                votes: number;
+            };
+        };
+        /** @description 認証ユーザーの投票履歴レコード（PostResponse.poll.votes の 1 件）。ゲストには含まれない。 */
+        PostPollVoteRecord: {
+            id: string;
+            pollId: string;
+            optionId: string;
+            userId: string;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        /**
+         * @description PostResponse に埋め込まれるアンケートの実形（Prisma 生形 JSON）。
+         *     totalVotes は _count.votes で取得する。閲覧者の投票状態は votes[0].optionId で判定する。
+         *     votes フィールドはゲストには含まれない。未投票なら空配列。
+         *     PollVoteResponse（POST /polls/{id}/vote の応答）とは別形状。
+         */
+        PostPoll: {
+            id: string;
+            postId: string;
+            duration: number;
+            /** Format: date-time */
+            expiresAt: string;
+            /** Format: date-time */
+            createdAt: string;
+            options: {
+                id: string;
+                pollId: string;
+                text: string;
+                sortOrder: number;
+                _count: {
+                    votes: number;
+                };
+            }[];
+            votes?: {
+                id: string;
+                pollId: string;
+                optionId: string;
+                userId: string;
+                /** Format: date-time */
+                createdAt: string;
+            }[];
+            _count: {
+                votes: number;
+            };
         };
         /** @description アンケート選択肢（投票後）。percentage は全票に占める割合（0〜100, 小数第 1 位）。 */
         PollOptionResponse: {
@@ -11399,7 +11484,35 @@ export interface components {
                         sortOrder: number;
                     }[];
                 } | null;
-                poll?: unknown;
+                poll: {
+                    id: string;
+                    postId: string;
+                    duration: number;
+                    /** Format: date-time */
+                    expiresAt: string;
+                    /** Format: date-time */
+                    createdAt: string;
+                    options: {
+                        id: string;
+                        pollId: string;
+                        text: string;
+                        sortOrder: number;
+                        _count: {
+                            votes: number;
+                        };
+                    }[];
+                    votes?: {
+                        id: string;
+                        pollId: string;
+                        optionId: string;
+                        userId: string;
+                        /** Format: date-time */
+                        createdAt: string;
+                    }[];
+                    _count: {
+                        votes: number;
+                    };
+                } | null;
                 mentionedUsers: {
                     id: string;
                     nickname: string;
@@ -11472,7 +11585,35 @@ export interface components {
                     sortOrder: number;
                 }[];
             } | null;
-            poll?: unknown;
+            poll: {
+                id: string;
+                postId: string;
+                duration: number;
+                /** Format: date-time */
+                expiresAt: string;
+                /** Format: date-time */
+                createdAt: string;
+                options: {
+                    id: string;
+                    pollId: string;
+                    text: string;
+                    sortOrder: number;
+                    _count: {
+                        votes: number;
+                    };
+                }[];
+                votes?: {
+                    id: string;
+                    pollId: string;
+                    optionId: string;
+                    userId: string;
+                    /** Format: date-time */
+                    createdAt: string;
+                }[];
+                _count: {
+                    votes: number;
+                };
+            } | null;
             mentionedUsers: {
                 id: string;
                 nickname: string;
@@ -11606,7 +11747,35 @@ export interface components {
                         sortOrder: number;
                     }[];
                 } | null;
-                poll?: unknown;
+                poll: {
+                    id: string;
+                    postId: string;
+                    duration: number;
+                    /** Format: date-time */
+                    expiresAt: string;
+                    /** Format: date-time */
+                    createdAt: string;
+                    options: {
+                        id: string;
+                        pollId: string;
+                        text: string;
+                        sortOrder: number;
+                        _count: {
+                            votes: number;
+                        };
+                    }[];
+                    votes?: {
+                        id: string;
+                        pollId: string;
+                        optionId: string;
+                        userId: string;
+                        /** Format: date-time */
+                        createdAt: string;
+                    }[];
+                    _count: {
+                        votes: number;
+                    };
+                } | null;
                 mentionedUsers: {
                     id: string;
                     nickname: string;
@@ -11729,7 +11898,35 @@ export interface components {
                         sortOrder: number;
                     }[];
                 } | null;
-                poll?: unknown;
+                poll: {
+                    id: string;
+                    postId: string;
+                    duration: number;
+                    /** Format: date-time */
+                    expiresAt: string;
+                    /** Format: date-time */
+                    createdAt: string;
+                    options: {
+                        id: string;
+                        pollId: string;
+                        text: string;
+                        sortOrder: number;
+                        _count: {
+                            votes: number;
+                        };
+                    }[];
+                    votes?: {
+                        id: string;
+                        pollId: string;
+                        optionId: string;
+                        userId: string;
+                        /** Format: date-time */
+                        createdAt: string;
+                    }[];
+                    _count: {
+                        votes: number;
+                    };
+                } | null;
                 mentionedUsers: {
                     id: string;
                     nickname: string;
@@ -13281,7 +13478,35 @@ export interface components {
                         sortOrder: number;
                     }[];
                 } | null;
-                poll?: unknown;
+                poll: {
+                    id: string;
+                    postId: string;
+                    duration: number;
+                    /** Format: date-time */
+                    expiresAt: string;
+                    /** Format: date-time */
+                    createdAt: string;
+                    options: {
+                        id: string;
+                        pollId: string;
+                        text: string;
+                        sortOrder: number;
+                        _count: {
+                            votes: number;
+                        };
+                    }[];
+                    votes?: {
+                        id: string;
+                        pollId: string;
+                        optionId: string;
+                        userId: string;
+                        /** Format: date-time */
+                        createdAt: string;
+                    }[];
+                    _count: {
+                        votes: number;
+                    };
+                } | null;
                 mentionedUsers: {
                     id: string;
                     nickname: string;
