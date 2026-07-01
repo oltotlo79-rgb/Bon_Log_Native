@@ -10,6 +10,7 @@ import {
   View,
   Text,
   TouchableOpacity,
+  ScrollView,
   StyleSheet,
   Pressable,
 } from 'react-native';
@@ -22,6 +23,10 @@ import { PostsView } from '@/components/analytics/PostsView';
 import { PeriodComparisonView } from '@/components/analytics/PeriodComparisonView';
 import { GenrePerformanceView } from '@/components/analytics/GenrePerformanceView';
 import { KeywordsView } from '@/components/analytics/KeywordsView';
+import { LikesView } from '@/components/analytics/LikesView';
+import { EngagementTrendView } from '@/components/analytics/EngagementTrendView';
+import { FollowerGrowthView } from '@/components/analytics/FollowerGrowthView';
+import { QuotesView } from '@/components/analytics/QuotesView';
 import { ROUTE_SETTINGS_SUBSCRIPTION } from '@/lib/constants/routes';
 import type { AnalyticsPeriod } from '@/lib/queries/keys';
 import {
@@ -61,13 +66,25 @@ const PERIOD_OPTIONS: { label: string; value: AnalyticsPeriod }[] = [
 
 const DEFAULT_PERIOD: AnalyticsPeriod = 30;
 
-type ViewTab = 'posts' | 'comparison' | 'genre' | 'keywords';
+type ViewTab =
+  | 'posts'
+  | 'comparison'
+  | 'genre'
+  | 'keywords'
+  | 'likes'
+  | 'engagement'
+  | 'followers'
+  | 'quotes';
 
 const TAB_OPTIONS: { label: string; value: ViewTab }[] = [
   { label: '投稿', value: 'posts' },
   { label: '期間比較', value: 'comparison' },
   { label: 'ジャンル', value: 'genre' },
   { label: 'キーワード', value: 'keywords' },
+  { label: 'いいね', value: 'likes' },
+  { label: '推移', value: 'engagement' },
+  { label: 'フォロワー', value: 'followers' },
+  { label: '引用', value: 'quotes' },
 ];
 
 const LOCK_ICON_SIZE = 48;
@@ -115,7 +132,7 @@ const PeriodSelector = memo(function PeriodSelector({
 });
 
 // ---------------------------------------------------------------------------
-// ビュータブ切替
+// ビュータブ切替（タブが8つになるためスクロール対応）
 // ---------------------------------------------------------------------------
 
 type ViewTabBarProps = {
@@ -125,7 +142,13 @@ type ViewTabBarProps = {
 
 const ViewTabBar = memo(function ViewTabBar({ selected, onSelect }: ViewTabBarProps) {
   return (
-    <View style={styles.tabBar} accessibilityRole="tablist">
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      style={styles.tabBarScroll}
+      contentContainerStyle={styles.tabBar}
+      accessibilityRole="tablist"
+    >
       {TAB_OPTIONS.map((opt) => {
         const isSelected = opt.value === selected;
         return (
@@ -144,7 +167,7 @@ const ViewTabBar = memo(function ViewTabBar({ selected, onSelect }: ViewTabBarPr
           </TouchableOpacity>
         );
       })}
-    </View>
+    </ScrollView>
   );
 });
 
@@ -202,6 +225,15 @@ function ActiveView({ activeTab, period }: ActiveViewProps) {
       return <GenrePerformanceView period={period} />;
     case 'keywords':
       return <KeywordsView period={period} />;
+    case 'likes':
+      return <LikesView period={period} />;
+    case 'engagement':
+      return <EngagementTrendView period={period} />;
+    case 'followers':
+      return <FollowerGrowthView period={period} />;
+    case 'quotes':
+      // 引用は全期間集計のため period を渡さない
+      return <QuotesView />;
     default:
       return null;
   }
@@ -330,20 +362,25 @@ const styles = StyleSheet.create({
   periodButtonTextSelected: {
     color: colorActionPrimaryText,
   },
-  // ビュータブバー
-  tabBar: {
-    flexDirection: 'row',
+  // ビュータブバー（横スクロール対応）
+  tabBarScroll: {
     backgroundColor: colorSurface,
     borderBottomWidth: 1,
     borderBottomColor: colorBorderLight,
+    flexGrow: 0,
+  },
+  tabBar: {
+    flexDirection: 'row',
+    paddingHorizontal: spacing2,
   },
   tab: {
-    flex: 1,
     height: 44,
     alignItems: 'center',
     justifyContent: 'center',
+    paddingHorizontal: spacing3,
     borderBottomWidth: 2,
     borderBottomColor: 'transparent',
+    minWidth: 56,
   },
   tabSelected: {
     borderBottomColor: colorActionPrimary,
