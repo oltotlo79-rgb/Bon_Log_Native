@@ -6,7 +6,7 @@
  */
 
 import React from 'react';
-import { render, screen } from '@testing-library/react-native';
+import { render, screen, fireEvent } from '@testing-library/react-native';
 import { ProfileHeader, type ProfileHeaderProps } from '@/components/profile/ProfileHeader';
 
 // FollowButton は lib/queries/follows を使用するため一元モックが必要
@@ -312,6 +312,11 @@ describe('ProfileHeader: 自分のプロフィール（isSelf=true）', () => {
     renderHeader({ isSelf: true, onOpenMenu: undefined });
     expect(screen.queryByRole('button', { name: 'その他のメニューを開く' })).toBeNull();
   });
+
+  it('メッセージボタンは表示されない（isSelf=true）', () => {
+    renderHeader({ isSelf: true, onMessagePress: jest.fn() });
+    expect(screen.queryByLabelText('盆栽太郎にメッセージを送る')).toBeNull();
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -356,6 +361,28 @@ describe('ProfileHeader: 他人のプロフィール（isSelf=false）', () => {
     // currentUserId が undefined でも「{nickname} をフォローする」ラベルになる
     renderHeader({ isSelf: false, following: false, requested: false, currentUserId: undefined, nickname: '盆栽太郎' });
     expect(screen.getByLabelText('盆栽太郎 をフォローする')).toBeTruthy();
+  });
+
+  it('onMessagePress が渡されたときメッセージボタンが表示される', () => {
+    const onMessagePress = jest.fn();
+    renderHeader({ isSelf: false, onMessagePress });
+    expect(
+      screen.getByLabelText('盆栽太郎にメッセージを送る')
+    ).toBeTruthy();
+  });
+
+  it('onMessagePress が undefined のときメッセージボタンが表示されない', () => {
+    renderHeader({ isSelf: false, onMessagePress: undefined });
+    expect(
+      screen.queryByLabelText('盆栽太郎にメッセージを送る')
+    ).toBeNull();
+  });
+
+  it('onMessagePress タップで onMessagePress が呼ばれる', () => {
+    const onMessagePress = jest.fn();
+    renderHeader({ isSelf: false, onMessagePress });
+    fireEvent.press(screen.getByLabelText('盆栽太郎にメッセージを送る'));
+    expect(onMessagePress).toHaveBeenCalledTimes(1);
   });
 });
 

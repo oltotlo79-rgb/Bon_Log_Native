@@ -91,15 +91,30 @@ function makeDefaultDeleteMutationReturn(overrides?: { mutate?: jest.Mock; isPen
 // セットアップヘルパー
 // ---------------------------------------------------------------------------
 
+type OtherUserParam = {
+  nickname: string;
+  avatarUrl?: string;
+  userId: string;
+};
+
 function setupMocks(overrides?: {
   messagesQuery?: Partial<ReturnType<typeof mockUseMessagesQuery>>;
   sendMutation?: { mutate?: jest.Mock; isPending?: boolean };
   deleteMutation?: { mutate?: jest.Mock; isPending?: boolean };
   conversationId?: string;
+  paramOtherUser?: OtherUserParam;
 }) {
-  mockUseLocalSearchParams.mockReturnValue({
+  const params: Record<string, string> = {
     conversationId: overrides?.conversationId ?? 'conv-1',
-  });
+  };
+  if (overrides?.paramOtherUser !== undefined) {
+    params['nickname'] = overrides.paramOtherUser.nickname;
+    params['userId'] = overrides.paramOtherUser.userId;
+    if (overrides.paramOtherUser.avatarUrl !== undefined) {
+      params['avatarUrl'] = overrides.paramOtherUser.avatarUrl;
+    }
+  }
+  mockUseLocalSearchParams.mockReturnValue(params);
   mockUseMessagesQuery.mockReturnValue(
     makeDefaultMessagesQueryReturn(overrides?.messagesQuery)
   );
@@ -149,6 +164,15 @@ describe('ConversationThreadScreen', () => {
       setupMocks({ messagesQuery: { isLoading: true } });
       renderWithProviders(<ConversationThreadScreen />);
       expect(screen.getByText('読み込み中...')).toBeTruthy();
+    });
+
+    it('ローディング中に paramOtherUser が渡されているとき相手名がヘッダーに表示される', () => {
+      setupMocks({
+        messagesQuery: { isLoading: true },
+        paramOtherUser: { nickname: '盆栽花子', userId: 'user-2' },
+      });
+      renderWithProviders(<ConversationThreadScreen />);
+      expect(screen.getByText('盆栽花子')).toBeTruthy();
     });
   });
 

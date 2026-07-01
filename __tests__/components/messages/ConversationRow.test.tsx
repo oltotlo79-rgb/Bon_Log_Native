@@ -84,11 +84,11 @@ describe('ConversationRow', () => {
   });
 
   describe('タップ操作', () => {
-    it('行タップで onPress が conversationId を引数に呼ばれる', () => {
+    it('行タップで onPress が conversationId と item の 2 引数で呼ばれる', () => {
       const handlePress = jest.fn();
-      renderRow({ id: 'conv-abc' }, handlePress);
+      const { item } = renderRow({ id: 'conv-abc' }, handlePress);
       fireEvent.press(screen.getByRole('button'));
-      expect(handlePress).toHaveBeenCalledWith('conv-abc');
+      expect(handlePress).toHaveBeenCalledWith('conv-abc', item);
     });
 
     it('onPress は 1 回だけ呼ばれる', () => {

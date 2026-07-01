@@ -10,6 +10,7 @@ import { renderWithProviders } from '@/__tests__/utils/test-utils';
 import UserDetailScreen from '@/app/users/[id]/index';
 import { makeUserProfile } from '@/__tests__/utils/data-factories';
 import { ApiError } from '@/lib/api/errors';
+import { routeMessageThread } from '@/lib/constants/routes';
 
 const mockRouter = jest.requireMock('expo-router').router;
 const mockUseLocalSearchParams = jest.requireMock('expo-router').useLocalSearchParams;
@@ -48,6 +49,14 @@ jest.mock('@/lib/queries/users', () => ({
 const mockUseCurrentUserQuery = jest.fn();
 jest.mock('@/lib/queries/auth', () => ({
   useCurrentUserQuery: () => mockUseCurrentUserQuery(),
+}));
+
+const mockStartConversationMutate = jest.fn();
+jest.mock('@/lib/queries/messages', () => ({
+  useStartConversationMutation: () => ({
+    mutate: (...args: unknown[]) => mockStartConversationMutate(...args),
+    isPending: false,
+  }),
 }));
 
 const mockRefetch = jest.fn();
@@ -185,6 +194,46 @@ describe('UserDetailContent - エラー refetch', () => {
     await waitFor(() => {
       expect(mockRefetch).toHaveBeenCalled();
     });
+  });
+});
+
+describe('UserDetailContent - メッセージボタン', () => {
+  it('メッセージボタンタップで startConversation が targetUserId を引数に呼ばれる', async () => {
+    const profile = makeUserProfile({
+      isSelf: false,
+      nickname: '松の匠',
+      avatarUrl: null,
+    });
+    mockUseUserProfileQuery.mockReturnValue({
+      ...defaultProfileState,
+      data: profile,
+    });
+
+    mockStartConversationMutate.mockImplementation(
+      (_args: unknown, { onSuccess }: { onSuccess: (r: { conversationId: string }) => void }) => {
+        onSuccess({ conversationId: 'conv-new' });
+      }
+    );
+
+    renderWithProviders(<UserDetailScreen />);
+
+    const msgButton = screen.getByLabelText('松の匠にメッセージを送る');
+    fireEvent.press(msgButton);
+
+    await waitFor(() => {
+      expect(mockStartConversationMutate).toHaveBeenCalledWith(
+        { targetUserId: 'user-xyz-456' },
+        expect.any(Object)
+      );
+    });
+
+    expect(mockRouter.push).toHaveBeenCalledWith(
+      routeMessageThread('conv-new', {
+        nickname: '松の匠',
+        avatarUrl: null,
+        userId: 'user-xyz-456',
+      })
+    );
   });
 });
 

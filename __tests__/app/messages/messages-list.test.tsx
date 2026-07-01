@@ -214,7 +214,9 @@ describe('MessagesScreen', () => {
       });
 
       fireEvent.press(screen.getByRole('button', { name: /盆栽花子との会話/ }));
-      expect(mockRouter.push).toHaveBeenCalledWith(routeMessageThread('conv-abc'));
+      expect(mockRouter.push).toHaveBeenCalledWith(
+        routeMessageThread('conv-abc', { nickname: '盆栽花子', avatarUrl: null, userId: 'user-2' })
+      );
     });
   });
 
