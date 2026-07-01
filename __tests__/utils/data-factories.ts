@@ -192,6 +192,72 @@ export function makePollVoteResponse(overrides?: Partial<PollVoteResponse>): Pol
 }
 
 // ---------------------------------------------------------------------------
+// ConversationItem
+// ---------------------------------------------------------------------------
+
+export type ConversationItem = components['schemas']['ConversationItem'];
+
+export function makeConversationItem(overrides?: Partial<ConversationItem>): ConversationItem {
+  return {
+    id: 'conv-1',
+    updatedAt: '2025-06-01T10:00:00Z',
+    otherUser: {
+      id: 'user-2',
+      nickname: '盆栽花子',
+      avatarUrl: null,
+    },
+    lastMessage: {
+      id: 'msg-1',
+      content: 'こんにちは',
+      senderId: 'user-2',
+      createdAt: '2025-06-01T10:00:00Z',
+    },
+    hasUnread: false,
+    ...overrides,
+  };
+}
+
+export type ConversationListResponse = components['schemas']['ConversationListResponse'];
+
+export function makeConversationListPage(
+  items: ConversationItem[],
+  nextCursor: string | null = null
+): ConversationListResponse {
+  return { items, nextCursor };
+}
+
+// ---------------------------------------------------------------------------
+// MessageItem
+// ---------------------------------------------------------------------------
+
+export type MessageItem = components['schemas']['MessageItem'];
+
+export function makeMessageItem(overrides?: Partial<MessageItem>): MessageItem {
+  return {
+    id: 'msg-1',
+    conversationId: 'conv-1',
+    content: 'こんにちは',
+    senderId: 'user-1',
+    sender: {
+      id: 'user-1',
+      nickname: '盆栽太郎',
+      avatarUrl: null,
+    },
+    createdAt: '2025-06-01T10:00:00Z',
+    ...overrides,
+  };
+}
+
+export type MessageListResponse = components['schemas']['MessageListResponse'];
+
+export function makeMessageListPage(
+  items: MessageItem[],
+  nextCursor: string | null = null
+): MessageListResponse {
+  return { items, nextCursor };
+}
+
+// ---------------------------------------------------------------------------
 // FeedItem / PostDetail（use-post-card-props テスト用）
 // ---------------------------------------------------------------------------
 
