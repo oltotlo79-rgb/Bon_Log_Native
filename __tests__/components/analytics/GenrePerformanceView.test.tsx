@@ -38,12 +38,12 @@ jest.mock('@/lib/queries/analytics', () => ({
 // テストデータファクトリ
 // ---------------------------------------------------------------------------
 
-function makeGenreData(genres?: Array<{
+function makeGenreData(genres?: {
   name: string;
   postCount: number;
   avgLikes: number;
   avgEngagement: number;
-}>) {
+}[]) {
   return {
     genres: genres ?? [
       { name: '松柏類', postCount: 15, avgLikes: 8.5, avgEngagement: 10.2 },

@@ -43,7 +43,7 @@ function makePostsData(overrides?: Partial<{
   totalLikes: number;
   totalComments: number;
   avgEngagement: number;
-  topPosts: Array<{ id: string; content: string; likeCount: number; commentCount: number }>;
+  topPosts: { id: string; content: string; likeCount: number; commentCount: number }[];
 }>) {
   return {
     totalPosts: 42,

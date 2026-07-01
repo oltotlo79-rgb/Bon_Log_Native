@@ -15,6 +15,30 @@ jest.mock('@/hooks/use-online-status', () => ({
   useOnlineStatus: jest.fn(() => true),
 }));
 
+jest.mock('@/lib/queries/posts', () => ({
+  useUserPostsQuery: jest.fn(() => ({
+    data: { pages: [{ items: [], nextCursor: null }] },
+    isLoading: false,
+    isError: false,
+    error: null,
+    fetchNextPage: jest.fn(),
+    hasNextPage: false,
+    isFetchingNextPage: false,
+    refetch: jest.fn(),
+    isRefetching: false,
+  })),
+  useToggleRepostMutation: jest.fn(() => ({ mutate: jest.fn(), isPending: false })),
+  useVotePollMutation: jest.fn(() => ({ mutate: jest.fn(), isPending: false })),
+}));
+
+jest.mock('@/lib/queries/likes', () => ({
+  useToggleLikeMutation: jest.fn(() => ({ mutate: jest.fn(), isPending: false })),
+}));
+
+jest.mock('@/lib/queries/bookmarks', () => ({
+  useToggleBookmarkMutation: jest.fn(() => ({ mutate: jest.fn(), isPending: false })),
+}));
+
 const mockUseUserProfileQuery = jest.fn();
 jest.mock('@/lib/queries/users', () => ({
   useUserProfileQuery: () => mockUseUserProfileQuery(),

@@ -449,7 +449,7 @@ describe('CareLogsScreen 削除', () => {
     const Alert = require('react-native').Alert;
     const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(
       (_title, _msg, buttons) => {
-        const destructiveButton = (buttons as Array<{ text: string; onPress?: () => void; style?: string }>)?.find(
+        const destructiveButton = (buttons as { text: string; onPress?: () => void; style?: string }[])?.find(
           (b) => b.style === 'destructive'
         );
         destructiveButton?.onPress?.();

@@ -147,7 +147,7 @@ describe('BonsaiNewScreen', () => {
       fireEvent.changeText(screen.getByLabelText('盆栽名（必須）'), '五葉松');
       fireEvent.press(screen.getByRole('button', { name: 'キャンセル' }));
       expect(alertCalls.length).toBeGreaterThan(0);
-      const buttons = alertCalls[0]?.[2] as Array<{ text: string; onPress?: () => void }> | undefined;
+      const buttons = alertCalls[0]?.[2] as { text: string; onPress?: () => void }[] | undefined;
       const discardBtn = buttons?.find((b) => b.text === '破棄する');
       discardBtn?.onPress?.();
       expect(mockRouter.back).toHaveBeenCalledTimes(1);

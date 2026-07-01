@@ -38,7 +38,7 @@ jest.mock('@/lib/queries/dictionary', () => ({
 // ---------------------------------------------------------------------------
 
 function makeDictionaryPageWithDescription(
-  items: Array<{ term: string; reading: string; description: string; category?: string }>,
+  items: { term: string; reading: string; description: string; category?: string }[],
   nextCursor: string | null = null,
 ) {
   return {

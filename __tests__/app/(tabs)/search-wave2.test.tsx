@@ -310,7 +310,7 @@ describe('SearchScreen — 投稿タブフィルタ伝播（波2）', () => {
     fireEvent.press(screen.getByRole('checkbox', { name: 'ジャンル 松柏類' }));
     fireEvent.press(screen.getByRole('button', { name: 'フィルターを適用する' }));
     // 適用後の呼び出し引数で genreId が含まれることを確認
-    const calls = mockUseSearchPostsQuery.mock.calls as Array<[string, SearchPostsFilter]>;
+    const calls = mockUseSearchPostsQuery.mock.calls as [string, SearchPostsFilter][];
     const latestCall = calls[calls.length - 1];
     expect(latestCall[0]).toBe('松');
     expect(latestCall[1]).toMatchObject({ genreId: 'genre-1' });
@@ -327,7 +327,7 @@ describe('SearchScreen — 投稿タブフィルタ伝播（波2）', () => {
     // リセット
     fireEvent.press(screen.getByRole('button', { name: 'フィルターをリセットする' }));
     // リセット後の最新呼び出しで filter={} になることを確認
-    const calls = mockUseSearchPostsQuery.mock.calls as Array<[string, SearchPostsFilter]>;
+    const calls = mockUseSearchPostsQuery.mock.calls as [string, SearchPostsFilter][];
     const latestCall = calls[calls.length - 1];
     expect(latestCall[1]).toEqual({});
   });

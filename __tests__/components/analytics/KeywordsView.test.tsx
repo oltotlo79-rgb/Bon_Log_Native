@@ -41,7 +41,7 @@ jest.mock('@/lib/queries/analytics', () => ({
 function makeKeywordsData(overrides?: {
   totalWords?: number;
   uniqueWords?: number;
-  keywords?: Array<{ word: string; count: number }>;
+  keywords?: { word: string; count: number }[];
 }) {
   return {
     totalWords: 1500,

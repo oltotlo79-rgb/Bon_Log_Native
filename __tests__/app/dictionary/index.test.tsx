@@ -58,7 +58,7 @@ function makeDictionaryPage(terms: string[], nextCursor: string | null = null) {
 
 /** よみがなを明示的に指定できるファクトリ */
 function makeDictionaryPageWithReadings(
-  items: Array<{ term: string; reading: string; category?: string }>,
+  items: { term: string; reading: string; category?: string }[],
   nextCursor: string | null = null,
 ) {
   return {

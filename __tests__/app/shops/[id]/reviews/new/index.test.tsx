@@ -175,7 +175,7 @@ describe('NewReviewScreen', () => {
       renderWithProviders(<NewReviewScreen />);
       fireEvent.press(screen.getByRole('button', { name: '3点' }));
       fireEvent.press(screen.getByRole('button', { name: 'キャンセル' }));
-      const buttons = alertCalls[0]?.[2] as Array<{ text: string; onPress?: () => void }> | undefined;
+      const buttons = alertCalls[0]?.[2] as { text: string; onPress?: () => void }[] | undefined;
       const discardBtn = buttons?.find((b) => b.text === '破棄する');
       discardBtn?.onPress?.();
       expect(mockRouter.back).toHaveBeenCalledTimes(1);
