@@ -1,10 +1,11 @@
 /**
  * @module app/events/index
- * イベント一覧画面。地域/都道府県フィルタ + FAB で新規作成。
- * 仕様: docs/design/events.md §2
+ * イベント一覧画面。カレンダービュー / リストビュー 切り替え。
+ * Web 版 events/page.tsx の構成に準拠: RegionFilter + ViewToggleBar + カレンダー or リスト。
+ * 仕様: docs/design/events-shopmap-web-parity.md §4.1
  */
 
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -12,7 +13,6 @@ import {
   RefreshControl,
   StyleSheet,
   Pressable,
-  ScrollView,
   ActivityIndicator,
 } from 'react-native';
 import { router } from 'expo-router';
@@ -23,10 +23,13 @@ import type { EventItemDetail } from '@/lib/queries/events';
 import { useOnlineStatus } from '@/hooks/use-online-status';
 import { useCurrentUserQuery } from '@/lib/queries/auth';
 import { EventCard } from '@/components/events/EventCard';
-import { ScreenLoading } from '@/components/common/ScreenLoading';
-import { ScreenEmpty } from '@/components/common/ScreenEmpty';
+import { EventCalendarNative, type EventCalendarItem } from '@/components/events/EventCalendarNative';
+import { EventsViewToggleBar, type EventViewMode } from '@/components/events/EventsViewToggleBar';
+import { EventsRegionFilterBar } from '@/components/events/EventsRegionFilterBar';
 import { ScreenError } from '@/components/common/ScreenError';
+import { ScreenEmpty } from '@/components/common/ScreenEmpty';
 import { OfflineBanner } from '@/components/common/OfflineBanner';
+import type { PrefectureName } from '@/lib/constants/prefectures';
 import {
   colorBackground,
   colorSurfaceWashi,
@@ -35,16 +38,12 @@ import {
   colorTextTertiary,
   colorActionPrimary,
   colorActionPrimaryText,
-  colorActionSecondary,
-  colorActionSecondaryText,
   colorBorderLight,
-  spacing1,
   spacing2,
   spacing3,
   spacing4,
   spacing6,
   radiusFull,
-  radiusSm,
   shadowWashi,
   textLg,
   textMd,
@@ -58,29 +57,26 @@ import { routeEventDetail } from '@/lib/constants/routes';
 
 const FAB_SIZE = 56;
 const FAB_ICON_SIZE = 24;
-const CHIP_HEIGHT = 36;
-const CHIP_HIT_SLOP = { top: 4, bottom: 4, left: 4, right: 4 };
-
-type Region = {
-  label: string;
-  value: string;
-};
-
-const REGIONS: Region[] = [
-  { label: '全国', value: '' },
-  { label: '北海道・東北', value: '北海道・東北' },
-  { label: '関東', value: '関東' },
-  { label: '中部・北陸', value: '中部・北陸' },
-  { label: '近畿', value: '近畿' },
-  { label: '中国・四国', value: '中国・四国' },
-  { label: '九州・沖縄', value: '九州・沖縄' },
-];
 
 // ---------------------------------------------------------------------------
 // 型
 // ---------------------------------------------------------------------------
 
 type EventListItem = EventItemDetail;
+
+// ---------------------------------------------------------------------------
+// ユーティリティ
+// ---------------------------------------------------------------------------
+
+// ISO 文字列から YYYY-MM-DD を取り出す（タイムゾーン変換を経由しない）
+function getYmd(isoStr: string): string {
+  const slice = isoStr.slice(0, 10);
+  if (slice.length === 10 && slice[4] === '-' && slice[7] === '-') {
+    return slice;
+  }
+  const d = new Date(isoStr);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
 
 // ---------------------------------------------------------------------------
 // Component
@@ -92,38 +88,144 @@ export default function EventsScreen() {
   const { data: currentUser } = useCurrentUserQuery();
   const isLoggedIn = currentUser !== undefined;
 
+  // ビュー状態
+  const [viewMode, setViewMode] = useState<EventViewMode>('calendar');
+  const [showPast, setShowPast] = useState(false);
   const [selectedRegion, setSelectedRegion] = useState('');
+  const [selectedPrefecture, setSelectedPrefecture] = useState<PrefectureName | undefined>(undefined);
 
-  const filter = selectedRegion.length > 0 ? { region: selectedRegion } : {};
+  // カレンダー表示月（1〜12）
+  const now = useMemo(() => new Date(), []);
+  const [calendarYear, setCalendarYear] = useState(now.getFullYear());
+  const [calendarMonth, setCalendarMonth] = useState(now.getMonth() + 1);
+
+  // ---------------------------------------------------------------------------
+  // カレンダービュー用クエリ（月フィルタあり・過去含む）
+  // ---------------------------------------------------------------------------
+  const calendarFilter = useMemo(
+    () => ({
+      region: selectedRegion.length > 0 ? selectedRegion : undefined,
+      prefecture: selectedPrefecture,
+      showPast: true as const,
+      year: calendarYear,
+      month: calendarMonth,
+    }),
+    [selectedRegion, selectedPrefecture, calendarYear, calendarMonth]
+  );
 
   const {
-    data,
-    isLoading,
-    isError,
-    refetch,
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage,
-    isRefetching,
-  } = useEventsListQuery(filter);
+    data: calendarData,
+    isLoading: calendarIsLoading,
+    isError: calendarIsError,
+    refetch: calendarRefetch,
+    fetchNextPage: calendarFetchNextPage,
+    hasNextPage: calendarHasNextPage,
+    isFetchingNextPage: calendarIsFetchingNextPage,
+  } = useEventsListQuery(calendarFilter);
 
-  const allItems: EventListItem[] = data?.pages.flatMap((page) => page.items) ?? [];
+  // 全ページ展開（月単位の全イベント）
+  const calendarRawItems: EventItemDetail[] = useMemo(
+    () => calendarData?.pages.flatMap((page) => page.items) ?? [],
+    [calendarData]
+  );
 
-  const handleRefresh = useCallback(() => {
-    void refetch();
-  }, [refetch]);
+  // カレンダーコンポーネントに渡す形式に変換
+  const calendarAllItems: EventCalendarItem[] = useMemo(
+    () =>
+      calendarRawItems.map((item) => ({
+        id: item.id,
+        title: item.title,
+        startDate: item.startDate,
+        endDate: item.endDate,
+        prefecture: item.prefecture,
+      })),
+    [calendarRawItems]
+  );
 
-  const handleLoadMore = useCallback(() => {
-    if (hasNextPage && !isFetchingNextPage) {
-      void fetchNextPage();
+  // 次ページが存在する間は自動取得
+  React.useEffect(() => {
+    if (calendarHasNextPage && !calendarIsFetchingNextPage && viewMode === 'calendar') {
+      void calendarFetchNextPage();
     }
-  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
+  }, [calendarHasNextPage, calendarIsFetchingNextPage, calendarFetchNextPage, viewMode]);
 
-  const handleSelectRegion = useCallback((value: string) => {
-    setSelectedRegion(value);
+  // 今後のイベント（取得済みデータからクライアントフィルタ・フル型で保持）
+  const todayYmd = useMemo(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   }, []);
 
-  const renderItem = useCallback(
+  const upcomingEvents = useMemo(
+    () =>
+      calendarRawItems
+        .filter((ev) => getYmd(ev.startDate) >= todayYmd)
+        .sort((a, b) => a.startDate.localeCompare(b.startDate)),
+    [calendarRawItems, todayYmd]
+  );
+
+  // ---------------------------------------------------------------------------
+  // リストビュー用クエリ（全期間・無限スクロール）
+  // ---------------------------------------------------------------------------
+  const listFilter = useMemo(
+    () => ({
+      region: selectedRegion.length > 0 ? selectedRegion : undefined,
+      prefecture: selectedPrefecture,
+      showPast: showPast || undefined,
+    }),
+    [selectedRegion, selectedPrefecture, showPast]
+  );
+
+  const {
+    data: listData,
+    isLoading: listIsLoading,
+    isError: listIsError,
+    refetch: listRefetch,
+    fetchNextPage: listFetchNextPage,
+    hasNextPage: listHasNextPage,
+    isFetchingNextPage: listIsFetchingNextPage,
+    isRefetching: listIsRefetching,
+  } = useEventsListQuery(listFilter);
+
+  const listAllItems: EventListItem[] = useMemo(
+    () => listData?.pages.flatMap((page) => page.items) ?? [],
+    [listData]
+  );
+
+  // ---------------------------------------------------------------------------
+  // ハンドラ
+  // ---------------------------------------------------------------------------
+
+  const handleMonthChange = useCallback((year: number, month: number) => {
+    setCalendarYear(year);
+    setCalendarMonth(month);
+  }, []);
+
+  const handleEventPress = useCallback(
+    (eventId: string) => {
+      router.push(routeEventDetail(eventId));
+    },
+    []
+  );
+
+  const handleListRefresh = useCallback(() => {
+    void listRefetch();
+  }, [listRefetch]);
+
+  const handleListLoadMore = useCallback(() => {
+    if (listHasNextPage && !listIsFetchingNextPage) {
+      void listFetchNextPage();
+    }
+  }, [listHasNextPage, listIsFetchingNextPage, listFetchNextPage]);
+
+  const handleRegionChange = useCallback((region: string) => {
+    setSelectedRegion(region);
+  }, []);
+
+  const handlePrefectureChange = useCallback((pref: PrefectureName | undefined) => {
+    setSelectedPrefecture(pref);
+  }, []);
+
+  const renderListItem = useCallback(
     ({ item }: { item: EventListItem }) => (
       <EventCard
         id={item.id}
@@ -141,90 +243,228 @@ export default function EventsScreen() {
     []
   );
 
-  const keyExtractor = useCallback((item: EventListItem) => item.id, []);
+  const renderUpcomingItem = useCallback(
+    ({ item }: { item: EventItemDetail }) => (
+      <EventCard
+        id={item.id}
+        title={item.title}
+        startDate={item.startDate}
+        endDate={item.endDate}
+        venue={item.venue}
+        prefecture={item.prefecture}
+        city={item.city}
+        admissionFee={item.admissionFee}
+        hasSales={item.hasSales}
+        onPress={() => router.push(routeEventDetail(item.id))}
+      />
+    ),
+    []
+  );
 
-  const renderFooter = useCallback(() => {
-    if (!isFetchingNextPage) return null;
+  const keyExtractor = useCallback((item: { id: string }) => item.id, []);
+
+  const renderListFooter = useCallback(() => {
+    if (!listIsFetchingNextPage) return null;
     return (
       <View style={styles.footer}>
         <ActivityIndicator size="small" color={colorActionPrimary} />
       </View>
     );
-  }, [isFetchingNextPage]);
+  }, [listIsFetchingNextPage]);
 
-  const renderListHeader = useCallback(() => (
-    <View style={styles.listHeader}>
-      <Text style={styles.listHeaderTitle}>イベント一覧</Text>
-      <Text style={styles.listHeaderCount}>
-        {allItems.length}件
-      </Text>
-    </View>
-  ), [allItems.length]);
-
-  if (isLoading) {
-    return (
-      <View style={[styles.container, { paddingTop: insets.top }]}>
-        <EventsHeader />
-        <FilterBar selectedRegion={selectedRegion} onSelectRegion={handleSelectRegion} />
-        <ScreenLoading variant="skeleton" />
+  const renderListHeader = useCallback(
+    () => (
+      <View style={styles.listHeader}>
+        <Text style={styles.listHeaderTitle}>イベント一覧</Text>
+        <Text style={styles.listHeaderCount}>{listAllItems.length}件</Text>
       </View>
-    );
-  }
+    ),
+    [listAllItems.length]
+  );
 
-  if (isError) {
-    return (
-      <View style={[styles.container, { paddingTop: insets.top }]}>
-        <EventsHeader />
-        <FilterBar selectedRegion={selectedRegion} onSelectRegion={handleSelectRegion} />
+  const hasFilter = selectedRegion.length > 0 || selectedPrefecture !== undefined;
+
+  // ---------------------------------------------------------------------------
+  // カレンダービューのエラー / 空状態
+  // ---------------------------------------------------------------------------
+
+  const renderCalendarErrorOrEmpty = () => {
+    if (calendarIsError) {
+      return (
         <ScreenError
           title="読み込めませんでした"
-          onRetry={() => void refetch()}
+          onRetry={() => void calendarRefetch()}
+        />
+      );
+    }
+    return null;
+  };
+
+  // ---------------------------------------------------------------------------
+  // リストビューのエラー状態
+  // ---------------------------------------------------------------------------
+
+  if (viewMode === 'list' && listIsError) {
+    return (
+      <View style={[styles.container, { paddingTop: insets.top }]}>
+        <OfflineBanner isVisible={!isOnline} />
+        <EventsHeader />
+        <EventsRegionFilterBar
+          selectedRegion={selectedRegion}
+          selectedPrefecture={selectedPrefecture}
+          onRegionChange={handleRegionChange}
+          onPrefectureChange={handlePrefectureChange}
+        />
+        <EventsViewToggleBar
+          viewMode={viewMode}
+          showPast={showPast}
+          onViewModeChange={setViewMode}
+          onShowPastChange={setShowPast}
+        />
+        <ScreenError
+          title="読み込めませんでした"
+          onRetry={() => void listRefetch()}
         />
       </View>
     );
   }
 
-  const emptyTitle = selectedRegion.length > 0 ? 'このエリアのイベントはありません' : 'イベントがありません';
-  const emptyDescription = selectedRegion.length > 0
-    ? '他のエリアを選択するか、全国に切り替えてみてください。'
-    : '盆栽関連のイベントはまだ登録されていません。';
+  // ---------------------------------------------------------------------------
+  // メインレンダリング
+  // ---------------------------------------------------------------------------
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <OfflineBanner isVisible={!isOnline} />
       <EventsHeader />
-      <FilterBar selectedRegion={selectedRegion} onSelectRegion={handleSelectRegion} />
 
-      {allItems.length === 0 ? (
-        <ScreenEmpty
-          iconName="calendar-outline"
-          title={emptyTitle}
-          description={emptyDescription}
-          actionLabel={selectedRegion.length > 0 ? '全国に切り替える' : undefined}
-          onAction={selectedRegion.length > 0 ? () => setSelectedRegion('') : undefined}
-        />
-      ) : (
+      <EventsRegionFilterBar
+        selectedRegion={selectedRegion}
+        selectedPrefecture={selectedPrefecture}
+        onRegionChange={handleRegionChange}
+        onPrefectureChange={handlePrefectureChange}
+      />
+
+      <EventsViewToggleBar
+        viewMode={viewMode}
+        showPast={showPast}
+        onViewModeChange={setViewMode}
+        onShowPastChange={setShowPast}
+      />
+
+      {/* カレンダービュー */}
+      {viewMode === 'calendar' && (
         <FlatList
-          data={allItems}
+          data={upcomingEvents}
           keyExtractor={keyExtractor}
-          renderItem={renderItem}
-          onEndReached={handleLoadMore}
-          onEndReachedThreshold={0.3}
-          ListHeaderComponent={renderListHeader}
-          ListFooterComponent={renderFooter}
+          renderItem={renderUpcomingItem}
           contentContainerStyle={[
-            styles.listContent,
+            styles.calendarScrollContent,
             { paddingBottom: insets.bottom + FAB_SIZE + spacing6 * 2 },
           ]}
           refreshControl={
             <RefreshControl
-              refreshing={isRefetching && !isLoading}
-              onRefresh={handleRefresh}
+              refreshing={false}
+              onRefresh={() => void calendarRefetch()}
               tintColor={colorActionPrimary}
             />
           }
           accessibilityRole="list"
+          ListHeaderComponent={
+            <>
+              {renderCalendarErrorOrEmpty()}
+
+              <EventCalendarNative
+                events={calendarAllItems}
+                year={calendarYear}
+                month={calendarMonth}
+                onMonthChange={handleMonthChange}
+                onEventPress={handleEventPress}
+                isLoading={calendarIsLoading || calendarIsFetchingNextPage}
+              />
+
+              {/* 追加ページ取得中インジケータ */}
+              {calendarIsFetchingNextPage && (
+                <View style={styles.calendarLoadingMore}>
+                  <ActivityIndicator size="small" color={colorActionPrimary} />
+                </View>
+              )}
+
+              {/* 今後のイベント見出し */}
+              <View style={styles.upcomingHeader}>
+                <Text style={styles.upcomingTitle}>今後のイベント</Text>
+                {upcomingEvents.length > 0 && (
+                  <Text style={styles.upcomingCount}>{upcomingEvents.length}件</Text>
+                )}
+              </View>
+
+              {/* 空状態 */}
+              {!calendarIsLoading && !calendarIsError && upcomingEvents.length === 0 && (
+                <View style={styles.emptyUpcoming}>
+                  <Text style={styles.emptyUpcomingText}>
+                    今後のイベントはありません
+                  </Text>
+                </View>
+              )}
+            </>
+          }
         />
+      )}
+
+      {/* リストビュー */}
+      {viewMode === 'list' && (
+        <>
+          {listIsLoading ? (
+            <View style={styles.listLoadingContainer}>
+              <ActivityIndicator size="large" color={colorActionPrimary} />
+            </View>
+          ) : listAllItems.length === 0 ? (
+            <ScreenEmpty
+              iconName="calendar-outline"
+              title={
+                hasFilter
+                  ? 'このエリアのイベントはありません'
+                  : 'イベントがありません'
+              }
+              description={
+                hasFilter
+                  ? '他のエリアを選択するか、全国に切り替えてみてください。'
+                  : '盆栽関連のイベントはまだ登録されていません。'
+              }
+              actionLabel={hasFilter ? '全国に切り替える' : undefined}
+              onAction={
+                hasFilter
+                  ? () => {
+                      setSelectedRegion('');
+                      setSelectedPrefecture(undefined);
+                    }
+                  : undefined
+              }
+            />
+          ) : (
+            <FlatList
+              data={listAllItems}
+              keyExtractor={keyExtractor}
+              renderItem={renderListItem}
+              onEndReached={handleListLoadMore}
+              onEndReachedThreshold={0.3}
+              ListHeaderComponent={renderListHeader}
+              ListFooterComponent={renderListFooter}
+              contentContainerStyle={[
+                styles.listContent,
+                { paddingBottom: insets.bottom + FAB_SIZE + spacing6 * 2 },
+              ]}
+              refreshControl={
+                <RefreshControl
+                  refreshing={listIsRefetching && !listIsLoading}
+                  onRefresh={handleListRefresh}
+                  tintColor={colorActionPrimary}
+                />
+              }
+              accessibilityRole="list"
+            />
+          )}
+        </>
       )}
 
       {/* FAB */}
@@ -249,7 +489,7 @@ export default function EventsScreen() {
 }
 
 // ---------------------------------------------------------------------------
-// ヘッダー
+// ヘッダー（内部コンポーネント）
 // ---------------------------------------------------------------------------
 
 function EventsHeader() {
@@ -266,46 +506,6 @@ function EventsHeader() {
       </Pressable>
       <Text style={styles.headerTitle}>イベント</Text>
       <View style={styles.headerRight} />
-    </View>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// FilterBar
-// ---------------------------------------------------------------------------
-
-type FilterBarProps = {
-  selectedRegion: string;
-  onSelectRegion: (value: string) => void;
-};
-
-function FilterBar({ selectedRegion, onSelectRegion }: FilterBarProps) {
-  return (
-    <View style={styles.filterBar}>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.filterBarContent}
-      >
-        {REGIONS.map((region) => {
-          const isSelected = selectedRegion === region.value;
-          return (
-            <Pressable
-              key={region.value}
-              style={[styles.chip, isSelected && styles.chipSelected]}
-              onPress={() => onSelectRegion(region.value)}
-              hitSlop={CHIP_HIT_SLOP}
-              accessibilityRole="radio"
-              accessibilityState={{ selected: isSelected }}
-              accessibilityLabel={region.label}
-            >
-              <Text style={[styles.chipText, isSelected && styles.chipTextSelected]}>
-                {region.label}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </ScrollView>
     </View>
   );
 }
@@ -346,35 +546,44 @@ const styles = StyleSheet.create({
   headerRight: {
     minWidth: 60,
   },
-  filterBar: {
-    height: 44,
-    backgroundColor: colorSurfaceWashi,
-    borderBottomWidth: 1,
-    borderBottomColor: colorBorderLight,
-    justifyContent: 'center',
+  calendarScrollContent: {
+    paddingTop: spacing4,
+    paddingHorizontal: 0,
   },
-  filterBarContent: {
+  calendarLoadingMore: {
+    paddingVertical: spacing3,
+    alignItems: 'center',
+  },
+  upcomingHeader: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: spacing2,
+    marginTop: spacing4,
+    marginBottom: spacing3,
     paddingHorizontal: spacing4,
-    gap: spacing1,
-    alignItems: 'center',
   },
-  chip: {
-    height: CHIP_HEIGHT,
-    paddingHorizontal: spacing3,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: colorActionSecondary,
-    borderRadius: radiusSm,
+  upcomingTitle: {
+    ...textMd,
+    fontWeight: '600',
+    color: colorTextPrimary,
   },
-  chipSelected: {
-    backgroundColor: colorActionPrimary,
-  },
-  chipText: {
+  upcomingCount: {
     ...textSm,
-    color: colorActionSecondaryText,
+    color: colorTextTertiary,
   },
-  chipTextSelected: {
-    color: colorActionPrimaryText,
+  emptyUpcoming: {
+    paddingHorizontal: spacing4,
+    paddingVertical: spacing3,
+  },
+  emptyUpcomingText: {
+    ...textSm,
+    color: colorTextTertiary,
+    textAlign: 'center',
+  },
+  listLoadingContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   listContent: {
     paddingHorizontal: spacing4,
