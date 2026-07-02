@@ -1,19 +1,20 @@
 /**
  * @module app/hormones/index
- * 植物ホルモン一覧画面。
- * Web 版 /hormones/page.tsx のスマホ表示を忠実に再現する。
- * - ヘッダーバナー画像（header-hormone.webp）
- * - 五大ホルモン（category === 'major'）と二次ホルモン（category === 'secondary'）を
- *   SectionList でセクション分け表示
- * - HormoneCard: 名前・英名・カテゴリバッジ・説明・化学式 + 五大ホルモンはサムネイル付き
- * 仕様: docs/design/browse-screens.md §4
+ * 植物ホルモントップ画面。Web 版 /hormones の完全準拠ハブ構成。
+ *
+ * スクロール不具合防止:
+ * 施肥トップと同じ「画面全体を単一の ScrollView で包む縦一本スクロール」構成を採用する。
+ * ListHeaderComponent を持つ SectionList を廃止し、ScrollView + View に置き換えることで
+ * ヘッダーの高さによる残余空間消失を根本的に回避する。
+ *
+ * 仕様: docs/design/hormones-fertilizers-web-parity.md §4.13
  */
 
 import React, { useCallback, useMemo, memo } from 'react';
 import {
   View,
   Text,
-  SectionList,
+  ScrollView,
   StyleSheet,
   RefreshControl,
 } from 'react-native';
@@ -27,14 +28,17 @@ import { ScreenLoading } from '@/components/common/ScreenLoading';
 import { ScreenEmpty } from '@/components/common/ScreenEmpty';
 import { ScreenError } from '@/components/common/ScreenError';
 import { HormoneCard } from '@/components/hormone/HormoneCard';
+import { HormoneDisclaimer } from '@/components/hormone/HormoneDisclaimer';
 import { useOnlineStatus } from '@/hooks/use-online-status';
 import { ERR_HORMONES_LOAD_FAILED } from '@/lib/constants/errors';
+import { routeHormoneDetail } from '@/lib/constants/routes';
 import {
   colorBackground,
   colorTextPrimary,
   colorTextSecondary,
   spacing3,
   spacing4,
+  spacing6,
   spacing8,
   textSm,
   textLg,
@@ -47,84 +51,31 @@ import {
 type HormoneItem = components['schemas']['HormoneItem'];
 
 // ---------------------------------------------------------------------------
-// セクション定義
-// ---------------------------------------------------------------------------
-
-type HormoneSection = {
-  key: 'major' | 'secondary';
-  title: string;
-  subtitle: string;
-  data: HormoneItem[];
-};
-
-// ---------------------------------------------------------------------------
 // ヘッダーバナー画像（Metro bundler はトップレベルの require() を解決する）
 // ---------------------------------------------------------------------------
 
 const HEADER_IMG: number = require('@/assets/images/hormones/header-hormone.webp') as number;
 
 // ---------------------------------------------------------------------------
-// ListHeaderComponent — バナー画像 + 説明文
+// HormoneCard ラッパー（memo 化でリスト再レンダリングを抑制）
 // ---------------------------------------------------------------------------
 
-const ListHeader = memo(function ListHeader() {
-  return (
-    <View style={styles.listHeader}>
-      <Image
-        source={HEADER_IMG}
-        style={styles.headerBanner}
-        contentFit="cover"
-        accessibilityLabel="植物ホルモン"
-      />
-      <Text style={styles.headerDescription}>
-        盆栽の成長・休眠・発根に関わる植物ホルモンの役割と相互作用を学べます
-      </Text>
-    </View>
-  );
-});
-
-// ---------------------------------------------------------------------------
-// セクションヘッダー
-// ---------------------------------------------------------------------------
-
-type SectionHeaderProps = { title: string; subtitle: string };
-
-const HormoneSectionHeader = memo(function HormoneSectionHeader({
-  title,
-  subtitle,
-}: SectionHeaderProps) {
-  return (
-    <View style={styles.sectionHeaderContainer}>
-      <Text style={styles.sectionTitle}>{title}</Text>
-      <Text style={styles.sectionSubtitle}>{subtitle}</Text>
-    </View>
-  );
-});
-
-// ---------------------------------------------------------------------------
-// HormoneCell（リストアイテム memo 化）
-// ---------------------------------------------------------------------------
-
-type HormoneCellProps = { item: HormoneItem };
-
-const HormoneCell = memo(function HormoneCell({ item }: HormoneCellProps) {
+const HormoneItemCell = memo(function HormoneItemCell({ item }: { item: HormoneItem }) {
   const handlePress = useCallback(() => {
-    router.push({ pathname: '/hormones/[slug]', params: { slug: item.slug } });
+    router.push(routeHormoneDetail(item.slug));
   }, [item.slug]);
 
   return (
-    <View style={styles.cardWrapper}>
-      <HormoneCard
-        name={item.name}
-        nameEn={item.nameEn}
-        slug={item.slug}
-        category={item.category}
-        description={item.description}
-        chemicalFormula={item.chemicalFormula}
-        onPress={handlePress}
-        accessibilityLabel={`${item.name}${item.nameEn !== null ? `（${item.nameEn}）` : ''}の詳細を見る`}
-      />
-    </View>
+    <HormoneCard
+      name={item.name}
+      nameEn={item.nameEn}
+      slug={item.slug}
+      category={item.category}
+      description={item.description}
+      chemicalFormula={item.chemicalFormula}
+      onPress={handlePress}
+      accessibilityLabel={`${item.name}${item.nameEn !== null ? `（${item.nameEn}）` : ''}の詳細を見る`}
+    />
   );
 });
 
@@ -137,83 +88,118 @@ export default function HormonesScreen() {
   const isOnline = useOnlineStatus();
   const { data, isLoading, isError, refetch } = useHormonesQuery();
 
-  // major / secondary でセクション分けする（Web 版 /hormones/page.tsx と同じ分類）
-  const sections = useMemo<HormoneSection[]>(() => {
-    if (data === undefined) return [];
-
-    const major = data.filter((h) => h.category === 'major');
-    const secondary = data.filter((h) => h.category === 'secondary');
-
-    const result: HormoneSection[] = [];
-
-    if (major.length > 0) {
-      result.push({
-        key: 'major',
-        title: '五大ホルモン',
-        subtitle: '植物の成長・分化・休眠を制御する主要な5つのホルモンです。',
-        data: major,
-      });
-    }
-
-    if (secondary.length > 0) {
-      result.push({
-        key: 'secondary',
-        title: '二次ホルモン',
-        subtitle: '近年注目されているホルモンで、ストレス応答や成長調節に関与します。',
-        data: secondary,
-      });
-    }
-
-    return result;
-  }, [data]);
-
-  const renderItem = useCallback(
-    ({ item }: { item: HormoneItem }) => <HormoneCell item={item} />,
-    [],
+  const majorHormones = useMemo<HormoneItem[]>(
+    () => (data ?? []).filter((h) => h.category === 'major'),
+    [data],
   );
 
-  const renderSectionHeader = useCallback(
-    ({ section }: { section: HormoneSection }) => (
-      <HormoneSectionHeader title={section.title} subtitle={section.subtitle} />
-    ),
-    [],
+  const secondaryHormones = useMemo<HormoneItem[]>(
+    () => (data ?? []).filter((h) => h.category === 'secondary'),
+    [data],
   );
 
-  const keyExtractor = useCallback((item: HormoneItem) => item.id, []);
+  const handleRefresh = useCallback(() => {
+    void refetch();
+  }, [refetch]);
 
-  return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
-      <Stack.Screen options={{ title: '植物ホルモン', headerShown: true }} />
+  if (isLoading) return <ScreenLoading variant="spinner" />;
 
-      <OfflineBanner isVisible={!isOnline} />
-
-      {isLoading ? (
-        <ScreenLoading variant="spinner" />
-      ) : isError ? (
+  if (isError && data === undefined) {
+    return (
+      <>
+        <Stack.Screen options={{ title: '植物ホルモン', headerShown: true }} />
+        <OfflineBanner isVisible={!isOnline} />
         <ScreenError
           title="植物ホルモン情報を読み込めませんでした。"
           description={ERR_HORMONES_LOAD_FAILED}
           onRetry={() => void refetch()}
         />
-      ) : sections.length === 0 ? (
+      </>
+    );
+  }
+
+  if (majorHormones.length === 0 && !isLoading) {
+    return (
+      <>
+        <Stack.Screen options={{ title: '植物ホルモン', headerShown: true }} />
+        <OfflineBanner isVisible={!isOnline} />
         <ScreenEmpty title="ホルモン情報はありません" />
-      ) : (
-        <SectionList<HormoneItem, HormoneSection>
-          sections={sections}
-          keyExtractor={keyExtractor}
-          renderItem={renderItem}
-          renderSectionHeader={renderSectionHeader}
-          ListHeaderComponent={ListHeader}
-          contentContainerStyle={[
-            styles.listContent,
-            { paddingBottom: insets.bottom + spacing8 },
-          ]}
-          stickySectionHeadersEnabled={false}
-          refreshControl={
-            <RefreshControl refreshing={false} onRefresh={() => void refetch()} />
-          }
+      </>
+    );
+  }
+
+  return (
+    <View style={styles.container}>
+      <Stack.Screen options={{ title: '植物ホルモン', headerShown: true }} />
+      <OfflineBanner isVisible={!isOnline} />
+
+      {/* 画面全体を単一の ScrollView で包む */}
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: insets.bottom + spacing8 },
+        ]}
+        refreshControl={
+          <RefreshControl refreshing={false} onRefresh={handleRefresh} />
+        }
+        showsVerticalScrollIndicator={false}
+      >
+        {/* ヘッダーバナー */}
+        <Image
+          source={HEADER_IMG}
+          style={styles.headerBanner}
+          contentFit="cover"
+          accessibilityLabel="植物ホルモン"
         />
-      )}
+
+        <Text style={styles.headerDescription}>
+          盆栽の成長・休眠・発根に関わる植物ホルモンの役割と相互作用を学べます
+        </Text>
+
+        {/* 免責注記 */}
+        <View style={styles.disclaimerWrapper}>
+          <HormoneDisclaimer />
+        </View>
+
+        {/* 五大ホルモン セクション */}
+        {majorHormones.length > 0 && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>五大ホルモン</Text>
+            </View>
+            <Text style={styles.sectionSubtitle}>
+              植物の成長・分化・休眠を制御する主要な5つのホルモンです。
+            </Text>
+            <View style={styles.cardList}>
+              {majorHormones.map((item) => (
+                <View key={item.id} style={styles.cardItem}>
+                  <HormoneItemCell item={item} />
+                </View>
+              ))}
+            </View>
+          </View>
+        )}
+
+        {/* 二次ホルモン セクション */}
+        {secondaryHormones.length > 0 && (
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>二次ホルモン</Text>
+            </View>
+            <Text style={styles.sectionSubtitle}>
+              近年注目されているホルモンで、ストレス応答や成長調節に関与します。
+            </Text>
+            <View style={styles.cardList}>
+              {secondaryHormones.map((item) => (
+                <View key={item.id} style={styles.cardItem}>
+                  <HormoneItemCell item={item} />
+                </View>
+              ))}
+            </View>
+          </View>
+        )}
+      </ScrollView>
     </View>
   );
 }
@@ -227,11 +213,15 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colorBackground,
   },
-
-  // ---- バナーヘッダー ----
-  listHeader: {
-    backgroundColor: colorBackground,
+  scrollView: {
+    flex: 1,
   },
+  scrollContent: {
+    gap: spacing6,
+    paddingTop: 0,
+  },
+
+  // ---- ヘッダーバナー ----
   headerBanner: {
     width: '100%',
     aspectRatio: 21 / 9,
@@ -240,17 +230,22 @@ const styles = StyleSheet.create({
     ...textSm,
     color: colorTextSecondary,
     paddingHorizontal: spacing4,
-    paddingTop: spacing3,
-    paddingBottom: spacing4,
   },
 
-  // ---- セクションヘッダー ----
-  sectionHeaderContainer: {
+  // ---- 免責注記 ----
+  disclaimerWrapper: {
     paddingHorizontal: spacing4,
-    paddingTop: spacing4,
-    paddingBottom: spacing3,
+  },
+
+  // ---- セクション ----
+  section: {
+    paddingHorizontal: spacing4,
     gap: spacing3,
-    backgroundColor: colorBackground,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   sectionTitle: {
     ...textLg,
@@ -262,12 +257,10 @@ const styles = StyleSheet.create({
     lineHeight: 20,
     marginTop: -spacing3,
   },
-
-  // ---- リスト共通 ----
-  listContent: {
-    paddingHorizontal: spacing4,
+  cardList: {
+    gap: spacing3,
   },
-  cardWrapper: {
-    marginBottom: spacing3,
+  cardItem: {
+    // gap で制御するためマージン不要
   },
 });
