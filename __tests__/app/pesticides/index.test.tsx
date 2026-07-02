@@ -1,6 +1,7 @@
 /**
  * app/pesticides/index のコンポーネントテスト。
- * 3タブ構成（病害虫・農薬製品・農薬成分）・エラー・空状態・タップ遷移・無限スクロール・オフラインを検証する。
+ * NavCard ハブ + フィルタチップ + 病害虫グリッド / 製品リストの切り替えを検証する。
+ * 旧タブ構成（病害虫・農薬製品・農薬成分）は廃止済み。農薬成分はサブ画面 /pesticides/ingredients へ独立。
  */
 
 import React from 'react';
@@ -29,12 +30,11 @@ const makeInfiniteBase = () => ({
 
 let mockDiseasePestsQuery = makeInfiniteBase();
 let mockProductsQuery = makeInfiniteBase();
-let mockIngredientsQuery = makeInfiniteBase();
 
 jest.mock('@/lib/queries/pesticides', () => ({
   usePesticideDiseasePestsQuery: () => mockDiseasePestsQuery,
   usePesticideProductsQuery: () => mockProductsQuery,
-  usePesticideIngredientsQuery: () => mockIngredientsQuery,
+  usePesticideIngredientsQuery: jest.fn(),
   usePesticideDiseasePestDetailQuery: jest.fn(),
   usePesticideProductDetailQuery: jest.fn(),
   usePesticideIngredientDetailQuery: jest.fn(),
@@ -51,21 +51,24 @@ function makeDiseasePestsData() {
     pages: [
       {
         items: [
-          { id: 'dp1', slug: 'aphid', name: 'アブラムシ', category: 'pest', description: '新芽に付く小型害虫', imageUrl: 'https://cdn.example.com/aphid.jpg' },
-          { id: 'dp2', slug: 'spider-mite', name: 'ハダニ', category: 'pest', description: null, imageUrl: null },
-        ],
-        nextCursor: null,
-      },
-    ],
-  };
-}
-
-function makeDiseasePestsDataWithRelativeImageUrl() {
-  return {
-    pages: [
-      {
-        items: [
-          { id: 'dp1', slug: 'aphid', name: 'アブラムシ', category: 'pest', description: null, imageUrl: '/images/aphid.jpg' },
+          {
+            id: 'dp1',
+            slug: 'aphid',
+            name: 'アブラムシ',
+            nameKana: 'あぶらむし',
+            category: 'pest' as const,
+            description: '新芽に付く小型害虫',
+            imageUrl: 'https://cdn.example.com/aphid.jpg',
+          },
+          {
+            id: 'dp2',
+            slug: 'spider-mite',
+            name: 'ハダニ',
+            nameKana: 'はだに',
+            category: 'pest' as const,
+            description: null,
+            imageUrl: null,
+          },
         ],
         nextCursor: null,
       },
@@ -78,22 +81,20 @@ function makeProductsData() {
     pages: [
       {
         items: [
-          { id: 'p1', slug: 'product-a', name: '殺虫剤A', pesticideType: '殺虫剤', description: '接触型殺虫剤' },
-          { id: 'p2', slug: 'product-b', name: '殺菌剤B', pesticideType: '殺菌剤', description: null },
-        ],
-        nextCursor: null,
-      },
-    ],
-  };
-}
-
-function makeIngredientsData() {
-  return {
-    pages: [
-      {
-        items: [
-          { id: 'i1', slug: 'ingredient-a', name: 'ピリミカルブ', nameEn: 'Pirimicarb' },
-          { id: 'i2', slug: 'ingredient-b', name: 'アバメクチン', nameEn: null },
+          {
+            id: 'p1',
+            slug: 'product-a',
+            name: '殺虫剤A',
+            pesticideType: 'insecticide' as const,
+            description: '接触型殺虫剤',
+          },
+          {
+            id: 'p2',
+            slug: 'product-b',
+            name: '殺菌剤B',
+            pesticideType: 'fungicide' as const,
+            description: null,
+          },
         ],
         nextCursor: null,
       },
@@ -110,262 +111,232 @@ beforeEach(() => {
   mockUseOnlineStatus.mockReturnValue(true);
   mockDiseasePestsQuery = makeInfiniteBase();
   mockProductsQuery = makeInfiniteBase();
-  mockIngredientsQuery = makeInfiniteBase();
 });
 
 // ---------------------------------------------------------------------------
-// タブ表示
+// ヘッダー・説明文
 // ---------------------------------------------------------------------------
 
-describe('PesticidesScreen タブ', () => {
-  it('「病害虫」タブが表示される', () => {
-    renderWithProviders(<PesticidesScreen />);
-    expect(screen.getByLabelText('病害虫')).toBeTruthy();
-  });
-
-  it('「農薬製品」タブが表示される', () => {
-    renderWithProviders(<PesticidesScreen />);
-    expect(screen.getByLabelText('農薬製品')).toBeTruthy();
-  });
-
-  it('「農薬成分」タブが表示される', () => {
-    renderWithProviders(<PesticidesScreen />);
-    expect(screen.getByLabelText('農薬成分')).toBeTruthy();
-  });
-
-  it('初期タブは「病害虫」がアクティブ', () => {
+describe('PesticidesScreen ヘッダー', () => {
+  it('説明文が表示される', () => {
     renderWithProviders(<PesticidesScreen />);
     expect(
-      screen.getByLabelText('病害虫').props.accessibilityState?.selected
-    ).toBe(true);
-  });
-
-  it('「農薬製品」タブをタップするとアクティブになる', () => {
-    renderWithProviders(<PesticidesScreen />);
-    fireEvent.press(screen.getByLabelText('農薬製品'));
-    expect(
-      screen.getByLabelText('農薬製品').props.accessibilityState?.selected
-    ).toBe(true);
-  });
-
-  it('「農薬成分」タブをタップするとアクティブになる', () => {
-    renderWithProviders(<PesticidesScreen />);
-    fireEvent.press(screen.getByLabelText('農薬成分'));
-    expect(
-      screen.getByLabelText('農薬成分').props.accessibilityState?.selected
-    ).toBe(true);
+      screen.getByText('病害虫を選んで効く薬剤を検索、または薬剤名で直接検索できます'),
+    ).toBeTruthy();
   });
 });
 
 // ---------------------------------------------------------------------------
-// 病害虫タブ
+// NavCard（サブ画面へのナビゲーション）
 // ---------------------------------------------------------------------------
 
-describe('PesticidesScreen 病害虫タブ', () => {
-  it('病害虫一覧が表示される', () => {
+describe('PesticidesScreen NavCard', () => {
+  it('「病害虫・益虫図鑑」NavCard が表示される', () => {
+    renderWithProviders(<PesticidesScreen />);
+    expect(screen.getByLabelText('病害虫・益虫図鑑へ移動')).toBeTruthy();
+  });
+
+  it('「有効成分（原体）一覧」NavCard が表示される', () => {
+    renderWithProviders(<PesticidesScreen />);
+    expect(screen.getByLabelText('有効成分（原体）一覧へ移動')).toBeTruthy();
+  });
+
+  it('「希釈計算ツール」NavCard が表示される', () => {
+    renderWithProviders(<PesticidesScreen />);
+    expect(screen.getByLabelText('希釈計算ツールへ移動')).toBeTruthy();
+  });
+
+  it('「散布方法ガイド」NavCard が表示される', () => {
+    renderWithProviders(<PesticidesScreen />);
+    expect(screen.getByLabelText('散布方法ガイドへ移動')).toBeTruthy();
+  });
+
+  it('「病害虫・益虫図鑑」タップで /pesticides/disease-pests へ push する', () => {
+    renderWithProviders(<PesticidesScreen />);
+    fireEvent.press(screen.getByLabelText('病害虫・益虫図鑑へ移動'));
+    expect(mockRouter.push).toHaveBeenCalledWith('/pesticides/disease-pests');
+  });
+
+  it('「有効成分（原体）一覧」タップで /pesticides/ingredients へ push する', () => {
+    renderWithProviders(<PesticidesScreen />);
+    fireEvent.press(screen.getByLabelText('有効成分（原体）一覧へ移動'));
+    expect(mockRouter.push).toHaveBeenCalledWith('/pesticides/ingredients');
+  });
+
+  it('「希釈計算ツール」タップで /pesticides/dilution-calculator へ push する', () => {
+    renderWithProviders(<PesticidesScreen />);
+    fireEvent.press(screen.getByLabelText('希釈計算ツールへ移動'));
+    expect(mockRouter.push).toHaveBeenCalledWith('/pesticides/dilution-calculator');
+  });
+
+  it('「散布方法ガイド」タップで /pesticides/spray-guide へ push する', () => {
+    renderWithProviders(<PesticidesScreen />);
+    fireEvent.press(screen.getByLabelText('散布方法ガイドへ移動'));
+    expect(mockRouter.push).toHaveBeenCalledWith('/pesticides/spray-guide');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// フィルタチップ
+// ---------------------------------------------------------------------------
+
+describe('PesticidesScreen フィルタチップ', () => {
+  it('「全て」フィルタチップが表示される', () => {
+    renderWithProviders(<PesticidesScreen />);
+    expect(screen.getByLabelText('全てでフィルタ')).toBeTruthy();
+  });
+
+  it('「害虫」フィルタチップが表示される', () => {
+    renderWithProviders(<PesticidesScreen />);
+    expect(screen.getByLabelText('害虫でフィルタ')).toBeTruthy();
+  });
+
+  it('「病気」フィルタチップが表示される', () => {
+    renderWithProviders(<PesticidesScreen />);
+    expect(screen.getByLabelText('病気でフィルタ')).toBeTruthy();
+  });
+
+  it('「全て」チップは初期状態で selected になっている', () => {
+    renderWithProviders(<PesticidesScreen />);
+    expect(
+      screen.getByLabelText('全てでフィルタ').props.accessibilityState?.selected
+    ).toBe(true);
+  });
+
+  it('「害虫」チップをタップすると selected になる', () => {
+    renderWithProviders(<PesticidesScreen />);
+    fireEvent.press(screen.getByLabelText('害虫でフィルタ'));
+    expect(
+      screen.getByLabelText('害虫でフィルタ').props.accessibilityState?.selected
+    ).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 病害虫グリッド（害虫フィルタ選択時）
+// ---------------------------------------------------------------------------
+
+describe('PesticidesScreen 病害虫グリッド', () => {
+  it('害虫フィルタ選択後に病害虫名が表示される', () => {
     mockDiseasePestsQuery.data = makeDiseasePestsData();
     renderWithProviders(<PesticidesScreen />);
+    fireEvent.press(screen.getByLabelText('害虫でフィルタ'));
     expect(screen.getByText('アブラムシ')).toBeTruthy();
     expect(screen.getByText('ハダニ')).toBeTruthy();
   });
 
-  it('病害虫行タップで詳細画面へ push する', () => {
+  it('病害虫タップで農薬を絞り込む（selectedDiseasePestId が設定される）', () => {
     mockDiseasePestsQuery.data = makeDiseasePestsData();
     renderWithProviders(<PesticidesScreen />);
-    fireEvent.press(screen.getByLabelText('アブラムシの詳細を見る'));
-    expect(mockRouter.push).toHaveBeenCalledWith({
-      pathname: '/pesticides/disease-pests/[slug]',
-      params: { slug: 'aphid' },
-    });
-  });
-
-  it('病害虫が空のとき「データがありません」が表示される', () => {
-    mockDiseasePestsQuery.data = { pages: [{ items: [], nextCursor: null }] };
-    renderWithProviders(<PesticidesScreen />);
-    expect(screen.getByText('データがありません')).toBeTruthy();
+    fireEvent.press(screen.getByLabelText('害虫でフィルタ'));
+    fireEvent.press(screen.getByLabelText('アブラムシで農薬を絞り込む'));
+    // タップ後はフィルタが「全て」に戻り製品リストモードになる
+    expect(
+      screen.getByLabelText('全てでフィルタ').props.accessibilityState?.selected
+    ).toBe(true);
   });
 
   it('imageUrl がある病害虫アイテムのサムネイルが表示される', () => {
     mockDiseasePestsQuery.data = makeDiseasePestsData();
     renderWithProviders(<PesticidesScreen />);
+    fireEvent.press(screen.getByLabelText('害虫でフィルタ'));
     expect(screen.getByLabelText('アブラムシのサムネイル')).toBeTruthy();
   });
 
   it('imageUrl が null の病害虫アイテムはサムネイルを表示しない', () => {
     mockDiseasePestsQuery.data = makeDiseasePestsData();
     renderWithProviders(<PesticidesScreen />);
+    fireEvent.press(screen.getByLabelText('害虫でフィルタ'));
     expect(screen.queryByLabelText('ハダニのサムネイル')).toBeNull();
   });
-
-  it('imageUrl が相対パスの病害虫アイテムもサムネイルが表示される', () => {
-    mockDiseasePestsQuery.data = makeDiseasePestsDataWithRelativeImageUrl();
-    renderWithProviders(<PesticidesScreen />);
-    expect(screen.getByLabelText('アブラムシのサムネイル')).toBeTruthy();
-  });
-
-  it('病害虫エラー時に ScreenError が表示される', () => {
-    mockDiseasePestsQuery.isError = true;
-    renderWithProviders(<PesticidesScreen />);
-    expect(screen.getByText('図鑑を読み込めませんでした。')).toBeTruthy();
-  });
-
-  it('病害虫エラー時の再試行ボタンが refetch を呼ぶ', async () => {
-    mockDiseasePestsQuery.isError = true;
-    renderWithProviders(<PesticidesScreen />);
-    fireEvent.press(screen.getByLabelText('再試行する'));
-    await waitFor(() => {
-      expect(mockDiseasePestsQuery.refetch).toHaveBeenCalledTimes(1);
-    });
-  });
 });
 
 // ---------------------------------------------------------------------------
-// 病害虫タブ 追加ケース
+// 農薬製品グリッド（殺虫剤フィルタ選択時）
 // ---------------------------------------------------------------------------
 
-describe('PesticidesScreen 病害虫タブ 追加', () => {
-  it('病害虫ローディング時に ScreenLoading が表示される', () => {
-    mockDiseasePestsQuery.isLoading = true;
-    renderWithProviders(<PesticidesScreen />);
-    expect(screen.getByLabelText('読み込み中')).toBeTruthy();
-  });
-
-  it('disease カテゴリの病害虫も表示される', () => {
-    mockDiseasePestsQuery.data = {
-      pages: [{
-        items: [
-          { id: 'dp3', slug: 'fungal', name: 'うどん粉病', category: 'disease', description: 'カビによる病害', imageUrl: null },
-        ],
-        nextCursor: null,
-      }],
-    };
-    renderWithProviders(<PesticidesScreen />);
-    expect(screen.getByText('うどん粉病')).toBeTruthy();
-  });
-
-  it('beneficial_insect カテゴリの益虫も表示される', () => {
-    mockDiseasePestsQuery.data = {
-      pages: [{
-        items: [
-          { id: 'dp4', slug: 'ladybug', name: 'テントウムシ', category: 'beneficial_insect', description: null, imageUrl: null },
-        ],
-        nextCursor: null,
-      }],
-    };
-    renderWithProviders(<PesticidesScreen />);
-    expect(screen.getByText('テントウムシ')).toBeTruthy();
-  });
-});
-
-// ---------------------------------------------------------------------------
-// 農薬製品タブ
-// ---------------------------------------------------------------------------
-
-describe('PesticidesScreen 農薬製品タブ', () => {
-  it('農薬製品タブに切り替えると製品一覧が表示される', () => {
+describe('PesticidesScreen 農薬製品グリッド', () => {
+  it('殺虫剤フィルタ選択後に製品名が表示される', () => {
     mockProductsQuery.data = makeProductsData();
     renderWithProviders(<PesticidesScreen />);
-    fireEvent.press(screen.getByLabelText('農薬製品'));
+    fireEvent.press(screen.getByLabelText('殺虫剤でフィルタ'));
     expect(screen.getByText('殺虫剤A')).toBeTruthy();
-    expect(screen.getByText('殺菌剤B')).toBeTruthy();
   });
 
-  it('農薬製品行タップで詳細画面へ push する', () => {
+  it('農薬製品タップで詳細画面へ push する', () => {
     mockProductsQuery.data = makeProductsData();
     renderWithProviders(<PesticidesScreen />);
-    fireEvent.press(screen.getByLabelText('農薬製品'));
+    fireEvent.press(screen.getByLabelText('殺虫剤でフィルタ'));
     fireEvent.press(screen.getByLabelText('殺虫剤Aの詳細を見る'));
     expect(mockRouter.push).toHaveBeenCalledWith({
       pathname: '/pesticides/products/[slug]',
       params: { slug: 'product-a' },
     });
   });
+});
 
-  it('農薬製品が空のとき「データがありません」が表示される', () => {
-    mockProductsQuery.data = { pages: [{ items: [], nextCursor: null }] };
+// ---------------------------------------------------------------------------
+// あいうえお順全一覧（デフォルト「全て」状態）
+// ---------------------------------------------------------------------------
+
+describe('PesticidesScreen あいうえお順全一覧', () => {
+  it('デフォルト状態で見出し「あいうえお順一覧」が表示される', () => {
     renderWithProviders(<PesticidesScreen />);
-    fireEvent.press(screen.getByLabelText('農薬製品'));
-    expect(screen.getByText('データがありません')).toBeTruthy();
+    expect(screen.getByText('あいうえお順一覧')).toBeTruthy();
   });
 
-  it('農薬製品エラー時に ScreenError が表示される', () => {
-    mockProductsQuery.isError = true;
+  it('病害虫 + 製品を混在表示する', () => {
+    mockDiseasePestsQuery.data = makeDiseasePestsData();
+    mockProductsQuery.data = makeProductsData();
     renderWithProviders(<PesticidesScreen />);
-    fireEvent.press(screen.getByLabelText('農薬製品'));
-    expect(screen.getByText('図鑑を読み込めませんでした。')).toBeTruthy();
-  });
-
-  it('農薬製品エラー時の再試行ボタンが refetch を呼ぶ', async () => {
-    mockProductsQuery.isError = true;
-    renderWithProviders(<PesticidesScreen />);
-    fireEvent.press(screen.getByLabelText('農薬製品'));
-    fireEvent.press(screen.getByLabelText('再試行する'));
-    await waitFor(() => {
-      expect(mockProductsQuery.refetch).toHaveBeenCalledTimes(1);
-    });
-  });
-
-  it('農薬製品ローディング時に ScreenLoading が表示される', () => {
-    mockProductsQuery.isLoading = true;
-    renderWithProviders(<PesticidesScreen />);
-    fireEvent.press(screen.getByLabelText('農薬製品'));
-    expect(screen.getByLabelText('読み込み中')).toBeTruthy();
+    expect(screen.getByText('アブラムシ')).toBeTruthy();
+    expect(screen.getByText('殺虫剤A')).toBeTruthy();
   });
 });
 
 // ---------------------------------------------------------------------------
-// 農薬成分タブ
+// 検索フォーム
 // ---------------------------------------------------------------------------
 
-describe('PesticidesScreen 農薬成分タブ', () => {
-  it('農薬成分タブに切り替えると成分一覧が表示される', () => {
-    mockIngredientsQuery.data = makeIngredientsData();
+describe('PesticidesScreen 検索フォーム', () => {
+  it('検索フォームが表示される', () => {
     renderWithProviders(<PesticidesScreen />);
-    fireEvent.press(screen.getByLabelText('農薬成分'));
-    expect(screen.getByText('ピリミカルブ')).toBeTruthy();
-    expect(screen.getByText('アバメクチン')).toBeTruthy();
+    expect(screen.getByLabelText('薬剤名または登録番号で検索')).toBeTruthy();
   });
 
-  it('農薬成分行タップで詳細画面へ push する', () => {
-    mockIngredientsQuery.data = makeIngredientsData();
+  it('「検索する」ボタンが表示される', () => {
     renderWithProviders(<PesticidesScreen />);
-    fireEvent.press(screen.getByLabelText('農薬成分'));
-    fireEvent.press(screen.getByLabelText('ピリミカルブの詳細を見る'));
-    expect(mockRouter.push).toHaveBeenCalledWith({
-      pathname: '/pesticides/ingredients/[slug]',
-      params: { slug: 'ingredient-a' },
-    });
+    expect(screen.getByLabelText('検索する')).toBeTruthy();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// エラー状態
+// ---------------------------------------------------------------------------
+
+describe('PesticidesScreen エラー', () => {
+  it('病害虫フィルタ中にエラーが発生したとき ScreenError が表示される', () => {
+    mockDiseasePestsQuery.isError = true;
+    renderWithProviders(<PesticidesScreen />);
+    fireEvent.press(screen.getByLabelText('害虫でフィルタ'));
+    expect(screen.getByText('データを読み込めませんでした。')).toBeTruthy();
   });
 
-  it('農薬成分が空のとき「データがありません」が表示される', () => {
-    mockIngredientsQuery.data = { pages: [{ items: [], nextCursor: null }] };
+  it('製品フィルタ中にエラーが発生したとき ScreenError が表示される', () => {
+    mockProductsQuery.isError = true;
     renderWithProviders(<PesticidesScreen />);
-    fireEvent.press(screen.getByLabelText('農薬成分'));
-    expect(screen.getByText('データがありません')).toBeTruthy();
+    fireEvent.press(screen.getByLabelText('殺虫剤でフィルタ'));
+    expect(screen.getByText('データを読み込めませんでした。')).toBeTruthy();
   });
 
-  it('農薬成分エラー時に ScreenError が表示される', () => {
-    mockIngredientsQuery.isError = true;
+  it('エラー時の再試行ボタンが refetch を呼ぶ', async () => {
+    mockDiseasePestsQuery.isError = true;
     renderWithProviders(<PesticidesScreen />);
-    fireEvent.press(screen.getByLabelText('農薬成分'));
-    expect(screen.getByText('図鑑を読み込めませんでした。')).toBeTruthy();
-  });
-
-  it('農薬成分エラー時の再試行ボタンが refetch を呼ぶ', async () => {
-    mockIngredientsQuery.isError = true;
-    renderWithProviders(<PesticidesScreen />);
-    fireEvent.press(screen.getByLabelText('農薬成分'));
+    fireEvent.press(screen.getByLabelText('害虫でフィルタ'));
     fireEvent.press(screen.getByLabelText('再試行する'));
     await waitFor(() => {
-      expect(mockIngredientsQuery.refetch).toHaveBeenCalledTimes(1);
+      expect(mockDiseasePestsQuery.refetch).toHaveBeenCalled();
     });
-  });
-
-  it('農薬成分ローディング時に ScreenLoading が表示される', () => {
-    mockIngredientsQuery.isLoading = true;
-    renderWithProviders(<PesticidesScreen />);
-    fireEvent.press(screen.getByLabelText('農薬成分'));
-    expect(screen.getByLabelText('読み込み中')).toBeTruthy();
   });
 });
 

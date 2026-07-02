@@ -1,7 +1,10 @@
 /**
  * app/hormones/index のコンポーネントテスト。
- * SectionList（major/secondary セクション）・バナー・HormoneCard・
+ * ScrollView 構成（major/secondary セクション）・バナー・HormoneCard・
  * 4状態（正常・ローディング・エラー・空）・タップ遷移・オフラインを検証する。
+ *
+ * routeHormoneDetail は文字列 `/hormones/${slug}` を返すため、
+ * 遷移先の期待値は { pathname, params } ではなく文字列になる。
  */
 
 import React from 'react';
@@ -33,7 +36,7 @@ jest.mock('@/lib/queries/hormones', () => ({
 const mockRouter = jest.requireMock('expo-router').router;
 
 // ---------------------------------------------------------------------------
-// ヘルパー（新 SectionList 構造に合わせ category を major/secondary で統一）
+// ヘルパー（category は major/secondary の2種のみ）
 // ---------------------------------------------------------------------------
 
 function makeHormones() {
@@ -134,36 +137,29 @@ describe('HormonesScreen 正常表示', () => {
     expect(screen.getByLabelText('サイトカイニンの詳細を見る')).toBeTruthy();
   });
 
-  it('ホルモン行タップで詳細画面へ push する', () => {
+  it('ホルモン行タップで詳細画面へ push する（文字列ルート）', () => {
     mockHormonesQuery.data = makeHormones();
     renderWithProviders(<HormonesScreen />);
     fireEvent.press(screen.getByLabelText('オーキシン（Auxin）の詳細を見る'));
-    expect(mockRouter.push).toHaveBeenCalledWith({
-      pathname: '/hormones/[slug]',
-      params: { slug: 'auxin' },
-    });
+    expect(mockRouter.push).toHaveBeenCalledWith('/hormones/auxin');
   });
 
   it('英名が null のホルモン行タップでも詳細画面へ push する', () => {
     mockHormonesQuery.data = makeHormones();
     renderWithProviders(<HormonesScreen />);
     fireEvent.press(screen.getByLabelText('サイトカイニンの詳細を見る'));
-    expect(mockRouter.push).toHaveBeenCalledWith({
-      pathname: '/hormones/[slug]',
-      params: { slug: 'cytokinin' },
-    });
+    expect(mockRouter.push).toHaveBeenCalledWith('/hormones/cytokinin');
   });
 });
 
 // ---------------------------------------------------------------------------
-// SectionList セクション分け
+// セクション分け（major/secondary）
 // ---------------------------------------------------------------------------
 
 describe('HormonesScreen セクション分け', () => {
   it('major カテゴリのホルモンが「五大ホルモン」セクションに表示される', () => {
     mockHormonesQuery.data = makeHormonesWithBothCategories();
     renderWithProviders(<HormonesScreen />);
-    // セクションヘッダー + HormoneCard バッジの両方に「五大ホルモン」が現れるため getAllByText で存在確認する
     expect(screen.getAllByText('五大ホルモン').length).toBeGreaterThan(0);
     expect(screen.getByText('オーキシン')).toBeTruthy();
   });
@@ -171,16 +167,19 @@ describe('HormonesScreen セクション分け', () => {
   it('secondary カテゴリのホルモンが「二次ホルモン」セクションに表示される', () => {
     mockHormonesQuery.data = makeHormonesWithBothCategories();
     renderWithProviders(<HormonesScreen />);
-    // セクションヘッダー + HormoneCard バッジの両方に「二次ホルモン」が現れるため getAllByText で存在確認する
     expect(screen.getAllByText('二次ホルモン').length).toBeGreaterThan(0);
     expect(screen.getByText('ブラシノライド')).toBeTruthy();
   });
 
-  it('major のみのとき「五大ホルモン」関連テキストが存在し「二次ホルモン」セクションサブタイトルは表示されない', () => {
+  it('major のみのとき「五大ホルモン」セクションタイトルが存在する', () => {
     mockHormonesQuery.data = makeHormones();
     renderWithProviders(<HormonesScreen />);
     expect(screen.getAllByText('五大ホルモン').length).toBeGreaterThan(0);
-    // 二次ホルモン専用のサブタイトルは secondary セクションがない場合は表示されない
+  });
+
+  it('major のみのとき二次ホルモンサブタイトルは表示されない', () => {
+    mockHormonesQuery.data = makeHormones();
+    renderWithProviders(<HormonesScreen />);
     expect(
       screen.queryByText(
         '近年注目されているホルモンで、ストレス応答や成長調節に関与します。',
@@ -188,7 +187,7 @@ describe('HormonesScreen セクション分け', () => {
     ).toBeNull();
   });
 
-  it('セクションヘッダーのサブタイトルが表示される', () => {
+  it('五大ホルモンセクションのサブタイトルが表示される', () => {
     mockHormonesQuery.data = makeHormones();
     renderWithProviders(<HormonesScreen />);
     expect(

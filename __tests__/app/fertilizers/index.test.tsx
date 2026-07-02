@@ -1,6 +1,7 @@
 /**
  * app/fertilizers/index のコンポーネントテスト。
- * 3タブ構成（栄養素・カテゴリ・樹種）・ローディング・エラー・空状態・タップ遷移を検証する。
+ * 単一スクロールのハブ構成（NavCard + 栄養素セクション + 季節TIPS）を検証する。
+ * 旧タブ構成は廃止済みのためタブ関連テストを削除し、現実装に追従する。
  */
 
 import React from 'react';
@@ -23,12 +24,6 @@ const mockNutrientsQuery = {
   isError: false,
   refetch: jest.fn(),
 };
-const mockCategoriesQuery = {
-  data: undefined as unknown,
-  isLoading: false,
-  isError: false,
-  refetch: jest.fn(),
-};
 const mockTreeSpeciesQuery = {
   data: undefined as unknown,
   isLoading: false,
@@ -38,8 +33,8 @@ const mockTreeSpeciesQuery = {
 
 jest.mock('@/lib/queries/fertilizers', () => ({
   useFertilizerNutrientsQuery: () => mockNutrientsQuery,
-  useFertilizerCategoriesQuery: () => mockCategoriesQuery,
   useFertilizerTreeSpeciesQuery: () => mockTreeSpeciesQuery,
+  useFertilizerCategoriesQuery: jest.fn(),
   useFertilizerNutrientDetailQuery: jest.fn(),
   useFertilizationScheduleQuery: jest.fn(),
 }));
@@ -52,22 +47,54 @@ const mockRouter = jest.requireMock('expo-router').router;
 
 function makeNutrients() {
   return [
-    { id: 'n1', slug: 'nitrogen', name: '窒素', symbol: 'N', description: '葉の成長を促す', category: 'primary', bonsaiRole: '葉と枝の生長を促進する' },
-    { id: 'n2', slug: 'phosphorus', name: 'リン', symbol: 'P', description: '開花を促す', category: 'primary', bonsaiRole: '花芽と根の発達を助ける' },
-  ];
-}
-
-function makeCategories() {
-  return [
-    { id: 'c1', code: 'organic', name: '有機肥料', description: '天然素材由来の肥料', merit: '土壌を豊かにする', demerit: '即効性がない', bonsaiUsage: '春先の置き肥に最適' },
-    { id: 'c2', code: 'chemical', name: '化成肥料', description: '化学的に合成された肥料', merit: null, demerit: null, bonsaiUsage: null },
+    {
+      id: 'n1',
+      slug: 'nitrogen',
+      name: '窒素',
+      symbol: 'N',
+      description: '葉の成長を促す',
+      category: 'primary',
+      bonsaiRole: '葉と枝の生長を促進する',
+    },
+    {
+      id: 'n2',
+      slug: 'phosphorus',
+      name: 'リン',
+      symbol: 'P',
+      description: '開花を促す',
+      category: 'primary',
+      bonsaiRole: '花芽と根の発達を助ける',
+    },
+    {
+      id: 'n3',
+      slug: 'calcium',
+      name: 'カルシウム',
+      symbol: 'Ca',
+      description: '細胞壁を強化する',
+      category: 'secondary',
+      bonsaiRole: '細胞壁を強化する',
+    },
   ];
 }
 
 function makeTreeSpecies() {
   return [
-    { id: 'ts1', slug: 'kuromatsu', name: '黒松', category: 'conifer', description: null, fertilizingPolicy: '春と秋に施肥する' },
-    { id: 'ts2', slug: 'keyaki', name: '欅', category: 'deciduous', description: null, fertilizingPolicy: null },
+    {
+      id: 'ts1',
+      slug: 'kuromatsu',
+      name: '黒松',
+      category: 'conifer',
+      description: null,
+      fertilizingPolicy: '春と秋に施肥する',
+    },
+    {
+      id: 'ts2',
+      slug: 'keyaki',
+      name: '欅',
+      category: 'deciduous',
+      description: null,
+      fertilizingPolicy: null,
+    },
   ];
 }
 
@@ -81,90 +108,34 @@ beforeEach(() => {
   mockNutrientsQuery.data = undefined;
   mockNutrientsQuery.isLoading = false;
   mockNutrientsQuery.isError = false;
-  mockCategoriesQuery.data = undefined;
-  mockCategoriesQuery.isLoading = false;
-  mockCategoriesQuery.isError = false;
+  mockNutrientsQuery.refetch = jest.fn();
   mockTreeSpeciesQuery.data = undefined;
   mockTreeSpeciesQuery.isLoading = false;
   mockTreeSpeciesQuery.isError = false;
+  mockTreeSpeciesQuery.refetch = jest.fn();
 });
 
 // ---------------------------------------------------------------------------
-// タブ表示
+// ローディング
 // ---------------------------------------------------------------------------
 
-describe('FertilizersScreen タブ', () => {
-  it('「栄養素」タブが表示される', () => {
+describe('FertilizersScreen ローディング', () => {
+  it('isLoading=true のとき ScreenLoading が表示される', () => {
+    mockNutrientsQuery.isLoading = true;
     renderWithProviders(<FertilizersScreen />);
-    expect(screen.getByLabelText('栄養素')).toBeTruthy();
-  });
-
-  it('「カテゴリ」タブが表示される', () => {
-    renderWithProviders(<FertilizersScreen />);
-    expect(screen.getByLabelText('カテゴリ')).toBeTruthy();
-  });
-
-  it('「樹種」タブが表示される', () => {
-    renderWithProviders(<FertilizersScreen />);
-    expect(screen.getByLabelText('樹種')).toBeTruthy();
-  });
-
-  it('初期タブは「栄養素」がアクティブ', () => {
-    renderWithProviders(<FertilizersScreen />);
-    expect(
-      screen.getByLabelText('栄養素').props.accessibilityState?.selected
-    ).toBe(true);
-  });
-
-  it('「カテゴリ」タブをタップするとアクティブになる', () => {
-    renderWithProviders(<FertilizersScreen />);
-    fireEvent.press(screen.getByLabelText('カテゴリ'));
-    expect(
-      screen.getByLabelText('カテゴリ').props.accessibilityState?.selected
-    ).toBe(true);
-  });
-
-  it('「樹種」タブをタップするとアクティブになる', () => {
-    renderWithProviders(<FertilizersScreen />);
-    fireEvent.press(screen.getByLabelText('樹種'));
-    expect(
-      screen.getByLabelText('樹種').props.accessibilityState?.selected
-    ).toBe(true);
+    expect(screen.getByLabelText('読み込み中')).toBeTruthy();
   });
 });
 
 // ---------------------------------------------------------------------------
-// 栄養素タブ
+// エラー状態
 // ---------------------------------------------------------------------------
 
-describe('FertilizersScreen 栄養素タブ', () => {
-  it('栄養素一覧が表示される', () => {
-    mockNutrientsQuery.data = makeNutrients();
-    renderWithProviders(<FertilizersScreen />);
-    expect(screen.getByText('窒素')).toBeTruthy();
-    expect(screen.getByText('リン')).toBeTruthy();
-  });
-
-  it('栄養素タップで詳細画面へ push する', () => {
-    mockNutrientsQuery.data = makeNutrients();
-    renderWithProviders(<FertilizersScreen />);
-    fireEvent.press(screen.getByLabelText('窒素（N）の詳細を見る'));
-    expect(mockRouter.push).toHaveBeenCalledWith({
-      pathname: '/fertilizers/nutrients/[slug]',
-      params: { slug: 'nitrogen' },
-    });
-  });
-
+describe('FertilizersScreen エラー', () => {
   it('栄養素エラー時に ScreenError が表示される', () => {
     mockNutrientsQuery.isError = true;
     renderWithProviders(<FertilizersScreen />);
     expect(screen.getByText('施肥情報を読み込めませんでした。')).toBeTruthy();
-  });
-
-  it('栄養素が空（[]）のとき「データがありません」が表示される', () => {
-    mockNutrientsQuery.data = [];
-    renderWithProviders(<FertilizersScreen />);
-    expect(screen.getByText('データがありません')).toBeTruthy();
   });
 
   it('エラー時の再試行ボタンが refetch を呼ぶ', async () => {
@@ -178,69 +149,155 @@ describe('FertilizersScreen 栄養素タブ', () => {
 });
 
 // ---------------------------------------------------------------------------
-// カテゴリタブ
+// 空状態
 // ---------------------------------------------------------------------------
 
-describe('FertilizersScreen カテゴリタブ', () => {
-  it('カテゴリタブに切り替えてカテゴリ一覧が表示される', () => {
-    mockCategoriesQuery.data = makeCategories();
+describe('FertilizersScreen 空状態', () => {
+  it('栄養素が空（[]）のとき「データがありません」が表示される', () => {
+    mockNutrientsQuery.data = [];
     renderWithProviders(<FertilizersScreen />);
-    fireEvent.press(screen.getByLabelText('カテゴリ'));
-    expect(screen.getByText('有機肥料')).toBeTruthy();
-    expect(screen.getByText('化成肥料')).toBeTruthy();
-  });
-
-  it('カテゴリが空（[]）のとき「データがありません」が表示される', () => {
-    mockCategoriesQuery.data = [];
-    renderWithProviders(<FertilizersScreen />);
-    fireEvent.press(screen.getByLabelText('カテゴリ'));
     expect(screen.getByText('データがありません')).toBeTruthy();
   });
 
-  it('カテゴリエラー時に ScreenError が表示される', () => {
-    mockCategoriesQuery.isError = true;
+  it('primaryNutrients が空（secondary のみ）でも空状態になる', () => {
+    mockNutrientsQuery.data = [
+      {
+        id: 'n3',
+        slug: 'calcium',
+        name: 'カルシウム',
+        symbol: 'Ca',
+        description: '細胞壁を強化する',
+        category: 'secondary',
+        bonsaiRole: '細胞壁を強化する',
+      },
+    ];
     renderWithProviders(<FertilizersScreen />);
-    fireEvent.press(screen.getByLabelText('カテゴリ'));
-    expect(screen.getByText('施肥情報を読み込めませんでした。')).toBeTruthy();
+    expect(screen.getByText('データがありません')).toBeTruthy();
   });
 });
 
 // ---------------------------------------------------------------------------
-// 樹種タブ
+// NavCard（ナビゲーションカード）
 // ---------------------------------------------------------------------------
 
-describe('FertilizersScreen 樹種タブ', () => {
-  it('樹種タブに切り替えて樹種一覧が表示される', () => {
+describe('FertilizersScreen NavCard', () => {
+  it('「栄養素辞典」NavCard が表示される', () => {
+    mockNutrientsQuery.data = makeNutrients();
     mockTreeSpeciesQuery.data = makeTreeSpecies();
     renderWithProviders(<FertilizersScreen />);
-    fireEvent.press(screen.getByLabelText('樹種'));
-    expect(screen.getByText('黒松')).toBeTruthy();
-    expect(screen.getByText('欅')).toBeTruthy();
+    expect(screen.getByLabelText('栄養素辞典へ移動')).toBeTruthy();
   });
 
-  it('樹種タップでスケジュール画面へ push する（name パラメータを含む）', () => {
+  it('「肥料カテゴリ比較」NavCard が表示される', () => {
+    mockNutrientsQuery.data = makeNutrients();
     mockTreeSpeciesQuery.data = makeTreeSpecies();
     renderWithProviders(<FertilizersScreen />);
-    fireEvent.press(screen.getByLabelText('樹種'));
-    fireEvent.press(screen.getByLabelText('黒松の施肥スケジュールを見る'));
-    expect(mockRouter.push).toHaveBeenCalledWith({
-      pathname: '/fertilizers/tree-species/[slug]',
-      params: { slug: 'kuromatsu', name: '黒松' },
-    });
+    expect(screen.getByLabelText('肥料カテゴリ比較へ移動')).toBeTruthy();
   });
 
-  it('樹種が空（[]）のとき「データがありません」が表示される', () => {
-    mockTreeSpeciesQuery.data = [];
+  it('「用土と施肥の関係」NavCard が表示される', () => {
+    mockNutrientsQuery.data = makeNutrients();
     renderWithProviders(<FertilizersScreen />);
-    fireEvent.press(screen.getByLabelText('樹種'));
-    expect(screen.getByText('データがありません')).toBeTruthy();
+    expect(screen.getByLabelText('用土と施肥の関係へ移動')).toBeTruthy();
   });
 
-  it('樹種エラー時に ScreenError が表示される', () => {
-    mockTreeSpeciesQuery.isError = true;
+  it('「水やりと施肥の関係」NavCard が表示される', () => {
+    mockNutrientsQuery.data = makeNutrients();
     renderWithProviders(<FertilizersScreen />);
-    fireEvent.press(screen.getByLabelText('樹種'));
-    expect(screen.getByText('施肥情報を読み込めませんでした。')).toBeTruthy();
+    expect(screen.getByLabelText('水やりと施肥の関係へ移動')).toBeTruthy();
+  });
+
+  it('「症状から探す栄養素」NavCard が表示される', () => {
+    mockNutrientsQuery.data = makeNutrients();
+    renderWithProviders(<FertilizersScreen />);
+    expect(screen.getByLabelText('症状から探す栄養素へ移動')).toBeTruthy();
+  });
+
+  it('「栄養素辞典」NavCard タップで /fertilizers/nutrients へ push する', () => {
+    mockNutrientsQuery.data = makeNutrients();
+    mockTreeSpeciesQuery.data = makeTreeSpecies();
+    renderWithProviders(<FertilizersScreen />);
+    fireEvent.press(screen.getByLabelText('栄養素辞典へ移動'));
+    expect(mockRouter.push).toHaveBeenCalledWith('/fertilizers/nutrients');
+  });
+
+  it('「用土と施肥の関係」NavCard タップで /fertilizers/soil へ push する', () => {
+    mockNutrientsQuery.data = makeNutrients();
+    renderWithProviders(<FertilizersScreen />);
+    fireEvent.press(screen.getByLabelText('用土と施肥の関係へ移動'));
+    expect(mockRouter.push).toHaveBeenCalledWith('/fertilizers/soil');
+  });
+
+  it('「水やりと施肥の関係」NavCard タップで /fertilizers/watering へ push する', () => {
+    mockNutrientsQuery.data = makeNutrients();
+    renderWithProviders(<FertilizersScreen />);
+    fireEvent.press(screen.getByLabelText('水やりと施肥の関係へ移動'));
+    expect(mockRouter.push).toHaveBeenCalledWith('/fertilizers/watering');
+  });
+
+  it('「症状から探す栄養素」NavCard タップで /fertilizers/symptoms へ push する', () => {
+    mockNutrientsQuery.data = makeNutrients();
+    renderWithProviders(<FertilizersScreen />);
+    fireEvent.press(screen.getByLabelText('症状から探す栄養素へ移動'));
+    expect(mockRouter.push).toHaveBeenCalledWith('/fertilizers/symptoms');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 栄養素セクション（primary/secondary）
+// ---------------------------------------------------------------------------
+
+describe('FertilizersScreen 栄養素セクション', () => {
+  it('primary 栄養素が「三大栄養素（N・P・K）」セクションに表示される', () => {
+    mockNutrientsQuery.data = makeNutrients();
+    renderWithProviders(<FertilizersScreen />);
+    expect(screen.getByText('三大栄養素（N・P・K）')).toBeTruthy();
+    expect(screen.getByText('窒素')).toBeTruthy();
+    expect(screen.getByText('リン')).toBeTruthy();
+  });
+
+  it('secondary 栄養素が「二次要素（Ca・Mg・S）」セクションに表示される', () => {
+    mockNutrientsQuery.data = makeNutrients();
+    renderWithProviders(<FertilizersScreen />);
+    expect(screen.getByText('二次要素（Ca・Mg・S）')).toBeTruthy();
+    expect(screen.getByText('カルシウム')).toBeTruthy();
+  });
+
+  it('「すべて見る」タップで /fertilizers/nutrients へ push する', () => {
+    mockNutrientsQuery.data = makeNutrients();
+    renderWithProviders(<FertilizersScreen />);
+    fireEvent.press(screen.getAllByLabelText('栄養素一覧をすべて見る')[0]);
+    expect(mockRouter.push).toHaveBeenCalledWith('/fertilizers/nutrients');
+  });
+
+  it('secondary 栄養素がない場合は二次要素セクションが表示されない', () => {
+    mockNutrientsQuery.data = [
+      {
+        id: 'n1',
+        slug: 'nitrogen',
+        name: '窒素',
+        symbol: 'N',
+        description: '葉の成長を促す',
+        category: 'primary',
+        bonsaiRole: '葉と枝の生長を促進する',
+      },
+    ];
+    renderWithProviders(<FertilizersScreen />);
+    expect(screen.queryByText('二次要素（Ca・Mg・S）')).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// ヘッダー説明文
+// ---------------------------------------------------------------------------
+
+describe('FertilizersScreen ヘッダー', () => {
+  it('説明文が表示される', () => {
+    mockNutrientsQuery.data = makeNutrients();
+    renderWithProviders(<FertilizersScreen />);
+    expect(
+      screen.getByText('盆栽の健康を支える施肥の基礎知識・樹種別スケジュールを確認できます'),
+    ).toBeTruthy();
   });
 });
 
@@ -251,6 +308,7 @@ describe('FertilizersScreen 樹種タブ', () => {
 describe('FertilizersScreen オフライン', () => {
   it('オフライン時に ERR_OFFLINE メッセージが表示される', () => {
     mockUseOnlineStatus.mockReturnValue(false);
+    mockNutrientsQuery.data = makeNutrients();
     renderWithProviders(<FertilizersScreen />);
     const { ERR_OFFLINE } = jest.requireActual('@/lib/constants/errors');
     expect(screen.getByText(ERR_OFFLINE)).toBeTruthy();
@@ -275,36 +333,42 @@ describe('FertilizersScreen 季節TIPS', () => {
 
   it('3月（春）は春のTIPSタイトルが表示される', () => {
     mockMonth(3);
+    mockNutrientsQuery.data = makeNutrients();
     renderWithProviders(<FertilizersScreen />);
     expect(screen.getByText('春の施肥 — 成長期の始まり')).toBeTruthy();
   });
 
   it('6月（夏）は夏のTIPSタイトルが表示される', () => {
     mockMonth(6);
+    mockNutrientsQuery.data = makeNutrients();
     renderWithProviders(<FertilizersScreen />);
     expect(screen.getByText('夏の施肥 — 控えめに管理')).toBeTruthy();
   });
 
   it('9月（秋）は秋のTIPSタイトルが表示される', () => {
     mockMonth(9);
+    mockNutrientsQuery.data = makeNutrients();
     renderWithProviders(<FertilizersScreen />);
     expect(screen.getByText('秋の施肥 — 冬越し準備')).toBeTruthy();
   });
 
   it('12月（冬）は冬のTIPSタイトルが表示される', () => {
     mockMonth(12);
+    mockNutrientsQuery.data = makeNutrients();
     renderWithProviders(<FertilizersScreen />);
     expect(screen.getByText('冬の施肥 — 休眠期は原則不要')).toBeTruthy();
   });
 
   it('2月（冬）は冬のTIPSタイトルが表示される', () => {
     mockMonth(2);
+    mockNutrientsQuery.data = makeNutrients();
     renderWithProviders(<FertilizersScreen />);
     expect(screen.getByText('冬の施肥 — 休眠期は原則不要')).toBeTruthy();
   });
 
   it('8月（夏）は夏のTIPSタイトルが表示される', () => {
     mockMonth(8);
+    mockNutrientsQuery.data = makeNutrients();
     renderWithProviders(<FertilizersScreen />);
     expect(screen.getByText('夏の施肥 — 控えめに管理')).toBeTruthy();
   });
