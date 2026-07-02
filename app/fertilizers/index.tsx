@@ -1,22 +1,20 @@
 /**
  * @module app/fertilizers/index
- * 施肥ガイドトップ画面。
- * Web 版 /fertilizers/page.tsx のスマホ表示を忠実に再現する。
- * - ヘッダーバナー画像（header-fertilizer.webp）
- * - 季節TIPS セクション（seasonal-*.webp + テキスト）
- * - ナビカード（栄養素/カテゴリ/樹種タブ切替）
- * - 栄養素タブ: 三大要素・二次要素・微量要素のセクション別カード
- * - カテゴリタブ: CategoryComparisonCard
- * - 樹種タブ: TreeCategory でセクション分けした TreeSpeciesCard + 松柏・雑木のセクション画像
+ * 施肥ガイドトップ画面。Web 版 /fertilizers の完全準拠再構築。
+ *
+ * スクロール不具合の根本修正:
+ * 従来の「ヘッダー固定 View + タブ切替 + flex:1 のタブコンテンツ」構造を廃止し、
+ * 画面全体を単一の ScrollView で包む縦一本スクロール構成に変更する。
+ * ヘッダーバナー・季節TIPS・ナビカード 7 枚・栄養素セクションをすべてスクロール内に収める。
  */
 
-import React, { useState, useCallback, useMemo, memo } from 'react';
+import React, { useCallback, useMemo, memo } from 'react';
 import {
   View,
   Text,
-  SectionList,
-  FlatList,
+  ScrollView,
   StyleSheet,
+  TouchableOpacity,
   RefreshControl,
 } from 'react-native';
 import { Image } from 'expo-image';
@@ -25,7 +23,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import {
   useFertilizerNutrientsQuery,
-  useFertilizerCategoriesQuery,
   useFertilizerTreeSpeciesQuery,
 } from '@/lib/queries/fertilizers';
 import type { components } from '@/lib/api/generated/schema.d.ts';
@@ -33,24 +30,24 @@ import { OfflineBanner } from '@/components/common/OfflineBanner';
 import { ScreenLoading } from '@/components/common/ScreenLoading';
 import { ScreenEmpty } from '@/components/common/ScreenEmpty';
 import { ScreenError } from '@/components/common/ScreenError';
-import { CatalogTabs } from '@/components/browse/CatalogTabs';
+import { NavCard } from '@/components/common/NavCard';
 import { NutrientCard } from '@/components/fertilizer/NutrientCard';
-import { TreeSpeciesCard } from '@/components/fertilizer/TreeSpeciesCard';
-import { CategoryComparisonCard } from '@/components/fertilizer/CategoryComparisonCard';
+import { FertilizerDisclaimer } from '@/components/fertilizer/FertilizerDisclaimer';
 import { useOnlineStatus } from '@/hooks/use-online-status';
 import { ERR_FERTILIZERS_LOAD_FAILED } from '@/lib/constants/errors';
 import {
   colorBackground,
-  colorSurfaceKinoko,
   colorSurface,
   colorBorder,
   colorTextPrimary,
   colorTextSecondary,
   colorActionPrimary,
+  colorSurfaceKinoko,
   spacing2,
   spacing3,
   spacing4,
   spacing5,
+  spacing6,
   spacing8,
   radiusMd,
   radiusFull,
@@ -66,23 +63,9 @@ import {
 // ---------------------------------------------------------------------------
 
 type NutrientItem = components['schemas']['NutrientItem'];
-type FertilizerCategoryItem = components['schemas']['FertilizerCategoryItem'];
-type TreeSpeciesItem = components['schemas']['TreeSpeciesItem'];
 
 // ---------------------------------------------------------------------------
-// タブ定義
-// ---------------------------------------------------------------------------
-
-const TABS = [
-  { key: 'nutrients', label: '栄養素' },
-  { key: 'categories', label: 'カテゴリ' },
-  { key: 'tree-species', label: '樹種' },
-] as const;
-
-type TabKey = typeof TABS[number]['key'];
-
-// ---------------------------------------------------------------------------
-// 季節判定（気象庁区分: 春3-5月 夏6-8月 秋9-11月 冬12-2月）
+// 季節判定
 // ---------------------------------------------------------------------------
 
 type Season = 'spring' | 'summer' | 'autumn' | 'winter';
@@ -133,25 +116,17 @@ const SEASONAL_TIPS: Record<Season, SeasonTip> = {
 };
 
 // ---------------------------------------------------------------------------
-// ヘッダーバナー（画像ソース）
+// 画像（require はトップレベルで宣言してバンドル対象にする）
 // ---------------------------------------------------------------------------
 
-const HEADER_IMG_LIGHT = require('@/assets/images/fertilizers/header-fertilizer.webp');
+const HEADER_IMG: number = require('@/assets/images/fertilizers/header-fertilizer.webp');
 
-// ---------------------------------------------------------------------------
-// 季節画像（require はトップレベルで宣言してバンドル対象にする）
-// ---------------------------------------------------------------------------
-
-// Metro bundler は require() でローカル画像を number 型の ID として解決する。
-// 型安全のため個別定数に切り出して number 推論を確定させてから Record に集める。
 const IMG_SEASONAL_SPRING: number = require('@/assets/images/fertilizers/seasonal-spring.webp');
 const IMG_SEASONAL_SUMMER: number = require('@/assets/images/fertilizers/seasonal-summer.webp');
 const IMG_SEASONAL_AUTUMN: number = require('@/assets/images/fertilizers/seasonal-autumn.webp');
 const IMG_SEASONAL_WINTER: number = require('@/assets/images/fertilizers/seasonal-winter.webp');
 const IMG_NUTRIENT_NPK: number = require('@/assets/images/fertilizers/nutrient-npk.webp');
 const IMG_NUTRIENT_SECONDARY: number = require('@/assets/images/fertilizers/nutrient-secondary.webp');
-const IMG_SCHEDULE_CONIFER: number = require('@/assets/images/fertilizers/schedule-conifer.webp');
-const IMG_SCHEDULE_DECIDUOUS: number = require('@/assets/images/fertilizers/schedule-deciduous.webp');
 
 const SEASONAL_IMAGES: Record<Season, number> = {
   spring: IMG_SEASONAL_SPRING,
@@ -161,90 +136,69 @@ const SEASONAL_IMAGES: Record<Season, number> = {
 };
 
 // ---------------------------------------------------------------------------
-// 栄養素セクション定義
+// ナビカード定義
 // ---------------------------------------------------------------------------
 
-type NutrientCategory = 'primary' | 'secondary' | 'trace';
-
-type NutrientSection = {
-  key: NutrientCategory;
+type NavCardDef = {
+  iconName: keyof typeof Ionicons.glyphMap;
   label: string;
-  image: number;
-  data: NutrientItem[];
+  getDescription: (nutrientCount?: number, treeCount?: number) => string;
+  onPress: () => void;
 };
 
-const NUTRIENT_CATEGORY_ORDER: { key: NutrientCategory; label: string; image: number }[] = [
+// アイコンは Ionicons から Web の lucide-react に最も近いものを選択。
+// beaker → flask-outline, grid → grid-outline, tree → leaf-outline,
+// book → book-outline, package → cube-outline, layers → layers-outline, cloud-rain → rainy-outline
+const NAV_CARD_DEFS: NavCardDef[] = [
   {
-    key: 'primary',
-    label: '三大栄養素（N・P・K）',
-    image: IMG_NUTRIENT_NPK,
+    iconName: 'flask-outline',
+    label: '栄養素辞典',
+    getDescription: (n) => n !== undefined && n > 0 ? `N・P・Kなど${n}種の栄養素を解説` : 'N・P・Kなどの栄養素を解説',
+    onPress: () => router.push('/fertilizers/nutrients'),
   },
   {
-    key: 'secondary',
-    label: '二次要素（Ca・Mg・S）',
-    image: IMG_NUTRIENT_SECONDARY,
+    iconName: 'grid-outline',
+    label: '肥料カテゴリ比較',
+    getDescription: () => '有機肥料・化成肥料・液肥などを比較',
+    onPress: () => router.push('/fertilizers/categories'),
   },
   {
-    key: 'trace',
-    label: '微量要素',
-    image: IMG_NUTRIENT_SECONDARY,
+    iconName: 'leaf-outline',
+    label: '樹種別施肥スケジュール',
+    getDescription: (_, t) => t !== undefined && t > 0 ? `${t}樹種の月別カレンダー` : '樹種ごとの月別施肥カレンダー',
+    onPress: () => router.push('/fertilizers/schedules'),
+  },
+  {
+    iconName: 'book-outline',
+    label: 'コラム・読みもの',
+    getDescription: () => '施肥テクニックや基礎知識',
+    onPress: () => router.push('/fertilizers/schedules'),
+  },
+  {
+    iconName: 'cube-outline',
+    label: '定番肥料ガイド',
+    getDescription: () => '盆栽栽培でよく使われる肥料製品を紹介',
+    onPress: () => router.push('/fertilizers/schedules'),
+  },
+  {
+    iconName: 'layers-outline',
+    label: '用土と施肥の関係',
+    getDescription: () => '用土の種類と保肥力が施肥に与える影響',
+    onPress: () => router.push('/fertilizers/schedules'),
+  },
+  {
+    iconName: 'rainy-outline',
+    label: '水やりと施肥の関係',
+    getDescription: () => '灌水と施肥の適切な組み合わせ',
+    onPress: () => router.push('/fertilizers/schedules'),
   },
 ];
 
 // ---------------------------------------------------------------------------
-// 樹種セクション定義
+// NutrientCard ラッパー（memo 化済みコンポーネントに押す handler を安定化）
 // ---------------------------------------------------------------------------
 
-type TreeCategory = 'conifer' | 'deciduous' | 'flowering' | 'fruiting' | 'grass' | 'evergreen';
-
-type TreeSection = {
-  key: TreeCategory;
-  label: string;
-  image: number | null;
-  data: TreeSpeciesItem[];
-};
-
-const TREE_CATEGORY_ORDER: { key: TreeCategory; label: string; image: number | null }[] = [
-  { key: 'conifer',   label: '松柏類',     image: IMG_SCHEDULE_CONIFER },
-  { key: 'deciduous', label: '雑木類',     image: IMG_SCHEDULE_DECIDUOUS },
-  { key: 'flowering', label: '花物',       image: null },
-  { key: 'fruiting',  label: '実物',       image: null },
-  { key: 'grass',     label: '草物',       image: null },
-  { key: 'evergreen', label: '常緑広葉樹', image: null },
-];
-
-// ---------------------------------------------------------------------------
-// セクションヘッダー — 栄養素・樹種共通
-// ---------------------------------------------------------------------------
-
-type SectionHeaderProps = {
-  title: string;
-  image: number | null;
-};
-
-const SectionHeader = memo(function SectionHeader({ title, image }: SectionHeaderProps) {
-  return (
-    <View style={styles.sectionHeaderContainer}>
-      {image !== null && (
-        <Image
-          source={image}
-          style={styles.sectionImage}
-          contentFit="cover"
-          accessibilityLabel={title}
-        />
-      )}
-      <Text style={styles.sectionTitle}>{title}</Text>
-    </View>
-  );
-});
-
-// ---------------------------------------------------------------------------
-// 栄養素アイテムセル（SectionList renderItem）
-// ---------------------------------------------------------------------------
-
-type NutrientItemCellProps = { item: NutrientItem };
-
-const NutrientItemCell = memo(function NutrientItemCell({ item }: NutrientItemCellProps) {
+const NutrientItemCell = memo(function NutrientItemCell({ item }: { item: NutrientItem }) {
   const handlePress = useCallback(
     (slug: string) =>
       router.push({ pathname: '/fertilizers/nutrients/[slug]', params: { slug } }),
@@ -263,270 +217,207 @@ const NutrientItemCell = memo(function NutrientItemCell({ item }: NutrientItemCe
 });
 
 // ---------------------------------------------------------------------------
-// 樹種アイテムセル（SectionList renderItem）
-// ---------------------------------------------------------------------------
-
-type TreeSpeciesItemCellProps = { item: TreeSpeciesItem };
-
-const TreeSpeciesItemCell = memo(function TreeSpeciesItemCell({ item }: TreeSpeciesItemCellProps) {
-  const handlePress = useCallback(
-    (slug: string, name: string) =>
-      router.push({
-        pathname: '/fertilizers/tree-species/[slug]',
-        params: { slug, name },
-      }),
-    [],
-  );
-  return (
-    <TreeSpeciesCard
-      name={item.name}
-      category={item.category}
-      fertilizingPolicy={item.fertilizingPolicy}
-      slug={item.slug}
-      onPress={handlePress}
-    />
-  );
-});
-
-// ---------------------------------------------------------------------------
-// 栄養素タブ
-// ---------------------------------------------------------------------------
-
-type NutrientsTabProps = { isActive: boolean };
-
-function NutrientsTab({ isActive }: NutrientsTabProps) {
-  const { data, isLoading, isError, refetch } = useFertilizerNutrientsQuery();
-  const insets = useSafeAreaInsets();
-
-  const sections = useMemo<NutrientSection[]>(() => {
-    if (data === undefined) return [];
-    return NUTRIENT_CATEGORY_ORDER.map(({ key, label, image }) => ({
-      key,
-      label,
-      image,
-      data: data.filter((n) => n.category === key),
-    })).filter((s) => s.data.length > 0);
-  }, [data]);
-
-  if (!isActive) return null;
-  if (isLoading) return <ScreenLoading variant="spinner" />;
-  if (isError) {
-    return (
-      <ScreenError
-        title="施肥情報を読み込めませんでした。"
-        description={ERR_FERTILIZERS_LOAD_FAILED}
-        onRetry={() => void refetch()}
-      />
-    );
-  }
-  if (sections.length === 0) return <ScreenEmpty title="データがありません" />;
-
-  return (
-    <SectionList
-      sections={sections}
-      keyExtractor={(item) => item.id}
-      renderSectionHeader={({ section }) => (
-        <SectionHeader title={section.label} image={section.image} />
-      )}
-      renderItem={({ item }) => (
-        <View style={styles.cardWrapper}>
-          <NutrientItemCell item={item} />
-        </View>
-      )}
-      contentContainerStyle={[styles.listContent, { paddingBottom: insets.bottom + spacing8 }]}
-      stickySectionHeadersEnabled={false}
-      refreshControl={
-        <RefreshControl refreshing={false} onRefresh={() => void refetch()} />
-      }
-    />
-  );
-}
-
-// ---------------------------------------------------------------------------
-// カテゴリタブ
-// ---------------------------------------------------------------------------
-
-type CategoriesTabProps = { isActive: boolean };
-
-function CategoriesTab({ isActive }: CategoriesTabProps) {
-  const { data, isLoading, isError, refetch } = useFertilizerCategoriesQuery();
-  const insets = useSafeAreaInsets();
-
-  if (!isActive) return null;
-  if (isLoading) return <ScreenLoading variant="spinner" />;
-  if (isError) {
-    return (
-      <ScreenError
-        title="施肥情報を読み込めませんでした。"
-        description={ERR_FERTILIZERS_LOAD_FAILED}
-        onRetry={() => void refetch()}
-      />
-    );
-  }
-  if (data === undefined || data.length === 0) return <ScreenEmpty title="データがありません" />;
-
-  return (
-    <FlatList<FertilizerCategoryItem>
-      data={data}
-      keyExtractor={(item) => item.code}
-      renderItem={({ item }) => (
-        <View style={styles.cardWrapper}>
-          <CategoryComparisonCard
-            name={item.name}
-            description={item.description}
-            merit={item.merit}
-            demerit={item.demerit}
-            bonsaiUsage={item.bonsaiUsage}
-          />
-        </View>
-      )}
-      contentContainerStyle={[styles.listContent, { paddingBottom: insets.bottom + spacing8 }]}
-      refreshControl={
-        <RefreshControl refreshing={false} onRefresh={() => void refetch()} />
-      }
-    />
-  );
-}
-
-// ---------------------------------------------------------------------------
-// 樹種タブ
-// ---------------------------------------------------------------------------
-
-type TreeSpeciesTabProps = { isActive: boolean };
-
-function TreeSpeciesTab({ isActive }: TreeSpeciesTabProps) {
-  const { data, isLoading, isError, refetch } = useFertilizerTreeSpeciesQuery();
-  const insets = useSafeAreaInsets();
-
-  const sections = useMemo<TreeSection[]>(() => {
-    if (data === undefined) return [];
-    return TREE_CATEGORY_ORDER.map(({ key, label, image }) => ({
-      key,
-      label,
-      image,
-      data: data.filter((s) => s.category === key),
-    })).filter((s) => s.data.length > 0);
-  }, [data]);
-
-  if (!isActive) return null;
-  if (isLoading) return <ScreenLoading variant="spinner" />;
-  if (isError) {
-    return (
-      <ScreenError
-        title="施肥情報を読み込めませんでした。"
-        description={ERR_FERTILIZERS_LOAD_FAILED}
-        onRetry={() => void refetch()}
-      />
-    );
-  }
-  if (sections.length === 0) return <ScreenEmpty title="データがありません" />;
-
-  return (
-    <SectionList
-      sections={sections}
-      keyExtractor={(item) => item.id}
-      renderSectionHeader={({ section }) => (
-        <SectionHeader title={section.label} image={section.image} />
-      )}
-      renderItem={({ item }) => (
-        <View style={styles.cardWrapper}>
-          <TreeSpeciesItemCell item={item} />
-        </View>
-      )}
-      contentContainerStyle={[styles.listContent, { paddingBottom: insets.bottom + spacing8 }]}
-      stickySectionHeadersEnabled={false}
-      refreshControl={
-        <RefreshControl refreshing={false} onRefresh={() => void refetch()} />
-      }
-    />
-  );
-}
-
-// ---------------------------------------------------------------------------
-// ヘッダー（バナー画像 + 季節TIPS）— FlatList の ListHeaderComponent として使用
-// ---------------------------------------------------------------------------
-
-const ScreenHeader = memo(function ScreenHeader() {
-  const season = getCurrentSeason();
-  const tip = SEASONAL_TIPS[season];
-  const seasonImg = SEASONAL_IMAGES[season];
-
-  return (
-    <View style={styles.screenHeader}>
-      {/* ヘッダーバナー */}
-      <Image
-        source={HEADER_IMG_LIGHT}
-        style={styles.headerBanner}
-        contentFit="cover"
-        accessibilityLabel="施肥ガイド"
-      />
-
-      <Text style={styles.headerDescription}>
-        盆栽の健康を支える施肥の基礎知識・樹種別スケジュールを確認できます
-      </Text>
-
-      {/* 季節TIPS カード */}
-      <View style={styles.seasonCard}>
-        <Image
-          source={seasonImg}
-          style={styles.seasonImage}
-          contentFit="cover"
-          accessibilityLabel={tip.title}
-        />
-        <View style={styles.seasonContent}>
-          <View style={styles.seasonIconBox}>
-            <Ionicons
-              name={tip.iconName}
-              size={20}
-              color={colorActionPrimary}
-              accessibilityElementsHidden
-              importantForAccessibility="no"
-            />
-          </View>
-          <View style={styles.seasonTextBox}>
-            <Text style={styles.seasonTitle}>{tip.title}</Text>
-            <Text style={styles.seasonDesc}>{tip.description}</Text>
-          </View>
-        </View>
-      </View>
-    </View>
-  );
-});
-
-// ---------------------------------------------------------------------------
 // Screen
 // ---------------------------------------------------------------------------
 
 export default function FertilizersScreen() {
   const insets = useSafeAreaInsets();
   const isOnline = useOnlineStatus();
-  const [activeTab, setActiveTab] = useState<TabKey>('nutrients');
 
-  const handleTabChange = useCallback((key: string) => {
-    if (key === 'nutrients' || key === 'categories' || key === 'tree-species') {
-      setActiveTab(key);
-    }
-  }, []);
+  const {
+    data: nutrients,
+    isLoading: isNutrientsLoading,
+    isError: isNutrientsError,
+    refetch: refetchNutrients,
+  } = useFertilizerNutrientsQuery();
+
+  const {
+    data: treeSpecies,
+    isLoading: isTreeLoading,
+    refetch: refetchTree,
+  } = useFertilizerTreeSpeciesQuery();
+
+  const isLoading = isNutrientsLoading || isTreeLoading;
+
+  const handleRefresh = useCallback(() => {
+    void refetchNutrients();
+    void refetchTree();
+  }, [refetchNutrients, refetchTree]);
+
+  const primaryNutrients = useMemo(
+    () => (nutrients ?? []).filter((n) => n.category === 'primary'),
+    [nutrients],
+  );
+  const secondaryNutrients = useMemo(
+    () => (nutrients ?? []).filter((n) => n.category === 'secondary'),
+    [nutrients],
+  );
+
+  const season = getCurrentSeason();
+  const tip = SEASONAL_TIPS[season];
+  const seasonImg = SEASONAL_IMAGES[season];
+
+  const nutrientCount = nutrients?.length;
+  const treeCount = treeSpecies?.length;
+
+  if (isLoading) return <ScreenLoading variant="spinner" />;
+
+  if (isNutrientsError && nutrients === undefined) {
+    return (
+      <>
+        <Stack.Screen options={{ title: '施肥ガイド', headerShown: true }} />
+        <OfflineBanner isVisible={!isOnline} />
+        <ScreenError
+          title="施肥情報を読み込めませんでした。"
+          description={ERR_FERTILIZERS_LOAD_FAILED}
+          onRetry={() => void refetchNutrients()}
+        />
+      </>
+    );
+  }
+
+  if (primaryNutrients.length === 0 && !isLoading) {
+    return (
+      <>
+        <Stack.Screen options={{ title: '施肥ガイド', headerShown: true }} />
+        <OfflineBanner isVisible={!isOnline} />
+        <ScreenEmpty title="データがありません" />
+      </>
+    );
+  }
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <View style={styles.container}>
       <Stack.Screen options={{ title: '施肥ガイド', headerShown: true }} />
-
       <OfflineBanner isVisible={!isOnline} />
 
-      <ScreenHeader />
+      {/* 画面全体を単一の ScrollView で包む — スクロール不具合の根本修正 */}
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: insets.bottom + spacing8 },
+        ]}
+        refreshControl={
+          <RefreshControl refreshing={false} onRefresh={handleRefresh} />
+        }
+        showsVerticalScrollIndicator={false}
+      >
+        {/* ヘッダーバナー */}
+        <Image
+          source={HEADER_IMG}
+          style={styles.headerBanner}
+          contentFit="cover"
+          accessibilityLabel="施肥ガイド"
+        />
 
-      <CatalogTabs
-        tabs={TABS.map((t) => ({ key: t.key, label: t.label }))}
-        activeKey={activeTab}
-        onChange={handleTabChange}
-      />
+        <Text style={styles.headerDescription}>
+          盆栽の健康を支える施肥の基礎知識・樹種別スケジュールを確認できます
+        </Text>
 
-      <View style={styles.tabContent}>
-        <NutrientsTab isActive={activeTab === 'nutrients'} />
-        <CategoriesTab isActive={activeTab === 'categories'} />
-        <TreeSpeciesTab isActive={activeTab === 'tree-species'} />
-      </View>
+        {/* 季節TIPS カード */}
+        <View style={styles.seasonCard}>
+          <Image
+            source={seasonImg}
+            style={styles.seasonImage}
+            contentFit="cover"
+            accessibilityLabel={tip.title}
+          />
+          <View style={styles.seasonContent}>
+            <View style={styles.seasonIconBox}>
+              <Ionicons
+                name={tip.iconName}
+                size={20}
+                color={colorActionPrimary}
+                accessibilityElementsHidden
+                importantForAccessibility="no"
+              />
+            </View>
+            <View style={styles.seasonTextBox}>
+              <Text style={styles.seasonTitle}>{tip.title}</Text>
+              <Text style={styles.seasonDesc}>{tip.description}</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* ナビカード 7 枚 */}
+        <View style={styles.navCardsSection}>
+          {NAV_CARD_DEFS.map((def) => (
+            <NavCard
+              key={def.label}
+              iconName={def.iconName}
+              label={def.label}
+              description={def.getDescription(nutrientCount, treeCount)}
+              onPress={def.onPress}
+            />
+          ))}
+        </View>
+
+        {/* 免責注記 */}
+        <View style={styles.disclaimerWrapper}>
+          <FertilizerDisclaimer />
+        </View>
+
+        {/* 三大栄養素セクション */}
+        {primaryNutrients.length > 0 && (
+          <View style={styles.nutrientSection}>
+            <Image
+              source={IMG_NUTRIENT_NPK}
+              style={styles.sectionImage}
+              contentFit="cover"
+              accessibilityLabel="三大栄養素"
+            />
+            <View style={styles.sectionTitleRow}>
+              <Text style={styles.sectionTitle}>三大栄養素（N・P・K）</Text>
+              <TouchableOpacity
+                onPress={() => router.push('/fertilizers/nutrients')}
+                accessibilityRole="button"
+                accessibilityLabel="栄養素一覧をすべて見る"
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Text style={styles.sectionLink}>すべて見る</Text>
+              </TouchableOpacity>
+            </View>
+            <View style={styles.cardList}>
+              {primaryNutrients.map((item) => (
+                <View key={item.id} style={styles.cardItem}>
+                  <NutrientItemCell item={item} />
+                </View>
+              ))}
+            </View>
+          </View>
+        )}
+
+        {/* 二次要素セクション */}
+        {secondaryNutrients.length > 0 && (
+          <View style={styles.nutrientSection}>
+            <Image
+              source={IMG_NUTRIENT_SECONDARY}
+              style={styles.sectionImage}
+              contentFit="cover"
+              accessibilityLabel="二次要素"
+            />
+            <View style={styles.sectionTitleRow}>
+              <Text style={styles.sectionTitle}>二次要素（Ca・Mg・S）</Text>
+              <TouchableOpacity
+                onPress={() => router.push('/fertilizers/nutrients')}
+                accessibilityRole="button"
+                accessibilityLabel="栄養素一覧をすべて見る"
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Text style={styles.sectionLink}>すべて見る</Text>
+              </TouchableOpacity>
+            </View>
+            <View style={styles.cardList}>
+              {secondaryNutrients.map((item) => (
+                <View key={item.id} style={styles.cardItem}>
+                  <NutrientItemCell item={item} />
+                </View>
+              ))}
+            </View>
+          </View>
+        )}
+      </ScrollView>
     </View>
   );
 }
@@ -540,14 +431,15 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: colorBackground,
   },
-  tabContent: {
+  scrollView: {
     flex: 1,
   },
-
-  // ---- ヘッダーエリア ----
-  screenHeader: {
-    backgroundColor: colorBackground,
+  scrollContent: {
+    gap: spacing6,
+    paddingTop: 0,
   },
+
+  // ---- ヘッダーバナー ----
   headerBanner: {
     width: '100%',
     aspectRatio: 21 / 9,
@@ -556,12 +448,11 @@ const styles = StyleSheet.create({
     ...textSm,
     color: colorTextSecondary,
     paddingHorizontal: spacing4,
-    paddingTop: spacing3,
-    paddingBottom: spacing4,
   },
+
+  // ---- 季節TIPS ----
   seasonCard: {
     marginHorizontal: spacing4,
-    marginBottom: spacing4,
     borderRadius: radiusMd,
     borderWidth: 1,
     borderColor: colorBorder,
@@ -603,30 +494,44 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
 
-  // ---- リスト共通 ----
-  listContent: {
+  // ---- ナビカード ----
+  navCardsSection: {
     paddingHorizontal: spacing4,
-    paddingTop: spacing4,
     gap: spacing3,
   },
-  cardWrapper: {
-    marginBottom: spacing3,
+
+  // ---- 免責注記 ----
+  disclaimerWrapper: {
+    paddingHorizontal: spacing4,
   },
 
-  // ---- セクションヘッダー ----
-  sectionHeaderContainer: {
-    marginBottom: spacing3,
-    marginTop: spacing4,
+  // ---- 栄養素セクション ----
+  nutrientSection: {
+    paddingHorizontal: spacing4,
     gap: spacing3,
   },
   sectionImage: {
     width: '100%',
     aspectRatio: 16 / 9,
     borderRadius: radiusMd,
-    overflow: 'hidden',
+  },
+  sectionTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
   },
   sectionTitle: {
     ...textLg,
     color: colorTextPrimary,
+  },
+  sectionLink: {
+    ...textSm,
+    color: colorActionPrimary,
+  },
+  cardList: {
+    gap: spacing3,
+  },
+  cardItem: {
+    // gap で制御するためマージン不要
   },
 });
