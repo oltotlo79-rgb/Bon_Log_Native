@@ -1,18 +1,22 @@
 /**
  * @module app/pesticides/index
- * 農薬・病害虫図鑑トップ画面。病害虫・農薬製品・農薬成分の3タブ無限スクロール。
- * 仕様: docs/design/browse-screens.md §5
+ * 農薬・病害虫セクション ハブ画面。
+ * Web 版 /pesticides のナビカード + 免責事項 + 検索フォーム構成を準拠再現する。
+ * 仕様: docs/design/pesticides-web-parity.md §4-1
  */
 
 import React, { useState, useCallback, memo } from 'react';
 import {
   View,
   Text,
-  FlatList,
+  ScrollView,
   StyleSheet,
-  ActivityIndicator,
-  RefreshControl,
+  TextInput,
   TouchableOpacity,
+  RefreshControl,
+  FlatList,
+  ActivityIndicator,
+  Keyboard,
   useWindowDimensions,
 } from 'react-native';
 import { Image } from 'expo-image';
@@ -21,35 +25,39 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import {
   usePesticideDiseasePestsQuery,
   usePesticideProductsQuery,
-  usePesticideIngredientsQuery,
 } from '@/lib/queries/pesticides';
 import type { components } from '@/lib/api/generated/schema.d.ts';
 import { OfflineBanner } from '@/components/common/OfflineBanner';
-import { ScreenLoading } from '@/components/common/ScreenLoading';
-import { ScreenEmpty } from '@/components/common/ScreenEmpty';
 import { ScreenError } from '@/components/common/ScreenError';
-import { CatalogTabs } from '@/components/browse/CatalogTabs';
-import { CatalogListItem } from '@/components/browse/CatalogListItem';
+import { ScreenEmpty } from '@/components/common/ScreenEmpty';
+import { NavCard } from '@/components/common/NavCard';
+import { PesticideDisclaimer } from '@/components/pesticide/PesticideDisclaimer';
 import { useOnlineStatus } from '@/hooks/use-online-status';
 import { ERR_PESTICIDES_LOAD_FAILED } from '@/lib/constants/errors';
 import { resolveApiImageUrl } from '@/lib/utils/resolve-api-image-url';
 import {
   colorBackground,
-  colorActionPrimary,
   colorSurface,
   colorSurfaceMuted,
+  colorBorder,
+  colorBorderLight,
+  colorActionPrimary,
+  colorActionPrimaryText,
   colorTextPrimary,
   colorTextSecondary,
-  colorBorder,
   spacing2,
   spacing3,
   spacing4,
   spacing6,
+  spacing8,
   radiusSm,
   radiusMd,
+  radiusFull,
   shadowWashi,
+  textBase,
   textSm,
   textXs,
+  fontFamilySerifBold,
 } from '@/lib/constants/design-tokens';
 
 // ---------------------------------------------------------------------------
@@ -58,23 +66,11 @@ import {
 
 type DiseasePestItem = components['schemas']['DiseasePestItem'];
 type PesticideItem = components['schemas']['PesticideItem'];
-type IngredientItem = components['schemas']['IngredientItem'];
 type DiseasePestCategory = components['schemas']['DiseasePestCategory'];
+type PesticideType = components['schemas']['PesticideType'];
 
 // ---------------------------------------------------------------------------
-// タブ定義
-// ---------------------------------------------------------------------------
-
-const TABS = [
-  { key: 'disease-pests', label: '病害虫' },
-  { key: 'products', label: '農薬製品' },
-  { key: 'ingredients', label: '農薬成分' },
-] as const;
-
-type TabKey = typeof TABS[number]['key'];
-
-// ---------------------------------------------------------------------------
-// カテゴリバッジ定義（Web版の CATEGORY_BADGE を RN カラーで移植）
+// カテゴリ・タイプバッジ定義
 // ---------------------------------------------------------------------------
 
 const CATEGORY_BADGE: Record<DiseasePestCategory, { label: string; bg: string; text: string }> = {
@@ -83,355 +79,588 @@ const CATEGORY_BADGE: Record<DiseasePestCategory, { label: string; bg: string; t
   beneficial_insect: { label: '益虫', bg: '#d1fae5', text: '#065f46' },
 };
 
-// カテゴリ絵文字（画像がない場合のプレースホルダー）
 const CATEGORY_EMOJI: Record<DiseasePestCategory, string> = {
   disease:           '🦠',
   pest:              '🐛',
   beneficial_insect: '🐝',
 };
 
-// ---------------------------------------------------------------------------
-// 病害虫カードコンポーネント（Web版 DiseasePestList の2カラムカードに合わせる）
-// ---------------------------------------------------------------------------
-
-const CARD_IMAGE_SIZE = 64;
-const CARD_COLUMNS = 2;
-const CARD_GAP = spacing3;
-
-type DiseasePestCardProps = {
-  item: DiseasePestItem;
-  cardWidth: number;
+const PESTICIDE_TYPE_BADGE: Record<PesticideType, { label: string; bg: string; text: string }> = {
+  fungicide:   { label: '殺菌剤', bg: '#e0f2fe', text: '#0369a1' },
+  insecticide: { label: '殺虫剤', bg: '#ffedd5', text: '#c2410c' },
+  acaricide:   { label: '殺ダニ剤', bg: '#ede9fe', text: '#6d28d9' },
+  compound:    { label: '複合剤', bg: '#fdf4ff', text: '#a21caf' },
+  other:       { label: 'その他', bg: '#f2f2f2', text: '#484848' },
 };
 
-const DiseasePestCard = memo(function DiseasePestCard({ item, cardWidth }: DiseasePestCardProps) {
-  const thumbnailUri = resolveApiImageUrl(item.imageUrl);
+// ---------------------------------------------------------------------------
+// タイプフィルタチップ定義
+// ---------------------------------------------------------------------------
+
+type DiseasePestCategoryFilter = 'disease' | 'pest' | 'beneficial_insect';
+type PesticideTypeFilter = 'fungicide' | 'insecticide' | 'acaricide' | 'compound';
+type FilterTag = 'all' | DiseasePestCategoryFilter | PesticideTypeFilter;
+
+type FilterChipDef = { key: FilterTag; label: string };
+
+const FILTER_CHIPS: FilterChipDef[] = [
+  { key: 'all', label: '全て' },
+  { key: 'pest', label: '害虫' },
+  { key: 'disease', label: '病気' },
+  { key: 'beneficial_insect', label: '益虫' },
+  { key: 'insecticide', label: '殺虫剤' },
+  { key: 'fungicide', label: '殺菌剤' },
+  { key: 'acaricide', label: '殺ダニ剤' },
+  { key: 'compound', label: '複合剤' },
+];
+
+const DISEASE_PEST_FILTER_KEYS: readonly DiseasePestCategoryFilter[] = ['disease', 'pest', 'beneficial_insect'] as const;
+const PESTICIDE_TYPE_FILTER_KEYS: readonly PesticideTypeFilter[] = ['fungicide', 'insecticide', 'acaricide', 'compound'] as const;
+
+function toDiseasePestCategory(key: FilterTag): DiseasePestCategory | undefined {
+  return (DISEASE_PEST_FILTER_KEYS as readonly string[]).includes(key)
+    ? (key as DiseasePestCategory)
+    : undefined;
+}
+
+function toPesticideType(key: FilterTag): PesticideType | undefined {
+  return (PESTICIDE_TYPE_FILTER_KEYS as readonly string[]).includes(key)
+    ? (key as PesticideType)
+    : undefined;
+}
+
+// ---------------------------------------------------------------------------
+// ハブナビカード定義（今回作成する画面のみ。新API待ちは除外）
+// ---------------------------------------------------------------------------
+
+type NavCardIconName = 'bug-outline' | 'flask-outline' | 'calculator-outline' | 'water-outline';
+
+type NavCardDef = {
+  iconName: NavCardIconName;
+  label: string;
+  description: string;
+  route: '/pesticides/disease-pests' | '/pesticides/ingredients' | '/pesticides/dilution-calculator' | '/pesticides/spray-guide';
+};
+
+const NAV_CARDS: NavCardDef[] = [
+  {
+    iconName: 'bug-outline',
+    label: '病害虫・益虫図鑑',
+    description: '病害・害虫・益虫の詳細と効く薬剤を確認',
+    route: '/pesticides/disease-pests',
+  },
+  {
+    iconName: 'flask-outline',
+    label: '有効成分（原体）一覧',
+    description: 'FRAC/IRACコード・耐性リスクを確認',
+    route: '/pesticides/ingredients',
+  },
+  {
+    iconName: 'calculator-outline',
+    label: '希釈計算ツール',
+    description: '希釈倍率から薬剤量を計算',
+    route: '/pesticides/dilution-calculator',
+  },
+  {
+    iconName: 'water-outline',
+    label: '散布方法ガイド',
+    description: '希釈・散布の実践ガイド',
+    route: '/pesticides/spray-guide',
+  },
+];
+
+// ---------------------------------------------------------------------------
+// バナー画像
+// ---------------------------------------------------------------------------
+
+// ライトモード専用バナー。将来のダークモード対応で header-pesticide-dark.webp を追加する
+/* eslint-disable @typescript-eslint/no-require-imports */
+const BANNER_IMG = require('@/assets/images/pesticides/header-pesticide.webp') as number;
+/* eslint-enable @typescript-eslint/no-require-imports */
+
+// ---------------------------------------------------------------------------
+// あいうえお順全一覧の統合アイテム型
+// ---------------------------------------------------------------------------
+
+type AllListItem =
+  | { type: 'disease_pest'; data: DiseasePestItem; sortKey: string }
+  | { type: 'product'; data: PesticideItem; sortKey: string };
+
+// ---------------------------------------------------------------------------
+// 病害虫セルコンポーネント
+// ---------------------------------------------------------------------------
+
+type DiseasePestCellProps = {
+  item: DiseasePestItem;
+  onPress: (item: DiseasePestItem) => void;
+};
+
+const DiseasePestCell = memo(function DiseasePestCell({ item, onPress }: DiseasePestCellProps) {
   const badge = CATEGORY_BADGE[item.category];
   const emoji = CATEGORY_EMOJI[item.category];
+  const thumbnailUri = resolveApiImageUrl(item.imageUrl);
 
-  const handlePress = useCallback(() => {
-    router.push({ pathname: '/pesticides/disease-pests/[slug]', params: { slug: item.slug } });
-  }, [item.slug]);
+  const handlePress = useCallback(() => { onPress(item); }, [item, onPress]);
 
   return (
     <TouchableOpacity
-      style={[styles.card, { width: cardWidth }]}
+      style={styles.gridCell}
       onPress={handlePress}
       activeOpacity={0.7}
       accessibilityRole="button"
-      accessibilityLabel={`${item.name}の詳細を見る`}
+      accessibilityLabel={`${item.name}で農薬を絞り込む`}
     >
-      <View style={styles.cardImageWrapper}>
+      <View style={styles.gridCellImage}>
         {thumbnailUri !== null ? (
           <Image
             source={{ uri: thumbnailUri }}
-            style={styles.cardImage}
+            style={styles.gridThumb}
             contentFit="cover"
             accessibilityLabel={`${item.name}のサムネイル`}
           />
         ) : (
-          <View style={styles.cardImagePlaceholder}>
-            <Text style={styles.cardEmoji} accessibilityElementsHidden>{emoji}</Text>
-          </View>
+          <Text style={styles.gridEmoji} accessibilityElementsHidden>{emoji}</Text>
         )}
       </View>
-      <View style={styles.cardBody}>
-        <View style={styles.cardTitleRow}>
-          <Text style={styles.cardName} numberOfLines={2}>{item.name}</Text>
-          <View style={[styles.categoryBadge, { backgroundColor: badge.bg }]}>
-            <Text style={[styles.categoryBadgeText, { color: badge.text }]}>{badge.label}</Text>
-          </View>
+      <View style={styles.gridCellBody}>
+        <Text style={styles.gridCellName} numberOfLines={2}>{item.name}</Text>
+        <View style={[styles.smallBadge, { backgroundColor: badge.bg }]}>
+          <Text style={[styles.smallBadgeText, { color: badge.text }]}>{badge.label}</Text>
         </View>
-        {item.description !== null && (
-          <Text style={styles.cardDesc} numberOfLines={2}>{item.description}</Text>
-        )}
       </View>
     </TouchableOpacity>
   );
 });
 
-const ProductCell = memo(function ProductCell({ item }: { item: PesticideItem }) {
-  const handlePress = useCallback(() => {
-    router.push({ pathname: '/pesticides/products/[slug]', params: { slug: item.slug } });
-  }, [item.slug]);
+// ---------------------------------------------------------------------------
+// 農薬製品セルコンポーネント
+// ---------------------------------------------------------------------------
+
+type ProductCellProps = {
+  item: PesticideItem;
+  onPress: (item: PesticideItem) => void;
+};
+
+const ProductCell = memo(function ProductCell({ item, onPress }: ProductCellProps) {
+  const badge = PESTICIDE_TYPE_BADGE[item.pesticideType];
+  const handlePress = useCallback(() => { onPress(item); }, [item, onPress]);
 
   return (
-    <CatalogListItem
-      title={item.name}
-      subtitle={item.description ?? undefined}
-      categoryLabel={item.pesticideType}
+    <TouchableOpacity
+      style={styles.gridCell}
       onPress={handlePress}
+      activeOpacity={0.7}
+      accessibilityRole="button"
       accessibilityLabel={`${item.name}の詳細を見る`}
-    />
+    >
+      <View style={[styles.gridCellImage, styles.gridCellImageProduct]}>
+        <Text style={styles.gridEmoji} accessibilityElementsHidden>🧪</Text>
+      </View>
+      <View style={styles.gridCellBody}>
+        <Text style={styles.gridCellName} numberOfLines={2}>{item.name}</Text>
+        <View style={[styles.smallBadge, { backgroundColor: badge.bg }]}>
+          <Text style={[styles.smallBadgeText, { color: badge.text }]}>{badge.label}</Text>
+        </View>
+      </View>
+    </TouchableOpacity>
   );
 });
 
-const IngredientCell = memo(function IngredientCell({ item }: { item: IngredientItem }) {
-  const handlePress = useCallback(() => {
-    router.push({ pathname: '/pesticides/ingredients/[slug]', params: { slug: item.slug } });
-  }, [item.slug]);
-
-  return (
-    <CatalogListItem
-      title={item.name}
-      subtitle={item.nameEn ?? undefined}
-      onPress={handlePress}
-      accessibilityLabel={`${item.name}の詳細を見る`}
-    />
-  );
-});
-
 // ---------------------------------------------------------------------------
-// タブコンテンツ
+// 統合リストアイテムのレンダラー
 // ---------------------------------------------------------------------------
 
-function DiseasePestsTab({ isActive }: { isActive: boolean }) {
-  const insets = useSafeAreaInsets();
-  const { width: windowWidth } = useWindowDimensions();
-  const {
-    data,
-    isLoading,
-    isError,
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage,
-    refetch,
-  } = usePesticideDiseasePestsQuery();
+type AllListCellProps = {
+  item: AllListItem;
+  onDiseasePestPress: (item: DiseasePestItem) => void;
+  onProductPress: (item: PesticideItem) => void;
+};
 
-  const handleEndReached = useCallback(() => {
-    if (hasNextPage && !isFetchingNextPage) {
-      void fetchNextPage();
-    }
-  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
-
-  const items = data?.pages.flatMap((p) => p.items) ?? [];
-
-  // 2カラムグリッド。左右padding + カラム間gapを引いてカード幅を算出
-  const cardWidth = Math.floor(
-    (windowWidth - spacing4 * 2 - CARD_GAP * (CARD_COLUMNS - 1)) / CARD_COLUMNS
-  );
-
-  const ListFooter = useCallback(() => {
-    if (!isFetchingNextPage) return null;
-    return (
-      <View style={styles.listFooter}>
-        <ActivityIndicator size="small" color={colorActionPrimary} />
-      </View>
-    );
-  }, [isFetchingNextPage]);
-
-  if (!isActive) return null;
-  if (isLoading) return <ScreenLoading variant="spinner" />;
-  if (isError) {
-    return (
-      <ScreenError
-        title="図鑑を読み込めませんでした。"
-        description={ERR_PESTICIDES_LOAD_FAILED}
-        onRetry={() => void refetch()}
-      />
-    );
+const AllListCell = memo(function AllListCell({
+  item,
+  onDiseasePestPress,
+  onProductPress,
+}: AllListCellProps) {
+  if (item.type === 'disease_pest') {
+    return <DiseasePestCell item={item.data} onPress={onDiseasePestPress} />;
   }
-  if (items.length === 0) return <ScreenEmpty title="データがありません" />;
-
-  return (
-    <FlatList
-      data={items}
-      keyExtractor={(item) => item.id}
-      numColumns={CARD_COLUMNS}
-      columnWrapperStyle={styles.gridRow}
-      renderItem={({ item }) => <DiseasePestCard item={item} cardWidth={cardWidth} />}
-      onEndReached={handleEndReached}
-      onEndReachedThreshold={0.3}
-      ListFooterComponent={ListFooter}
-      contentContainerStyle={[styles.gridContent, { paddingBottom: insets.bottom + spacing6 }]}
-      refreshControl={
-        <RefreshControl refreshing={false} onRefresh={() => void refetch()} />
-      }
-    />
-  );
-}
-
-function ProductsTab({ isActive }: { isActive: boolean }) {
-  const insets = useSafeAreaInsets();
-  const {
-    data,
-    isLoading,
-    isError,
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage,
-    refetch,
-  } = usePesticideProductsQuery();
-
-  const handleEndReached = useCallback(() => {
-    if (hasNextPage && !isFetchingNextPage) {
-      void fetchNextPage();
-    }
-  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
-
-  const items = data?.pages.flatMap((p) => p.items) ?? [];
-
-  const ListFooter = useCallback(() => {
-    if (!isFetchingNextPage) return null;
-    return (
-      <View style={styles.listFooter}>
-        <ActivityIndicator size="small" color={colorActionPrimary} />
-      </View>
-    );
-  }, [isFetchingNextPage]);
-
-  if (!isActive) return null;
-  if (isLoading) return <ScreenLoading variant="spinner" />;
-  if (isError) {
-    return (
-      <ScreenError
-        title="図鑑を読み込めませんでした。"
-        description={ERR_PESTICIDES_LOAD_FAILED}
-        onRetry={() => void refetch()}
-      />
-    );
-  }
-  if (items.length === 0) return <ScreenEmpty title="データがありません" />;
-
-  return (
-    <FlatList
-      data={items}
-      keyExtractor={(item) => item.id}
-      renderItem={({ item }) => <ProductCell item={item} />}
-      onEndReached={handleEndReached}
-      onEndReachedThreshold={0.3}
-      ListFooterComponent={ListFooter}
-      contentContainerStyle={{ paddingBottom: insets.bottom + spacing6 }}
-      refreshControl={
-        <RefreshControl refreshing={false} onRefresh={() => void refetch()} />
-      }
-    />
-  );
-}
-
-function IngredientsTab({ isActive }: { isActive: boolean }) {
-  const insets = useSafeAreaInsets();
-  const {
-    data,
-    isLoading,
-    isError,
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage,
-    refetch,
-  } = usePesticideIngredientsQuery();
-
-  const handleEndReached = useCallback(() => {
-    if (hasNextPage && !isFetchingNextPage) {
-      void fetchNextPage();
-    }
-  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
-
-  const items = data?.pages.flatMap((p) => p.items) ?? [];
-
-  const ListFooter = useCallback(() => {
-    if (!isFetchingNextPage) return null;
-    return (
-      <View style={styles.listFooter}>
-        <ActivityIndicator size="small" color={colorActionPrimary} />
-      </View>
-    );
-  }, [isFetchingNextPage]);
-
-  if (!isActive) return null;
-  if (isLoading) return <ScreenLoading variant="spinner" />;
-  if (isError) {
-    return (
-      <ScreenError
-        title="図鑑を読み込めませんでした。"
-        description={ERR_PESTICIDES_LOAD_FAILED}
-        onRetry={() => void refetch()}
-      />
-    );
-  }
-  if (items.length === 0) return <ScreenEmpty title="データがありません" />;
-
-  return (
-    <FlatList
-      data={items}
-      keyExtractor={(item) => item.id}
-      renderItem={({ item }) => <IngredientCell item={item} />}
-      onEndReached={handleEndReached}
-      onEndReachedThreshold={0.3}
-      ListFooterComponent={ListFooter}
-      contentContainerStyle={{ paddingBottom: insets.bottom + spacing6 }}
-      refreshControl={
-        <RefreshControl refreshing={false} onRefresh={() => void refetch()} />
-      }
-    />
-  );
-}
-
-// ---------------------------------------------------------------------------
-// ヘッダーバナー（Web版 page.tsx の aspect-[21/9] 画像ブロックに対応）
-// ---------------------------------------------------------------------------
-
-// ライトモード専用バナー。将来のダークモード対応で header-pesticide-dark.webp を追加する
-const BANNER_LIGHT = require('@/assets/images/pesticides/header-pesticide.webp') as number;
-
-const PesticidesBanner = memo(function PesticidesBanner() {
-  return (
-    <View style={styles.banner}>
-      <Image
-        source={BANNER_LIGHT}
-        style={styles.bannerImage}
-        contentFit="cover"
-        accessibilityLabel="農薬・病害虫図鑑"
-      />
-    </View>
-  );
+  return <ProductCell item={item.data} onPress={onProductPress} />;
 });
 
 // ---------------------------------------------------------------------------
 // Screen
 // ---------------------------------------------------------------------------
 
-export default function PesticidesScreen() {
+const CARD_COLUMNS = 2;
+const CARD_GAP = spacing3;
+
+export default function PesticidesHubScreen() {
   const insets = useSafeAreaInsets();
   const isOnline = useOnlineStatus();
-  const [activeTab, setActiveTab] = useState<TabKey>('disease-pests');
+  const { width: windowWidth } = useWindowDimensions();
 
-  return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
-      <Stack.Screen options={{ title: '農薬・病害虫図鑑', headerShown: true }} />
+  const [searchText, setSearchText] = useState('');
+  const [submittedSearch, setSubmittedSearch] = useState('');
+  const [activeTag, setActiveTag] = useState<FilterTag>('all');
+  const [selectedDiseasePestId, setSelectedDiseasePestId] = useState<string | null>(null);
 
-      <OfflineBanner isVisible={!isOnline} />
+  const diseasePestCategory = toDiseasePestCategory(activeTag);
+  const productType = toPesticideType(activeTag);
 
-      <PesticidesBanner />
+  const {
+    data: diseasePestData,
+    isLoading: isDpLoading,
+    isError: isDpError,
+    fetchNextPage: fetchDpNext,
+    hasNextPage: hasDpNext,
+    isFetchingNextPage: isFetchingDpNext,
+    refetch: refetchDp,
+  } = usePesticideDiseasePestsQuery({ category: diseasePestCategory });
 
-      <CatalogTabs
-        tabs={TABS.map((t) => ({ key: t.key, label: t.label }))}
-        activeKey={activeTab}
-        onChange={(key) => setActiveTab(key as TabKey)}
+  const {
+    data: productData,
+    isLoading: isProductLoading,
+    isError: isProductError,
+    fetchNextPage: fetchProductNext,
+    hasNextPage: hasProductNext,
+    isFetchingNextPage: isFetchingProductNext,
+    refetch: refetchProduct,
+  } = usePesticideProductsQuery({
+    search: submittedSearch.length > 0 ? submittedSearch : undefined,
+    type: productType,
+    diseasePestId: selectedDiseasePestId ?? undefined,
+  });
+
+  const handleSearch = useCallback(() => {
+    Keyboard.dismiss();
+    setSubmittedSearch(searchText);
+    setActiveTag('all');
+    setSelectedDiseasePestId(null);
+  }, [searchText]);
+
+  const handleClear = useCallback(() => {
+    setSearchText('');
+    setSubmittedSearch('');
+    setActiveTag('all');
+    setSelectedDiseasePestId(null);
+  }, []);
+
+  const handleTagChange = useCallback((tag: FilterTag) => {
+    setActiveTag(tag);
+    setSelectedDiseasePestId(null);
+    setSubmittedSearch('');
+    setSearchText('');
+  }, []);
+
+  const handleDiseasePestPress = useCallback((item: DiseasePestItem) => {
+    setSelectedDiseasePestId(item.id);
+    setActiveTag('all');
+    setSubmittedSearch('');
+    setSearchText('');
+  }, []);
+
+  const handleProductPress = useCallback((item: PesticideItem) => {
+    router.push({ pathname: '/pesticides/products/[slug]', params: { slug: item.slug } });
+  }, []);
+
+  const handleRefresh = useCallback(() => {
+    void refetchDp();
+    void refetchProduct();
+  }, [refetchDp, refetchProduct]);
+
+  // あいうえお順全一覧（病害虫 + 製品を混在してかな順ソート）
+  const allItems = React.useMemo((): AllListItem[] => {
+    const dpItems: AllListItem[] = (diseasePestData?.pages.flatMap((p) => p.items) ?? []).map(
+      (dp) => ({ type: 'disease_pest' as const, data: dp, sortKey: dp.nameKana ?? dp.name })
+    );
+    const prItems: AllListItem[] = (productData?.pages.flatMap((p) => p.items) ?? []).map(
+      (pr) => ({ type: 'product' as const, data: pr, sortKey: pr.name })
+    );
+    const merged = [...dpItems, ...prItems];
+    merged.sort((a, b) => a.sortKey.localeCompare(b.sortKey, 'ja'));
+    return merged;
+  }, [diseasePestData, productData]);
+
+  const showDiseasePestGrid = diseasePestCategory !== undefined;
+  const showProductList =
+    productType !== undefined ||
+    submittedSearch.length > 0 ||
+    selectedDiseasePestId !== null;
+
+  const isLoading = isDpLoading || isProductLoading;
+  const isError =
+    (showDiseasePestGrid && isDpError) || (showProductList && isProductError);
+
+  const dpItems = diseasePestData?.pages.flatMap((p) => p.items) ?? [];
+  const prItems = productData?.pages.flatMap((p) => p.items) ?? [];
+
+  const handleDpEndReached = useCallback(() => {
+    if (hasDpNext && !isFetchingDpNext) void fetchDpNext();
+  }, [hasDpNext, isFetchingDpNext, fetchDpNext]);
+
+  const handleProductEndReached = useCallback(() => {
+    if (hasProductNext && !isFetchingProductNext) void fetchProductNext();
+  }, [hasProductNext, isFetchingProductNext, fetchProductNext]);
+
+  // ---- 病害虫グリッドのレンダラー ----
+  const renderDpItem = useCallback(
+    ({ item }: { item: DiseasePestItem }) => (
+      <DiseasePestCell item={item} onPress={handleDiseasePestPress} />
+    ),
+    [handleDiseasePestPress]
+  );
+  const extractDpKey = useCallback((item: DiseasePestItem) => item.id, []);
+  const DpListFooter = useCallback(
+    () => (isFetchingDpNext ? <View style={styles.listFooter}><ActivityIndicator size="small" color={colorActionPrimary} /></View> : null),
+    [isFetchingDpNext]
+  );
+
+  // ---- 農薬製品リストのレンダラー ----
+  const renderProductItem = useCallback(
+    ({ item }: { item: PesticideItem }) => (
+      <ProductCell item={item} onPress={handleProductPress} />
+    ),
+    [handleProductPress]
+  );
+  const extractProductKey = useCallback((item: PesticideItem) => item.id, []);
+  const ProductListFooter = useCallback(
+    () => (isFetchingProductNext ? <View style={styles.listFooter}><ActivityIndicator size="small" color={colorActionPrimary} /></View> : null),
+    [isFetchingProductNext]
+  );
+
+  // ---- 全一覧のレンダラー ----
+  const renderAllItem = useCallback(
+    ({ item }: { item: AllListItem }) => (
+      <AllListCell
+        item={item}
+        onDiseasePestPress={handleDiseasePestPress}
+        onProductPress={handleProductPress}
       />
+    ),
+    [handleDiseasePestPress, handleProductPress]
+  );
+  const extractAllKey = useCallback((item: AllListItem) => `${item.type}-${item.data.id}`, []);
 
-      <View style={styles.content}>
-        <DiseasePestsTab isActive={activeTab === 'disease-pests'} />
-        <ProductsTab isActive={activeTab === 'products'} />
-        <IngredientsTab isActive={activeTab === 'ingredients'} />
+  const showClear = searchText.length > 0 || activeTag !== 'all' || selectedDiseasePestId !== null;
+  const listHeadingLabel = selectedDiseasePestId !== null
+    ? '対応薬剤'
+    : activeTag !== 'all'
+    ? `${FILTER_CHIPS.find((c) => c.key === activeTag)?.label ?? ''} の一覧`
+    : 'あいうえお順一覧';
+
+  const ListHeader = (
+    <View style={styles.headerContainer}>
+      {/* バナー画像（21:9比率） */}
+      <View style={styles.banner}>
+        <Image
+          source={BANNER_IMG}
+          style={styles.bannerImage}
+          contentFit="cover"
+          accessibilityLabel="農薬・病害虫"
+        />
+      </View>
+
+      <View style={styles.headerBody}>
+        {/* 説明文 */}
+        <Text style={styles.headerDescription}>
+          病害虫を選んで効く薬剤を検索、または薬剤名で直接検索できます
+        </Text>
+
+        {/* ナビカード */}
+        <View style={styles.navCardsSection}>
+          {NAV_CARDS.map((card) => (
+            <NavCard
+              key={card.label}
+              iconName={card.iconName}
+              label={card.label}
+              description={card.description}
+              onPress={() => { router.push(card.route); }}
+            />
+          ))}
+        </View>
+
+        {/* 免責事項 */}
+        <PesticideDisclaimer />
+
+        {/* 検索フォーム */}
+        <View style={styles.searchRow}>
+          <TextInput
+            style={styles.searchInput}
+            value={searchText}
+            onChangeText={setSearchText}
+            placeholder="薬剤名・登録番号で検索..."
+            placeholderTextColor={colorTextSecondary}
+            returnKeyType="search"
+            onSubmitEditing={handleSearch}
+            accessibilityLabel="薬剤名または登録番号で検索"
+          />
+          <TouchableOpacity
+            style={styles.searchButton}
+            onPress={handleSearch}
+            accessibilityRole="button"
+            accessibilityLabel="検索する"
+          >
+            <Text style={styles.searchButtonText}>検索</Text>
+          </TouchableOpacity>
+          {showClear && (
+            <TouchableOpacity
+              style={styles.clearButton}
+              onPress={handleClear}
+              accessibilityRole="button"
+              accessibilityLabel="検索フィルタをクリア"
+            >
+              <Text style={styles.clearButtonText}>クリア</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+
+        {/* タイプフィルタチップ（横スクロール） */}
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.filterChipsContent}
+          style={styles.filterChips}
+        >
+          {FILTER_CHIPS.map((chip) => (
+            <TouchableOpacity
+              key={chip.key}
+              style={[
+                styles.filterChip,
+                activeTag === chip.key && styles.filterChipActive,
+              ]}
+              onPress={() => { handleTagChange(chip.key); }}
+              accessibilityRole="button"
+              accessibilityLabel={`${chip.label}でフィルタ`}
+              accessibilityState={{ selected: activeTag === chip.key }}
+            >
+              <Text
+                style={[
+                  styles.filterChipText,
+                  activeTag === chip.key && styles.filterChipTextActive,
+                ]}
+              >
+                {chip.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+
+        {/* 一覧見出し */}
+        <Text style={styles.listHeading}>{listHeadingLabel}</Text>
       </View>
     </View>
   );
+
+  const emptyComponent = isLoading ? null : (
+    <ScreenEmpty title="該当するデータが見つかりませんでした" iconName="search-outline" />
+  );
+
+  if (isError) {
+    return (
+      <View style={styles.container}>
+        <Stack.Screen options={{ title: '農薬・病害虫', headerShown: true }} />
+        <OfflineBanner isVisible={!isOnline} />
+        <ScreenError
+          title="データを読み込めませんでした。"
+          description={ERR_PESTICIDES_LOAD_FAILED}
+          onRetry={handleRefresh}
+        />
+      </View>
+    );
+  }
+
+  // 表示モードに応じて FlatList を切り替える
+  if (showDiseasePestGrid) {
+    return (
+      <View style={styles.container}>
+        <Stack.Screen options={{ title: '農薬・病害虫', headerShown: true }} />
+        <OfflineBanner isVisible={!isOnline} />
+        <FlatList
+          data={dpItems}
+          keyExtractor={extractDpKey}
+          renderItem={renderDpItem}
+          numColumns={CARD_COLUMNS}
+          columnWrapperStyle={[styles.gridRow, { width: windowWidth - spacing4 * 2 }]}
+          onEndReached={handleDpEndReached}
+          onEndReachedThreshold={0.3}
+          ListHeaderComponent={ListHeader}
+          ListFooterComponent={DpListFooter}
+          ListEmptyComponent={emptyComponent}
+          contentContainerStyle={[styles.listContent, { paddingBottom: insets.bottom + spacing8 }]}
+          refreshControl={<RefreshControl refreshing={false} onRefresh={handleRefresh} />}
+          showsVerticalScrollIndicator={false}
+        />
+      </View>
+    );
+  }
+
+  if (showProductList) {
+    return (
+      <View style={styles.container}>
+        <Stack.Screen options={{ title: '農薬・病害虫', headerShown: true }} />
+        <OfflineBanner isVisible={!isOnline} />
+        <FlatList
+          data={prItems}
+          keyExtractor={extractProductKey}
+          renderItem={renderProductItem}
+          numColumns={CARD_COLUMNS}
+          columnWrapperStyle={[styles.gridRow, { width: windowWidth - spacing4 * 2 }]}
+          onEndReached={handleProductEndReached}
+          onEndReachedThreshold={0.3}
+          ListHeaderComponent={ListHeader}
+          ListFooterComponent={ProductListFooter}
+          ListEmptyComponent={emptyComponent}
+          contentContainerStyle={[styles.listContent, { paddingBottom: insets.bottom + spacing8 }]}
+          refreshControl={<RefreshControl refreshing={false} onRefresh={handleRefresh} />}
+          showsVerticalScrollIndicator={false}
+        />
+      </View>
+    );
+  }
+
+  // デフォルト: あいうえお順全一覧
+  return (
+    <View style={styles.container}>
+      <Stack.Screen options={{ title: '農薬・病害虫', headerShown: true }} />
+      <OfflineBanner isVisible={!isOnline} />
+      <FlatList
+        data={allItems}
+        keyExtractor={extractAllKey}
+        renderItem={renderAllItem}
+        numColumns={CARD_COLUMNS}
+        columnWrapperStyle={[styles.gridRow, { width: windowWidth - spacing4 * 2 }]}
+        ListHeaderComponent={ListHeader}
+        ListEmptyComponent={emptyComponent}
+        contentContainerStyle={[styles.listContent, { paddingBottom: insets.bottom + spacing8 }]}
+        refreshControl={<RefreshControl refreshing={false} onRefresh={handleRefresh} />}
+        showsVerticalScrollIndicator={false}
+      />
+    </View>
+  );
 }
+
+// ---------------------------------------------------------------------------
+// スタイル
+// ---------------------------------------------------------------------------
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: colorBackground,
   },
-  content: {
-    flex: 1,
+  listContent: {
+    paddingHorizontal: spacing4,
   },
   listFooter: {
     padding: spacing4,
     alignItems: 'center',
   },
 
-  // ヘッダーバナー（Web版 aspect-[21/9] 相当）
+  // ヘッダー
+  headerContainer: {
+    gap: 0,
+    marginBottom: spacing4,
+  },
   banner: {
     width: '100%',
     aspectRatio: 21 / 9,
@@ -441,75 +670,159 @@ const styles = StyleSheet.create({
     width: '100%',
     height: '100%',
   },
-
-  // 2カラムグリッド
-  gridContent: {
-    paddingHorizontal: spacing4,
+  headerBody: {
     paddingTop: spacing4,
-    gap: CARD_GAP,
+    gap: spacing6,
   },
+  headerDescription: {
+    ...textSm,
+    color: colorTextSecondary,
+  },
+
+  // ナビカード
+  navCardsSection: {
+    gap: spacing3,
+  },
+
+  // 検索フォーム
+  searchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing2,
+  },
+  searchInput: {
+    flex: 1,
+    height: 44,
+    borderWidth: 1,
+    borderColor: colorBorder,
+    borderRadius: radiusMd,
+    paddingHorizontal: spacing3,
+    backgroundColor: colorSurface,
+    ...textBase,
+    color: colorTextPrimary,
+  },
+  searchButton: {
+    height: 44,
+    paddingHorizontal: spacing3,
+    backgroundColor: colorActionPrimary,
+    borderRadius: radiusMd,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: 60,
+  },
+  searchButtonText: {
+    ...textSm,
+    color: colorActionPrimaryText,
+    fontFamily: fontFamilySerifBold,
+  },
+  clearButton: {
+    height: 44,
+    paddingHorizontal: spacing3,
+    borderWidth: 1,
+    borderColor: colorBorder,
+    borderRadius: radiusMd,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  clearButtonText: {
+    ...textSm,
+    color: colorTextSecondary,
+  },
+
+  // フィルタチップ
+  filterChips: {
+    marginHorizontal: -spacing4,
+  },
+  filterChipsContent: {
+    paddingHorizontal: spacing4,
+    gap: spacing2,
+    flexDirection: 'row',
+  },
+  filterChip: {
+    height: 36,
+    paddingHorizontal: spacing3,
+    borderRadius: radiusFull,
+    borderWidth: 1,
+    borderColor: colorBorder,
+    backgroundColor: colorSurface,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  filterChipActive: {
+    backgroundColor: colorActionPrimary,
+    borderColor: colorActionPrimary,
+  },
+  filterChipText: {
+    ...textXs,
+    color: colorTextSecondary,
+    fontFamily: fontFamilySerifBold,
+  },
+  filterChipTextActive: {
+    color: colorActionPrimaryText,
+  },
+
+  // 一覧見出し
+  listHeading: {
+    ...textSm,
+    color: colorTextSecondary,
+    fontFamily: fontFamilySerifBold,
+    paddingBottom: spacing2,
+    borderBottomWidth: 1,
+    borderBottomColor: colorBorderLight,
+    marginBottom: spacing3,
+  },
+
+  // グリッド共通セル
   gridRow: {
     gap: CARD_GAP,
     marginBottom: CARD_GAP,
   },
-
-  // 病害虫カード（Web版 DiseasePestList のグリッドカードに合わせた）
-  card: {
+  gridCell: {
+    flex: 1,
     backgroundColor: colorSurface,
     borderRadius: radiusMd,
     borderWidth: 1,
     borderColor: colorBorder,
     overflow: 'hidden',
+    minHeight: 44,
     ...shadowWashi,
   },
-  cardImageWrapper: {
+  gridCellImage: {
     width: '100%',
-    height: CARD_IMAGE_SIZE,
-    backgroundColor: colorSurfaceMuted,
-  },
-  cardImage: {
-    width: '100%',
-    height: CARD_IMAGE_SIZE,
-  },
-  cardImagePlaceholder: {
-    width: '100%',
-    height: CARD_IMAGE_SIZE,
+    height: 56,
     backgroundColor: colorSurfaceMuted,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  cardEmoji: {
-    fontSize: 28,
+  gridCellImageProduct: {
+    backgroundColor: '#eef4fb',
   },
-  cardBody: {
-    padding: spacing3,
+  gridThumb: {
+    width: '100%',
+    height: 56,
+  },
+  gridEmoji: {
+    fontSize: 22,
+  },
+  gridCellBody: {
+    padding: spacing2,
     gap: spacing2,
   },
-  cardTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    justifyContent: 'space-between',
-    gap: spacing2,
-  },
-  cardName: {
-    ...textSm,
+  gridCellName: {
+    ...textXs,
     color: colorTextPrimary,
-    fontWeight: '600',
-    flex: 1,
+    fontFamily: fontFamilySerifBold,
+    lineHeight: 16,
   },
-  categoryBadge: {
+  smallBadge: {
+    alignSelf: 'flex-start',
     borderRadius: radiusSm,
     paddingHorizontal: spacing2,
     paddingVertical: 2,
-    flexShrink: 0,
   },
-  categoryBadgeText: {
-    ...textXs,
-    fontWeight: '600',
-  },
-  cardDesc: {
-    ...textXs,
-    color: colorTextSecondary,
-    lineHeight: 16,
+  smallBadgeText: {
+    fontSize: 9,
+    lineHeight: 13,
+    fontFamily: fontFamilySerifBold,
   },
 });
