@@ -30,6 +30,7 @@ import { useOnlineStatus } from '@/hooks/use-online-status';
 import { ShopCard } from '@/components/shops/ShopCard';
 import { PrefecturePickerModal } from '@/components/shops/PrefecturePickerModal';
 import { RegionPickerModal } from '@/components/shops/RegionPickerModal';
+import { BonsaiMapView, type ShopMapItem } from '@/components/shops/BonsaiMapView';
 import { ScreenLoading } from '@/components/common/ScreenLoading';
 import { ScreenEmpty } from '@/components/common/ScreenEmpty';
 import { ScreenError } from '@/components/common/ScreenError';
@@ -162,6 +163,24 @@ export default function ShopsScreen() {
   } = useShopsListQuery({ search: committedSearch, genreId, sortBy, prefecture, region });
 
   const allItems: ShopListItem[] = data?.pages.flatMap((page) => page.items) ?? [];
+
+  // 地図マーカー用に lat/lng が揃っている店舗のみ抽出。
+  // 全件取得エンドポイント（map-pins）未実装のため現在ページ分のみ表示。
+  // 将来 GET /api/v1/shops/map-pins が追加されれば全件表示に移行する。
+  const mapItems: ShopMapItem[] = allItems.flatMap((item) => {
+    if (item.latitude === null || item.longitude === null) return [];
+    return [
+      {
+        id: item.id,
+        name: item.name,
+        latitude: item.latitude,
+        longitude: item.longitude,
+        address: item.address,
+        averageRating: item.averageRating,
+        reviewCount: item.reviewCount,
+      },
+    ];
+  });
 
   const handleSearch = useCallback(() => {
     const trimmed = search.trim();
@@ -330,6 +349,9 @@ export default function ShopsScreen() {
         onClose={() => setIsRegionModalVisible(false)}
       />
 
+      {/* 地図は FlatList の外に配置して全幅表示を確保する */}
+      <BonsaiMapView shops={mapItems} isOnline={isOnline} />
+
       {allItems.length === 0 ? (
         <ScreenEmpty
           iconName="map-outline"
@@ -349,9 +371,7 @@ export default function ShopsScreen() {
           onEndReachedThreshold={0.3}
           ListFooterComponent={renderFooter}
           ListHeaderComponent={
-            <Text style={styles.resultCount}>
-              {allItems.length}件
-            </Text>
+            <Text style={styles.resultCount}>盆栽園一覧 {allItems.length}件</Text>
           }
           contentContainerStyle={[
             styles.listContent,

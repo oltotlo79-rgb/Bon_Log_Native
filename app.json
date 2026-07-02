@@ -87,6 +87,12 @@
         {
           "iosUrlScheme": "com.googleusercontent.apps.placeholder-ios-client-id"
         }
+      ],
+      [
+        "expo-location",
+        {
+          "locationWhenInUsePermission": "現在地を地図上に表示し、近くの盆栽園を見つけるために位置情報の使用を許可してください。"
+        }
       ]
     ],
     "experiments": {
