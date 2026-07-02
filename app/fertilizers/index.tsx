@@ -184,13 +184,19 @@ const NAV_CARD_DEFS: NavCardDef[] = [
     iconName: 'layers-outline',
     label: '用土と施肥の関係',
     getDescription: () => '用土の種類と保肥力が施肥に与える影響',
-    onPress: () => router.push('/fertilizers/schedules'),
+    onPress: () => router.push('/fertilizers/soil'),
   },
   {
     iconName: 'rainy-outline',
     label: '水やりと施肥の関係',
     getDescription: () => '灌水と施肥の適切な組み合わせ',
-    onPress: () => router.push('/fertilizers/schedules'),
+    onPress: () => router.push('/fertilizers/watering'),
+  },
+  {
+    iconName: 'search-outline',
+    label: '症状から探す栄養素',
+    getDescription: () => '症状から不足栄養素を逆引き検索',
+    onPress: () => router.push('/fertilizers/symptoms'),
   },
 ];
 
