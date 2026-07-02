@@ -642,6 +642,87 @@ jest.mock('@expo-google-fonts/shippori-mincho', () => ({
   ShipporiMincho_700Bold: 'ShipporiMincho_700Bold',
 }));
 
+// react-native-webview のモック
+// WebView はネイティブモジュール（RNCWebViewModule）を必要とするため、
+// テスト環境ではダミーコンポーネントで代替する。
+// onMessage / injectJavaScript 等の ref メソッドは jest.fn() で検証可能にする。
+jest.mock('react-native-webview', () => {
+  const React = require('react');
+  const { View } = require('react-native');
+
+  const MockWebView = React.forwardRef(
+    (
+      {
+        onMessage,
+        testID,
+        accessibilityLabel,
+        style,
+        ...rest
+      }: {
+        onMessage?: (event: unknown) => void;
+        testID?: string;
+        accessibilityLabel?: string;
+        style?: unknown;
+        [key: string]: unknown;
+      },
+      ref: React.Ref<{ injectJavaScript: jest.Mock }>
+    ) => {
+      React.useImperativeHandle(ref, () => ({
+        injectJavaScript: jest.fn(),
+      }));
+      return React.createElement(View, {
+        testID: testID ?? 'mock-webview',
+        accessibilityLabel,
+        style,
+      });
+    }
+  );
+  MockWebView.displayName = 'MockWebView';
+
+  return {
+    __esModule: true,
+    default: MockWebView,
+  };
+});
+
+// expo-location のモック
+// 位置情報許可ダイアログ・GPS 取得はテスト環境では呼べないため in-memory モックで代替する。
+// requestForegroundPermissionsAsync / getCurrentPositionAsync はテストごとに
+// jest.mocked() で差し替え可能。
+jest.mock('expo-location', () => ({
+  requestForegroundPermissionsAsync: jest.fn(async () => ({
+    status: 'granted',
+    granted: true,
+    canAskAgain: true,
+    expires: 'never',
+  })),
+  getCurrentPositionAsync: jest.fn(async () => ({
+    coords: {
+      latitude: 35.6762,
+      longitude: 139.6503,
+      altitude: null,
+      accuracy: 10,
+      altitudeAccuracy: null,
+      heading: null,
+      speed: null,
+    },
+    timestamp: Date.now(),
+  })),
+  Accuracy: {
+    Lowest: 1,
+    Low: 2,
+    Balanced: 3,
+    High: 4,
+    Highest: 5,
+    BestForNavigation: 6,
+  },
+  PermissionStatus: {
+    GRANTED: 'granted',
+    DENIED: 'denied',
+    UNDETERMINED: 'undetermined',
+  },
+}));
+
 // expo-image のモック
 jest.mock('expo-image', () => {
   const React = require('react');

@@ -415,7 +415,9 @@ describe('ShopsScreen', () => {
         },
       });
       renderWithProviders(<ShopsScreen />);
-      expect(screen.getByText('2件')).toBeTruthy();
+      // React Native はテキストノードを分割して描画するため、
+      // 部分一致（exact: false）で「2件」を含む要素を検索する。
+      expect(screen.getByText(/2件/)).toBeTruthy();
     });
 
     it('1件のときは「1件」が表示される', () => {
@@ -427,7 +429,9 @@ describe('ShopsScreen', () => {
         },
       });
       renderWithProviders(<ShopsScreen />);
-      expect(screen.getByText('1件')).toBeTruthy();
+      // React Native はテキストノードを分割して描画するため、
+      // 部分一致（exact: false）で「1件」を含む要素を検索する。
+      expect(screen.getByText(/1件/)).toBeTruthy();
     });
   });
 
