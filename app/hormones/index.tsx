@@ -21,7 +21,7 @@ import {
 import { Image } from 'expo-image';
 import { Stack, router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useHormonesQuery } from '@/lib/queries/hormones';
+import { useHormonesQuery, useHormoneColumnsQuery } from '@/lib/queries/hormones';
 import type { components } from '@/lib/api/generated/schema.d.ts';
 import { OfflineBanner } from '@/components/common/OfflineBanner';
 import { ScreenLoading } from '@/components/common/ScreenLoading';
@@ -29,6 +29,7 @@ import { ScreenEmpty } from '@/components/common/ScreenEmpty';
 import { ScreenError } from '@/components/common/ScreenError';
 import { HormoneCard } from '@/components/hormone/HormoneCard';
 import { HormoneDisclaimer } from '@/components/hormone/HormoneDisclaimer';
+import { NavCard } from '@/components/common/NavCard';
 import { useOnlineStatus } from '@/hooks/use-online-status';
 import { ERR_HORMONES_LOAD_FAILED } from '@/lib/constants/errors';
 import { routeHormoneDetail } from '@/lib/constants/routes';
@@ -87,6 +88,7 @@ export default function HormonesScreen() {
   const insets = useSafeAreaInsets();
   const isOnline = useOnlineStatus();
   const { data, isLoading, isError, refetch } = useHormonesQuery();
+  const { data: columnsData } = useHormoneColumnsQuery();
 
   const majorHormones = useMemo<HormoneItem[]>(
     () => (data ?? []).filter((h) => h.category === 'major'),
@@ -96,6 +98,11 @@ export default function HormonesScreen() {
   const secondaryHormones = useMemo<HormoneItem[]>(
     () => (data ?? []).filter((h) => h.category === 'secondary'),
     [data],
+  );
+
+  const columnsCount = useMemo(
+    () => columnsData?.pages.flatMap((p) => p.items).length ?? 0,
+    [columnsData],
   );
 
   const handleRefresh = useCallback(() => {
@@ -156,6 +163,47 @@ export default function HormonesScreen() {
         <Text style={styles.headerDescription}>
           盆栽の成長・休眠・発根に関わる植物ホルモンの役割と相互作用を学べます
         </Text>
+
+        {/* ナビカード 6 枚 — 仕様 §4.13.2 */}
+        <View style={styles.navCardSection}>
+          <NavCard
+            iconName="build-outline"
+            label="技法とホルモン"
+            description="盆栽の各技法が植物ホルモンに与える影響"
+            onPress={() => router.push('/hormones/techniques')}
+          />
+          <NavCard
+            iconName="flash-outline"
+            label="ホルモン相互作用"
+            description="ホルモン間の相乗・拮抗・調節関係"
+            onPress={() => router.push('/hormones/interactions')}
+          />
+          <NavCard
+            iconName="git-network-outline"
+            label="相互作用ダイアグラム"
+            description="ホルモン間の関係をネットワーク図で確認"
+            onPress={() => router.push('/hormones/diagram')}
+          />
+          <NavCard
+            iconName="calendar-outline"
+            label="年間活性カレンダー"
+            description="五大ホルモンの月別活性レベルを一覧表示"
+            onPress={() => router.push('/hormones/calendar')}
+          />
+          <NavCard
+            iconName="options-outline"
+            label="バランスシミュレーター"
+            description="月と技法を選んでホルモンバランスを予測"
+            onPress={() => router.push('/hormones/simulator')}
+          />
+          <NavCard
+            iconName="book-outline"
+            label="コラム・読みもの"
+            description="植物ホルモンに関する知識・ノウハウ"
+            count={columnsCount > 0 ? columnsCount : undefined}
+            onPress={() => router.push('/hormones/columns')}
+          />
+        </View>
 
         {/* 免責注記 */}
         <View style={styles.disclaimerWrapper}>
@@ -230,6 +278,12 @@ const styles = StyleSheet.create({
     ...textSm,
     color: colorTextSecondary,
     paddingHorizontal: spacing4,
+  },
+
+  // ---- ナビカード ----
+  navCardSection: {
+    paddingHorizontal: spacing4,
+    gap: spacing3,
   },
 
   // ---- 免責注記 ----
