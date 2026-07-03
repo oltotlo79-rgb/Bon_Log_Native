@@ -5199,6 +5199,177 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/fertilizers/columns": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 施肥コラム一覧（F-1）
+         * @description publishedAt が設定済みの施肥コラムをカーソルページネーションで返す。
+         *     sortOrder ASC / publishedAt DESC 順。
+         *
+         *     重要仕様:
+         *     - category: 文字列フィルタ（想定値: product_guide / trouble 等。省略で全件）
+         *     - ゲスト可（Bearer 認証は必須だがゲストトークンで呼び出し可）
+         *     - レート制限: read（60/分）
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description 前ページ最終件の slug（省略で先頭から取得） */
+                    cursor?: string;
+                    /** @description 取得件数（1〜100、デフォルト 20） */
+                    limit?: number;
+                    /** @description カテゴリフィルタ（例: product_guide / trouble） */
+                    category?: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 施肥コラム一覧取得成功 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["FertilizerColumnListResponse"];
+                    };
+                };
+                /** @description バリデーションエラー (VALIDATION_ERROR) — limit が範囲外等 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description Bearer トークンなし (AUTH_REQUIRED) または期限切れ (AUTH_TOKEN_EXPIRED) */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description アカウント停止 (ACCOUNT_SUSPENDED) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description レート制限超過。Retry-After ヘッダー（秒）が返却される。自動リトライ禁止。 */
+                429: {
+                    headers: {
+                        /** @description 次のリクエストまでの待機秒数 */
+                        "Retry-After"?: number;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/fertilizers/columns/{slug}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 施肥コラム詳細（F-2）
+         * @description 指定 slug の施肥コラム詳細を返す。未公開（publishedAt = null）の場合は 404。
+         *     - ゲスト可（Bearer 認証は必須だがゲストトークンで呼び出し可）
+         *     - レート制限: read（60/分）
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    slug: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 施肥コラム詳細取得成功 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["FertilizerColumnDetail"];
+                    };
+                };
+                /** @description Bearer トークンなし (AUTH_REQUIRED) または期限切れ (AUTH_TOKEN_EXPIRED) */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description アカウント停止 (ACCOUNT_SUSPENDED) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description コラムが存在しないまたは未公開 (NOT_FOUND) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description レート制限超過。Retry-After ヘッダー（秒）が返却される。自動リトライ禁止。 */
+                429: {
+                    headers: {
+                        /** @description 次のリクエストまでの待機秒数 */
+                        "Retry-After"?: number;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/hormones": {
         parameters: {
             query?: never;
@@ -5301,13 +5472,14 @@ export interface paths {
         };
         /**
          * 植物ホルモン詳細
-         * @description 指定 slug のホルモン詳細を返す。effects / seasonalLevels を含む。
+         * @description 指定 slug のホルモン詳細を返す。effects / seasonalLevels / interactions / techniques を含む。
          *
          *     重要仕様:
          *     - slug 不存在は 404 NOT_FOUND
          *     - effects は isPromoting による促進/抑制効果の一覧（sortOrder ASC）
          *     - seasonalLevels は月別活性レベル（month 1〜12 ASC）
-         *     - interactions（ホルモン間相互作用）/ techniques（技法マッピング）は本バッチ対象外
+         *     - interactions: 自ホルモンが A 側または B 側の全相互作用を統一形式でマージ（A 側先出し）
+         *     - techniques: techniqueKey / techniqueNameJa にリマップ済み（sortOrder ASC）
          *     - ゲスト可（Bearer 認証は必須だがゲストトークンで呼び出し可）
          *     - レート制限: read（60/分）
          */
@@ -5360,6 +5532,390 @@ export interface paths {
                     };
                 };
                 /** @description ホルモンが存在しない (NOT_FOUND) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description レート制限超過。Retry-After ヘッダー（秒）が返却される。自動リトライ禁止。 */
+                429: {
+                    headers: {
+                        /** @description 次のリクエストまでの待機秒数 */
+                        "Retry-After"?: number;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/hormones/interactions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 全ホルモン相互作用一覧（H-3）
+         * @description 全ホルモン間相互作用を返す（sortOrder ASC）。ページネーションなし。
+         *
+         *     重要仕様:
+         *     - hormoneAId / hormoneBId はダイアグラム画面のエッジ情報として使用する
+         *     - ゲスト可（Bearer 認証は必須だがゲストトークンで呼び出し可）
+         *     - レート制限: read（60/分）
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 相互作用一覧取得成功 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["HormoneInteractionListResponse"];
+                    };
+                };
+                /** @description Bearer トークンなし (AUTH_REQUIRED) または期限切れ (AUTH_TOKEN_EXPIRED) */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description アカウント停止 (ACCOUNT_SUSPENDED) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description レート制限超過。Retry-After ヘッダー（秒）が返却される。自動リトライ禁止。 */
+                429: {
+                    headers: {
+                        /** @description 次のリクエストまでの待機秒数 */
+                        "Retry-After"?: number;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/hormones/techniques": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 全技法×ホルモン効果一覧（技法単位グループ化、H-4）
+         * @description 全 HormoneTechnique レコードを技法（techniqueKey）単位でグループ化して返す。
+         *
+         *     重要仕様:
+         *     - 各グループは techniqueKey / techniqueNameJa / techniqueNameEn と、
+         *       各ホルモンへの効果配列（hormoneId / hormoneNameJa / hormoneSlug / effectType / magnitude / mechanism）を持つ
+         *     - 注: HormoneTechnique モデルに技法レベルの description フィールドが存在しないため description は省略
+         *     - ゲスト可（Bearer 認証は必須だがゲストトークンで呼び出し可）
+         *     - レート制限: read（60/分）
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 技法一覧取得成功 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["HormoneTechniqueListResponse"];
+                    };
+                };
+                /** @description Bearer トークンなし (AUTH_REQUIRED) または期限切れ (AUTH_TOKEN_EXPIRED) */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description アカウント停止 (ACCOUNT_SUSPENDED) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description レート制限超過。Retry-After ヘッダー（秒）が返却される。自動リトライ禁止。 */
+                429: {
+                    headers: {
+                        /** @description 次のリクエストまでの待機秒数 */
+                        "Retry-After"?: number;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/hormones/simulator": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * シミュレーター用データ一括取得（H-5）
+         * @description 全ホルモン・全技法効果・全月別活性を 1 リクエストで返す。
+         *
+         *     重要仕様:
+         *     - hormones: { id, slug, name, nameEn }（nameEn は nullable）
+         *     - techniques: techniqueSlug → techniqueKey / techniqueName → nameJa にリマップ。
+         *       effects は { hormoneId, effectType, magnitude } のみ（mechanism は含まない）
+         *     - seasonalLevels: { hormoneId, month, level }（全ホルモン全月分）
+         *     - ページネーションなし（全件一括）
+         *     - ゲスト可（Bearer 認証は必須だがゲストトークンで呼び出し可）
+         *     - レート制限: read（60/分）
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description シミュレーターデータ取得成功 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["HormoneSimulatorResponse"];
+                    };
+                };
+                /** @description Bearer トークンなし (AUTH_REQUIRED) または期限切れ (AUTH_TOKEN_EXPIRED) */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description アカウント停止 (ACCOUNT_SUSPENDED) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description レート制限超過。Retry-After ヘッダー（秒）が返却される。自動リトライ禁止。 */
+                429: {
+                    headers: {
+                        /** @description 次のリクエストまでの待機秒数 */
+                        "Retry-After"?: number;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/hormones/columns": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * ホルモンコラム一覧（H-6）
+         * @description publishedAt が設定済みのホルモンコラムをカーソルページネーションで返す。
+         *     sortOrder ASC / publishedAt DESC 順。
+         *
+         *     重要仕様:
+         *     - ゲスト可（Bearer 認証は必須だがゲストトークンで呼び出し可）
+         *     - レート制限: read（60/分）
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description 前ページ最終件の slug（省略で先頭から取得） */
+                    cursor?: string;
+                    /** @description 取得件数（1〜100、デフォルト 20） */
+                    limit?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description ホルモンコラム一覧取得成功 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["HormoneColumnListResponse"];
+                    };
+                };
+                /** @description Bearer トークンなし (AUTH_REQUIRED) または期限切れ (AUTH_TOKEN_EXPIRED) */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description アカウント停止 (ACCOUNT_SUSPENDED) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description レート制限超過。Retry-After ヘッダー（秒）が返却される。自動リトライ禁止。 */
+                429: {
+                    headers: {
+                        /** @description 次のリクエストまでの待機秒数 */
+                        "Retry-After"?: number;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/hormones/columns/{slug}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * ホルモンコラム詳細（H-7）
+         * @description 指定 slug のホルモンコラム詳細を返す。未公開（publishedAt = null）の場合は 404。
+         *     - ゲスト可（Bearer 認証は必須だがゲストトークンで呼び出し可）
+         *     - レート制限: read（60/分）
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    slug: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description ホルモンコラム詳細取得成功 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["HormoneColumnDetail"];
+                    };
+                };
+                /** @description Bearer トークンなし (AUTH_REQUIRED) または期限切れ (AUTH_TOKEN_EXPIRED) */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description アカウント停止 (ACCOUNT_SUSPENDED) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description コラムが存在しないまたは未公開 (NOT_FOUND) */
                 404: {
                     headers: {
                         [name: string]: unknown;
@@ -5529,6 +6085,8 @@ export interface paths {
                             description: string | null;
                             imageUrl: string | null;
                             slug: string;
+                            bodySizeMinMm: number | null;
+                            bodySizeMaxMm: number | null;
                             effects: {
                                 pesticide: {
                                     id: string;
@@ -6014,6 +6572,620 @@ export interface paths {
                 };
                 /** @description 有効成分が存在しない (NOT_FOUND) */
                 404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description レート制限超過。Retry-After ヘッダー（秒）が返却される。自動リトライ禁止。 */
+                429: {
+                    headers: {
+                        /** @description 次のリクエストまでの待機秒数 */
+                        "Retry-After"?: number;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pesticides/spreaders": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 展着剤タイプ一覧
+         * @description 展着剤タイプの全一覧と各タイプに紐付く製品を返す。
+         *
+         *     重要仕様:
+         *     - sortOrder ASC / name ASC 順
+         *     - products は各展着剤タイプに紐付く Pesticide（formulationType を含む）
+         *     - ゲスト可（Bearer 認証は必須だがゲストトークンで呼び出し可）
+         *     - レート制限: read（60/分）
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 展着剤タイプ一覧取得成功 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["SpreaderTypeListResponse"];
+                    };
+                };
+                /** @description Bearer トークンなし (AUTH_REQUIRED) または期限切れ (AUTH_TOKEN_EXPIRED) */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description アカウント停止 (ACCOUNT_SUSPENDED) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description レート制限超過。Retry-After ヘッダー（秒）が返却される。自動リトライ禁止。 */
+                429: {
+                    headers: {
+                        /** @description 次のリクエストまでの待機秒数 */
+                        "Retry-After"?: number;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pesticides/spreaders/{slug}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 展着剤タイプ詳細
+         * @description 指定 slug の展着剤タイプ詳細を返す。effect / usageNote フィールドと紐付く製品一覧を含む。
+         *
+         *     重要仕様:
+         *     - slug 不存在は 404 NOT_FOUND
+         *     - ゲスト可（Bearer 認証は必須だがゲストトークンで呼び出し可）
+         *     - レート制限: read（60/分）
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description 展着剤タイプの slug */
+                    slug: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 展着剤タイプ詳細取得成功 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            id: string;
+                            slug: string;
+                            name: string;
+                            description: string | null;
+                            sortOrder: number;
+                            products: {
+                                id: string;
+                                slug: string;
+                                name: string;
+                                description: string | null;
+                                formulationType: {
+                                    name: string;
+                                    code: string;
+                                } | null;
+                            }[];
+                            effect: string | null;
+                            usageNote: string | null;
+                        };
+                    };
+                };
+                /** @description バリデーションエラー (VALIDATION_ERROR) — slug 形式不正 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description Bearer トークンなし (AUTH_REQUIRED) または期限切れ (AUTH_TOKEN_EXPIRED) */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description アカウント停止 (ACCOUNT_SUSPENDED) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description 展着剤タイプが存在しない (NOT_FOUND) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description レート制限超過。Retry-After ヘッダー（秒）が返却される。自動リトライ禁止。 */
+                429: {
+                    headers: {
+                        /** @description 次のリクエストまでの待機秒数 */
+                        "Retry-After"?: number;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pesticides/spreader-products": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 展着剤製品一覧
+         * @description 展着剤タイプ（spreaderTypes）を 1 件以上持つ農薬製品の一覧をカーソルページネーションで返す。name ASC 順。
+         *
+         *     重要仕様:
+         *     - 既存の GET /api/v1/pesticides/products?type=spreader では対応できない（spreader は PesticideType enum 外）ため専用エンドポイント
+         *     - ゲスト可（Bearer 認証は必須だがゲストトークンで呼び出し可）
+         *     - レート制限: read（60/分）
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description 前回レスポンスの nextCursor 値（slug） */
+                    cursor?: string;
+                    /** @description 取得件数（デフォルト 20、最大 100） */
+                    limit?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 展着剤製品一覧取得成功 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["SpreaderProductListResponse"];
+                    };
+                };
+                /** @description バリデーションエラー (VALIDATION_ERROR) — 不正な limit */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description Bearer トークンなし (AUTH_REQUIRED) または期限切れ (AUTH_TOKEN_EXPIRED) */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description アカウント停止 (ACCOUNT_SUSPENDED) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description レート制限超過。Retry-After ヘッダー（秒）が返却される。自動リトライ禁止。 */
+                429: {
+                    headers: {
+                        /** @description 次のリクエストまでの待機秒数 */
+                        "Retry-After"?: number;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pesticides/columns": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 農薬コラム一覧
+         * @description 公開済み（publishedAt が設定済み）農薬コラムの一覧をカーソルページネーションで返す。sortOrder ASC / publishedAt DESC 順。
+         *
+         *     重要仕様:
+         *     - ゲスト可（Bearer 認証は必須だがゲストトークンで呼び出し可）
+         *     - レート制限: read（60/分）
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description 前回レスポンスの nextCursor 値（slug） */
+                    cursor?: string;
+                    /** @description 取得件数（デフォルト 20、最大 100） */
+                    limit?: number;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 農薬コラム一覧取得成功 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["PesticideColumnListResponse"];
+                    };
+                };
+                /** @description バリデーションエラー (VALIDATION_ERROR) — 不正な limit */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description Bearer トークンなし (AUTH_REQUIRED) または期限切れ (AUTH_TOKEN_EXPIRED) */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description アカウント停止 (ACCOUNT_SUSPENDED) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description レート制限超過。Retry-After ヘッダー（秒）が返却される。自動リトライ禁止。 */
+                429: {
+                    headers: {
+                        /** @description 次のリクエストまでの待機秒数 */
+                        "Retry-After"?: number;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pesticides/columns/{slug}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 農薬コラム詳細
+         * @description 指定 slug の農薬コラム詳細を返す。未公開（publishedAt 未設定）の場合は 404。
+         *
+         *     重要仕様:
+         *     - slug 不存在または未公開は 404 NOT_FOUND
+         *     - ゲスト可（Bearer 認証は必須だがゲストトークンで呼び出し可）
+         *     - レート制限: read（60/分）
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description 農薬コラムの slug */
+                    slug: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 農薬コラム詳細取得成功 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": {
+                            id: string;
+                            slug: string;
+                            title: string;
+                            category: string;
+                            /** Format: date-time */
+                            publishedAt: string;
+                            sortOrder: number;
+                            content: string;
+                            /** Format: date-time */
+                            createdAt: string;
+                            /** Format: date-time */
+                            updatedAt: string;
+                        };
+                    };
+                };
+                /** @description バリデーションエラー (VALIDATION_ERROR) — slug 形式不正 */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description Bearer トークンなし (AUTH_REQUIRED) または期限切れ (AUTH_TOKEN_EXPIRED) */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description アカウント停止 (ACCOUNT_SUSPENDED) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description 農薬コラムが存在しないまたは未公開 (NOT_FOUND) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description レート制限超過。Retry-After ヘッダー（秒）が返却される。自動リトライ禁止。 */
+                429: {
+                    headers: {
+                        /** @description 次のリクエストまでの待機秒数 */
+                        "Retry-After"?: number;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pesticides/formulations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 剤型マスタ一覧
+         * @description 農薬剤型マスタの全一覧を返す。各剤型の農薬件数（pesticidesCount）を含む。sortOrder ASC / name ASC 順。
+         *
+         *     重要仕様:
+         *     - ゲスト可（Bearer 認証は必須だがゲストトークンで呼び出し可）
+         *     - レート制限: read（60/分）
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 剤型マスタ一覧取得成功 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["FormulationTypeListResponse"];
+                    };
+                };
+                /** @description Bearer トークンなし (AUTH_REQUIRED) または期限切れ (AUTH_TOKEN_EXPIRED) */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description アカウント停止 (ACCOUNT_SUSPENDED) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description レート制限超過。Retry-After ヘッダー（秒）が返却される。自動リトライ禁止。 */
+                429: {
+                    headers: {
+                        /** @description 次のリクエストまでの待機秒数 */
+                        "Retry-After"?: number;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/pesticides/mixing-data": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 混用チェッカー全データ
+         * @description 農薬全件（id / slug / name / pesticideType）と混用不可ペア全件を 1 リクエストで返す。
+         *     クライアント側でペア判定を行う混用チェッカー画面向け。変更頻度が低いため長めのキャッシュを推奨。
+         *
+         *     重要仕様:
+         *     - pesticides: 全農薬（最大 500 件、name ASC 順）
+         *     - incompatibilities: 全混用不可ペア（pesticideId / incompatibleWithId）
+         *     - ページネーションなし（全件一括）
+         *     - ゲスト可（Bearer 認証は必須だがゲストトークンで呼び出し可）
+         *     - レート制限: read（60/分）
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 混用チェッカー全データ取得成功 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["MixingDataResponse"];
+                    };
+                };
+                /** @description Bearer トークンなし (AUTH_REQUIRED) または期限切れ (AUTH_TOKEN_EXPIRED) */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description アカウント停止 (ACCOUNT_SUSPENDED) */
+                403: {
                     headers: {
                         [name: string]: unknown;
                     };
@@ -7280,6 +8452,90 @@ export interface paths {
                 };
             };
         };
+        trace?: never;
+    };
+    "/api/v1/shops/map-pins": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 地図用の全店舗ピン取得（M-1、ゲスト可）
+         * @description 位置情報（lat/lng）付き店舗を全件返す（ページネーションなし）。地図マーカー描画に使用する。
+         *
+         *     重要仕様:
+         *     - latitude / longitude が null の店舗は除外される
+         *     - 全件一括取得（上限 500 件）のため地図表示に最適
+         *     - averageRating はレビューがない場合 null
+         *     - ゲスト可（Bearer 認証は必須だがゲストトークンで呼び出し可）
+         *     - レート制限: read（60/分）
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description マップピン一覧取得成功 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ShopMapPinsResponse"];
+                    };
+                };
+                /** @description Bearer トークンなし (AUTH_REQUIRED) または期限切れ (AUTH_TOKEN_EXPIRED) */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description アカウント停止 (ACCOUNT_SUSPENDED) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description レート制限超過。Retry-After ヘッダー（秒）が返却される。自動リトライ禁止。 */
+                429: {
+                    headers: {
+                        /** @description 次のリクエストまでの待機秒数 */
+                        "Retry-After"?: number;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description 内部エラー (INTERNAL_ERROR) */
+                500: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/shops": {
@@ -12223,7 +13479,91 @@ export interface components {
             month: number;
             level: string;
         };
-        /** @description ホルモン詳細（bonsaiRole / productionSite / practicalTips / activationMethod / effects / seasonalLevels を含む）。interactions/techniques は別バッチで追加予定。 */
+        /** @description 相互作用 1 件。hormoneA / hormoneB の id / name / slug がフラットに展開される。 */
+        HormoneInteractionItem: {
+            id: string;
+            hormoneAId: string;
+            hormoneAName: string;
+            hormoneASlug: string;
+            hormoneBId: string;
+            hormoneBName: string;
+            hormoneBSlug: string;
+            type: string;
+            description: string | null;
+            bonsaiRelevance: string | null;
+        };
+        /** @description 全ホルモン相互作用一覧レスポンス（ページネーションなし）。 */
+        HormoneInteractionListResponse: {
+            items: {
+                id: string;
+                hormoneAId: string;
+                hormoneAName: string;
+                hormoneASlug: string;
+                hormoneBId: string;
+                hormoneBName: string;
+                hormoneBSlug: string;
+                type: string;
+                description: string | null;
+                bonsaiRelevance: string | null;
+            }[];
+        };
+        /** @description 詳細レスポンス内の技法 1 件（techniqueSlug → techniqueKey / techniqueName → techniqueNameJa にリマップ済み）。 */
+        HormoneTechniqueItem: {
+            id: string;
+            techniqueKey: string;
+            techniqueNameJa: string;
+            techniqueNameEn: string | null;
+            effectType: string;
+            magnitude: string;
+            mechanism: string | null;
+        };
+        /** @description 技法グループ内のホルモン効果 1 件。 */
+        HormoneTechniqueEffectItem: {
+            hormoneId: string;
+            hormoneNameJa: string;
+            hormoneSlug: string;
+            effectType: string;
+            magnitude: string;
+            mechanism: string | null;
+        };
+        /**
+         * @description 技法 1 グループ（techniqueKey 単位）。effects に該当技法が各ホルモンに与える効果を列挙する。
+         *     注: HormoneTechnique モデルに技法レベルの description フィールドが存在しないため description は含まない。
+         */
+        HormoneTechniqueGroup: {
+            techniqueKey: string;
+            techniqueNameJa: string;
+            techniqueNameEn: string | null;
+            effects: {
+                hormoneId: string;
+                hormoneNameJa: string;
+                hormoneSlug: string;
+                effectType: string;
+                magnitude: string;
+                mechanism: string | null;
+            }[];
+        };
+        /** @description 全技法×ホルモン効果一覧レスポンス（techniqueKey 単位でグループ化・ページネーションなし）。 */
+        HormoneTechniqueListResponse: {
+            items: {
+                techniqueKey: string;
+                techniqueNameJa: string;
+                techniqueNameEn: string | null;
+                effects: {
+                    hormoneId: string;
+                    hormoneNameJa: string;
+                    hormoneSlug: string;
+                    effectType: string;
+                    magnitude: string;
+                    mechanism: string | null;
+                }[];
+            }[];
+        };
+        /**
+         * @description ホルモン詳細（bonsaiRole / productionSite / practicalTips / activationMethod / effects / seasonalLevels / interactions / techniques を含む）。
+         *     interactions: 自ホルモンが A 側または B 側である全相互作用をフラットにマージ済み。
+         *     techniques: techniqueSlug → techniqueKey / techniqueName → techniqueNameJa にリマップ済み。
+         */
         HormoneDetail: {
             id: string;
             name: string;
@@ -12244,6 +13584,160 @@ export interface components {
                 month: number;
                 level: string;
             }[];
+            interactions: {
+                id: string;
+                hormoneAId: string;
+                hormoneAName: string;
+                hormoneASlug: string;
+                hormoneBId: string;
+                hormoneBName: string;
+                hormoneBSlug: string;
+                type: string;
+                description: string | null;
+                bonsaiRelevance: string | null;
+            }[];
+            techniques: {
+                id: string;
+                techniqueKey: string;
+                techniqueNameJa: string;
+                techniqueNameEn: string | null;
+                effectType: string;
+                magnitude: string;
+                mechanism: string | null;
+            }[];
+        };
+        /** @description シミュレーター用ホルモン 1 件。nameEn は HormoneType.nameEn（nullable）。 */
+        HormoneSimulatorHormoneItem: {
+            id: string;
+            slug: string;
+            name: string;
+            nameEn: string | null;
+        };
+        /** @description シミュレーター用技法内の効果 1 件（hormoneId / effectType / magnitude のみ）。 */
+        HormoneSimulatorEffectItem: {
+            hormoneId: string;
+            effectType: string;
+            magnitude: string;
+        };
+        /**
+         * @description シミュレーター用技法 1 件。techniqueSlug → techniqueKey / techniqueName → nameJa にリマップ済み。
+         *     effects: 対象ホルモン一覧（hormoneId / effectType / magnitude）。
+         */
+        HormoneSimulatorTechniqueItem: {
+            techniqueKey: string;
+            nameJa: string;
+            nameEn: string | null;
+            effects: {
+                hormoneId: string;
+                effectType: string;
+                magnitude: string;
+            }[];
+        };
+        /** @description シミュレーター用月別活性 1 件（hormoneId / month / level）。 */
+        HormoneSimulatorSeasonalLevelItem: {
+            hormoneId: string;
+            month: number;
+            level: string;
+        };
+        /** @description シミュレーター用一括データ（hormones / techniques / seasonalLevels の全件）。 */
+        HormoneSimulatorResponse: {
+            hormones: {
+                id: string;
+                slug: string;
+                name: string;
+                nameEn: string | null;
+            }[];
+            techniques: {
+                techniqueKey: string;
+                nameJa: string;
+                nameEn: string | null;
+                effects: {
+                    hormoneId: string;
+                    effectType: string;
+                    magnitude: string;
+                }[];
+            }[];
+            seasonalLevels: {
+                hormoneId: string;
+                month: number;
+                level: string;
+            }[];
+        };
+        /** @description ホルモンコラム一覧の 1 件。 */
+        HormoneColumnItem: {
+            id: string;
+            slug: string;
+            title: string;
+            category: string;
+            /** Format: date-time */
+            publishedAt: string;
+            sortOrder: number;
+        };
+        /** @description ホルモンコラム詳細（content / createdAt / updatedAt を含む）。 */
+        HormoneColumnDetail: {
+            id: string;
+            slug: string;
+            title: string;
+            category: string;
+            /** Format: date-time */
+            publishedAt: string;
+            sortOrder: number;
+            content: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        /** @description ホルモンコラム一覧レスポンス（カーソルページネーション）。 */
+        HormoneColumnListResponse: {
+            items: {
+                id: string;
+                slug: string;
+                title: string;
+                category: string;
+                /** Format: date-time */
+                publishedAt: string;
+                sortOrder: number;
+            }[];
+            nextCursor: string | null;
+        };
+        /** @description 施肥コラム一覧の 1 件。 */
+        FertilizerColumnItem: {
+            id: string;
+            slug: string;
+            title: string;
+            category: string;
+            /** Format: date-time */
+            publishedAt: string;
+            sortOrder: number;
+        };
+        /** @description 施肥コラム詳細（content / createdAt / updatedAt を含む）。 */
+        FertilizerColumnDetail: {
+            id: string;
+            slug: string;
+            title: string;
+            category: string;
+            /** Format: date-time */
+            publishedAt: string;
+            sortOrder: number;
+            content: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        /** @description 施肥コラム一覧レスポンス（カーソルページネーション）。 */
+        FertilizerColumnListResponse: {
+            items: {
+                id: string;
+                slug: string;
+                title: string;
+                category: string;
+                /** Format: date-time */
+                publishedAt: string;
+                sortOrder: number;
+            }[];
+            nextCursor: string | null;
         };
         /**
          * @description 病害虫カテゴリ enum: disease（病害）/ pest（害虫）/ beneficial_insect（益虫）。
@@ -12265,7 +13759,7 @@ export interface components {
          * @enum {string}
          */
         ResistanceRisk: "low" | "medium" | "high";
-        /** @description 病害虫一覧の 1 件（id, name, nameKana, category, description, imageUrl, slug）。 */
+        /** @description 病害虫一覧の 1 件（id, name, nameKana, category, description, imageUrl, slug, bodySizeMinMm, bodySizeMaxMm）。bodySizeMinMm/bodySizeMaxMm は害虫・益虫の体長範囲（mm）。未設定は null。 */
         DiseasePestItem: {
             id: string;
             name: string;
@@ -12275,6 +13769,8 @@ export interface components {
             description: string | null;
             imageUrl: string | null;
             slug: string;
+            bodySizeMinMm: number | null;
+            bodySizeMaxMm: number | null;
         };
         /** @description 病害虫詳細の農薬効果 1 件（pesticide 情報 + rating）。 */
         DiseasePestEffectItem: {
@@ -12319,6 +13815,8 @@ export interface components {
             description: string | null;
             imageUrl: string | null;
             slug: string;
+            bodySizeMinMm: number | null;
+            bodySizeMaxMm: number | null;
             effects: {
                 pesticide: {
                     id: string;
@@ -12363,6 +13861,8 @@ export interface components {
                 description: string | null;
                 imageUrl: string | null;
                 slug: string;
+                bodySizeMinMm: number | null;
+                bodySizeMaxMm: number | null;
             }[];
             nextCursor: string | null;
         };
@@ -12521,6 +14021,201 @@ export interface components {
                 slug: string;
             }[];
             nextCursor: string | null;
+        };
+        /** @description 展着剤タイプに紐付く製品 1 件（id, slug, name, description, formulationType）。 */
+        SpreaderProductInSpreaderType: {
+            id: string;
+            slug: string;
+            name: string;
+            description: string | null;
+            formulationType: {
+                name: string;
+                code: string;
+            } | null;
+        };
+        /** @description 展着剤タイプ一覧の 1 件（id, slug, name, description, sortOrder, products）。 */
+        SpreaderTypeItem: {
+            id: string;
+            slug: string;
+            name: string;
+            description: string | null;
+            sortOrder: number;
+            products: {
+                id: string;
+                slug: string;
+                name: string;
+                description: string | null;
+                formulationType: {
+                    name: string;
+                    code: string;
+                } | null;
+            }[];
+        };
+        /** @description 展着剤タイプ詳細（effect / usageNote を追加）。 */
+        SpreaderTypeDetail: {
+            id: string;
+            slug: string;
+            name: string;
+            description: string | null;
+            sortOrder: number;
+            products: {
+                id: string;
+                slug: string;
+                name: string;
+                description: string | null;
+                formulationType: {
+                    name: string;
+                    code: string;
+                } | null;
+            }[];
+            effect: string | null;
+            usageNote: string | null;
+        };
+        /** @description GET /api/v1/pesticides/spreaders 成功レスポンス。sortOrder ASC / name ASC 順。 */
+        SpreaderTypeListResponse: {
+            items: {
+                id: string;
+                slug: string;
+                name: string;
+                description: string | null;
+                sortOrder: number;
+                products: {
+                    id: string;
+                    slug: string;
+                    name: string;
+                    description: string | null;
+                    formulationType: {
+                        name: string;
+                        code: string;
+                    } | null;
+                }[];
+            }[];
+        };
+        /** @description 製品に紐付く展着剤タイプ 1 件（id, slug, name）。 */
+        SpreaderTypeInProduct: {
+            id: string;
+            slug: string;
+            name: string;
+        };
+        /** @description 展着剤製品一覧の 1 件（id, slug, name, formulationType, registrationNumber, spreaderTypes）。 */
+        SpreaderProductItem: {
+            id: string;
+            slug: string;
+            name: string;
+            formulationType: {
+                name: string;
+                code: string;
+            } | null;
+            registrationNumber: string | null;
+            spreaderTypes: {
+                id: string;
+                slug: string;
+                name: string;
+            }[];
+        };
+        /** @description GET /api/v1/pesticides/spreader-products 成功レスポンス。name ASC 順。 */
+        SpreaderProductListResponse: {
+            items: {
+                id: string;
+                slug: string;
+                name: string;
+                formulationType: {
+                    name: string;
+                    code: string;
+                } | null;
+                registrationNumber: string | null;
+                spreaderTypes: {
+                    id: string;
+                    slug: string;
+                    name: string;
+                }[];
+            }[];
+            nextCursor: string | null;
+        };
+        /** @description 農薬コラム一覧の 1 件（id, slug, title, category, publishedAt, sortOrder）。 */
+        PesticideColumnItem: {
+            id: string;
+            slug: string;
+            title: string;
+            category: string;
+            /** Format: date-time */
+            publishedAt: string;
+            sortOrder: number;
+        };
+        /** @description 農薬コラム詳細（content / createdAt / updatedAt を追加）。 */
+        PesticideColumnDetail: {
+            id: string;
+            slug: string;
+            title: string;
+            category: string;
+            /** Format: date-time */
+            publishedAt: string;
+            sortOrder: number;
+            content: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        /** @description GET /api/v1/pesticides/columns 成功レスポンス。sortOrder ASC / publishedAt DESC 順。 */
+        PesticideColumnListResponse: {
+            items: {
+                id: string;
+                slug: string;
+                title: string;
+                category: string;
+                /** Format: date-time */
+                publishedAt: string;
+                sortOrder: number;
+            }[];
+            nextCursor: string | null;
+        };
+        /** @description 剤型マスタの 1 件（id, code, name, description, sortOrder, pesticidesCount）。 */
+        FormulationTypeItem: {
+            id: string;
+            code: string;
+            name: string;
+            description: string | null;
+            sortOrder: number;
+            pesticidesCount: number;
+        };
+        /** @description GET /api/v1/pesticides/formulations 成功レスポンス。sortOrder ASC / name ASC 順。 */
+        FormulationTypeListResponse: {
+            items: {
+                id: string;
+                code: string;
+                name: string;
+                description: string | null;
+                sortOrder: number;
+                pesticidesCount: number;
+            }[];
+        };
+        /** @description 混用チェッカー用農薬 1 件（id, slug, name, pesticideType）。 */
+        MixingDataPesticideItem: {
+            id: string;
+            slug: string;
+            name: string;
+            /** @enum {string} */
+            pesticideType: "fungicide" | "insecticide" | "acaricide" | "compound" | "other";
+        };
+        /** @description 混用不可ペア 1 件（pesticideId / incompatibleWithId）。 */
+        MixingDataIncompatibilityItem: {
+            pesticideId: string;
+            incompatibleWithId: string;
+        };
+        /** @description GET /api/v1/pesticides/mixing-data 成功レスポンス。pesticides（全件）と incompatibilities（全ペア）を含む。 */
+        MixingDataResponse: {
+            pesticides: {
+                id: string;
+                slug: string;
+                name: string;
+                /** @enum {string} */
+                pesticideType: "fungicide" | "insecticide" | "acaricide" | "compound" | "other";
+            }[];
+            incompatibilities: {
+                pesticideId: string;
+                incompatibleWithId: string;
+            }[];
         };
         /**
          * @description 盆栽作成リクエスト。name は必須（最大 100 文字）。
@@ -12875,6 +14570,28 @@ export interface components {
         /** @description 盆栽園作成成功レスポンス（id を返す）。 */
         ShopCreatedResponse: {
             id: string;
+        };
+        /** @description 地図マーカー用の軽量店舗 1 件。lat/lng が null の店舗は除外済み。averageRating はレビューなしの場合 null。 */
+        ShopMapPinItem: {
+            id: string;
+            name: string;
+            latitude: number;
+            longitude: number;
+            address: string;
+            averageRating: number | null;
+            reviewCount: number;
+        };
+        /** @description 全店舗マップピン一覧レスポンス（ページネーションなし）。 */
+        ShopMapPinsResponse: {
+            items: {
+                id: string;
+                name: string;
+                latitude: number;
+                longitude: number;
+                address: string;
+                averageRating: number | null;
+                reviewCount: number;
+            }[];
         };
         /** @description レビュー画像 1 件（url）。 */
         ReviewImage: {
