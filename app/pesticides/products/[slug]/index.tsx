@@ -5,13 +5,14 @@
  */
 
 import React, { useCallback } from 'react';
-import { View, Text, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, TouchableOpacity, Linking } from 'react-native';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { usePesticideProductDetailQuery } from '@/lib/queries/pesticides';
 import { OfflineBanner } from '@/components/common/OfflineBanner';
 import { ScreenLoading } from '@/components/common/ScreenLoading';
 import { ScreenError } from '@/components/common/ScreenError';
+import { PesticideDisclaimer } from '@/components/pesticide/PesticideDisclaimer';
 import { useOnlineStatus } from '@/hooks/use-online-status';
 import { ERR_PESTICIDES_LOAD_FAILED } from '@/lib/constants/errors';
 import type { components } from '@/lib/api/generated/schema.d.ts';
@@ -25,9 +26,16 @@ import {
   colorTextSecondary,
   colorTextLink,
   colorError,
+  colorWarning,
+  colorWarningBg,
   colorPesticideWarningBorder,
   colorPesticideWarningBg,
   colorPesticideWarningDivider,
+  colorCategoryGreenBg,
+  colorCategoryGreenText,
+  colorCategoryAmberBg,
+  colorCategoryRoseBg,
+  colorCategoryRoseText,
   spacing2,
   spacing3,
   spacing4,
@@ -48,9 +56,10 @@ import {
 // ---------------------------------------------------------------------------
 
 type PesticideType = components['schemas']['PesticideType'];
+type ResistanceRisk = 'low' | 'medium' | 'high';
 
 // ---------------------------------------------------------------------------
-// Screen
+// 定数
 // ---------------------------------------------------------------------------
 
 const PESTICIDE_TYPE_LABEL: Record<PesticideType, string> = {
@@ -61,11 +70,46 @@ const PESTICIDE_TYPE_LABEL: Record<PesticideType, string> = {
   other:       'その他',
 };
 
-const RESISTANCE_RISK_LABEL: Record<string, string> = {
+const RESISTANCE_RISK_LABEL: Record<ResistanceRisk, string> = {
   low:    'つきにくい',
   medium: 'ややつきやすい',
   high:   'つきやすい',
 };
+
+/** Web: bg-rose-100 text-rose-700 (high), bg-amber-100 text-amber-700 (medium), bg-emerald-100 text-emerald-700 (low) */
+const RESISTANCE_RISK_COLORS: Record<ResistanceRisk, { bg: string; text: string }> = {
+  high:   { bg: colorCategoryRoseBg,  text: colorCategoryRoseText },
+  medium: { bg: colorCategoryAmberBg, text: colorWarning },
+  low:    { bg: colorCategoryGreenBg, text: colorCategoryGreenText },
+};
+
+const MAFF_PESTICIDE_BASE_URL = 'https://pesticide.maff.go.jp/agricultural-chemicals/details';
+
+function buildMaffUrl(registrationNumber: string): string {
+  return `${MAFF_PESTICIDE_BASE_URL}/${registrationNumber}`;
+}
+
+function isResistanceRisk(value: string | null | undefined): value is ResistanceRisk {
+  return value === 'low' || value === 'medium' || value === 'high';
+}
+
+function getMaxResistanceRisk(
+  activeIngredients: { resistanceRisk: string | null }[]
+): ResistanceRisk | null {
+  const ORDER: Record<ResistanceRisk, number> = { high: 3, medium: 2, low: 1 };
+  let max: ResistanceRisk | null = null;
+  for (const { resistanceRisk } of activeIngredients) {
+    if (!isResistanceRisk(resistanceRisk)) continue;
+    if (max === null || ORDER[resistanceRisk] > ORDER[max]) {
+      max = resistanceRisk;
+    }
+  }
+  return max;
+}
+
+// ---------------------------------------------------------------------------
+// Screen
+// ---------------------------------------------------------------------------
 
 export default function ProductDetailScreen() {
   const insets = useSafeAreaInsets();
@@ -85,7 +129,17 @@ export default function ProductDetailScreen() {
     router.push({ pathname: '/pesticides/disease-pests/[slug]', params: { slug: diseasePestSlug } });
   }, []);
 
+  const handleFormulationPress = useCallback((_formulationCode: string) => {
+    // formulations 画面はクエリパラメータではなくリスト表示のみのため、一覧へ遷移する
+    router.push('/pesticides/formulations' as never);
+  }, []);
+
+  const handleMaffLinkPress = useCallback((registrationNumber: string) => {
+    void Linking.openURL(buildMaffUrl(registrationNumber));
+  }, []);
+
   const hasIncompatibilities = (data?.incompatibilities.length ?? 0) > 0;
+  const resistanceRisk = data !== undefined ? getMaxResistanceRisk(data.activeIngredients) : null;
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -135,6 +189,19 @@ export default function ProductDetailScreen() {
             <Text style={styles.description}>{data.description}</Text>
           )}
 
+          {/* 登録番号未掲載バッジ（Web: MaffUnverifiedBadge） */}
+          {data.registrationNumber === null && (
+            <View style={styles.unverifiedBadge} accessibilityRole="alert">
+              <Text style={styles.unverifiedTitle}>登録番号は未掲載です</Text>
+              <Text style={styles.unverifiedBody}>
+                この製品の農薬登録番号は当サイトで確認できていません。ご使用前に農林水産省の農薬登録情報提供システムで最新の登録情報をご確認ください。
+              </Text>
+            </View>
+          )}
+
+          {/* 農薬情報免責注記 */}
+          <PesticideDisclaimer />
+
           {/* 基本情報（Web版 <dl> グリッドに対応） */}
           <View style={styles.infoSection}>
             <Text style={styles.sectionTitle} accessibilityRole="header">
@@ -143,13 +210,57 @@ export default function ProductDetailScreen() {
             {data.registrationNumber !== null && (
               <View style={styles.infoRow}>
                 <Text style={styles.infoLabel}>登録番号</Text>
-                <Text style={styles.infoValue}>{data.registrationNumber}</Text>
+                <TouchableOpacity
+                  onPress={() => handleMaffLinkPress(data.registrationNumber as string)}
+                  accessibilityRole="link"
+                  accessibilityLabel={`${data.registrationNumber} 農林水産省の詳細ページを開く`}
+                >
+                  <Text style={styles.infoValueLink}>
+                    {data.registrationNumber}（農林水産省）↗
+                  </Text>
+                </TouchableOpacity>
               </View>
             )}
             {data.formulationType !== null && (
               <View style={styles.infoRow}>
                 <Text style={styles.infoLabel}>剤型</Text>
-                <Text style={styles.infoValue}>{data.formulationType.name}</Text>
+                <View style={styles.formulationCell}>
+                  <TouchableOpacity
+                    onPress={() => handleFormulationPress((data.formulationType as { name: string; code: string }).code)}
+                    accessibilityRole="link"
+                    accessibilityLabel={`${data.formulationType.name}の詳細を見る`}
+                  >
+                    <Text style={styles.infoValueLink}>{data.formulationType.name}</Text>
+                  </TouchableOpacity>
+                  <Text style={styles.formulationSeparator}>·</Text>
+                  <TouchableOpacity
+                    onPress={() => handleFormulationPress((data.formulationType as { name: string; code: string }).code)}
+                    accessibilityRole="link"
+                    accessibilityLabel="同じ剤型の薬剤一覧を見る"
+                  >
+                    <Text style={styles.infoValueLinkSm}>同じ剤型の薬剤を見る</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
+            {resistanceRisk !== null && (
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>耐性がつきやすいか</Text>
+                <View
+                  style={[
+                    styles.resistanceBadge,
+                    { backgroundColor: RESISTANCE_RISK_COLORS[resistanceRisk].bg },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.resistanceBadgeText,
+                      { color: RESISTANCE_RISK_COLORS[resistanceRisk].text },
+                    ]}
+                  >
+                    {RESISTANCE_RISK_LABEL[resistanceRisk]}
+                  </Text>
+                </View>
               </View>
             )}
           </View>
@@ -181,13 +292,6 @@ export default function ProductDetailScreen() {
                           <Text style={styles.codeTagText}>IRAC: {ingredient.iracCode}</Text>
                         </View>
                       )}
-                      {ingredient.resistanceRisk !== null && (
-                        <View style={styles.codeTag}>
-                          <Text style={styles.codeTagText}>
-                            耐性: {RESISTANCE_RISK_LABEL[ingredient.resistanceRisk] ?? ingredient.resistanceRisk}
-                          </Text>
-                        </View>
-                      )}
                     </View>
                   </View>
                 </TouchableOpacity>
@@ -195,29 +299,6 @@ export default function ProductDetailScreen() {
               <Text style={styles.sectionNote}>
                 各成分ページでは同じ成分を含む薬剤の一覧を確認できます。
               </Text>
-            </View>
-          )}
-
-          {/* 対象病害虫 */}
-          {data.effects.length > 0 && (
-            <View style={styles.infoSection}>
-              <Text style={styles.sectionTitle} accessibilityRole="header">
-                効果のある病害虫
-              </Text>
-              <Text style={styles.sectionNote}>
-                病害虫名をタップすると病害虫図鑑の詳細ページへ移動します。
-              </Text>
-              {data.effects.map((effect) => (
-                <TouchableOpacity
-                  key={effect.diseasePest.id}
-                  style={styles.relatedRow}
-                  onPress={() => handleDiseasePestPress(effect.diseasePest.slug)}
-                  accessibilityRole="button"
-                  accessibilityLabel={`${effect.diseasePest.name}の詳細を見る`}
-                >
-                  <Text style={styles.relatedName}>{effect.diseasePest.name}</Text>
-                </TouchableOpacity>
-              ))}
             </View>
           )}
 
@@ -252,6 +333,29 @@ export default function ProductDetailScreen() {
               </Text>
             )}
           </View>
+
+          {/* 対象病害虫（Webではセクション順序が最後） */}
+          {data.effects.length > 0 && (
+            <View style={styles.infoSection}>
+              <Text style={styles.sectionTitle} accessibilityRole="header">
+                効果のある病害虫
+              </Text>
+              <Text style={styles.sectionNote}>
+                病害虫名をタップすると病害虫図鑑の詳細ページへ移動します。
+              </Text>
+              {data.effects.map((effect) => (
+                <TouchableOpacity
+                  key={effect.diseasePest.id}
+                  style={styles.relatedRow}
+                  onPress={() => handleDiseasePestPress(effect.diseasePest.slug)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${effect.diseasePest.name}の詳細を見る`}
+                >
+                  <Text style={styles.relatedName}>{effect.diseasePest.name}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
         </ScrollView>
       )}
     </View>
@@ -299,6 +403,26 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
 
+  // 登録番号未掲載バッジ（Web: MaffUnverifiedBadge amber-50 border-amber-300）
+  unverifiedBadge: {
+    borderWidth: 1,
+    borderColor: colorPesticideWarningBorder,
+    backgroundColor: colorWarningBg,
+    borderRadius: radiusMd,
+    padding: spacing3,
+    gap: spacing2,
+  },
+  unverifiedTitle: {
+    ...textSm,
+    color: colorWarning,
+    fontWeight: '600',
+  },
+  unverifiedBody: {
+    ...textXs,
+    color: colorWarning,
+    lineHeight: 18,
+  },
+
   // 情報セクション（Web版 rounded-lg border p-4 に対応）
   infoSection: {
     borderRadius: radiusMd,
@@ -330,13 +454,47 @@ const styles = StyleSheet.create({
   infoLabel: {
     ...textSm,
     color: colorTextSecondary,
-    width: 72,
+    width: 96,
     flexShrink: 0,
   },
   infoValue: {
     ...textSm,
     color: colorTextPrimary,
     flex: 1,
+  },
+  infoValueLink: {
+    ...textSm,
+    color: colorTextLink,
+    flex: 1,
+    textDecorationLine: 'underline',
+  },
+  infoValueLinkSm: {
+    ...textXs,
+    color: colorTextLink,
+    textDecorationLine: 'underline',
+  },
+  formulationCell: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: spacing2,
+  },
+  formulationSeparator: {
+    ...textXs,
+    color: colorTextSecondary,
+  },
+
+  // 耐性リスクバッジ（Web: rounded px-2 py-0.5 text-xs font-medium）
+  resistanceBadge: {
+    alignSelf: 'flex-start',
+    borderRadius: radiusSm,
+    paddingHorizontal: spacing2,
+    paddingVertical: 2,
+  },
+  resistanceBadgeText: {
+    ...textXs,
+    fontWeight: '600',
   },
 
   // 有効成分行（FRAC/IRACタグ付き）
@@ -412,4 +570,3 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
 });
-
