@@ -78,3 +78,15 @@ export const DM_CONVERSATIONS_PAGE_SIZE = 20;
 
 /** DM メッセージ一覧のページ取得件数（サーバーデフォルト 50） */
 export const DM_MESSAGES_PAGE_SIZE = 50;
+
+/** 展着剤製品一覧のページ取得件数 */
+export const SPREADER_PRODUCTS_PAGE_SIZE = 20;
+
+/** 農薬コラム一覧のページ取得件数 */
+export const PESTICIDE_COLUMNS_PAGE_SIZE = 20;
+
+/** ホルモンコラム一覧のページ取得件数 */
+export const HORMONE_COLUMNS_PAGE_SIZE = 20;
+
+/** 施肥コラム一覧のページ取得件数 */
+export const FERTILIZER_COLUMNS_PAGE_SIZE = 20;

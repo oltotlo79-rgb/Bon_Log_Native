@@ -135,6 +135,10 @@ export const queryKeys = {
     treeSpecies: (category?: string) => ['fertilizers', 'treeSpecies', category] as const,
     /** 樹種別施肥スケジュール */
     schedule: (slug: string) => ['fertilizers', 'schedule', slug] as const,
+    /** 施肥コラム一覧（カーソルページネーション・任意 category フィルタ） */
+    columns: (category?: string) => ['fertilizers', 'columns', category] as const,
+    /** 施肥コラム詳細 */
+    columnDetail: (slug: string) => ['fertilizers', 'columnDetail', slug] as const,
   },
 
   /** 植物ホルモン */
@@ -145,6 +149,16 @@ export const queryKeys = {
     list: (category?: string) => ['hormones', 'list', category] as const,
     /** ホルモン詳細 */
     detail: (slug: string) => ['hormones', 'detail', slug] as const,
+    /** 相互作用全件（ページネーションなし） */
+    interactions: ['hormones', 'interactions'] as const,
+    /** 技法全件（ページネーションなし・techniqueKey 単位グループ化） */
+    techniques: ['hormones', 'techniques'] as const,
+    /** シミュレーター用一括データ */
+    simulator: ['hormones', 'simulator'] as const,
+    /** ホルモンコラム一覧（カーソルページネーション） */
+    columns: ['hormones', 'columns'] as const,
+    /** ホルモンコラム詳細 */
+    columnDetail: (slug: string) => ['hormones', 'columnDetail', slug] as const,
   },
 
   /** 農薬病害虫図鑑 */
@@ -163,6 +177,20 @@ export const queryKeys = {
     ingredients: (params: PesticideListParams) => ['pesticides', 'ingredients', params] as const,
     /** 有効成分詳細 */
     ingredientDetail: (slug: string) => ['pesticides', 'ingredientDetail', slug] as const,
+    /** 展着剤タイプ一覧（全件・ページネーションなし） */
+    spreaderTypes: ['pesticides', 'spreaderTypes'] as const,
+    /** 展着剤タイプ詳細 */
+    spreaderTypeDetail: (slug: string) => ['pesticides', 'spreaderTypeDetail', slug] as const,
+    /** 展着剤製品一覧（カーソルページネーション） */
+    spreaderProducts: ['pesticides', 'spreaderProducts'] as const,
+    /** 農薬コラム一覧（カーソルページネーション） */
+    columns: ['pesticides', 'columns'] as const,
+    /** 農薬コラム詳細 */
+    columnDetail: (slug: string) => ['pesticides', 'columnDetail', slug] as const,
+    /** 剤型マスタ全件 */
+    formulations: ['pesticides', 'formulations'] as const,
+    /** 混用チェッカー全データ */
+    mixingData: ['pesticides', 'mixingData'] as const,
   },
 
   /** 法的文章 */
@@ -235,6 +263,8 @@ export const queryKeys = {
   shops: {
     /** ルートキー */
     all: ['shops'] as const,
+    /** 地図用全件ピン（ページネーションなし） */
+    mapPins: ['shops', 'mapPins'] as const,
     /** 盆栽園一覧（フィルタ付き・無限スクロール） */
     list: (params: ShopsListParams) => ['shops', 'list', params] as const,
     /** 盆栽園詳細 */

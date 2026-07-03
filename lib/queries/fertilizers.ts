@@ -2,18 +2,21 @@
  * @module lib/queries/fertilizers
  * 施肥ガイドのクエリフック。
  * 栄養素・肥料カテゴリ・樹種は全件返却（カーソルなし）。施肥スケジュールは樹種 slug 指定。
- * ゲスト可。
+ * コラムはカーソルページネーション。ゲスト可。
  */
 
-import { useQuery } from '@tanstack/react-query';
+import { useInfiniteQuery, useQuery, type InfiniteData } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api/client';
 import { queryKeys } from '@/lib/queries/keys';
 import { STALE_TIME_MASTER } from '@/lib/constants/query';
+import { FERTILIZER_COLUMNS_PAGE_SIZE } from '@/lib/constants/limits/pagination';
 import type { components } from '@/lib/api/generated/schema.d.ts';
 import type { paths } from '@/lib/api/client';
 
 export type NutrientDetail = components['schemas']['NutrientDetail'];
 export type FertilizationScheduleResponse = components['schemas']['FertilizationScheduleResponse'];
+export type FertilizerColumnListResponse = components['schemas']['FertilizerColumnListResponse'];
+export type FertilizerColumnDetail = components['schemas']['FertilizerColumnDetail'];
 
 type NutrientsResponse =
   paths['/api/v1/fertilizers/nutrients']['get']['responses']['200']['content']['application/json'];
@@ -101,6 +104,57 @@ export function useFertilizationScheduleQuery(slug: string) {
       );
       if (error !== undefined || data === undefined) {
         throw error ?? new Error('Unexpected error fetching fertilization schedule');
+      }
+      return data;
+    },
+    staleTime: STALE_TIME_MASTER,
+    enabled: slug.length > 0,
+  });
+}
+
+// ---------------------------------------------------------------------------
+// 施肥コラム（columns）
+// ---------------------------------------------------------------------------
+
+export function useFertilizerColumnsQuery(category?: string) {
+  return useInfiniteQuery<
+    FertilizerColumnListResponse,
+    Error,
+    InfiniteData<FertilizerColumnListResponse>,
+    ReturnType<typeof queryKeys.fertilizers.columns>,
+    string | undefined
+  >({
+    queryKey: queryKeys.fertilizers.columns(category),
+    queryFn: async ({ pageParam }) => {
+      const { data, error } = await apiClient.GET('/api/v1/fertilizers/columns', {
+        params: {
+          query: {
+            cursor: pageParam ?? undefined,
+            limit: FERTILIZER_COLUMNS_PAGE_SIZE,
+            category: category ?? undefined,
+          },
+        },
+      });
+      if (error !== undefined || data === undefined) {
+        throw error ?? new Error('Unexpected error fetching fertilizer columns');
+      }
+      return data;
+    },
+    initialPageParam: undefined,
+    getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
+    staleTime: STALE_TIME_MASTER,
+  });
+}
+
+export function useFertilizerColumnDetailQuery(slug: string) {
+  return useQuery<FertilizerColumnDetail, Error>({
+    queryKey: queryKeys.fertilizers.columnDetail(slug),
+    queryFn: async () => {
+      const { data, error } = await apiClient.GET('/api/v1/fertilizers/columns/{slug}', {
+        params: { path: { slug } },
+      });
+      if (error !== undefined || data === undefined) {
+        throw error ?? new Error('Unexpected error fetching fertilizer column detail');
       }
       return data;
     },

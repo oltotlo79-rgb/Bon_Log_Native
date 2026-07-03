@@ -17,10 +17,30 @@ export type ShopCreatedResponse = components['schemas']['ShopCreatedResponse'];
 export type ReviewItem = components['schemas']['ReviewItem'];
 export type ReviewListResponse = components['schemas']['ReviewListResponse'];
 export type GenreListResponse = components['schemas']['GenreListResponse'];
+export type ShopMapPinsResponse = components['schemas']['ShopMapPinsResponse'];
 
 // ---------------------------------------------------------------------------
 // クエリ
 // ---------------------------------------------------------------------------
+
+/**
+ * 地図用の全店舗ピン取得クエリ（ゲスト可）。
+ * 位置情報付き店舗を全件返す（ページネーションなし・上限 500 件）。
+ * 地図マーカー描画に使用するため長めの staleTime を設定する。
+ */
+export function useShopMapPinsQuery() {
+  return useQuery<ShopMapPinsResponse, Error>({
+    queryKey: queryKeys.shops.mapPins,
+    queryFn: async () => {
+      const { data, error } = await apiClient.GET('/api/v1/shops/map-pins');
+      if (error !== undefined || data === undefined) {
+        throw error ?? new Error('Unexpected error fetching shop map pins');
+      }
+      return data;
+    },
+    staleTime: STALE_TIME_MASTER,
+  });
+}
 
 /**
  * 盆栽園一覧の無限スクロールクエリ（ゲスト可）。
