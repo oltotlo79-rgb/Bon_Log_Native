@@ -35,6 +35,10 @@ export function useEventsListQuery(filter: EventsFilter = {}) {
   >({
     queryKey: queryKeys.events.list(filter),
     queryFn: async ({ pageParam }) => {
+      // API の month は 0-11 (JavaScript Date.getMonth() 準拠)。
+      // アプリ内部では 1-12（人間向け）で保持しているので送信時に -1 変換する。
+      const apiMonth =
+        filter.month !== undefined ? filter.month - 1 : undefined;
       const { data, error } = await apiClient.GET('/api/v1/events', {
         params: {
           query: {
@@ -44,7 +48,7 @@ export function useEventsListQuery(filter: EventsFilter = {}) {
             prefecture: filter.prefecture,
             showPast: filter.showPast === true ? 'true' : filter.showPast === false ? 'false' : undefined,
             year: filter.year,
-            month: filter.month,
+            month: apiMonth,
           },
         },
       });

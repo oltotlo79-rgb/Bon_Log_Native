@@ -100,17 +100,17 @@ export default function EventsScreen() {
   const [calendarMonth, setCalendarMonth] = useState(now.getMonth() + 1);
 
   // ---------------------------------------------------------------------------
-  // カレンダービュー用クエリ（月フィルタあり・過去含む）
+  // カレンダービュー用クエリ（全件・過去含む・year/month 指定なし）
+  // Web 版 EventContentSection と同じく月指定なしで全イベントを取得し、
+  // カレンダーコンポーネント内の月ナビゲーションで描画月を切り替える。
   // ---------------------------------------------------------------------------
   const calendarFilter = useMemo(
     () => ({
       region: selectedRegion.length > 0 ? selectedRegion : undefined,
       prefecture: selectedPrefecture,
       showPast: true as const,
-      year: calendarYear,
-      month: calendarMonth,
     }),
-    [selectedRegion, selectedPrefecture, calendarYear, calendarMonth]
+    [selectedRegion, selectedPrefecture]
   );
 
   const {
@@ -123,7 +123,7 @@ export default function EventsScreen() {
     isFetchingNextPage: calendarIsFetchingNextPage,
   } = useEventsListQuery(calendarFilter);
 
-  // 全ページ展開（月単位の全イベント）
+  // 全ページ展開（取得済み全イベント）
   const calendarRawItems: EventItemDetail[] = useMemo(
     () => calendarData?.pages.flatMap((page) => page.items) ?? [],
     [calendarData]
@@ -149,7 +149,7 @@ export default function EventsScreen() {
     }
   }, [calendarHasNextPage, calendarIsFetchingNextPage, calendarFetchNextPage, viewMode]);
 
-  // 今後のイベント（取得済みデータからクライアントフィルタ・フル型で保持）
+  // 今後のイベント（取得済みデータから今日以降をクライアントフィルタ）
   const todayYmd = useMemo(() => {
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;

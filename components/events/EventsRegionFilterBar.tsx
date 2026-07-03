@@ -47,13 +47,17 @@ type Region = {
   value: string;
 };
 
+// API が受け付ける region 値は REGION_MAP のキーと完全一致する必要がある（不一致は 400）。
+// Web 版 lib/prefectures.ts の REGION_MAP キーに合わせて定義する。
 const REGIONS: Region[] = [
   { label: '全国', value: '' },
-  { label: '北海道・東北', value: '北海道・東北' },
+  { label: '北海道', value: '北海道' },
+  { label: '東北', value: '東北' },
   { label: '関東', value: '関東' },
-  { label: '中部・北陸', value: '中部・北陸' },
+  { label: '中部', value: '中部' },
   { label: '近畿', value: '近畿' },
-  { label: '中国・四国', value: '中国・四国' },
+  { label: '中国', value: '中国' },
+  { label: '四国', value: '四国' },
   { label: '九州・沖縄', value: '九州・沖縄' },
 ];
 
