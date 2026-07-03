@@ -609,6 +609,36 @@ export const colorPesticideWarningDivider = '#fecaca';
 export const colorPesticideInfoBannerBg = '#eef4fb';
 
 // ---------------------------------------------------------------------------
+// カラー — 図鑑系アイコン（メリット・デメリット・使い方）
+// ---------------------------------------------------------------------------
+
+/**
+ * メリット項目のチェックアイコン色（Tailwind emerald-600）。
+ * Web 版の text-emerald-600 と同値。
+ */
+export const colorIconMerit = '#059669';
+
+/**
+ * デメリット項目の閉じるアイコン色（Tailwind rose-600）。
+ * Web 版の text-rose-600 と同値。
+ */
+export const colorIconDemerit = '#e11d48';
+
+/**
+ * 使い方セクションの電球アイコン色（Tailwind sky-600）。
+ * Web 版の text-sky-600 と同値。
+ */
+export const colorIconUsage = '#0284c7';
+
+/**
+ * 殺虫剤カテゴリバッジテキストの正確な色（Tailwind orange-700）。
+ * Web 版の text-orange-700 と同値。
+ * colorCategoryOrangeText（orange-900 = #9a3412）が近似値として使われていた箇所を
+ * この原色に置き換えることで Web との完全一致を確保する。
+ */
+export const colorCategoryOrangeDeepText = '#c2410c';
+
+// ---------------------------------------------------------------------------
 // カラー — 外部サービスブランド色
 // ---------------------------------------------------------------------------
 
