@@ -31,6 +31,9 @@ import {
   colorInteractionAntagonismText,
   colorInteractionModulationBg,
   colorInteractionModulationText,
+  colorDiagramEdgeSynergy,
+  colorDiagramEdgeAntagonism,
+  colorDiagramEdgeModulation,
   colorEffectIncreaseBg,
   colorEffectIncreaseText,
   colorEffectDecreaseBg,
@@ -57,13 +60,37 @@ type HormoneDetailInteraction = components['schemas']['HormoneDetail']['interact
 type HormoneDetailTechnique = components['schemas']['HormoneDetail']['techniques'][number];
 
 // ---------------------------------------------------------------------------
-// 相互作用タイプ設定
+// 相互作用タイプ設定（Web 版 HormoneInteractionCard.tsx と同配色・同シンボル）
 // ---------------------------------------------------------------------------
 
-const INTERACTION_TYPE_CONFIG: Record<string, { label: string; bg: string; text: string }> = {
-  synergistic: { label: '相乗', bg: colorInteractionSynergyBg, text: colorInteractionSynergyText },
-  antagonistic: { label: '拮抗', bg: colorInteractionAntagonismBg, text: colorInteractionAntagonismText },
-  modulatory: { label: '調節', bg: colorInteractionModulationBg, text: colorInteractionModulationText },
+const INTERACTION_TYPE_CONFIG: Record<string, {
+  label: string;
+  bg: string;
+  text: string;
+  edge: string;
+  symbol: string;
+}> = {
+  synergistic: {
+    label: '相乗',
+    bg: colorInteractionSynergyBg,
+    text: colorInteractionSynergyText,
+    edge: colorDiagramEdgeSynergy,
+    symbol: '⇄',
+  },
+  antagonistic: {
+    label: '拮抗',
+    bg: colorInteractionAntagonismBg,
+    text: colorInteractionAntagonismText,
+    edge: colorDiagramEdgeAntagonism,
+    symbol: '⊥',
+  },
+  modulatory: {
+    label: '調節',
+    bg: colorInteractionModulationBg,
+    text: colorInteractionModulationText,
+    edge: colorDiagramEdgeModulation,
+    symbol: '⇌',
+  },
 };
 
 // 技法 effectType 設定
@@ -227,23 +254,37 @@ export default function HormoneDetailScreen() {
                   label: interaction.type,
                   bg: colorSurfaceMuted,
                   text: colorTextSecondary,
+                  edge: colorBorder,
+                  symbol: '↔',
                 };
                 return (
                   <View
                     key={interaction.id}
-                    style={styles.interactionCard}
+                    style={[
+                      styles.interactionCard,
+                      { borderLeftColor: typeConf.edge, borderLeftWidth: 4 },
+                    ]}
                     accessibilityRole="text"
                     accessibilityLabel={`${interaction.hormoneAName} と ${interaction.hormoneBName} の${typeConf.label}関係`}
                   >
+                    {/* 対ペア行：ホルモンA ← タイプシンボル+バッジ → ホルモンB */}
                     <View style={styles.pairRow}>
-                      <Text style={styles.interactionHormoneName}>{interaction.hormoneAName}</Text>
-                      <Text style={styles.arrowText}>⟷</Text>
-                      <Text style={styles.interactionHormoneName}>{interaction.hormoneBName}</Text>
-                      <View style={[styles.typeBadge, { backgroundColor: typeConf.bg }]}>
-                        <Text style={[styles.typeBadgeText, { color: typeConf.text }]}>
-                          {typeConf.label}
+                      <Text style={styles.interactionHormoneName} numberOfLines={1}>
+                        {interaction.hormoneAName}
+                      </Text>
+                      <View style={styles.symbolBlock}>
+                        <Text style={[styles.typeSymbol, { color: typeConf.text }]}>
+                          {typeConf.symbol}
                         </Text>
+                        <View style={[styles.typeBadge, { backgroundColor: typeConf.bg }]}>
+                          <Text style={[styles.typeBadgeText, { color: typeConf.text }]}>
+                            {typeConf.label}
+                          </Text>
+                        </View>
                       </View>
+                      <Text style={styles.interactionHormoneName} numberOfLines={1}>
+                        {interaction.hormoneBName}
+                      </Text>
                     </View>
                     {interaction.description !== null && interaction.description.length > 0 && (
                       <Text style={styles.interactionDesc}>{interaction.description}</Text>
@@ -393,7 +434,7 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
 
-  // 相互作用カード
+  // 相互作用カード（タイプ色の左ボーダーで結びつきを強調）
   interactionCard: {
     backgroundColor: colorSurface,
     borderRadius: radiusMd,
@@ -406,17 +447,25 @@ const styles = StyleSheet.create({
   pairRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    flexWrap: 'wrap',
-    gap: spacing2,
+    justifyContent: 'space-between',
   },
   interactionHormoneName: {
-    ...textSm,
+    ...textBase,
     color: colorTextPrimary,
     fontFamily: fontFamilySerifBold,
+    flex: 1,
+    textAlign: 'center',
   },
-  arrowText: {
-    ...textSm,
-    color: colorTextSecondary,
+  symbolBlock: {
+    alignItems: 'center',
+    gap: spacing2,
+    paddingHorizontal: spacing2,
+  },
+  typeSymbol: {
+    fontSize: 18,
+    lineHeight: 22,
+    fontFamily: fontFamilySerifBold,
+    textAlign: 'center',
   },
   typeBadge: {
     borderRadius: radiusFull,

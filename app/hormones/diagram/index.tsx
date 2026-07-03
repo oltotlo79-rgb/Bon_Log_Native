@@ -78,10 +78,34 @@ type HormoneInteractionItem = components['schemas']['HormoneInteractionListRespo
 const NODE_RADIUS = 36;
 const NODE_LABEL_MAX_LENGTH = 4;
 
-const INTERACTION_TYPE_CONFIG: Record<string, { label: string; bg: string; text: string; edge: string }> = {
-  synergistic:  { label: '相乗', bg: colorInteractionSynergyBg, text: colorInteractionSynergyText, edge: colorDiagramEdgeSynergy },
-  antagonistic: { label: '拮抗', bg: colorInteractionAntagonismBg, text: colorInteractionAntagonismText, edge: colorDiagramEdgeAntagonism },
-  modulatory:   { label: '調節', bg: colorInteractionModulationBg, text: colorInteractionModulationText, edge: colorDiagramEdgeModulation },
+const INTERACTION_TYPE_CONFIG: Record<string, {
+  label: string;
+  bg: string;
+  text: string;
+  edge: string;
+  symbol: string;
+}> = {
+  synergistic:  {
+    label: '相乗',
+    bg: colorInteractionSynergyBg,
+    text: colorInteractionSynergyText,
+    edge: colorDiagramEdgeSynergy,
+    symbol: '⇄',
+  },
+  antagonistic: {
+    label: '拮抗',
+    bg: colorInteractionAntagonismBg,
+    text: colorInteractionAntagonismText,
+    edge: colorDiagramEdgeAntagonism,
+    symbol: '⊥',
+  },
+  modulatory:   {
+    label: '調節',
+    bg: colorInteractionModulationBg,
+    text: colorInteractionModulationText,
+    edge: colorDiagramEdgeModulation,
+    symbol: '⇌',
+  },
 };
 
 const NODE_COLOR_MAJOR     = colorDiagramNodeMajor;
@@ -133,6 +157,7 @@ const DiagramLegend = memo(function DiagramLegend() {
         </View>
         {Object.entries(INTERACTION_TYPE_CONFIG).map(([type, conf]) => (
           <View key={type} style={styles.legendItem}>
+            <Text style={[styles.legendSymbol, { color: conf.text }]}>{conf.symbol}</Text>
             <View style={[styles.legendBadge, { backgroundColor: conf.bg }]}>
               <Text style={[styles.legendBadgeText, { color: conf.text }]}>{conf.label}</Text>
             </View>
@@ -144,34 +169,45 @@ const DiagramLegend = memo(function DiagramLegend() {
 });
 
 // ---------------------------------------------------------------------------
-// 相互作用カード（パネル内）
+// 相互作用カード（パネル内）：タイプ色の左ボーダーで結びつきを強調
 // ---------------------------------------------------------------------------
 
-type InteractionRowProps = {
+type InteractionPairCardProps = {
   item: HormoneInteractionItem;
   selectedHormoneName: string;
 };
 
-const InteractionRow = memo(function InteractionRow({ item, selectedHormoneName }: InteractionRowProps) {
+const InteractionPairCard = memo(function InteractionPairCard({
+  item,
+  selectedHormoneName,
+}: InteractionPairCardProps) {
   const conf = INTERACTION_TYPE_CONFIG[item.type] ?? {
     label: item.type,
     bg: colorSurfaceMuted,
     text: colorTextSecondary,
     edge: colorBorder,
+    symbol: '↔',
   };
   const partnerName =
     item.hormoneAName === selectedHormoneName ? item.hormoneBName : item.hormoneAName;
 
   return (
     <View
-      style={styles.interactionRow}
+      style={[styles.interactionPairCard, { borderLeftColor: conf.edge }]}
       accessibilityRole="text"
       accessibilityLabel={`${selectedHormoneName}と${partnerName}の${conf.label}関係`}
     >
-      <View style={[styles.typeBadge, { backgroundColor: conf.bg }]}>
-        <Text style={[styles.typeBadgeText, { color: conf.text }]}>{conf.label}</Text>
+      {/* 対ペア：選択ホルモン ← シンボル+バッジ → 相手ホルモン */}
+      <View style={styles.pairRow}>
+        <Text style={styles.pairSelf} numberOfLines={1}>{selectedHormoneName}</Text>
+        <View style={styles.pairCenter}>
+          <Text style={[styles.pairSymbol, { color: conf.text }]}>{conf.symbol}</Text>
+          <View style={[styles.pairBadge, { backgroundColor: conf.bg }]}>
+            <Text style={[styles.pairBadgeText, { color: conf.text }]}>{conf.label}</Text>
+          </View>
+        </View>
+        <Text style={styles.pairPartner} numberOfLines={1}>{partnerName}</Text>
       </View>
-      <Text style={styles.partnerName}>{partnerName}</Text>
       {item.description !== null && item.description.length > 0 && (
         <Text style={styles.interactionDesc} numberOfLines={2}>{item.description}</Text>
       )}
@@ -417,7 +453,7 @@ export default function HormoneDiagramScreen() {
                     isActive ? { color: conf.text } : { color: colorTextSecondary },
                   ]}
                 >
-                  {conf.label}
+                  {conf.symbol} {conf.label}
                 </Text>
               </Pressable>
             );
@@ -472,7 +508,7 @@ export default function HormoneDiagramScreen() {
             ) : (
               <View style={styles.panelList}>
                 {selectedInteractions.map((item) => (
-                  <InteractionRow
+                  <InteractionPairCard
                     key={item.id}
                     item={item}
                     selectedHormoneName={selectedHormone.name}
@@ -555,7 +591,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colorBorder,
     borderRadius: radiusMd,
-    paddingHorizontal: spacing2,
+    paddingHorizontal: spacing3,
     paddingVertical: 4,
     minHeight: 30,
     alignItems: 'center',
@@ -619,6 +655,11 @@ const styles = StyleSheet.create({
     ...textXs,
     color: colorTextSecondary,
   },
+  legendSymbol: {
+    fontSize: 14,
+    lineHeight: 18,
+    fontFamily: fontFamilySerifBold,
+  },
   legendBadge: {
     borderRadius: radiusFull,
     paddingHorizontal: spacing2,
@@ -662,26 +703,53 @@ const styles = StyleSheet.create({
     ...textSm,
     color: colorTextSecondary,
   },
-  interactionRow: {
+
+  // ---- 対ペアカード（パネル内）：タイプ色の左ボーダーで結びつきを強調 ----
+  interactionPairCard: {
     backgroundColor: colorSurfaceMuted,
     borderRadius: radiusMd,
+    borderLeftWidth: 4,
     padding: spacing3,
     gap: spacing2,
   },
-  typeBadge: {
-    alignSelf: 'flex-start',
+  pairRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  pairSelf: {
+    ...textBase,
+    color: colorTextSecondary,
+    fontFamily: fontFamilySerifBold,
+    flex: 1,
+    textAlign: 'left',
+  },
+  pairCenter: {
+    alignItems: 'center',
+    gap: spacing2,
+    paddingHorizontal: spacing2,
+  },
+  pairSymbol: {
+    fontSize: 18,
+    lineHeight: 22,
+    fontFamily: fontFamilySerifBold,
+    textAlign: 'center',
+  },
+  pairBadge: {
     borderRadius: radiusFull,
     paddingHorizontal: spacing2,
     paddingVertical: 2,
   },
-  typeBadgeText: {
+  pairBadgeText: {
     ...textXs,
     fontFamily: fontFamilySerifBold,
   },
-  partnerName: {
+  pairPartner: {
     ...textBase,
     color: colorTextPrimary,
     fontFamily: fontFamilySerifBold,
+    flex: 1,
+    textAlign: 'right',
   },
   interactionDesc: {
     ...textSm,
@@ -706,5 +774,4 @@ const styles = StyleSheet.create({
     color: colorActionPrimary,
     textDecorationLine: 'underline',
   },
-
 });
