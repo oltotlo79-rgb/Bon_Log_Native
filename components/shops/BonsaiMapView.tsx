@@ -5,7 +5,6 @@
  *
  * Why WebView: react-native-maps は Android で Google Maps API キーが必須のため、
  * APIキー不要の OSM/Leaflet を WebView 内で動作させる方式を採用する。
- * 将来 map-pins エンドポイントが追加されれば全件マーカー表示に移行する。
  */
 
 import React, { useCallback, useRef, useState } from 'react';
@@ -68,6 +67,8 @@ export type ShopMapItem = {
 type Props = {
   shops: ShopMapItem[];
   isOnline: boolean;
+  isMapLoading?: boolean;
+  isMapError?: boolean;
 };
 
 // WebView から postMessage で送られてくるデータの型
@@ -245,6 +246,8 @@ function buildLeafletHtml(shops: ShopMapItem[]): string {
 export const BonsaiMapView = React.memo(function BonsaiMapView({
   shops,
   isOnline,
+  isMapLoading = false,
+  isMapError = false,
 }: Props) {
   const webViewRef = useRef<WebView>(null);
   const [isMapReady, setIsMapReady] = useState(false);
@@ -333,6 +336,30 @@ export const BonsaiMapView = React.memo(function BonsaiMapView({
           importantForAccessibility="no"
         />
         <Text style={styles.offlineText}>オフラインのため地図を表示できません</Text>
+      </View>
+    );
+  }
+
+  if (isMapError) {
+    return (
+      <View style={styles.offlineContainer} accessibilityRole="text">
+        <Ionicons
+          name="alert-circle-outline"
+          size={24}
+          color={colorTextTertiary}
+          accessibilityElementsHidden
+          importantForAccessibility="no"
+        />
+        <Text style={styles.offlineText}>地図データを読み込めませんでした</Text>
+      </View>
+    );
+  }
+
+  if (isMapLoading) {
+    return (
+      <View style={styles.offlineContainer}>
+        <ActivityIndicator size="small" color={colorActionPrimary} />
+        <Text style={styles.offlineText}>地図を準備しています...</Text>
       </View>
     );
   }

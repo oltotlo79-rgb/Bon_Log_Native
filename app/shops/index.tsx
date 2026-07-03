@@ -23,7 +23,7 @@ import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useShopsListQuery, useGenresQuery } from '@/lib/queries/shops';
+import { useShopsListQuery, useGenresQuery, useShopMapPinsQuery } from '@/lib/queries/shops';
 import type { ShopListResponse } from '@/lib/queries/shops';
 import { useCurrentUserQuery } from '@/lib/queries/auth';
 import { useOnlineStatus } from '@/hooks/use-online-status';
@@ -164,23 +164,13 @@ export default function ShopsScreen() {
 
   const allItems: ShopListItem[] = data?.pages.flatMap((page) => page.items) ?? [];
 
-  // 地図マーカー用に lat/lng が揃っている店舗のみ抽出。
-  // 全件取得エンドポイント（map-pins）未実装のため現在ページ分のみ表示。
-  // 将来 GET /api/v1/shops/map-pins が追加されれば全件表示に移行する。
-  const mapItems: ShopMapItem[] = allItems.flatMap((item) => {
-    if (item.latitude === null || item.longitude === null) return [];
-    return [
-      {
-        id: item.id,
-        name: item.name,
-        latitude: item.latitude,
-        longitude: item.longitude,
-        address: item.address,
-        averageRating: item.averageRating,
-        reviewCount: item.reviewCount,
-      },
-    ];
-  });
+  const {
+    data: mapPinsData,
+    isLoading: isMapPinsLoading,
+    isError: isMapPinsError,
+  } = useShopMapPinsQuery();
+
+  const mapItems: ShopMapItem[] = mapPinsData?.items ?? [];
 
   const handleSearch = useCallback(() => {
     const trimmed = search.trim();
@@ -350,7 +340,12 @@ export default function ShopsScreen() {
       />
 
       {/* 地図は FlatList の外に配置して全幅表示を確保する */}
-      <BonsaiMapView shops={mapItems} isOnline={isOnline} />
+      <BonsaiMapView
+        shops={mapItems}
+        isOnline={isOnline}
+        isMapLoading={isMapPinsLoading}
+        isMapError={isMapPinsError}
+      />
 
       {allItems.length === 0 ? (
         <ScreenEmpty

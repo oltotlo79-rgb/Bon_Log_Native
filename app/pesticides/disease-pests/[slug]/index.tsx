@@ -50,6 +50,18 @@ type EffectRating = components['schemas']['EffectRating'];
 type PesticideType = components['schemas']['PesticideType'];
 
 // ---------------------------------------------------------------------------
+// 体長表示ヘルパー（Web の BodySizeDisplay に準拠）
+// ---------------------------------------------------------------------------
+
+function buildBodySizeText(minMm: number | null, maxMm: number | null): string | null {
+  if (minMm === null && maxMm === null) return null;
+  if (minMm !== null && maxMm !== null && minMm === maxMm) return `約 ${minMm} mm`;
+  if (minMm !== null && maxMm !== null) return `${minMm}〜${maxMm} mm`;
+  if (minMm !== null) return `${minMm} mm 以上`;
+  return `${maxMm} mm 以下`;
+}
+
+// ---------------------------------------------------------------------------
 // カテゴリバッジ定義
 // ---------------------------------------------------------------------------
 
@@ -186,6 +198,14 @@ export default function DiseasePestDetailScreen() {
               {data.nameKana !== null && (
                 <Text style={styles.nameKana}>{data.nameKana}</Text>
               )}
+              {(data.category === 'pest' || data.category === 'beneficial_insect') && (() => {
+                const sizeText = buildBodySizeText(data.bodySizeMinMm, data.bodySizeMaxMm);
+                return sizeText !== null ? (
+                  <Text style={styles.bodySize} accessibilityLabel={`体長: ${sizeText}`}>
+                    体長: {sizeText}
+                  </Text>
+                ) : null;
+              })()}
             </View>
           </View>
 
@@ -342,6 +362,10 @@ const styles = StyleSheet.create({
   },
   nameKana: {
     ...textMd,
+    color: colorTextSecondary,
+  },
+  bodySize: {
+    ...textSm,
     color: colorTextSecondary,
   },
   categoryBadge: {
