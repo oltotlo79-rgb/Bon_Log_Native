@@ -54,7 +54,7 @@ import {
   colorCategoryBlueBg,
   colorCategoryBlueText,
   colorCategoryOrangeBg,
-  colorCategoryOrangeText,
+  colorCategoryOrangeDeepText,
   colorCategoryPurpleBg,
   colorCategoryVioletText,
   colorCategoryFuchsiaBg,
@@ -102,7 +102,7 @@ const CATEGORY_EMOJI: Record<DiseasePestCategory, string> = {
 
 const PESTICIDE_TYPE_BADGE: Record<PesticideType, { label: string; bg: string; text: string }> = {
   fungicide:   { label: '殺菌剤', bg: colorCategoryBlueBg, text: colorCategoryBlueText },
-  insecticide: { label: '殺虫剤', bg: colorCategoryOrangeBg, text: colorCategoryOrangeText },
+  insecticide: { label: '殺虫剤', bg: colorCategoryOrangeBg, text: colorCategoryOrangeDeepText },
   acaricide:   { label: '殺ダニ剤', bg: colorCategoryPurpleBg, text: colorCategoryVioletText },
   compound:    { label: '複合剤', bg: colorCategoryFuchsiaBg, text: colorCategoryFuchsiaText },
   other:       { label: 'その他', bg: colorSurfaceMuted, text: colorTextSecondary },

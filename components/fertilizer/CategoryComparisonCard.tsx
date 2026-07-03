@@ -16,6 +16,9 @@ import {
   colorCategoryGreenText,
   colorCategoryRoseText,
   colorCategoryBlueDarkText,
+  colorIconMerit,
+  colorIconDemerit,
+  colorIconUsage,
   spacing3,
   spacing4,
   radiusMd,
@@ -98,7 +101,7 @@ export const CategoryComparisonCard = memo(function CategoryComparisonCard({
           {merit !== null && merit.length > 0 && (
             <View style={[styles.panel, styles.meritPanel]}>
               <View style={styles.panelTitleRow}>
-                <Ionicons name="checkmark-circle" size={16} color="#059669" accessibilityElementsHidden importantForAccessibility="no" />
+                <Ionicons name="checkmark-circle" size={16} color={colorIconMerit} accessibilityElementsHidden importantForAccessibility="no" />
                 <Text style={[styles.panelTitle, { color: colorCategoryGreenText }]}>メリット</Text>
               </View>
               <Text style={styles.panelBody}>{merit}</Text>
@@ -107,7 +110,7 @@ export const CategoryComparisonCard = memo(function CategoryComparisonCard({
           {demerit !== null && demerit.length > 0 && (
             <View style={[styles.panel, styles.demeritPanel]}>
               <View style={styles.panelTitleRow}>
-                <Ionicons name="close-circle" size={16} color="#e11d48" accessibilityElementsHidden importantForAccessibility="no" />
+                <Ionicons name="close-circle" size={16} color={colorIconDemerit} accessibilityElementsHidden importantForAccessibility="no" />
                 <Text style={[styles.panelTitle, { color: colorCategoryRoseText }]}>デメリット</Text>
               </View>
               <Text style={styles.panelBody}>{demerit}</Text>
@@ -116,7 +119,7 @@ export const CategoryComparisonCard = memo(function CategoryComparisonCard({
           {bonsaiUsage !== null && bonsaiUsage.length > 0 && (
             <View style={[styles.panel, styles.usagePanel]}>
               <View style={styles.panelTitleRow}>
-                <Ionicons name="bulb" size={16} color="#0284c7" accessibilityElementsHidden importantForAccessibility="no" />
+                <Ionicons name="bulb" size={16} color={colorIconUsage} accessibilityElementsHidden importantForAccessibility="no" />
                 <Text style={[styles.panelTitle, { color: colorCategoryBlueDarkText }]}>盆栽での使い方</Text>
               </View>
               <Text style={styles.panelBody}>{bonsaiUsage}</Text>
