@@ -133,13 +133,29 @@ function toPesticideType(key: FilterTag): PesticideType | undefined {
 // ハブナビカード定義（今回作成する画面のみ。新API待ちは除外）
 // ---------------------------------------------------------------------------
 
-type NavCardIconName = 'bug-outline' | 'flask-outline' | 'calculator-outline' | 'water-outline';
+type NavCardIconName =
+  | 'bug-outline'
+  | 'flask-outline'
+  | 'calculator-outline'
+  | 'water-outline'
+  | 'water-sharp'
+  | 'book-outline'
+  | 'beaker-outline'
+  | 'git-compare-outline';
 
 type NavCardDef = {
   iconName: NavCardIconName;
   label: string;
   description: string;
-  route: '/pesticides/disease-pests' | '/pesticides/ingredients' | '/pesticides/dilution-calculator' | '/pesticides/spray-guide';
+  route:
+    | '/pesticides/disease-pests'
+    | '/pesticides/ingredients'
+    | '/pesticides/dilution-calculator'
+    | '/pesticides/spray-guide'
+    | '/pesticides/spreaders'
+    | '/pesticides/columns'
+    | '/pesticides/formulations'
+    | '/pesticides/mixing-checker';
 };
 
 const NAV_CARDS: NavCardDef[] = [
@@ -154,6 +170,30 @@ const NAV_CARDS: NavCardDef[] = [
     label: '有効成分（原体）一覧',
     description: 'FRAC/IRACコード・耐性リスクを確認',
     route: '/pesticides/ingredients',
+  },
+  {
+    iconName: 'water-sharp',
+    label: '展着剤',
+    description: '薬液の付着・浸透を助ける展着剤の分類と製品',
+    route: '/pesticides/spreaders',
+  },
+  {
+    iconName: 'book-outline',
+    label: 'コラム・読みもの',
+    description: '混用順序・耐性管理など実践知識',
+    route: '/pesticides/columns',
+  },
+  {
+    iconName: 'beaker-outline',
+    label: '剤型の違い',
+    description: '水和剤・乳剤・粒剤など剤型ごとの特徴',
+    route: '/pesticides/formulations',
+  },
+  {
+    iconName: 'git-compare-outline',
+    label: '混用チェッカー',
+    description: '農薬の混用可否を確認',
+    route: '/pesticides/mixing-checker',
   },
   {
     iconName: 'calculator-outline',
