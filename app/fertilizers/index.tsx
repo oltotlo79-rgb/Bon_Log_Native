@@ -172,13 +172,19 @@ const NAV_CARD_DEFS: NavCardDef[] = [
     iconName: 'book-outline',
     label: 'コラム・読みもの',
     getDescription: () => '施肥テクニックや基礎知識',
-    onPress: () => router.push('/fertilizers/schedules'),
+    onPress: () => router.push('/fertilizers/columns'),
   },
   {
     iconName: 'cube-outline',
     label: '定番肥料ガイド',
     getDescription: () => '盆栽栽培でよく使われる肥料製品を紹介',
-    onPress: () => router.push('/fertilizers/schedules'),
+    onPress: () => router.push('/fertilizers/products'),
+  },
+  {
+    iconName: 'alert-circle-outline',
+    label: 'トラブル事例集',
+    getDescription: () => '施肥に関するよくあるトラブルと対処法',
+    onPress: () => router.push('/fertilizers/troubles'),
   },
   {
     iconName: 'layers-outline',
