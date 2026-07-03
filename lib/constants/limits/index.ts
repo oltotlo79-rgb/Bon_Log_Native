@@ -9,3 +9,4 @@ export * from './post';
 export * from './media';
 export * from './pagination';
 export * from './ui';
+export * from './hormone-simulator';
