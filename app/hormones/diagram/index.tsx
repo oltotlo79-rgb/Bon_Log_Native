@@ -35,7 +35,21 @@ import {
   colorBorder,
   colorTextPrimary,
   colorTextSecondary,
+  colorTextInverse,
   colorActionPrimary,
+  colorInteractionSynergyBg,
+  colorInteractionSynergyText,
+  colorInteractionAntagonismBg,
+  colorInteractionAntagonismText,
+  colorInteractionModulationBg,
+  colorInteractionModulationText,
+  colorDiagramEdgeSynergy,
+  colorDiagramEdgeAntagonism,
+  colorDiagramEdgeModulation,
+  colorDiagramNodeMajor,
+  colorDiagramNodeSecondary,
+  colorDiagramNodeSelected,
+  colorDiagramNodeSelectedBorder,
   spacing2,
   spacing3,
   spacing4,
@@ -65,14 +79,14 @@ const NODE_RADIUS = 36;
 const NODE_LABEL_MAX_LENGTH = 4;
 
 const INTERACTION_TYPE_CONFIG: Record<string, { label: string; bg: string; text: string; edge: string }> = {
-  synergistic:  { label: '相乗', bg: '#dcfce7', text: '#166534', edge: '#22c55e' },
-  antagonistic: { label: '拮抗', bg: '#fee2e2', text: '#991b1b', edge: '#ef4444' },
-  modulatory:   { label: '調節', bg: '#fef9c3', text: '#854d0e', edge: '#eab308' },
+  synergistic:  { label: '相乗', bg: colorInteractionSynergyBg, text: colorInteractionSynergyText, edge: colorDiagramEdgeSynergy },
+  antagonistic: { label: '拮抗', bg: colorInteractionAntagonismBg, text: colorInteractionAntagonismText, edge: colorDiagramEdgeAntagonism },
+  modulatory:   { label: '調節', bg: colorInteractionModulationBg, text: colorInteractionModulationText, edge: colorDiagramEdgeModulation },
 };
 
-const NODE_COLOR_MAJOR     = '#166534';
-const NODE_COLOR_SECONDARY = '#1e40af';
-const NODE_COLOR_SELECTED  = '#92400e';
+const NODE_COLOR_MAJOR     = colorDiagramNodeMajor;
+const NODE_COLOR_SECONDARY = colorDiagramNodeSecondary;
+const NODE_COLOR_SELECTED  = colorDiagramNodeSelected;
 
 // ---------------------------------------------------------------------------
 // 円形配置計算
@@ -211,7 +225,7 @@ const HormoneNode = memo(function HormoneNode({
           backgroundColor: bgColor,
           opacity: isHighlighted ? 1 : 0.25,
           borderWidth: isSelected ? 3 : 0,
-          borderColor: isSelected ? '#f59e0b' : 'transparent',
+          borderColor: isSelected ? colorDiagramNodeSelectedBorder : 'transparent',
         },
       ]}
       accessibilityRole="button"
@@ -563,7 +577,7 @@ const styles = StyleSheet.create({
     padding: 4,
   },
   nodeLabel: {
-    color: '#ffffff',
+    color: colorTextInverse,
     fontSize: 10,
     fontFamily: fontFamilySerifBold,
     textAlign: 'center',

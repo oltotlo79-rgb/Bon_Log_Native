@@ -19,6 +19,15 @@ import {
   colorBorder,
   colorTextPrimary,
   colorTextSecondary,
+  colorCategoryRedPaleBg,
+  colorCategoryRedPaleText,
+  colorCategoryOrangePaleBg,
+  colorCategoryOrangePaleText,
+  colorCategoryYellowPaleBg,
+  colorCategoryYellowPaleText,
+  colorCategoryGreenPaleBg,
+  colorCategoryGreenPaleText,
+  colorSurfaceMuted,
   spacing2,
   spacing3,
   spacing4,
@@ -67,10 +76,10 @@ type CecBadgeStyle = {
 };
 
 const CEC_BADGE: Record<CecLevel, CecBadgeStyle> = {
-  very_low: { label: 'CEC: 極低', backgroundColor: '#fef2f2', color: '#991b1b' },
-  low: { label: 'CEC: 低', backgroundColor: '#fff7ed', color: '#9a3412' },
-  medium: { label: 'CEC: 中', backgroundColor: '#fefce8', color: '#854d0e' },
-  medium_high: { label: 'CEC: 中〜高', backgroundColor: '#f0fdf4', color: '#166534' },
+  very_low:    { label: 'CEC: 極低',  backgroundColor: colorCategoryRedPaleBg,    color: colorCategoryRedPaleText },
+  low:         { label: 'CEC: 低',    backgroundColor: colorCategoryOrangePaleBg, color: colorCategoryOrangePaleText },
+  medium:      { label: 'CEC: 中',    backgroundColor: colorCategoryYellowPaleBg, color: colorCategoryYellowPaleText },
+  medium_high: { label: 'CEC: 中〜高', backgroundColor: colorCategoryGreenPaleBg, color: colorCategoryGreenPaleText },
 };
 
 // ---------------------------------------------------------------------------
@@ -409,7 +418,7 @@ const styles = StyleSheet.create({
     fontFamily: fontFamilySerifBold,
   },
   recipeMixBox: {
-    backgroundColor: '#f2f2f2',
+    backgroundColor: colorSurfaceMuted,
     borderRadius: radiusMd,
     paddingHorizontal: spacing3,
     paddingVertical: spacing2,

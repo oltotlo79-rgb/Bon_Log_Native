@@ -13,6 +13,9 @@ import {
   colorSurface,
   colorTextPrimary,
   colorTextSecondary,
+  colorCategoryGreenText,
+  colorCategoryRoseText,
+  colorCategoryBlueDarkText,
   spacing3,
   spacing4,
   radiusMd,
@@ -96,7 +99,7 @@ export const CategoryComparisonCard = memo(function CategoryComparisonCard({
             <View style={[styles.panel, styles.meritPanel]}>
               <View style={styles.panelTitleRow}>
                 <Ionicons name="checkmark-circle" size={16} color="#059669" accessibilityElementsHidden importantForAccessibility="no" />
-                <Text style={[styles.panelTitle, { color: '#065f46' }]}>メリット</Text>
+                <Text style={[styles.panelTitle, { color: colorCategoryGreenText }]}>メリット</Text>
               </View>
               <Text style={styles.panelBody}>{merit}</Text>
             </View>
@@ -105,7 +108,7 @@ export const CategoryComparisonCard = memo(function CategoryComparisonCard({
             <View style={[styles.panel, styles.demeritPanel]}>
               <View style={styles.panelTitleRow}>
                 <Ionicons name="close-circle" size={16} color="#e11d48" accessibilityElementsHidden importantForAccessibility="no" />
-                <Text style={[styles.panelTitle, { color: '#9f1239' }]}>デメリット</Text>
+                <Text style={[styles.panelTitle, { color: colorCategoryRoseText }]}>デメリット</Text>
               </View>
               <Text style={styles.panelBody}>{demerit}</Text>
             </View>
@@ -114,7 +117,7 @@ export const CategoryComparisonCard = memo(function CategoryComparisonCard({
             <View style={[styles.panel, styles.usagePanel]}>
               <View style={styles.panelTitleRow}>
                 <Ionicons name="bulb" size={16} color="#0284c7" accessibilityElementsHidden importantForAccessibility="no" />
-                <Text style={[styles.panelTitle, { color: '#075985' }]}>盆栽での使い方</Text>
+                <Text style={[styles.panelTitle, { color: colorCategoryBlueDarkText }]}>盆栽での使い方</Text>
               </View>
               <Text style={styles.panelBody}>{bonsaiUsage}</Text>
             </View>

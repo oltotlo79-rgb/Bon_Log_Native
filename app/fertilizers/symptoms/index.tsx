@@ -27,6 +27,12 @@ import {
   colorTextSecondary,
   colorSurfaceMuted,
   colorActionPrimary,
+  colorCategoryRedPaleBg,
+  colorCategoryRedPaleText,
+  colorCategoryAmberPaleBg,
+  colorCategoryAmberPaleText,
+  colorCategoryBluePaleBg,
+  colorCategoryBluePaleText,
   spacing2,
   spacing3,
   spacing4,
@@ -71,9 +77,9 @@ type SeverityBadgeStyle = {
 };
 
 const SEVERITY_BADGE: Record<Severity, SeverityBadgeStyle> = {
-  high: { label: '重度', backgroundColor: '#fef2f2', color: '#991b1b' },
-  medium: { label: '中度', backgroundColor: '#fffbeb', color: '#92400e' },
-  low: { label: '軽度', backgroundColor: '#eff6ff', color: '#1e40af' },
+  high:   { label: '重度', backgroundColor: colorCategoryRedPaleBg,   color: colorCategoryRedPaleText },
+  medium: { label: '中度', backgroundColor: colorCategoryAmberPaleBg, color: colorCategoryAmberPaleText },
+  low:    { label: '軽度', backgroundColor: colorCategoryBluePaleBg,  color: colorCategoryBluePaleText },
 };
 
 // ---------------------------------------------------------------------------

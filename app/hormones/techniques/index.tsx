@@ -32,6 +32,12 @@ import {
   colorBorder,
   colorTextPrimary,
   colorTextSecondary,
+  colorEffectIncreaseBg,
+  colorEffectIncreaseText,
+  colorEffectDecreaseBg,
+  colorEffectDecreaseText,
+  colorEffectRedistributeBg,
+  colorEffectRedistributeText,
   spacing2,
   spacing3,
   spacing4,
@@ -53,9 +59,9 @@ type HormoneTechniqueEffect = HormoneTechniqueGroup['effects'][number];
 // ---------------------------------------------------------------------------
 
 const EFFECT_TYPE_CONFIG: Record<string, { label: string; bg: string; text: string }> = {
-  increase: { label: '増加', bg: '#dcfce7', text: '#166534' },
-  decrease: { label: '減少', bg: '#fee2e2', text: '#991b1b' },
-  redistribute: { label: '再分配', bg: '#dbeafe', text: '#1e40af' },
+  increase: { label: '増加', bg: colorEffectIncreaseBg, text: colorEffectIncreaseText },
+  decrease: { label: '減少', bg: colorEffectDecreaseBg, text: colorEffectDecreaseText },
+  redistribute: { label: '再分配', bg: colorEffectRedistributeBg, text: colorEffectRedistributeText },
 };
 
 const MAGNITUDE_LABELS: Record<string, string> = {

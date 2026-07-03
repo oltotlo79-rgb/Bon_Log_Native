@@ -40,6 +40,12 @@ import {
   colorActionPrimaryText,
   colorTextPrimary,
   colorTextSecondary,
+  colorCategoryRedBg,
+  colorCategoryRedText,
+  colorCategoryPestBg,
+  colorCategoryPestText,
+  colorCategoryGreenBg,
+  colorCategoryGreenText,
   spacing2,
   spacing3,
   spacing4,
@@ -66,9 +72,9 @@ type DiseasePestCategory = components['schemas']['DiseasePestCategory'];
 // ---------------------------------------------------------------------------
 
 const CATEGORY_BADGE: Record<DiseasePestCategory, { label: string; bg: string; text: string }> = {
-  disease:           { label: '病害', bg: '#fee2e2', text: '#b91c1c' },
-  pest:              { label: '害虫', bg: '#fef3c7', text: '#b45309' },
-  beneficial_insect: { label: '益虫', bg: '#d1fae5', text: '#065f46' },
+  disease:           { label: '病害', bg: colorCategoryRedBg, text: colorCategoryRedText },
+  pest:              { label: '害虫', bg: colorCategoryPestBg, text: colorCategoryPestText },
+  beneficial_insect: { label: '益虫', bg: colorCategoryGreenBg, text: colorCategoryGreenText },
 };
 
 const CATEGORY_EMOJI: Record<DiseasePestCategory, string> = {

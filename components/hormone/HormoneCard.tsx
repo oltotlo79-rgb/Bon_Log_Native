@@ -15,6 +15,12 @@ import {
   colorSurface,
   colorSurfaceMuted,
   colorBorder,
+  colorCategoryGreenLightBg,
+  colorCategoryGreenLightText,
+  colorCategoryIndigoBg,
+  colorCategoryIndigoText,
+  colorCategoryFallbackBg,
+  colorCategoryFallbackText,
   spacing2,
   spacing3,
   spacing4,
@@ -47,11 +53,11 @@ const HORMONE_IMAGE_MAP: Readonly<Record<string, number>> = {
 type BadgeColors = { bg: string; text: string };
 
 const CATEGORY_BADGE_COLORS: Readonly<Record<string, BadgeColors>> = {
-  major: { bg: '#dcfce7', text: '#166534' },
-  secondary: { bg: '#dbeafe', text: '#1e40af' },
+  major:     { bg: colorCategoryGreenLightBg, text: colorCategoryGreenLightText },
+  secondary: { bg: colorCategoryIndigoBg,     text: colorCategoryIndigoText },
 } as const;
 
-const CATEGORY_BADGE_FALLBACK: BadgeColors = { bg: '#f5f5f4', text: '#57534e' };
+const CATEGORY_BADGE_FALLBACK: BadgeColors = { bg: colorCategoryFallbackBg, text: colorCategoryFallbackText };
 
 const CATEGORY_LABEL_MAP: Readonly<Record<string, string>> = {
   major: '五大ホルモン',

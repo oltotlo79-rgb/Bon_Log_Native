@@ -250,7 +250,7 @@ const styles = StyleSheet.create({
     borderRadius: radiusFull,
     borderWidth: 1,
     borderColor: colorBorderLight,
-    backgroundColor: '#ffffff',
+    backgroundColor: colorBackground,
     minHeight: 36,
     justifyContent: 'center',
   },

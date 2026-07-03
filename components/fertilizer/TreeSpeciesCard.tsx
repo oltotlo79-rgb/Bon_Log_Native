@@ -12,6 +12,18 @@ import {
   colorTextPrimary,
   colorTextSecondary,
   colorSurfaceMuted,
+  colorCategoryGreenBg,
+  colorCategoryGreenText,
+  colorCategoryBlueBg,
+  colorCategoryBlueText,
+  colorCategoryRoseBg,
+  colorCategoryRoseText,
+  colorCategoryOrangeBg,
+  colorCategoryOrangeText,
+  colorCategoryLimeBg,
+  colorCategoryLimeText,
+  colorCategoryTealBg,
+  colorCategoryTealText,
   spacing2,
   spacing3,
   spacing4,
@@ -37,12 +49,12 @@ type BadgeConfig = {
 };
 
 const TREE_CATEGORY_CONFIG: Record<TreeCategory, BadgeConfig> = {
-  conifer:   { label: '松柏類',     bg: '#d1fae5', text: '#065f46' },
-  deciduous: { label: '雑木類',     bg: '#e0f2fe', text: '#0369a1' },
-  flowering: { label: '花物',       bg: '#ffe4e6', text: '#9f1239' },
-  fruiting:  { label: '実物',       bg: '#ffedd5', text: '#9a3412' },
-  grass:     { label: '草物',       bg: '#ecfccb', text: '#3f6212' },
-  evergreen: { label: '常緑広葉樹', bg: '#ccfbf1', text: '#115e59' },
+  conifer:   { label: '松柏類',     bg: colorCategoryGreenBg,  text: colorCategoryGreenText },
+  deciduous: { label: '雑木類',     bg: colorCategoryBlueBg,   text: colorCategoryBlueText },
+  flowering: { label: '花物',       bg: colorCategoryRoseBg,   text: colorCategoryRoseText },
+  fruiting:  { label: '実物',       bg: colorCategoryOrangeBg, text: colorCategoryOrangeText },
+  grass:     { label: '草物',       bg: colorCategoryLimeBg,   text: colorCategoryLimeText },
+  evergreen: { label: '常緑広葉樹', bg: colorCategoryTealBg,   text: colorCategoryTealText },
 };
 
 const FALLBACK_BADGE: BadgeConfig = { label: 'その他', bg: colorSurfaceMuted, text: colorTextSecondary };

@@ -35,6 +35,12 @@ import {
   colorTextSecondary,
   colorActionPrimary,
   colorActionPrimaryText,
+  colorInteractionSynergyBg,
+  colorInteractionSynergyText,
+  colorInteractionAntagonismBg,
+  colorInteractionAntagonismText,
+  colorInteractionModulationBg,
+  colorInteractionModulationText,
   spacing2,
   spacing3,
   spacing4,
@@ -55,9 +61,9 @@ type HormoneInteractionItem = components['schemas']['HormoneInteractionListRespo
 // ---------------------------------------------------------------------------
 
 const INTERACTION_TYPE_CONFIG: Record<string, { label: string; bg: string; text: string }> = {
-  synergistic: { label: '相乗', bg: '#dcfce7', text: '#166534' },
-  antagonistic: { label: '拮抗', bg: '#fee2e2', text: '#991b1b' },
-  modulatory: { label: '調節', bg: '#fef9c3', text: '#854d0e' },
+  synergistic: { label: '相乗', bg: colorInteractionSynergyBg, text: colorInteractionSynergyText },
+  antagonistic: { label: '拮抗', bg: colorInteractionAntagonismBg, text: colorInteractionAntagonismText },
+  modulatory: { label: '調節', bg: colorInteractionModulationBg, text: colorInteractionModulationText },
 };
 
 // ---------------------------------------------------------------------------

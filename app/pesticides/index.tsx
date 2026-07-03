@@ -45,6 +45,21 @@ import {
   colorActionPrimaryText,
   colorTextPrimary,
   colorTextSecondary,
+  colorCategoryRedBg,
+  colorCategoryRedText,
+  colorCategoryPestBg,
+  colorCategoryPestText,
+  colorCategoryGreenBg,
+  colorCategoryGreenText,
+  colorCategoryBlueBg,
+  colorCategoryBlueText,
+  colorCategoryOrangeBg,
+  colorCategoryOrangeText,
+  colorCategoryPurpleBg,
+  colorCategoryVioletText,
+  colorCategoryFuchsiaBg,
+  colorCategoryFuchsiaText,
+  colorPesticideInfoBannerBg,
   spacing2,
   spacing3,
   spacing4,
@@ -74,9 +89,9 @@ type PesticideType = components['schemas']['PesticideType'];
 // ---------------------------------------------------------------------------
 
 const CATEGORY_BADGE: Record<DiseasePestCategory, { label: string; bg: string; text: string }> = {
-  disease:           { label: '病害', bg: '#fee2e2', text: '#b91c1c' },
-  pest:              { label: '害虫', bg: '#fef3c7', text: '#b45309' },
-  beneficial_insect: { label: '益虫', bg: '#d1fae5', text: '#065f46' },
+  disease:           { label: '病害', bg: colorCategoryRedBg, text: colorCategoryRedText },
+  pest:              { label: '害虫', bg: colorCategoryPestBg, text: colorCategoryPestText },
+  beneficial_insect: { label: '益虫', bg: colorCategoryGreenBg, text: colorCategoryGreenText },
 };
 
 const CATEGORY_EMOJI: Record<DiseasePestCategory, string> = {
@@ -86,11 +101,11 @@ const CATEGORY_EMOJI: Record<DiseasePestCategory, string> = {
 };
 
 const PESTICIDE_TYPE_BADGE: Record<PesticideType, { label: string; bg: string; text: string }> = {
-  fungicide:   { label: '殺菌剤', bg: '#e0f2fe', text: '#0369a1' },
-  insecticide: { label: '殺虫剤', bg: '#ffedd5', text: '#c2410c' },
-  acaricide:   { label: '殺ダニ剤', bg: '#ede9fe', text: '#6d28d9' },
-  compound:    { label: '複合剤', bg: '#fdf4ff', text: '#a21caf' },
-  other:       { label: 'その他', bg: '#f2f2f2', text: '#484848' },
+  fungicide:   { label: '殺菌剤', bg: colorCategoryBlueBg, text: colorCategoryBlueText },
+  insecticide: { label: '殺虫剤', bg: colorCategoryOrangeBg, text: colorCategoryOrangeText },
+  acaricide:   { label: '殺ダニ剤', bg: colorCategoryPurpleBg, text: colorCategoryVioletText },
+  compound:    { label: '複合剤', bg: colorCategoryFuchsiaBg, text: colorCategoryFuchsiaText },
+  other:       { label: 'その他', bg: colorSurfaceMuted, text: colorTextSecondary },
 };
 
 // ---------------------------------------------------------------------------
@@ -835,7 +850,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   gridCellImageProduct: {
-    backgroundColor: '#eef4fb',
+    backgroundColor: colorPesticideInfoBannerBg,
   },
   gridThumb: {
     width: '100%',

@@ -25,7 +25,29 @@ import {
   colorBorderLight,
   colorTextPrimary,
   colorTextSecondary,
+  colorTextTertiary,
   colorTextLink,
+  colorCategoryRedBg,
+  colorCategoryRedText,
+  colorCategoryPestBg,
+  colorCategoryPestText,
+  colorCategoryGreenBg,
+  colorCategoryGreenText,
+  colorCategoryBlueBg,
+  colorCategoryBlueText,
+  colorCategoryBlueDarkText,
+  colorCategoryAmberBg,
+  colorCategoryAmberText,
+  colorCategoryOrangeBg,
+  colorCategoryOrangeText,
+  colorCategoryPurpleBg,
+  colorCategoryVioletText,
+  colorCategoryFuchsiaBg,
+  colorCategoryFuchsiaText,
+  colorEfficacyExcellentBorder,
+  colorEfficacyGoodBorder,
+  colorEfficacyFairBorder,
+  colorEfficacyPoorBorder,
   spacing2,
   spacing3,
   spacing4,
@@ -66,9 +88,9 @@ function buildBodySizeText(minMm: number | null, maxMm: number | null): string |
 // ---------------------------------------------------------------------------
 
 const CATEGORY_BADGE: Record<DiseasePestCategory, { label: string; bg: string; text: string }> = {
-  disease:           { label: '病害', bg: '#fee2e2', text: '#b91c1c' },
-  pest:              { label: '害虫', bg: '#fef3c7', text: '#b45309' },
-  beneficial_insect: { label: '益虫', bg: '#d1fae5', text: '#065f46' },
+  disease:           { label: '病害', bg: colorCategoryRedBg, text: colorCategoryRedText },
+  pest:              { label: '害虫', bg: colorCategoryPestBg, text: colorCategoryPestText },
+  beneficial_insect: { label: '益虫', bg: colorCategoryGreenBg, text: colorCategoryGreenText },
 };
 
 const CATEGORY_EMOJI: Record<DiseasePestCategory, string> = {
@@ -82,11 +104,11 @@ const CATEGORY_EMOJI: Record<DiseasePestCategory, string> = {
 // ---------------------------------------------------------------------------
 
 const PESTICIDE_TYPE_BADGE: Record<PesticideType, { label: string; bg: string; text: string }> = {
-  fungicide:   { label: '殺菌剤', bg: '#e0f2fe', text: '#0369a1' },
-  insecticide: { label: '殺虫剤', bg: '#ffedd5', text: '#c2410c' },
-  acaricide:   { label: '殺ダニ剤', bg: '#ede9fe', text: '#6d28d9' },
-  compound:    { label: '複合剤', bg: '#fdf4ff', text: '#a21caf' },
-  other:       { label: 'その他', bg: '#f2f2f2', text: '#484848' },
+  fungicide:   { label: '殺菌剤', bg: colorCategoryBlueBg, text: colorCategoryBlueText },
+  insecticide: { label: '殺虫剤', bg: colorCategoryOrangeBg, text: colorCategoryOrangeText },
+  acaricide:   { label: '殺ダニ剤', bg: colorCategoryPurpleBg, text: colorCategoryVioletText },
+  compound:    { label: '複合剤', bg: colorCategoryFuchsiaBg, text: colorCategoryFuchsiaText },
+  other:       { label: 'その他', bg: colorSurfaceMuted, text: colorTextSecondary },
 };
 
 // ---------------------------------------------------------------------------
@@ -94,11 +116,11 @@ const PESTICIDE_TYPE_BADGE: Record<PesticideType, { label: string; bg: string; t
 // ---------------------------------------------------------------------------
 
 const EFFECT_RATING_CONFIG: Record<EffectRating, { mark: string; bg: string; text: string; border: string }> = {
-  excellent: { mark: '◎', bg: '#d1fae5', text: '#065f46', border: '#6ee7b7' },
-  good:      { mark: '○', bg: '#e0f2fe', text: '#075985', border: '#7dd3fc' },
-  fair:      { mark: '△', bg: '#fef3c7', text: '#92400e', border: '#fcd34d' },
-  poor:      { mark: '×', bg: '#fee2e2', text: '#b91c1c', border: '#fca5a5' },
-  none:      { mark: '—', bg: '#f2f2f2', text: '#8a8a8a', border: '#e4e4e4' },
+  excellent: { mark: '◎', bg: colorCategoryGreenBg, text: colorCategoryGreenText, border: colorEfficacyExcellentBorder },
+  good:      { mark: '○', bg: colorCategoryBlueBg, text: colorCategoryBlueDarkText, border: colorEfficacyGoodBorder },
+  fair:      { mark: '△', bg: colorCategoryAmberBg, text: colorCategoryAmberText, border: colorEfficacyFairBorder },
+  poor:      { mark: '×', bg: colorCategoryRedBg, text: colorCategoryRedText, border: colorEfficacyPoorBorder },
+  none:      { mark: '—', bg: colorSurfaceMuted, text: colorTextTertiary, border: colorBorderLight },
 };
 
 type EffectRatingBadgeProps = {

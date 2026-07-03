@@ -11,6 +11,22 @@ import {
   colorTextSecondary,
   colorSurface,
   colorBorder,
+  colorCategoryGreenBg,
+  colorCategoryGreenText,
+  colorCategoryIndigoBg,
+  colorCategoryIndigoText,
+  colorCategoryGreenLightBg,
+  colorCategoryGreenLightText,
+  colorCategoryOrangeBg,
+  colorCategoryOrangeText,
+  colorCategoryAmberBg,
+  colorCategoryAmberText,
+  colorCategoryYellowBg,
+  colorCategoryYellowText,
+  colorCategoryPurpleBg,
+  colorCategoryPurpleText,
+  colorCategoryFallbackBg,
+  colorCategoryFallbackText,
   spacing2,
   spacing3,
   spacing4,
@@ -32,16 +48,16 @@ type CategoryColors = {
 };
 
 const CATEGORY_COLOR_MAP: Readonly<Record<string, CategoryColors>> = {
-  '樹形': { bg: '#d1fae5', text: '#065f46' },
-  '技術・作業': { bg: '#dbeafe', text: '#1e40af' },
-  '管理・育成': { bg: '#dcfce7', text: '#166534' },
-  '道具・用品': { bg: '#ffedd5', text: '#9a3412' },
-  '盆器・鉢': { bg: '#fef3c7', text: '#92400e' },
-  '用土・肥料': { bg: '#fef9c3', text: '#854d0e' },
-  '展示・鑑賞': { bg: '#ede9fe', text: '#5b21b6' },
+  '樹形':      { bg: colorCategoryGreenBg,      text: colorCategoryGreenText },
+  '技術・作業': { bg: colorCategoryIndigoBg,     text: colorCategoryIndigoText },
+  '管理・育成': { bg: colorCategoryGreenLightBg, text: colorCategoryGreenLightText },
+  '道具・用品': { bg: colorCategoryOrangeBg,     text: colorCategoryOrangeText },
+  '盆器・鉢':   { bg: colorCategoryAmberBg,      text: colorCategoryAmberText },
+  '用土・肥料': { bg: colorCategoryYellowBg,     text: colorCategoryYellowText },
+  '展示・鑑賞': { bg: colorCategoryPurpleBg,     text: colorCategoryPurpleText },
 } as const;
 
-const CATEGORY_COLOR_FALLBACK: CategoryColors = { bg: '#f5f5f4', text: '#57534e' };
+const CATEGORY_COLOR_FALLBACK: CategoryColors = { bg: colorCategoryFallbackBg, text: colorCategoryFallbackText };
 
 const CARD_MIN_HEIGHT = 80;
 const DESCRIPTION_LINES = 2;

@@ -32,11 +32,15 @@ import {
   colorBorderLight,
   colorTextPrimary,
   colorTextSecondary,
-  colorSurfaceMuted,
+  colorTextInverse,
+  colorLevelHighBg,
+  colorLevelModerateBg,
+  colorLevelLowBg,
+  colorLevelMinimalBg,
+  colorLevelMinimalText,
   spacing2,
   spacing3,
   spacing4,
-  spacing6,
   spacing8,
   radiusMd,
   radiusSm,
@@ -53,10 +57,10 @@ import {
 type ActivityLevel = 'high' | 'moderate' | 'low' | 'minimal';
 
 const LEVEL_CONFIG: Record<ActivityLevel, { bg: string; text: string; label: string; numericValue: number }> = {
-  high: { bg: '#22c55e', text: '#ffffff', label: '高', numericValue: 3 },
-  moderate: { bg: '#eab308', text: '#ffffff', label: '中', numericValue: 2 },
-  low: { bg: '#f97316', text: '#ffffff', label: '低', numericValue: 1 },
-  minimal: { bg: '#d1d5db', text: '#6b7280', label: '微', numericValue: 0 },
+  high: { bg: colorLevelHighBg, text: colorTextInverse, label: '高', numericValue: 3 },
+  moderate: { bg: colorLevelModerateBg, text: colorTextInverse, label: '中', numericValue: 2 },
+  low: { bg: colorLevelLowBg, text: colorTextInverse, label: '低', numericValue: 1 },
+  minimal: { bg: colorLevelMinimalBg, text: colorLevelMinimalText, label: '微', numericValue: 0 },
 };
 
 const MONTH_LABELS = [

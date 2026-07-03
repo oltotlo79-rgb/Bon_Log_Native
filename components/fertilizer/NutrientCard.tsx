@@ -13,6 +13,12 @@ import {
   colorTextSecondary,
   colorActionPrimary,
   colorSurfaceMuted,
+  colorCategoryGreenBg,
+  colorCategoryGreenText,
+  colorCategoryBlueBg,
+  colorCategoryBlueText,
+  colorCategoryAmberBg,
+  colorCategoryAmberText,
   spacing2,
   spacing3,
   spacing4,
@@ -37,9 +43,9 @@ type BadgeConfig = {
 };
 
 const NUTRIENT_CATEGORY_CONFIG: Record<NutrientCategory, BadgeConfig> = {
-  primary:   { label: '三大要素', bg: '#d1fae5', text: '#065f46' },
-  secondary: { label: '二次要素', bg: '#e0f2fe', text: '#0369a1' },
-  trace:     { label: '微量要素', bg: '#fef3c7', text: '#92400e' },
+  primary:   { label: '三大要素', bg: colorCategoryGreenBg, text: colorCategoryGreenText },
+  secondary: { label: '二次要素', bg: colorCategoryBlueBg,  text: colorCategoryBlueText },
+  trace:     { label: '微量要素', bg: colorCategoryAmberBg, text: colorCategoryAmberText },
 };
 
 const FALLBACK_BADGE: BadgeConfig = { label: 'その他', bg: colorSurfaceMuted, text: colorTextSecondary };

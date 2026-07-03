@@ -35,6 +35,17 @@ import {
   colorActionPrimaryText,
   colorTextPrimary,
   colorTextSecondary,
+  colorTextInverse,
+  colorLevelHighBg,
+  colorLevelModerateBg,
+  colorLevelLowBg,
+  colorLevelMinimalBg,
+  colorLevelMinimalText,
+  colorDeltaIncrease,
+  colorDeltaDecrease,
+  colorEffectRedistributeBg,
+  colorEffectRedistributeText,
+  colorSurfaceWashi,
   spacing2,
   spacing3,
   spacing4,
@@ -43,11 +54,16 @@ import {
   radiusMd,
   radiusSm,
   radiusFull,
-  textBase,
   textSm,
   textXs,
   fontFamilySerifBold,
 } from '@/lib/constants/design-tokens';
+import {
+  SIMULATOR_MAX_LEVEL,
+  SIMULATOR_MIN_LEVEL,
+  SIMULATOR_MAGNITUDE_DELTA,
+  SIMULATOR_LEVEL_THRESHOLDS,
+} from '@/lib/constants/limits/hormone-simulator';
 
 type SimulatorHormone = components['schemas']['HormoneSimulatorResponse']['hormones'][number];
 type SimulatorTechniqueItem = components['schemas']['HormoneSimulatorResponse']['techniques'][number];
@@ -70,29 +86,11 @@ const MONTH_LABELS = [
 type ActivityLevel = 'high' | 'moderate' | 'low' | 'minimal';
 
 const LEVEL_CONFIG: Record<ActivityLevel, { bg: string; text: string; label: string; numericValue: number }> = {
-  high: { bg: '#22c55e', text: '#ffffff', label: '高', numericValue: 3 },
-  moderate: { bg: '#eab308', text: '#ffffff', label: '中', numericValue: 2 },
-  low: { bg: '#f97316', text: '#ffffff', label: '低', numericValue: 1 },
-  minimal: { bg: '#d1d5db', text: '#6b7280', label: '微', numericValue: 0 },
+  high: { bg: colorLevelHighBg, text: colorTextInverse, label: '高', numericValue: 3 },
+  moderate: { bg: colorLevelModerateBg, text: colorTextInverse, label: '中', numericValue: 2 },
+  low: { bg: colorLevelLowBg, text: colorTextInverse, label: '低', numericValue: 1 },
+  minimal: { bg: colorLevelMinimalBg, text: colorLevelMinimalText, label: '微', numericValue: 0 },
 };
-
-// Web 版 SIMULATOR_MAGNITUDE_DELTA
-const MAGNITUDE_DELTA: Record<string, number> = {
-  strong: 2,
-  moderate: 1,
-  mild: 0.5,
-};
-
-const SIMULATOR_MAX_LEVEL = 4;
-const SIMULATOR_MIN_LEVEL = 0;
-
-// Web 版 SIMULATOR_LEVEL_THRESHOLDS と同一
-const LEVEL_THRESHOLDS: ReadonlyArray<{ min: number; level: ActivityLevel }> = [
-  { min: 2.5, level: 'high' },
-  { min: 1.5, level: 'moderate' },
-  { min: 0.5, level: 'low' },
-  { min: 0, level: 'minimal' },
-];
 
 // Web 版 TECHNIQUE_EFFECT_TYPE_LABELS と同一
 const EFFECT_TYPE_LABELS: Record<string, string> = {
@@ -123,7 +121,7 @@ function levelToNumeric(level: string): number {
 }
 
 function numericToLevel(value: number): ActivityLevel {
-  return LEVEL_THRESHOLDS.find(({ min }) => value >= min)?.level ?? 'minimal';
+  return SIMULATOR_LEVEL_THRESHOLDS.find(({ min }) => value >= min)?.level ?? 'minimal';
 }
 
 // ---------------------------------------------------------------------------
@@ -182,7 +180,7 @@ function calcPredicted(
     let magnitude: string | null = null;
 
     for (const mt of matchingEffects) {
-      const magnitudeDelta = MAGNITUDE_DELTA[mt.magnitude] ?? 0;
+      const magnitudeDelta = SIMULATOR_MAGNITUDE_DELTA[mt.magnitude] ?? 0;
       if (mt.effectType === 'increase') delta += magnitudeDelta;
       else if (mt.effectType === 'decrease') delta -= magnitudeDelta;
 
@@ -455,7 +453,7 @@ export default function HormoneSimulatorScreen() {
                         style={[
                           styles.barDelta,
                           {
-                            backgroundColor: prediction.delta > 0 ? '#86efac' : '#fca5a5',
+                            backgroundColor: prediction.delta > 0 ? colorDeltaIncrease : colorDeltaDecrease,
                             flex: Math.abs(prediction.delta) / barMaxWidth,
                           },
                         ]}
@@ -558,7 +556,7 @@ const styles = StyleSheet.create({
   },
   techniqueButtonSelected: {
     borderColor: colorActionPrimary,
-    backgroundColor: '#f8f8f8',
+    backgroundColor: colorSurfaceWashi,
   },
   techniqueButtonText: {
     ...textXs,
@@ -615,7 +613,7 @@ const styles = StyleSheet.create({
     color: colorTextSecondary,
   },
   redistributeBadge: {
-    backgroundColor: '#dbeafe',
+    backgroundColor: colorEffectRedistributeBg,
     borderRadius: radiusFull,
     paddingHorizontal: spacing2,
     paddingVertical: 2,
@@ -623,7 +621,7 @@ const styles = StyleSheet.create({
   redistributeBadgeText: {
     fontSize: 10,
     fontFamily: fontFamilySerifBold,
-    color: '#1e40af',
+    color: colorEffectRedistributeText,
     lineHeight: 14,
   },
   effectDetailText: {

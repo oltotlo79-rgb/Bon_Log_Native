@@ -25,6 +25,9 @@ import {
   colorTextSecondary,
   colorTextLink,
   colorError,
+  colorPesticideWarningBorder,
+  colorPesticideWarningBg,
+  colorPesticideWarningDivider,
   spacing2,
   spacing3,
   spacing4,
@@ -384,8 +387,8 @@ const styles = StyleSheet.create({
 
   // 混用不可農薬セクション（警告スタイル：Web版の border-destructive/30 bg-destructive/5 に対応）
   incompatSection: {
-    borderColor: '#f87171',
-    backgroundColor: '#fff5f5',
+    borderColor: colorPesticideWarningBorder,
+    backgroundColor: colorPesticideWarningBg,
   },
   incompatSectionTitle: {
     color: colorError,
@@ -398,7 +401,7 @@ const styles = StyleSheet.create({
   incompatRow: {
     paddingVertical: spacing3,
     borderBottomWidth: 1,
-    borderBottomColor: '#fecaca',
+    borderBottomColor: colorPesticideWarningDivider,
     minHeight: 44,
     justifyContent: 'center',
     gap: 2,
