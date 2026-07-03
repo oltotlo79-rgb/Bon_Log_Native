@@ -1,6 +1,6 @@
 /**
  * @module app/dictionary/[slug]/index
- * 盆栽用語辞典 詳細画面。用語本文・関連語・前後ナビを表示する。
+ * 盆栽用語辞典 詳細画面。用語本文・関連語・前後ナビ・カテゴリリンクを表示する。
  * 仕様: docs/design/browse-screens.md §2.4
  */
 
@@ -23,24 +23,66 @@ import { useOnlineStatus } from '@/hooks/use-online-status';
 import { ERR_DICTIONARY_LOAD_FAILED } from '@/lib/constants/errors';
 import {
   colorBackground,
-  colorSurfaceMuted,
+  colorSurface,
+  colorBorder,
   colorBorderLight,
   colorActionPrimary,
   colorTextPrimary,
   colorTextSecondary,
   colorTextLink,
+  colorCategoryGreenBg,
+  colorCategoryGreenText,
+  colorCategoryIndigoBg,
+  colorCategoryIndigoText,
+  colorCategoryGreenLightBg,
+  colorCategoryGreenLightText,
+  colorCategoryOrangeBg,
+  colorCategoryOrangeText,
+  colorCategoryAmberBg,
+  colorCategoryAmberText,
+  colorCategoryYellowBg,
+  colorCategoryYellowText,
+  colorCategoryPurpleBg,
+  colorCategoryPurpleText,
+  colorCategoryFallbackBg,
+  colorCategoryFallbackText,
   spacing2,
   spacing3,
   spacing4,
   spacing8,
-  radiusSm,
+  radiusMd,
   radiusFull,
   textXs,
   textSm,
   textBase,
   textLg,
   textXl,
+  shadowWashi,
 } from '@/lib/constants/design-tokens';
+
+// ---------------------------------------------------------------------------
+// カテゴリカラーマップ（DictionaryTermCard の CATEGORY_COLOR_MAP と同一対応）
+// ---------------------------------------------------------------------------
+
+type CategoryColors = {
+  bg: string;
+  text: string;
+};
+
+const CATEGORY_COLOR_MAP: Readonly<Record<string, CategoryColors>> = {
+  '樹形':      { bg: colorCategoryGreenBg,      text: colorCategoryGreenText },
+  '技術・作業': { bg: colorCategoryIndigoBg,     text: colorCategoryIndigoText },
+  '管理・育成': { bg: colorCategoryGreenLightBg, text: colorCategoryGreenLightText },
+  '道具・用品': { bg: colorCategoryOrangeBg,     text: colorCategoryOrangeText },
+  '盆器・鉢':   { bg: colorCategoryAmberBg,      text: colorCategoryAmberText },
+  '用土・肥料': { bg: colorCategoryYellowBg,     text: colorCategoryYellowText },
+  '展示・鑑賞': { bg: colorCategoryPurpleBg,     text: colorCategoryPurpleText },
+} as const;
+
+const CATEGORY_COLOR_FALLBACK: CategoryColors = {
+  bg: colorCategoryFallbackBg,
+  text: colorCategoryFallbackText,
+};
 
 // ---------------------------------------------------------------------------
 // Screen
@@ -67,6 +109,10 @@ export default function DictionaryDetailScreen() {
 
   const handleNextPress = useCallback((nextSlug: string) => {
     router.push({ pathname: '/dictionary/[slug]', params: { slug: nextSlug } });
+  }, []);
+
+  const handleCategoryPress = useCallback((category: string) => {
+    router.push({ pathname: '/dictionary', params: { category } });
   }, []);
 
   return (
@@ -100,8 +146,20 @@ export default function DictionaryDetailScreen() {
           <Text style={styles.termHeading}>{data.term.term}</Text>
           <Text style={styles.reading}>{data.term.reading}</Text>
           {data.term.category.length > 0 && (
-            <View style={styles.categoryChip}>
-              <Text style={styles.categoryChipText}>{data.term.category}</Text>
+            <View
+              style={[
+                styles.categoryChip,
+                { backgroundColor: (CATEGORY_COLOR_MAP[data.term.category] ?? CATEGORY_COLOR_FALLBACK).bg },
+              ]}
+            >
+              <Text
+                style={[
+                  styles.categoryChipText,
+                  { color: (CATEGORY_COLOR_MAP[data.term.category] ?? CATEGORY_COLOR_FALLBACK).text },
+                ]}
+              >
+                {data.term.category}
+              </Text>
             </View>
           )}
 
@@ -150,9 +208,12 @@ export default function DictionaryDetailScreen() {
                   accessibilityElementsHidden
                   importantForAccessibility="no"
                 />
-                <Text style={styles.prevNextText} numberOfLines={1}>
-                  {data.prev.term}
-                </Text>
+                <View style={styles.prevNextTextBlock}>
+                  <Text style={styles.prevNextSubLabel}>前の用語</Text>
+                  <Text style={styles.prevNextText} numberOfLines={1}>
+                    {data.prev.term}
+                  </Text>
+                </View>
               </TouchableOpacity>
             ) : (
               <View style={styles.prevButton} />
@@ -165,9 +226,12 @@ export default function DictionaryDetailScreen() {
                 accessibilityRole="button"
                 accessibilityLabel={`次の用語: ${data.next.term}`}
               >
-                <Text style={styles.prevNextText} numberOfLines={1}>
-                  {data.next.term}
-                </Text>
+                <View style={styles.prevNextTextBlockRight}>
+                  <Text style={styles.prevNextSubLabel}>次の用語</Text>
+                  <Text style={styles.prevNextText} numberOfLines={1}>
+                    {data.next.term}
+                  </Text>
+                </View>
                 <Ionicons
                   name="chevron-forward"
                   size={16}
@@ -180,6 +244,22 @@ export default function DictionaryDetailScreen() {
               <View style={styles.nextButton} />
             )}
           </View>
+
+          {/* 同カテゴリ一覧リンク（Web の /dictionary?category=XXX 相当） */}
+          {data.term.category.length > 0 && (
+            <View style={styles.categoryLinkWrapper}>
+              <TouchableOpacity
+                onPress={() => handleCategoryPress(data.term.category)}
+                accessibilityRole="button"
+                accessibilityLabel={`「${data.term.category}」カテゴリの用語一覧を見る`}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Text style={styles.categoryLinkText}>
+                  「{data.term.category}」の用語一覧を見る
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )}
         </ScrollView>
       )}
     </View>
@@ -210,15 +290,15 @@ const styles = StyleSheet.create({
   },
   categoryChip: {
     alignSelf: 'flex-start',
-    backgroundColor: colorSurfaceMuted,
-    borderRadius: radiusSm,
-    paddingHorizontal: spacing2,
-    paddingVertical: 2,
+    borderRadius: radiusFull,
+    paddingHorizontal: spacing3,
+    paddingVertical: 4,
     marginBottom: spacing4,
   },
   categoryChipText: {
     ...textXs,
-    color: colorTextSecondary,
+    fontWeight: '500',
+    lineHeight: 16,
   },
   separator: {
     height: 1,
@@ -267,20 +347,58 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    minHeight: 44,
+    gap: spacing2,
+    minHeight: 56,
     paddingVertical: spacing3,
+    paddingHorizontal: spacing3,
+    borderRadius: radiusMd,
+    borderWidth: 1,
+    borderColor: colorBorder,
+    backgroundColor: colorSurface,
+    ...shadowWashi,
   },
   nextButton: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'flex-end',
-    minHeight: 44,
+    gap: spacing2,
+    minHeight: 56,
     paddingVertical: spacing3,
+    paddingHorizontal: spacing3,
+    borderRadius: radiusMd,
+    borderWidth: 1,
+    borderColor: colorBorder,
+    backgroundColor: colorSurface,
+    ...shadowWashi,
+  },
+  prevNextTextBlock: {
+    flex: 1,
+    minWidth: 0,
+  },
+  prevNextTextBlockRight: {
+    flex: 1,
+    minWidth: 0,
+    alignItems: 'flex-end',
+  },
+  prevNextSubLabel: {
+    ...textXs,
+    color: colorTextSecondary,
+    lineHeight: 14,
+    marginBottom: 2,
   },
   prevNextText: {
     ...textSm,
     color: colorTextLink,
-    flex: 1,
+    fontWeight: '600',
+  },
+  categoryLinkWrapper: {
+    marginTop: spacing4,
+    alignItems: 'center',
+  },
+  categoryLinkText: {
+    ...textSm,
+    color: colorActionPrimary,
+    textDecorationLine: 'underline',
   },
 });

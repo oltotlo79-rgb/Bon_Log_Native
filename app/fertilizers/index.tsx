@@ -204,6 +204,12 @@ const NAV_CARD_DEFS: NavCardDef[] = [
     getDescription: () => '症状から不足栄養素を逆引き検索',
     onPress: () => router.push('/fertilizers/symptoms'),
   },
+  {
+    iconName: 'git-branch-outline',
+    label: '吸収と転流',
+    getDescription: () => '根からの吸収・道管と師管・栄養素の移動性',
+    onPress: () => router.push('/fertilizers/absorption'),
+  },
 ];
 
 // ---------------------------------------------------------------------------
