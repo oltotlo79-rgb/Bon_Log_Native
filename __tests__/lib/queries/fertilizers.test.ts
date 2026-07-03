@@ -15,6 +15,8 @@ import {
   useFertilizerCategoriesQuery,
   useFertilizerTreeSpeciesQuery,
   useFertilizationScheduleQuery,
+  useFertilizerColumnsQuery,
+  useFertilizerColumnDetailQuery,
 } from '@/lib/queries/fertilizers';
 
 // ---------------------------------------------------------------------------
@@ -339,5 +341,164 @@ describe('useFertilizationScheduleQuery', () => {
 
     await waitFor(() => expect(result.current.isError).toBe(true));
     expect(result.current.error).toBeInstanceOf(Error);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// useFertilizerColumnsQuery
+// ---------------------------------------------------------------------------
+
+describe('useFertilizerColumnsQuery', () => {
+  it('成功でコラム items が返る（category なし）', async () => {
+    const page = {
+      items: [{ id: 'fc1', slug: 'col-1', title: '肥料コラム1' }],
+      nextCursor: null,
+    };
+    mockApiClientGet.mockResolvedValue({ data: page, error: undefined });
+    const { Wrapper } = createWrapper();
+
+    const { result } = renderHook(() => useFertilizerColumnsQuery(), { wrapper: Wrapper });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(result.current.data?.pages[0].items[0].title).toBe('肥料コラム1');
+  });
+
+  it('category 引数ありのときクエリに category が渡される', async () => {
+    mockApiClientGet.mockResolvedValue({
+      data: { items: [], nextCursor: null },
+      error: undefined,
+    });
+    const { Wrapper } = createWrapper();
+
+    renderHook(() => useFertilizerColumnsQuery('nitrogen'), { wrapper: Wrapper });
+
+    await waitFor(() =>
+      expect(mockApiClientGet).toHaveBeenCalledWith(
+        '/api/v1/fertilizers/columns',
+        expect.objectContaining({
+          params: expect.objectContaining({
+            query: expect.objectContaining({ category: 'nitrogen' }),
+          }),
+        })
+      )
+    );
+  });
+
+  it('category なしと category ありで別キャッシュキーになる', async () => {
+    mockApiClientGet.mockResolvedValue({
+      data: { items: [], nextCursor: null },
+      error: undefined,
+    });
+    const queryClient = createTestQueryClient();
+    function Wrapper({ children }: { children: React.ReactNode }) {
+      return React.createElement(QueryClientProvider, { client: queryClient }, children);
+    }
+
+    const { result: r1 } = renderHook(() => useFertilizerColumnsQuery(), { wrapper: Wrapper });
+    await waitFor(() => expect(r1.current.isSuccess).toBe(true));
+
+    mockApiClientGet.mockResolvedValue({
+      data: { items: [{ id: 'fc2', slug: 'col-2', title: 'コラム2' }], nextCursor: null },
+      error: undefined,
+    });
+
+    const { result: r2 } = renderHook(
+      () => useFertilizerColumnsQuery('nitrogen'),
+      { wrapper: Wrapper }
+    );
+    await waitFor(() => expect(r2.current.isSuccess).toBe(true));
+
+    expect(r1.current.data?.pages[0].items).toHaveLength(0);
+    expect(r2.current.data?.pages[0].items).toHaveLength(1);
+  });
+
+  it('nextCursor があるとき hasNextPage が true', async () => {
+    mockApiClientGet.mockResolvedValue({
+      data: { items: [{ id: 'fc1', slug: 'col-1', title: 'コラム1' }], nextCursor: 'cursor-y' },
+      error: undefined,
+    });
+    const { Wrapper } = createWrapper();
+
+    const { result } = renderHook(() => useFertilizerColumnsQuery(), { wrapper: Wrapper });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(result.current.hasNextPage).toBe(true);
+  });
+
+  it('エラー時に isError になる', async () => {
+    mockApiClientGet.mockResolvedValue({
+      data: undefined,
+      error: makeApiError('INTERNAL_ERROR', 500),
+    });
+    const { Wrapper } = createWrapper();
+
+    const { result } = renderHook(() => useFertilizerColumnsQuery(), { wrapper: Wrapper });
+
+    await waitFor(() => expect(result.current.isError).toBe(true));
+  });
+});
+
+// ---------------------------------------------------------------------------
+// useFertilizerColumnDetailQuery
+// ---------------------------------------------------------------------------
+
+describe('useFertilizerColumnDetailQuery', () => {
+  it('成功でコラム詳細が返る', async () => {
+    const data = { id: 'fc1', slug: 'col-1', title: '肥料コラム1', body: '本文' };
+    mockApiClientGet.mockResolvedValue({ data, error: undefined });
+    const { Wrapper } = createWrapper();
+
+    const { result } = renderHook(
+      () => useFertilizerColumnDetailQuery('col-1'),
+      { wrapper: Wrapper }
+    );
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(result.current.data?.slug).toBe('col-1');
+  });
+
+  it('slug をパスに渡す', async () => {
+    mockApiClientGet.mockResolvedValue({ data: { id: 'fc1', slug: 'col-1' }, error: undefined });
+    const { Wrapper } = createWrapper();
+
+    renderHook(() => useFertilizerColumnDetailQuery('col-1'), { wrapper: Wrapper });
+
+    await waitFor(() =>
+      expect(mockApiClientGet).toHaveBeenCalledWith(
+        '/api/v1/fertilizers/columns/{slug}',
+        expect.objectContaining({
+          params: expect.objectContaining({ path: { slug: 'col-1' } }),
+        })
+      )
+    );
+  });
+
+  it('slug が空文字のとき enabled=false でクエリが実行されない', async () => {
+    const { Wrapper } = createWrapper();
+
+    const { result } = renderHook(
+      () => useFertilizerColumnDetailQuery(''),
+      { wrapper: Wrapper }
+    );
+
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(result.current.isPending).toBe(true);
+    expect(mockApiClientGet).not.toHaveBeenCalled();
+  });
+
+  it('エラー時に ApiError が throw される', async () => {
+    mockApiClientGet.mockResolvedValue({
+      data: undefined,
+      error: makeApiError('NOT_FOUND', 404),
+    });
+    const { Wrapper } = createWrapper();
+
+    const { result } = renderHook(
+      () => useFertilizerColumnDetailQuery('unknown'),
+      { wrapper: Wrapper }
+    );
+
+    await waitFor(() => expect(result.current.isError).toBe(true));
+    expect(result.current.error).toBeInstanceOf(ApiError);
   });
 });

@@ -174,6 +174,50 @@ describe('PesticidesScreen NavCard', () => {
     fireEvent.press(screen.getByLabelText('散布方法ガイドへ移動'));
     expect(mockRouter.push).toHaveBeenCalledWith('/pesticides/spray-guide');
   });
+
+  it('「展着剤」NavCard が表示される', () => {
+    renderWithProviders(<PesticidesScreen />);
+    expect(screen.getByLabelText('展着剤へ移動')).toBeTruthy();
+  });
+
+  it('「コラム・読みもの」NavCard が表示される', () => {
+    renderWithProviders(<PesticidesScreen />);
+    expect(screen.getByLabelText('コラム・読みものへ移動')).toBeTruthy();
+  });
+
+  it('「剤型の違い」NavCard が表示される', () => {
+    renderWithProviders(<PesticidesScreen />);
+    expect(screen.getByLabelText('剤型の違いへ移動')).toBeTruthy();
+  });
+
+  it('「混用チェッカー」NavCard が表示される', () => {
+    renderWithProviders(<PesticidesScreen />);
+    expect(screen.getByLabelText('混用チェッカーへ移動')).toBeTruthy();
+  });
+
+  it('「展着剤」タップで /pesticides/spreaders へ push する', () => {
+    renderWithProviders(<PesticidesScreen />);
+    fireEvent.press(screen.getByLabelText('展着剤へ移動'));
+    expect(mockRouter.push).toHaveBeenCalledWith('/pesticides/spreaders');
+  });
+
+  it('「コラム・読みもの」タップで /pesticides/columns へ push する', () => {
+    renderWithProviders(<PesticidesScreen />);
+    fireEvent.press(screen.getByLabelText('コラム・読みものへ移動'));
+    expect(mockRouter.push).toHaveBeenCalledWith('/pesticides/columns');
+  });
+
+  it('「剤型の違い」タップで /pesticides/formulations へ push する', () => {
+    renderWithProviders(<PesticidesScreen />);
+    fireEvent.press(screen.getByLabelText('剤型の違いへ移動'));
+    expect(mockRouter.push).toHaveBeenCalledWith('/pesticides/formulations');
+  });
+
+  it('「混用チェッカー」タップで /pesticides/mixing-checker へ push する', () => {
+    renderWithProviders(<PesticidesScreen />);
+    fireEvent.press(screen.getByLabelText('混用チェッカーへ移動'));
+    expect(mockRouter.push).toHaveBeenCalledWith('/pesticides/mixing-checker');
+  });
 });
 
 // ---------------------------------------------------------------------------

@@ -9,7 +9,15 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { ApiError } from '@/lib/api/errors';
 import type { MobileApiErrorCode } from '@/lib/api/errors';
 import { createTestQueryClient } from '@/__tests__/utils/test-utils';
-import { useHormonesQuery, useHormoneDetailQuery } from '@/lib/queries/hormones';
+import {
+  useHormonesQuery,
+  useHormoneDetailQuery,
+  useHormoneInteractionsQuery,
+  useHormoneTechniquesQuery,
+  useHormoneSimulatorQuery,
+  useHormoneColumnsQuery,
+  useHormoneColumnDetailQuery,
+} from '@/lib/queries/hormones';
 
 // ---------------------------------------------------------------------------
 // モック設定
@@ -237,5 +245,274 @@ describe('useHormoneDetailQuery', () => {
 
     await waitFor(() => expect(result.current.isError).toBe(true));
     expect(result.current.error).toBeInstanceOf(Error);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// useHormoneInteractionsQuery
+// ---------------------------------------------------------------------------
+
+describe('useHormoneInteractionsQuery', () => {
+  it('成功でホルモン相互作用一覧が返る', async () => {
+    const data = {
+      items: [
+        {
+          id: 'int-1',
+          hormoneAName: 'オーキシン',
+          hormoneBName: 'サイトカイニン',
+          type: 'antagonistic',
+          description: '拮抗関係',
+          bonsaiRelevance: null,
+        },
+      ],
+    };
+    mockApiClientGet.mockResolvedValue({ data, error: undefined });
+    const { Wrapper } = createWrapper();
+
+    const { result } = renderHook(() => useHormoneInteractionsQuery(), { wrapper: Wrapper });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(result.current.data?.items[0].hormoneAName).toBe('オーキシン');
+  });
+
+  it('/api/v1/hormones/interactions を呼ぶ', async () => {
+    mockApiClientGet.mockResolvedValue({ data: { items: [] }, error: undefined });
+    const { Wrapper } = createWrapper();
+
+    renderHook(() => useHormoneInteractionsQuery(), { wrapper: Wrapper });
+
+    await waitFor(() =>
+      expect(mockApiClientGet).toHaveBeenCalledWith('/api/v1/hormones/interactions')
+    );
+  });
+
+  it('エラー時に isError になる', async () => {
+    mockApiClientGet.mockResolvedValue({
+      data: undefined,
+      error: makeApiError('INTERNAL_ERROR', 500),
+    });
+    const { Wrapper } = createWrapper();
+
+    const { result } = renderHook(() => useHormoneInteractionsQuery(), { wrapper: Wrapper });
+
+    await waitFor(() => expect(result.current.isError).toBe(true));
+  });
+});
+
+// ---------------------------------------------------------------------------
+// useHormoneTechniquesQuery
+// ---------------------------------------------------------------------------
+
+describe('useHormoneTechniquesQuery', () => {
+  it('成功でホルモン技法一覧が返る', async () => {
+    const data = {
+      items: [
+        {
+          techniqueKey: 'pruning',
+          techniqueNameJa: '剪定',
+          effectType: 'increase',
+          magnitude: 'strong',
+          mechanism: '剪定によって頂芽優勢が崩れ、オーキシン分布が変化する。',
+          hormoneName: 'オーキシン',
+          hormoneSlug: 'auxin',
+        },
+      ],
+    };
+    mockApiClientGet.mockResolvedValue({ data, error: undefined });
+    const { Wrapper } = createWrapper();
+
+    const { result } = renderHook(() => useHormoneTechniquesQuery(), { wrapper: Wrapper });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(result.current.data?.items[0].techniqueNameJa).toBe('剪定');
+  });
+
+  it('/api/v1/hormones/techniques を呼ぶ', async () => {
+    mockApiClientGet.mockResolvedValue({ data: { items: [] }, error: undefined });
+    const { Wrapper } = createWrapper();
+
+    renderHook(() => useHormoneTechniquesQuery(), { wrapper: Wrapper });
+
+    await waitFor(() =>
+      expect(mockApiClientGet).toHaveBeenCalledWith('/api/v1/hormones/techniques')
+    );
+  });
+
+  it('エラー時に isError になる', async () => {
+    mockApiClientGet.mockResolvedValue({
+      data: undefined,
+      error: makeApiError('INTERNAL_ERROR', 500),
+    });
+    const { Wrapper } = createWrapper();
+
+    const { result } = renderHook(() => useHormoneTechniquesQuery(), { wrapper: Wrapper });
+
+    await waitFor(() => expect(result.current.isError).toBe(true));
+  });
+});
+
+// ---------------------------------------------------------------------------
+// useHormoneSimulatorQuery
+// ---------------------------------------------------------------------------
+
+describe('useHormoneSimulatorQuery', () => {
+  it('成功でシミュレーターデータが返る', async () => {
+    const data = {
+      hormones: [{ slug: 'auxin', name: 'オーキシン', baseLevel: 5 }],
+      techniques: [{ key: 'pruning', nameJa: '剪定', effects: [] }],
+    };
+    mockApiClientGet.mockResolvedValue({ data, error: undefined });
+    const { Wrapper } = createWrapper();
+
+    const { result } = renderHook(() => useHormoneSimulatorQuery(), { wrapper: Wrapper });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(result.current.data?.hormones[0].name).toBe('オーキシン');
+  });
+
+  it('/api/v1/hormones/simulator を呼ぶ', async () => {
+    mockApiClientGet.mockResolvedValue({ data: { hormones: [], techniques: [] }, error: undefined });
+    const { Wrapper } = createWrapper();
+
+    renderHook(() => useHormoneSimulatorQuery(), { wrapper: Wrapper });
+
+    await waitFor(() =>
+      expect(mockApiClientGet).toHaveBeenCalledWith('/api/v1/hormones/simulator')
+    );
+  });
+
+  it('エラー時に isError になる', async () => {
+    mockApiClientGet.mockResolvedValue({
+      data: undefined,
+      error: makeApiError('INTERNAL_ERROR', 500),
+    });
+    const { Wrapper } = createWrapper();
+
+    const { result } = renderHook(() => useHormoneSimulatorQuery(), { wrapper: Wrapper });
+
+    await waitFor(() => expect(result.current.isError).toBe(true));
+  });
+});
+
+// ---------------------------------------------------------------------------
+// useHormoneColumnsQuery
+// ---------------------------------------------------------------------------
+
+describe('useHormoneColumnsQuery', () => {
+  it('成功でコラム items が返る', async () => {
+    const page = {
+      items: [{ id: 'hc1', slug: 'col-1', title: 'ホルモンコラム1' }],
+      nextCursor: null,
+    };
+    mockApiClientGet.mockResolvedValue({ data: page, error: undefined });
+    const { Wrapper } = createWrapper();
+
+    const { result } = renderHook(() => useHormoneColumnsQuery(), { wrapper: Wrapper });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(result.current.data?.pages[0].items[0].title).toBe('ホルモンコラム1');
+  });
+
+  it('nextCursor があるとき hasNextPage が true', async () => {
+    mockApiClientGet.mockResolvedValue({
+      data: { items: [{ id: 'hc1', slug: 'col-1', title: 'コラム1' }], nextCursor: 'cursor-x' },
+      error: undefined,
+    });
+    const { Wrapper } = createWrapper();
+
+    const { result } = renderHook(() => useHormoneColumnsQuery(), { wrapper: Wrapper });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(result.current.hasNextPage).toBe(true);
+  });
+
+  it('nextCursor が null のとき hasNextPage が false', async () => {
+    mockApiClientGet.mockResolvedValue({
+      data: { items: [], nextCursor: null },
+      error: undefined,
+    });
+    const { Wrapper } = createWrapper();
+
+    const { result } = renderHook(() => useHormoneColumnsQuery(), { wrapper: Wrapper });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(result.current.hasNextPage).toBe(false);
+  });
+
+  it('エラー時に isError になる', async () => {
+    mockApiClientGet.mockResolvedValue({
+      data: undefined,
+      error: makeApiError('INTERNAL_ERROR', 500),
+    });
+    const { Wrapper } = createWrapper();
+
+    const { result } = renderHook(() => useHormoneColumnsQuery(), { wrapper: Wrapper });
+
+    await waitFor(() => expect(result.current.isError).toBe(true));
+  });
+});
+
+// ---------------------------------------------------------------------------
+// useHormoneColumnDetailQuery
+// ---------------------------------------------------------------------------
+
+describe('useHormoneColumnDetailQuery', () => {
+  it('成功でコラム詳細が返る', async () => {
+    const data = { id: 'hc1', slug: 'col-1', title: 'ホルモンコラム1', body: '本文' };
+    mockApiClientGet.mockResolvedValue({ data, error: undefined });
+    const { Wrapper } = createWrapper();
+
+    const { result } = renderHook(
+      () => useHormoneColumnDetailQuery('col-1'),
+      { wrapper: Wrapper }
+    );
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(result.current.data?.slug).toBe('col-1');
+  });
+
+  it('slug をパスに渡す', async () => {
+    mockApiClientGet.mockResolvedValue({ data: { id: 'hc1', slug: 'col-1' }, error: undefined });
+    const { Wrapper } = createWrapper();
+
+    renderHook(() => useHormoneColumnDetailQuery('col-1'), { wrapper: Wrapper });
+
+    await waitFor(() =>
+      expect(mockApiClientGet).toHaveBeenCalledWith(
+        '/api/v1/hormones/columns/{slug}',
+        expect.objectContaining({
+          params: expect.objectContaining({ path: { slug: 'col-1' } }),
+        })
+      )
+    );
+  });
+
+  it('slug が空文字のとき enabled=false でクエリが実行されない', async () => {
+    const { Wrapper } = createWrapper();
+
+    const { result } = renderHook(
+      () => useHormoneColumnDetailQuery(''),
+      { wrapper: Wrapper }
+    );
+
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(result.current.isPending).toBe(true);
+    expect(mockApiClientGet).not.toHaveBeenCalled();
+  });
+
+  it('エラー時に ApiError が throw される', async () => {
+    mockApiClientGet.mockResolvedValue({
+      data: undefined,
+      error: makeApiError('NOT_FOUND', 404),
+    });
+    const { Wrapper } = createWrapper();
+
+    const { result } = renderHook(
+      () => useHormoneColumnDetailQuery('unknown'),
+      { wrapper: Wrapper }
+    );
+
+    await waitFor(() => expect(result.current.isError).toBe(true));
+    expect(result.current.error).toBeInstanceOf(ApiError);
   });
 });

@@ -286,6 +286,72 @@ describe('DiseasePestDetailScreen 効果評価・カテゴリ', () => {
 });
 
 // ---------------------------------------------------------------------------
+// 体長表示
+// ---------------------------------------------------------------------------
+
+describe('DiseasePestDetailScreen 体長表示', () => {
+  it('pest カテゴリで min/max 両方あるとき「N〜M mm」が表示される', () => {
+    mockDetailQuery.data = makeDiseasePestDetail({
+      category: 'pest',
+      bodySizeMinMm: 1,
+      bodySizeMaxMm: 3,
+    });
+    renderWithProviders(<DiseasePestDetailScreen />);
+    expect(screen.getByLabelText('体長: 1〜3 mm')).toBeTruthy();
+  });
+
+  it('beneficial_insect カテゴリで min=max のとき「約 N mm」が表示される', () => {
+    mockDetailQuery.data = makeDiseasePestDetail({
+      category: 'beneficial_insect',
+      bodySizeMinMm: 5,
+      bodySizeMaxMm: 5,
+    });
+    renderWithProviders(<DiseasePestDetailScreen />);
+    expect(screen.getByLabelText('体長: 約 5 mm')).toBeTruthy();
+  });
+
+  it('pest カテゴリで min のみのとき「N mm 以上」が表示される', () => {
+    mockDetailQuery.data = makeDiseasePestDetail({
+      category: 'pest',
+      bodySizeMinMm: 2,
+      bodySizeMaxMm: null,
+    });
+    renderWithProviders(<DiseasePestDetailScreen />);
+    expect(screen.getByLabelText('体長: 2 mm 以上')).toBeTruthy();
+  });
+
+  it('pest カテゴリで max のみのとき「N mm 以下」が表示される', () => {
+    mockDetailQuery.data = makeDiseasePestDetail({
+      category: 'pest',
+      bodySizeMinMm: null,
+      bodySizeMaxMm: 4,
+    });
+    renderWithProviders(<DiseasePestDetailScreen />);
+    expect(screen.getByLabelText('体長: 4 mm 以下')).toBeTruthy();
+  });
+
+  it('pest カテゴリで min/max 両方 null のとき体長が表示されない', () => {
+    mockDetailQuery.data = makeDiseasePestDetail({
+      category: 'pest',
+      bodySizeMinMm: null,
+      bodySizeMaxMm: null,
+    });
+    renderWithProviders(<DiseasePestDetailScreen />);
+    expect(screen.queryByLabelText(/体長:/)).toBeNull();
+  });
+
+  it('disease カテゴリでは体長が表示されない', () => {
+    mockDetailQuery.data = makeDiseasePestDetail({
+      category: 'disease',
+      bodySizeMinMm: 2,
+      bodySizeMaxMm: 5,
+    });
+    renderWithProviders(<DiseasePestDetailScreen />);
+    expect(screen.queryByLabelText(/体長:/)).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
 // オフライン
 // ---------------------------------------------------------------------------
 

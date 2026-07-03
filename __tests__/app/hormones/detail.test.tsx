@@ -203,6 +203,151 @@ describe('HormoneDetailScreen 正常表示', () => {
 });
 
 // ---------------------------------------------------------------------------
+// 相互作用セクション
+// ---------------------------------------------------------------------------
+
+describe('HormoneDetailScreen 相互作用セクション', () => {
+  it('interactions がある場合「相互作用」セクションタイトルが表示される', () => {
+    mockDetailQuery.data = makeHormoneDetail({
+      interactions: [
+        {
+          id: 'int-1',
+          hormoneAName: 'オーキシン',
+          hormoneBName: 'サイトカイニン',
+          type: 'antagonistic',
+          description: '拮抗関係にある。',
+          bonsaiRelevance: '盆栽への影響。',
+        },
+      ],
+    });
+    renderWithProviders(<HormoneDetailScreen />);
+    expect(screen.getByText('相互作用')).toBeTruthy();
+  });
+
+  it('相互作用カードに正しい accessibilityLabel が付く', () => {
+    mockDetailQuery.data = makeHormoneDetail({
+      interactions: [
+        {
+          id: 'int-1',
+          hormoneAName: 'オーキシン',
+          hormoneBName: 'サイトカイニン',
+          type: 'synergistic',
+          description: null,
+          bonsaiRelevance: null,
+        },
+      ],
+    });
+    renderWithProviders(<HormoneDetailScreen />);
+    expect(
+      screen.getByLabelText('オーキシン と サイトカイニン の相乗関係'),
+    ).toBeTruthy();
+  });
+
+  it('「相互作用一覧をすべて見る」ボタンが表示される', () => {
+    mockDetailQuery.data = makeHormoneDetail({
+      interactions: [
+        {
+          id: 'int-1',
+          hormoneAName: 'A',
+          hormoneBName: 'B',
+          type: 'modulatory',
+          description: null,
+          bonsaiRelevance: null,
+        },
+      ],
+    });
+    renderWithProviders(<HormoneDetailScreen />);
+    expect(screen.getByLabelText('相互作用一覧をすべて見る')).toBeTruthy();
+  });
+
+  it('interactions が空配列のとき「相互作用」セクションが表示されない', () => {
+    mockDetailQuery.data = makeHormoneDetail({ interactions: [] });
+    renderWithProviders(<HormoneDetailScreen />);
+    expect(screen.queryByText('相互作用')).toBeNull();
+  });
+
+  it('interactions が undefined のとき「相互作用」セクションが表示されない', () => {
+    const detail = makeHormoneDetail();
+    const { interactions: _unused, ...detailWithout } = detail as Record<string, unknown>;
+    void _unused;
+    mockDetailQuery.data = detailWithout;
+    renderWithProviders(<HormoneDetailScreen />);
+    expect(screen.queryByText('相互作用')).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 技法セクション
+// ---------------------------------------------------------------------------
+
+describe('HormoneDetailScreen 技法セクション', () => {
+  it('techniques がある場合「関連する盆栽技法」セクションタイトルが表示される', () => {
+    mockDetailQuery.data = makeHormoneDetail({
+      techniques: [
+        {
+          techniqueKey: 'pruning',
+          techniqueNameJa: '剪定',
+          effectType: 'increase',
+          magnitude: 'strong',
+          mechanism: '剪定によりオーキシンが活性化。',
+        },
+      ],
+    });
+    renderWithProviders(<HormoneDetailScreen />);
+    expect(screen.getByText('関連する盆栽技法')).toBeTruthy();
+  });
+
+  it('技法行に正しい accessibilityLabel が付く', () => {
+    mockDetailQuery.data = makeHormoneDetail({
+      techniques: [
+        {
+          techniqueKey: 'pruning',
+          techniqueNameJa: '剪定',
+          effectType: 'decrease',
+          magnitude: 'moderate',
+          mechanism: null,
+        },
+      ],
+    });
+    renderWithProviders(<HormoneDetailScreen />);
+    expect(
+      screen.getByLabelText('剪定 減少 影響度 中'),
+    ).toBeTruthy();
+  });
+
+  it('「技法一覧をすべて見る」ボタンが表示される', () => {
+    mockDetailQuery.data = makeHormoneDetail({
+      techniques: [
+        {
+          techniqueKey: 'wiring',
+          techniqueNameJa: '針金掛け',
+          effectType: 'redistribute',
+          magnitude: 'mild',
+          mechanism: null,
+        },
+      ],
+    });
+    renderWithProviders(<HormoneDetailScreen />);
+    expect(screen.getByLabelText('技法一覧をすべて見る')).toBeTruthy();
+  });
+
+  it('techniques が空配列のとき「関連する盆栽技法」セクションが表示されない', () => {
+    mockDetailQuery.data = makeHormoneDetail({ techniques: [] });
+    renderWithProviders(<HormoneDetailScreen />);
+    expect(screen.queryByText('関連する盆栽技法')).toBeNull();
+  });
+
+  it('techniques が undefined のとき「関連する盆栽技法」セクションが表示されない', () => {
+    const detail = makeHormoneDetail();
+    const { techniques: _unused, ...detailWithout } = detail as Record<string, unknown>;
+    void _unused;
+    mockDetailQuery.data = detailWithout;
+    renderWithProviders(<HormoneDetailScreen />);
+    expect(screen.queryByText('関連する盆栽技法')).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
 // オフライン
 // ---------------------------------------------------------------------------
 

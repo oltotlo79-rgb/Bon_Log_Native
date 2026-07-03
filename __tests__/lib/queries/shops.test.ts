@@ -16,6 +16,7 @@ import {
   useCreateShopMutation,
   useUpdateShopMutation,
   useCreateReviewMutation,
+  useShopMapPinsQuery,
 } from '@/lib/queries/shops';
 import { queryKeys } from '@/lib/queries/keys';
 import type { components } from '@/lib/api/generated/schema.d.ts';
@@ -534,5 +535,69 @@ describe('useCreateReviewMutation', () => {
     if (result.current.error instanceof ApiError) {
       expect(result.current.error.code).toBe('VALIDATION_ERROR');
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// useShopMapPinsQuery
+// ---------------------------------------------------------------------------
+
+describe('useShopMapPinsQuery', () => {
+  it('成功でマップピン一覧が返る', async () => {
+    const data = {
+      items: [
+        {
+          id: 'shop-1',
+          name: '盆栽園A',
+          latitude: 35.6762,
+          longitude: 139.6503,
+          address: '東京都千代田区',
+          averageRating: 4.5,
+          reviewCount: 10,
+        },
+      ],
+    };
+    mockApiClientGet.mockResolvedValue({ data, error: undefined });
+    const { Wrapper } = createWrapper();
+
+    const { result } = renderHook(() => useShopMapPinsQuery(), { wrapper: Wrapper });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(result.current.data?.items).toHaveLength(1);
+    expect(result.current.data?.items[0].name).toBe('盆栽園A');
+  });
+
+  it('/api/v1/shops/map-pins を呼ぶ', async () => {
+    mockApiClientGet.mockResolvedValue({ data: { items: [] }, error: undefined });
+    const { Wrapper } = createWrapper();
+
+    renderHook(() => useShopMapPinsQuery(), { wrapper: Wrapper });
+
+    await waitFor(() =>
+      expect(mockApiClientGet).toHaveBeenCalledWith('/api/v1/shops/map-pins')
+    );
+  });
+
+  it('items が空でも isSuccess になる', async () => {
+    mockApiClientGet.mockResolvedValue({ data: { items: [] }, error: undefined });
+    const { Wrapper } = createWrapper();
+
+    const { result } = renderHook(() => useShopMapPinsQuery(), { wrapper: Wrapper });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(result.current.data?.items).toHaveLength(0);
+  });
+
+  it('エラー時に isError になる', async () => {
+    mockApiClientGet.mockResolvedValue({
+      data: undefined,
+      error: makeApiError('INTERNAL_ERROR', 500),
+    });
+    const { Wrapper } = createWrapper();
+
+    const { result } = renderHook(() => useShopMapPinsQuery(), { wrapper: Wrapper });
+
+    await waitFor(() => expect(result.current.isError).toBe(true));
+    expect(result.current.error).toBeInstanceOf(ApiError);
   });
 });

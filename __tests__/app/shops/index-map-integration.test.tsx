@@ -24,9 +24,11 @@ jest.mock('@/hooks/use-online-status', () => ({
 
 const mockUseShopsListQuery = jest.fn();
 const mockUseGenresQuery = jest.fn();
+const mockUseShopMapPinsQuery = jest.fn();
 jest.mock('@/lib/queries/shops', () => ({
   useShopsListQuery: (...args: unknown[]) => mockUseShopsListQuery(...args),
   useGenresQuery: (...args: unknown[]) => mockUseGenresQuery(...args),
+  useShopMapPinsQuery: () => mockUseShopMapPinsQuery(),
 }));
 
 const mockUseCurrentUserQuery = jest.fn();
@@ -59,6 +61,7 @@ const defaultQuery = {
 };
 
 const defaultGenreQuery = { data: undefined, isLoading: false, isError: false };
+const defaultMapPinsQuery = { data: undefined, isLoading: false, isError: false };
 
 // lat/lng あり店舗
 function makeShopWithLocation(id: string, lat: number, lng: number) {
@@ -104,6 +107,7 @@ beforeEach(() => {
   jest.clearAllMocks();
   mockUseCurrentUserQuery.mockReturnValue({ data: undefined });
   mockUseGenresQuery.mockReturnValue(defaultGenreQuery);
+  mockUseShopMapPinsQuery.mockReturnValue(defaultMapPinsQuery);
   // useOnlineStatus をデフォルトのオンライン状態にリセットする
   const { useOnlineStatus } = require('@/hooks/use-online-status');
   (useOnlineStatus as jest.Mock).mockReturnValue(true);

@@ -19,9 +19,11 @@ jest.mock('@/hooks/use-online-status', () => ({
 
 const mockUseShopsListQuery = jest.fn();
 const mockUseGenresQuery = jest.fn();
+const mockUseShopMapPinsQuery = jest.fn();
 jest.mock('@/lib/queries/shops', () => ({
   useShopsListQuery: (...args: unknown[]) => mockUseShopsListQuery(...args),
   useGenresQuery: (...args: unknown[]) => mockUseGenresQuery(...args),
+  useShopMapPinsQuery: () => mockUseShopMapPinsQuery(),
 }));
 
 const mockUseCurrentUserQuery = jest.fn();
@@ -63,6 +65,8 @@ const defaultGenreQuery = {
   isError: false,
 };
 
+const defaultMapPinsQuery = { data: undefined, isLoading: false, isError: false };
+
 // ---------------------------------------------------------------------------
 // セットアップ
 // ---------------------------------------------------------------------------
@@ -72,6 +76,7 @@ beforeEach(() => {
   mockUseShopsListQuery.mockReturnValue(defaultQuery);
   mockUseCurrentUserQuery.mockReturnValue({ data: undefined });
   mockUseGenresQuery.mockReturnValue(defaultGenreQuery);
+  mockUseShopMapPinsQuery.mockReturnValue(defaultMapPinsQuery);
 });
 
 // ---------------------------------------------------------------------------

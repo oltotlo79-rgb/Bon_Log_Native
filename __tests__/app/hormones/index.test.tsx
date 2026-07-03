@@ -28,9 +28,14 @@ const mockHormonesQuery = {
   refetch: jest.fn(),
 };
 
+const mockHormoneColumnsQuery = {
+  data: undefined as unknown,
+};
+
 jest.mock('@/lib/queries/hormones', () => ({
   useHormonesQuery: () => mockHormonesQuery,
   useHormoneDetailQuery: jest.fn(),
+  useHormoneColumnsQuery: () => mockHormoneColumnsQuery,
 }));
 
 const mockRouter = jest.requireMock('expo-router').router;
@@ -110,6 +115,7 @@ beforeEach(() => {
   mockHormonesQuery.isLoading = false;
   mockHormonesQuery.isError = false;
   mockHormonesQuery.refetch = jest.fn();
+  mockHormoneColumnsQuery.data = undefined;
 });
 
 // ---------------------------------------------------------------------------
@@ -193,6 +199,107 @@ describe('HormonesScreen セクション分け', () => {
     expect(
       screen.getByText('植物の成長・分化・休眠を制御する主要な5つのホルモンです。'),
     ).toBeTruthy();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// NavCard（ハブナビゲーション）
+// ---------------------------------------------------------------------------
+
+describe('HormonesScreen NavCard', () => {
+  it('「技法とホルモン」NavCard が表示される', () => {
+    mockHormonesQuery.data = makeHormones();
+    renderWithProviders(<HormonesScreen />);
+    expect(screen.getByLabelText('技法とホルモンへ移動')).toBeTruthy();
+  });
+
+  it('「ホルモン相互作用」NavCard が表示される', () => {
+    mockHormonesQuery.data = makeHormones();
+    renderWithProviders(<HormonesScreen />);
+    expect(screen.getByLabelText('ホルモン相互作用へ移動')).toBeTruthy();
+  });
+
+  it('「相互作用ダイアグラム」NavCard が表示される', () => {
+    mockHormonesQuery.data = makeHormones();
+    renderWithProviders(<HormonesScreen />);
+    expect(screen.getByLabelText('相互作用ダイアグラムへ移動')).toBeTruthy();
+  });
+
+  it('「年間活性カレンダー」NavCard が表示される', () => {
+    mockHormonesQuery.data = makeHormones();
+    renderWithProviders(<HormonesScreen />);
+    expect(screen.getByLabelText('年間活性カレンダーへ移動')).toBeTruthy();
+  });
+
+  it('「バランスシミュレーター」NavCard が表示される', () => {
+    mockHormonesQuery.data = makeHormones();
+    renderWithProviders(<HormonesScreen />);
+    expect(screen.getByLabelText('バランスシミュレーターへ移動')).toBeTruthy();
+  });
+
+  it('「コラム・読みもの」NavCard が表示される', () => {
+    mockHormonesQuery.data = makeHormones();
+    renderWithProviders(<HormonesScreen />);
+    expect(screen.getByLabelText('コラム・読みものへ移動')).toBeTruthy();
+  });
+
+  it('「技法とホルモン」タップで /hormones/techniques へ push する', () => {
+    mockHormonesQuery.data = makeHormones();
+    renderWithProviders(<HormonesScreen />);
+    fireEvent.press(screen.getByLabelText('技法とホルモンへ移動'));
+    expect(mockRouter.push).toHaveBeenCalledWith('/hormones/techniques');
+  });
+
+  it('「ホルモン相互作用」タップで /hormones/interactions へ push する', () => {
+    mockHormonesQuery.data = makeHormones();
+    renderWithProviders(<HormonesScreen />);
+    fireEvent.press(screen.getByLabelText('ホルモン相互作用へ移動'));
+    expect(mockRouter.push).toHaveBeenCalledWith('/hormones/interactions');
+  });
+
+  it('「相互作用ダイアグラム」タップで /hormones/diagram へ push する', () => {
+    mockHormonesQuery.data = makeHormones();
+    renderWithProviders(<HormonesScreen />);
+    fireEvent.press(screen.getByLabelText('相互作用ダイアグラムへ移動'));
+    expect(mockRouter.push).toHaveBeenCalledWith('/hormones/diagram');
+  });
+
+  it('「年間活性カレンダー」タップで /hormones/calendar へ push する', () => {
+    mockHormonesQuery.data = makeHormones();
+    renderWithProviders(<HormonesScreen />);
+    fireEvent.press(screen.getByLabelText('年間活性カレンダーへ移動'));
+    expect(mockRouter.push).toHaveBeenCalledWith('/hormones/calendar');
+  });
+
+  it('「バランスシミュレーター」タップで /hormones/simulator へ push する', () => {
+    mockHormonesQuery.data = makeHormones();
+    renderWithProviders(<HormonesScreen />);
+    fireEvent.press(screen.getByLabelText('バランスシミュレーターへ移動'));
+    expect(mockRouter.push).toHaveBeenCalledWith('/hormones/simulator');
+  });
+
+  it('「コラム・読みもの」タップで /hormones/columns へ push する', () => {
+    mockHormonesQuery.data = makeHormones();
+    renderWithProviders(<HormonesScreen />);
+    fireEvent.press(screen.getByLabelText('コラム・読みものへ移動'));
+    expect(mockRouter.push).toHaveBeenCalledWith('/hormones/columns');
+  });
+
+  it('コラム件数が 0 のとき NavCard にバッジが表示されない', () => {
+    mockHormonesQuery.data = makeHormones();
+    mockHormoneColumnsQuery.data = undefined;
+    renderWithProviders(<HormonesScreen />);
+    expect(screen.queryByText(/件/)).toBeNull();
+  });
+
+  it('コラム件数が 1 以上のとき NavCard にバッジが表示される', () => {
+    mockHormonesQuery.data = makeHormones();
+    mockHormoneColumnsQuery.data = {
+      pages: [{ items: [{ id: 'c1', slug: 'col1', title: 'コラム1' }], nextCursor: null }],
+      pageParams: [undefined],
+    };
+    renderWithProviders(<HormonesScreen />);
+    expect(screen.getByText('1')).toBeTruthy();
   });
 });
 

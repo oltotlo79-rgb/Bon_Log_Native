@@ -241,6 +241,45 @@ describe('FertilizersScreen NavCard', () => {
     fireEvent.press(screen.getByLabelText('症状から探す栄養素へ移動'));
     expect(mockRouter.push).toHaveBeenCalledWith('/fertilizers/symptoms');
   });
+
+  it('「コラム・読みもの」NavCard が表示される', () => {
+    mockNutrientsQuery.data = makeNutrients();
+    renderWithProviders(<FertilizersScreen />);
+    expect(screen.getByLabelText('コラム・読みものへ移動')).toBeTruthy();
+  });
+
+  it('「定番肥料ガイド」NavCard が表示される', () => {
+    mockNutrientsQuery.data = makeNutrients();
+    renderWithProviders(<FertilizersScreen />);
+    expect(screen.getByLabelText('定番肥料ガイドへ移動')).toBeTruthy();
+  });
+
+  it('「トラブル事例集」NavCard が表示される', () => {
+    mockNutrientsQuery.data = makeNutrients();
+    renderWithProviders(<FertilizersScreen />);
+    expect(screen.getByLabelText('トラブル事例集へ移動')).toBeTruthy();
+  });
+
+  it('「コラム・読みもの」NavCard タップで /fertilizers/columns へ push する', () => {
+    mockNutrientsQuery.data = makeNutrients();
+    renderWithProviders(<FertilizersScreen />);
+    fireEvent.press(screen.getByLabelText('コラム・読みものへ移動'));
+    expect(mockRouter.push).toHaveBeenCalledWith('/fertilizers/columns');
+  });
+
+  it('「定番肥料ガイド」NavCard タップで /fertilizers/products へ push する', () => {
+    mockNutrientsQuery.data = makeNutrients();
+    renderWithProviders(<FertilizersScreen />);
+    fireEvent.press(screen.getByLabelText('定番肥料ガイドへ移動'));
+    expect(mockRouter.push).toHaveBeenCalledWith('/fertilizers/products');
+  });
+
+  it('「トラブル事例集」NavCard タップで /fertilizers/troubles へ push する', () => {
+    mockNutrientsQuery.data = makeNutrients();
+    renderWithProviders(<FertilizersScreen />);
+    fireEvent.press(screen.getByLabelText('トラブル事例集へ移動'));
+    expect(mockRouter.push).toHaveBeenCalledWith('/fertilizers/troubles');
+  });
 });
 
 // ---------------------------------------------------------------------------
