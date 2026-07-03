@@ -17,7 +17,7 @@ import {
   RefreshControl,
 } from 'react-native';
 import { Image } from 'expo-image';
-import { Stack, router } from 'expo-router';
+import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDictionaryListQuery } from '@/lib/queries/dictionary';
 import type { DictionaryListResponse } from '@/lib/queries/dictionary';
@@ -73,6 +73,11 @@ const DICT_CATEGORIES = [
   { key: '用土・肥料', label: '用土・肥料' },
   { key: '展示・鑑賞', label: '展示・鑑賞' },
 ] as const;
+
+// URL パラメータで受け取ったカテゴリ名がリストに存在するか検証するためのセット
+const VALID_CATEGORY_KEYS = new Set<string>(
+  DICT_CATEGORIES.filter((c) => c.key !== '').map((c) => c.key)
+);
 
 // 五十音行（Web lib/constants/dictionary.ts の KANA_ROWS に対応）
 const KANA_ROWS = [
@@ -161,9 +166,21 @@ const TermCardCell = memo(function TermCardCell({ item }: TermCardCellProps) {
 export default function DictionaryScreen() {
   const insets = useSafeAreaInsets();
   const isOnline = useOnlineStatus();
+  const params = useLocalSearchParams();
+
+  // 詳細画面からのカテゴリリンクで渡される category パラメータを初期値に使う。
+  // useLocalSearchParams は string | string[] を返すため型ガードで string に絞る。
+  // 未知のカテゴリ名は無視して全件表示にする。
+  const rawCategory = params['category'];
+  const categoryParam = typeof rawCategory === 'string'
+    ? rawCategory
+    : Array.isArray(rawCategory)
+      ? rawCategory[0] ?? ''
+      : '';
+  const initialCategory = VALID_CATEGORY_KEYS.has(categoryParam) ? categoryParam : '';
 
   const [filterMode, setFilterMode] = useState<FilterMode>('category');
-  const [selectedCategory, setSelectedCategory] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState(initialCategory);
   const [selectedKana, setSelectedKana] = useState('');
   const [searchText, setSearchText] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
