@@ -13,6 +13,7 @@ import { OfflineBanner } from '@/components/common/OfflineBanner';
 import { ScreenLoading } from '@/components/common/ScreenLoading';
 import { ScreenError } from '@/components/common/ScreenError';
 import { PesticideDisclaimer } from '@/components/pesticide/PesticideDisclaimer';
+import { EffectRatingBadge } from '@/components/pesticide/EffectRatingBadge';
 import { useOnlineStatus } from '@/hooks/use-online-status';
 import { ERR_PESTICIDES_LOAD_FAILED } from '@/lib/constants/errors';
 import type { components } from '@/lib/api/generated/schema.d.ts';
@@ -129,9 +130,13 @@ export default function ProductDetailScreen() {
     router.push({ pathname: '/pesticides/disease-pests/[slug]', params: { slug: diseasePestSlug } });
   }, []);
 
-  const handleFormulationPress = useCallback((_formulationCode: string) => {
-    // formulations 画面はクエリパラメータではなくリスト表示のみのため、一覧へ遷移する
-    router.push('/pesticides/formulations' as never);
+  const handleIncompatPress = useCallback((incompatSlug: string) => {
+    router.push({ pathname: '/pesticides/products/[slug]', params: { slug: incompatSlug } });
+  }, []);
+
+  const handleFormulationPress = useCallback((formulationCode: string) => {
+    // @ts-expect-error Expo Router の typed routes が params 付き static route のオブジェクト形式を正しく解決しない
+    router.push({ pathname: '/pesticides/formulations', params: { formulationTypeCode: formulationCode } });
   }, []);
 
   const handleMaffLinkPress = useCallback((registrationNumber: string) => {
@@ -221,28 +226,31 @@ export default function ProductDetailScreen() {
                 </TouchableOpacity>
               </View>
             )}
-            {data.formulationType !== null && (
-              <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>剤型</Text>
-                <View style={styles.formulationCell}>
-                  <TouchableOpacity
-                    onPress={() => handleFormulationPress((data.formulationType as { name: string; code: string }).code)}
-                    accessibilityRole="link"
-                    accessibilityLabel={`${data.formulationType.name}の詳細を見る`}
-                  >
-                    <Text style={styles.infoValueLink}>{data.formulationType.name}</Text>
-                  </TouchableOpacity>
-                  <Text style={styles.formulationSeparator}>·</Text>
-                  <TouchableOpacity
-                    onPress={() => handleFormulationPress((data.formulationType as { name: string; code: string }).code)}
-                    accessibilityRole="link"
-                    accessibilityLabel="同じ剤型の薬剤一覧を見る"
-                  >
-                    <Text style={styles.infoValueLinkSm}>同じ剤型の薬剤を見る</Text>
-                  </TouchableOpacity>
+            {data.formulationType !== null && (() => {
+              const ft = data.formulationType;
+              return (
+                <View style={styles.infoRow}>
+                  <Text style={styles.infoLabel}>剤型</Text>
+                  <View style={styles.formulationCell}>
+                    <TouchableOpacity
+                      onPress={() => handleFormulationPress(ft.code)}
+                      accessibilityRole="link"
+                      accessibilityLabel={`${ft.name}の詳細を見る`}
+                    >
+                      <Text style={styles.infoValueLink}>{ft.name}</Text>
+                    </TouchableOpacity>
+                    <Text style={styles.formulationSeparator}>·</Text>
+                    <TouchableOpacity
+                      onPress={() => handleFormulationPress(ft.code)}
+                      accessibilityRole="link"
+                      accessibilityLabel="同じ剤型の薬剤一覧を見る"
+                    >
+                      <Text style={styles.infoValueLinkSm}>同じ剤型の薬剤を見る</Text>
+                    </TouchableOpacity>
+                  </View>
                 </View>
-              </View>
-            )}
+              );
+            })()}
             {resistanceRisk !== null && (
               <View style={styles.infoRow}>
                 <Text style={styles.infoLabel}>耐性がつきやすいか</Text>
@@ -319,12 +327,19 @@ export default function ProductDetailScreen() {
                   このリストは一般的な物理・化学的性質に基づく代表的な組み合わせです。実際の使用前には必ず製品ラベル・説明書の注意書きをご確認ください。
                 </Text>
                 {data.incompatibilities.map((incompat) => (
-                  <View key={incompat.id} style={styles.incompatRow}>
+                  <TouchableOpacity
+                    key={incompat.id}
+                    style={styles.incompatRow}
+                    onPress={() => handleIncompatPress(incompat.slug)}
+                    activeOpacity={0.7}
+                    accessibilityRole="button"
+                    accessibilityLabel={`${incompat.name}の詳細を見る`}
+                  >
                     <Text style={styles.incompatName}>{incompat.name}</Text>
                     {incompat.formulationTypeName !== null && (
                       <Text style={styles.relatedType}>{incompat.formulationTypeName}</Text>
                     )}
-                  </View>
+                  </TouchableOpacity>
                 ))}
               </>
             ) : (
@@ -343,17 +358,37 @@ export default function ProductDetailScreen() {
               <Text style={styles.sectionNote}>
                 病害虫名をタップすると病害虫図鑑の詳細ページへ移動します。
               </Text>
-              {data.effects.map((effect) => (
-                <TouchableOpacity
-                  key={effect.diseasePest.id}
-                  style={styles.relatedRow}
-                  onPress={() => handleDiseasePestPress(effect.diseasePest.slug)}
-                  accessibilityRole="button"
-                  accessibilityLabel={`${effect.diseasePest.name}の詳細を見る`}
-                >
-                  <Text style={styles.relatedName}>{effect.diseasePest.name}</Text>
-                </TouchableOpacity>
-              ))}
+              {data.effects.map((effect) => {
+                const isFungicideOrCompound =
+                  data.pesticideType === 'fungicide' || data.pesticideType === 'compound';
+                const isInsecticideOrAcaricideOrCompound =
+                  data.pesticideType === 'insecticide' ||
+                  data.pesticideType === 'acaricide' ||
+                  data.pesticideType === 'compound';
+                return (
+                  <TouchableOpacity
+                    key={effect.diseasePest.id}
+                    style={styles.relatedRow}
+                    onPress={() => handleDiseasePestPress(effect.diseasePest.slug)}
+                    accessibilityRole="button"
+                    accessibilityLabel={`${effect.diseasePest.name}の詳細を見る`}
+                  >
+                    <Text style={styles.relatedName}>{effect.diseasePest.name}</Text>
+                    <View style={styles.effectRatingRow}>
+                      {isFungicideOrCompound && (
+                        <>
+                          <EffectRatingBadge rating={effect.rating.preventionLevel} label="予防" />
+                          <EffectRatingBadge rating={effect.rating.treatmentLevel} label="治療" />
+                        </>
+                      )}
+                      {isInsecticideOrAcaricideOrCompound && (
+                        <EffectRatingBadge rating={effect.rating.efficacyLevel} label="効果" />
+                      )}
+                      <EffectRatingBadge rating={effect.rating.persistenceLevel} label="持続" />
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
           )}
         </ScrollView>
@@ -541,6 +576,14 @@ const styles = StyleSheet.create({
   relatedType: {
     ...textXs,
     color: colorTextSecondary,
+  },
+
+  // 効果評価バッジ行（製品詳細の病害虫セクション内）
+  effectRatingRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing2,
+    marginTop: 4,
   },
 
   // 混用不可農薬セクション（警告スタイル：Web版の border-destructive/30 bg-destructive/5 に対応）

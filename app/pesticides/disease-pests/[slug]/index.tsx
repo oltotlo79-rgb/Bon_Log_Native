@@ -4,8 +4,8 @@
  * 仕様: docs/design/browse-screens.md §5.4
  */
 
-import React, { useCallback } from 'react';
-import { View, Text, ScrollView, StyleSheet, TouchableOpacity } from 'react-native';
+import React, { useCallback, useState } from 'react';
+import { View, Text, ScrollView, StyleSheet, TouchableOpacity, Modal, Pressable } from 'react-native';
 import { Image } from 'expo-image';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -13,6 +13,7 @@ import { usePesticideDiseasePestDetailQuery } from '@/lib/queries/pesticides';
 import { OfflineBanner } from '@/components/common/OfflineBanner';
 import { ScreenLoading } from '@/components/common/ScreenLoading';
 import { ScreenError } from '@/components/common/ScreenError';
+import { EffectRatingBadge } from '@/components/pesticide/EffectRatingBadge';
 import { useOnlineStatus } from '@/hooks/use-online-status';
 import { ERR_PESTICIDES_LOAD_FAILED } from '@/lib/constants/errors';
 import { resolveApiImageUrl } from '@/lib/utils/resolve-api-image-url';
@@ -25,8 +26,9 @@ import {
   colorBorderLight,
   colorTextPrimary,
   colorTextSecondary,
-  colorTextTertiary,
   colorTextLink,
+  colorTextInverse,
+  colorActionPrimary,
   colorCategoryRedBg,
   colorCategoryRedText,
   colorCategoryPestBg,
@@ -68,7 +70,6 @@ import {
 // ---------------------------------------------------------------------------
 
 type DiseasePestCategory = components['schemas']['DiseasePestCategory'];
-type EffectRating = components['schemas']['EffectRating'];
 type PesticideType = components['schemas']['PesticideType'];
 
 // ---------------------------------------------------------------------------
@@ -112,37 +113,15 @@ const PESTICIDE_TYPE_BADGE: Record<PesticideType, { label: string; bg: string; t
 };
 
 // ---------------------------------------------------------------------------
-// 効果評価バッジ定義（Web版 EffectRatingBadge を RN で再実装）
+// 効果評価凡例（Web版の inline-flex 凡例行に対応）
 // ---------------------------------------------------------------------------
 
-const EFFECT_RATING_CONFIG: Record<EffectRating, { mark: string; bg: string; text: string; border: string }> = {
-  excellent: { mark: '◎', bg: colorCategoryGreenBg, text: colorCategoryGreenText, border: colorEfficacyExcellentBorder },
-  good:      { mark: '○', bg: colorCategoryBlueBg, text: colorCategoryBlueDarkText, border: colorEfficacyGoodBorder },
-  fair:      { mark: '△', bg: colorCategoryAmberBg, text: colorCategoryAmberText, border: colorEfficacyFairBorder },
-  poor:      { mark: '×', bg: colorCategoryRedBg, text: colorCategoryRedText, border: colorEfficacyPoorBorder },
-  none:      { mark: '—', bg: colorSurfaceMuted, text: colorTextTertiary, border: colorBorderLight },
-};
-
-type EffectRatingBadgeProps = {
-  rating: EffectRating | null;
-  label: string;
-};
-
-function EffectRatingBadge({ rating, label }: EffectRatingBadgeProps) {
-  if (rating === null) return null;
-  const config = EFFECT_RATING_CONFIG[rating];
-  return (
-    <View style={styles.ratingBadgeWrapper}>
-      <Text style={styles.ratingBadgeLabel}>{label}</Text>
-      <View style={[
-        styles.ratingBadgeMark,
-        { backgroundColor: config.bg, borderColor: config.border },
-      ]}>
-        <Text style={[styles.ratingBadgeMarkText, { color: config.text }]}>{config.mark}</Text>
-      </View>
-    </View>
-  );
-}
+const RATING_LEGEND_ITEMS = [
+  { mark: '◎', label: '優秀',     bg: colorCategoryGreenBg, text: colorCategoryGreenText, border: colorEfficacyExcellentBorder },
+  { mark: '○', label: '良好',     bg: colorCategoryBlueBg,  text: colorCategoryBlueDarkText, border: colorEfficacyGoodBorder },
+  { mark: '△', label: 'やや有効', bg: colorCategoryAmberBg, text: colorCategoryAmberText, border: colorEfficacyFairBorder },
+  { mark: '×', label: '効果低い', bg: colorCategoryRedBg,   text: colorCategoryRedText, border: colorEfficacyPoorBorder },
+] as const;
 
 // ---------------------------------------------------------------------------
 // Screen
@@ -152,6 +131,7 @@ export default function DiseasePestDetailScreen() {
   const insets = useSafeAreaInsets();
   const isOnline = useOnlineStatus();
   const params = useLocalSearchParams();
+  const [lightboxVisible, setLightboxVisible] = useState(false);
 
   const rawSlug = params['slug'];
   const slug = typeof rawSlug === 'string' ? rawSlug : Array.isArray(rawSlug) ? rawSlug[0] : '';
@@ -161,6 +141,10 @@ export default function DiseasePestDetailScreen() {
 
   const handleProductPress = useCallback((productSlug: string) => {
     router.push({ pathname: '/pesticides/products/[slug]', params: { slug: productSlug } });
+  }, []);
+
+  const handleSameCategoryPress = useCallback((category: string) => {
+    router.push({ pathname: '/pesticides', params: { category } });
   }, []);
 
   const categoryBadge = data !== undefined ? CATEGORY_BADGE[data.category] : null;
@@ -186,21 +170,67 @@ export default function DiseasePestDetailScreen() {
           onRetry={() => void refetch()}
         />
       ) : data === undefined ? null : (
-        <ScrollView
-          contentContainerStyle={[
-            styles.scrollContent,
-            { paddingBottom: insets.bottom + spacing8 },
-          ]}
-        >
+        <>
+          {/* ライトボックスModal（Web版 DiseasePestImageLightbox に対応） */}
+          {headerImageUri !== null && (
+            <Modal
+              visible={lightboxVisible}
+              transparent
+              animationType="fade"
+              onRequestClose={() => { setLightboxVisible(false); }}
+              accessibilityViewIsModal
+            >
+              <Pressable
+                style={styles.lightboxBackdrop}
+                onPress={() => { setLightboxVisible(false); }}
+                accessibilityRole="button"
+                accessibilityLabel="画像を閉じる"
+              >
+                <View style={styles.lightboxContent}>
+                  <Image
+                    source={{ uri: headerImageUri }}
+                    style={styles.lightboxImage}
+                    contentFit="contain"
+                    accessibilityLabel={`${data.name}の拡大画像`}
+                  />
+                  {data.name.length > 0 && (
+                    <Text style={styles.lightboxCaption}>{data.name}</Text>
+                  )}
+                </View>
+                <TouchableOpacity
+                  style={[styles.lightboxCloseBtn, { top: insets.top + spacing4 }]}
+                  onPress={() => { setLightboxVisible(false); }}
+                  accessibilityRole="button"
+                  accessibilityLabel="閉じる"
+                >
+                  <Text style={styles.lightboxCloseBtnText}>✕</Text>
+                </TouchableOpacity>
+              </Pressable>
+            </Modal>
+          )}
+
+          <ScrollView
+            contentContainerStyle={[
+              styles.scrollContent,
+              { paddingBottom: insets.bottom + spacing8 },
+            ]}
+          >
           {/* ヘッダー：画像 + 名前 + カテゴリバッジ（Web版の flex gap-4 ブロックに対応） */}
           <View style={styles.headerBlock}>
             {headerImageUri !== null ? (
-              <Image
-                source={{ uri: headerImageUri }}
-                style={styles.headerImage}
-                contentFit="cover"
-                accessibilityLabel={`${data.name}の画像`}
-              />
+              <TouchableOpacity
+                onPress={() => { setLightboxVisible(true); }}
+                activeOpacity={0.85}
+                accessibilityRole="button"
+                accessibilityLabel={`${data.name}の画像を大きく表示`}
+              >
+                <Image
+                  source={{ uri: headerImageUri }}
+                  style={styles.headerImage}
+                  contentFit="cover"
+                  accessibilityLabel={`${data.name}の画像`}
+                />
+              </TouchableOpacity>
             ) : (
               <View style={styles.headerImagePlaceholder}>
                 <Text style={styles.headerEmoji}>{categoryEmoji}</Text>
@@ -241,6 +271,19 @@ export default function DiseasePestDetailScreen() {
             </View>
           )}
 
+          {/* 同カテゴリの病害虫を見る（Web版の category フィルタリンクに対応） */}
+          <TouchableOpacity
+            style={styles.sameCategoryLink}
+            onPress={() => handleSameCategoryPress(data.category)}
+            activeOpacity={0.7}
+            accessibilityRole="link"
+            accessibilityLabel={`同じカテゴリ（${CATEGORY_BADGE[data.category].label}）の病害虫を見る`}
+          >
+            <Text style={styles.sameCategoryLinkText}>
+              同じカテゴリの病害虫を見る →
+            </Text>
+          </TouchableOpacity>
+
           {/* 効果評価凡例（Web版の効果評価説明行） */}
           {data.effects.length > 0 && (
             <View style={[styles.section, styles.sectionEffects]}>
@@ -253,19 +296,14 @@ export default function DiseasePestDetailScreen() {
 
               <View style={styles.ratingLegend}>
                 <Text style={styles.ratingLegendLabel}>効果評価:</Text>
-                {(['excellent', 'good', 'fair', 'poor'] as const).map((r) => {
-                  const cfg = EFFECT_RATING_CONFIG[r];
-                  return (
-                    <View key={r} style={styles.ratingLegendItem}>
-                      <View style={[styles.ratingBadgeMark, styles.ratingLegendMark, { backgroundColor: cfg.bg, borderColor: cfg.border }]}>
-                        <Text style={[styles.ratingBadgeMarkText, { color: cfg.text }]}>{cfg.mark}</Text>
-                      </View>
-                      <Text style={styles.ratingLegendText}>
-                        {r === 'excellent' ? '優秀' : r === 'good' ? '良好' : r === 'fair' ? 'やや有効' : '効果低い'}
-                      </Text>
+                {RATING_LEGEND_ITEMS.map((item) => (
+                  <View key={item.mark} style={styles.ratingLegendItem}>
+                    <View style={[styles.ratingLegendMark, { backgroundColor: item.bg, borderColor: item.border }]}>
+                      <Text style={[styles.ratingLegendMarkText, { color: item.text }]}>{item.mark}</Text>
                     </View>
-                  );
-                })}
+                    <Text style={styles.ratingLegendText}>{item.label}</Text>
+                  </View>
+                ))}
               </View>
 
               {data.effects.map((effect) => {
@@ -326,7 +364,8 @@ export default function DiseasePestDetailScreen() {
               })}
             </View>
           )}
-        </ScrollView>
+          </ScrollView>
+        </>
       )}
     </View>
   );
@@ -455,10 +494,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing2,
   },
-  ratingLegendMark: {
-    width: 20,
-    height: 20,
-  },
   ratingLegendText: {
     ...textXs,
     color: colorTextSecondary,
@@ -550,5 +585,70 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
     lineHeight: 16,
+  },
+
+  // 凡例マーク（ratingBadgeMark より小さい 20px 版）
+  ratingLegendMark: {
+    width: 20,
+    height: 20,
+    borderRadius: radiusSm,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  ratingLegendMarkText: {
+    fontSize: 11,
+    fontWeight: '700',
+    lineHeight: 14,
+  },
+
+  // 同カテゴリリンク（Web版の text-sm text-primary hover:underline に対応）
+  sameCategoryLink: {
+    alignSelf: 'flex-start',
+    minHeight: 44,
+    justifyContent: 'center',
+  },
+  sameCategoryLinkText: {
+    ...textSm,
+    color: colorTextLink,
+    textDecorationLine: 'underline',
+  },
+
+  // ライトボックスModal
+  lightboxBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.92)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  lightboxContent: {
+    width: '90%',
+    alignItems: 'center',
+    gap: spacing3,
+  },
+  lightboxImage: {
+    width: '100%',
+    aspectRatio: 1,
+    borderRadius: radiusMd,
+  },
+  lightboxCaption: {
+    ...textSm,
+    color: colorTextInverse,
+    textAlign: 'center',
+  },
+  lightboxCloseBtn: {
+    position: 'absolute',
+    right: spacing4,
+    width: 44,
+    height: 44,
+    backgroundColor: colorActionPrimary,
+    borderRadius: radiusMd,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  lightboxCloseBtnText: {
+    ...textMd,
+    color: colorTextInverse,
+    fontWeight: '700',
   },
 });

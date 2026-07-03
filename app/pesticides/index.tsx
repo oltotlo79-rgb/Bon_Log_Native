@@ -358,6 +358,8 @@ export default function PesticidesHubScreen() {
   const [submittedSearch, setSubmittedSearch] = useState('');
   const [activeTag, setActiveTag] = useState<FilterTag>('all');
   const [selectedDiseasePestId, setSelectedDiseasePestId] = useState<string | null>(null);
+  const [bodySizeMmText, setBodySizeMmText] = useState('');
+  const [submittedBodySizeMm, setSubmittedBodySizeMm] = useState<number | undefined>(undefined);
 
   const diseasePestCategory = toDiseasePestCategory(activeTag);
   const productType = toPesticideType(activeTag);
@@ -370,7 +372,7 @@ export default function PesticidesHubScreen() {
     hasNextPage: hasDpNext,
     isFetchingNextPage: isFetchingDpNext,
     refetch: refetchDp,
-  } = usePesticideDiseasePestsQuery({ category: diseasePestCategory });
+  } = usePesticideDiseasePestsQuery({ category: diseasePestCategory, bodySizeMm: submittedBodySizeMm });
 
   const {
     data: productData,
@@ -393,11 +395,19 @@ export default function PesticidesHubScreen() {
     setSelectedDiseasePestId(null);
   }, [searchText]);
 
+  const handleBodySizeSearch = useCallback(() => {
+    Keyboard.dismiss();
+    const parsed = parseFloat(bodySizeMmText);
+    setSubmittedBodySizeMm(Number.isFinite(parsed) && parsed > 0 ? parsed : undefined);
+  }, [bodySizeMmText]);
+
   const handleClear = useCallback(() => {
     setSearchText('');
     setSubmittedSearch('');
     setActiveTag('all');
     setSelectedDiseasePestId(null);
+    setBodySizeMmText('');
+    setSubmittedBodySizeMm(undefined);
   }, []);
 
   const handleTagChange = useCallback((tag: FilterTag) => {
@@ -405,6 +415,8 @@ export default function PesticidesHubScreen() {
     setSelectedDiseasePestId(null);
     setSubmittedSearch('');
     setSearchText('');
+    setBodySizeMmText('');
+    setSubmittedBodySizeMm(undefined);
   }, []);
 
   const handleDiseasePestPress = useCallback((item: DiseasePestItem) => {
@@ -496,7 +508,7 @@ export default function PesticidesHubScreen() {
   );
   const extractAllKey = useCallback((item: AllListItem) => `${item.type}-${item.data.id}`, []);
 
-  const showClear = searchText.length > 0 || activeTag !== 'all' || selectedDiseasePestId !== null;
+  const showClear = searchText.length > 0 || activeTag !== 'all' || selectedDiseasePestId !== null || bodySizeMmText.length > 0;
   const listHeadingLabel = selectedDiseasePestId !== null
     ? '対応薬剤'
     : activeTag !== 'all'
@@ -568,6 +580,32 @@ export default function PesticidesHubScreen() {
             </TouchableOpacity>
           )}
         </View>
+
+        {/* 体長絞り込み（病害虫・益虫フィルタ時に表示 — Web版 DiseasePestList の bodySizeMm に対応） */}
+        {(activeTag === 'all' || activeTag === 'pest' || activeTag === 'beneficial_insect') && (
+          <View style={styles.bodySizeRow}>
+            <Text style={styles.bodySizeLabel}>体長（mm）</Text>
+            <TextInput
+              style={styles.bodySizeInput}
+              value={bodySizeMmText}
+              onChangeText={setBodySizeMmText}
+              placeholder="例: 5"
+              placeholderTextColor={colorTextSecondary}
+              keyboardType="decimal-pad"
+              returnKeyType="search"
+              onSubmitEditing={handleBodySizeSearch}
+              accessibilityLabel="体長（ミリメートル）で害虫を絞り込む"
+            />
+            <TouchableOpacity
+              style={styles.searchButton}
+              onPress={handleBodySizeSearch}
+              accessibilityRole="button"
+              accessibilityLabel="体長で絞り込む"
+            >
+              <Text style={styles.searchButtonText}>絞込</Text>
+            </TouchableOpacity>
+          </View>
+        )}
 
         {/* タイプフィルタチップ（横スクロール） */}
         <ScrollView
@@ -782,6 +820,29 @@ const styles = StyleSheet.create({
   clearButtonText: {
     ...textSm,
     color: colorTextSecondary,
+  },
+
+  // 体長絞り込み行（Web版 DiseasePestList の bodySizeMm 入力に対応）
+  bodySizeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing2,
+  },
+  bodySizeLabel: {
+    ...textSm,
+    color: colorTextSecondary,
+    flexShrink: 0,
+  },
+  bodySizeInput: {
+    width: 80,
+    height: 44,
+    borderWidth: 1,
+    borderColor: colorBorder,
+    borderRadius: radiusMd,
+    paddingHorizontal: spacing3,
+    backgroundColor: colorSurface,
+    ...textBase,
+    color: colorTextPrimary,
   },
 
   // フィルタチップ
