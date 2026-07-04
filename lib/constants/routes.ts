@@ -69,6 +69,12 @@ export const ROUTE_SETTINGS_NOTIFICATIONS = '/settings/notifications' as const;
 /** セキュリティ設定（2段階認証等） */
 export const ROUTE_SETTINGS_SECURITY = '/settings/security' as const;
 
+/** パスワード変更 */
+export const ROUTE_SETTINGS_PASSWORD = '/settings/password' as const;
+
+/** メールアドレス変更 */
+export const ROUTE_SETTINGS_EMAIL = '/settings/email' as const;
+
 /** ブロックリスト */
 export const ROUTE_SETTINGS_BLOCKED = '/settings/blocked' as const;
 
@@ -568,6 +574,8 @@ export const routes = {
   settingsAccount: ROUTE_SETTINGS_ACCOUNT,
   settingsNotifications: ROUTE_SETTINGS_NOTIFICATIONS,
   settingsSecurity: ROUTE_SETTINGS_SECURITY,
+  settingsPassword: ROUTE_SETTINGS_PASSWORD,
+  settingsEmail: ROUTE_SETTINGS_EMAIL,
   settingsBlocked: ROUTE_SETTINGS_BLOCKED,
   settingsMuted: ROUTE_SETTINGS_MUTED,
   settingsSubscription: ROUTE_SETTINGS_SUBSCRIPTION,
