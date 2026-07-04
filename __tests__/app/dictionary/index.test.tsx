@@ -33,6 +33,7 @@ jest.mock('@/lib/queries/dictionary', () => ({
 }));
 
 const mockRouter = jest.requireMock('expo-router').router;
+const mockUseLocalSearchParams = jest.requireMock('expo-router').useLocalSearchParams;
 
 // ---------------------------------------------------------------------------
 // ヘルパー
@@ -93,6 +94,7 @@ beforeEach(() => {
   mockDictQuery.hasNextPage = false;
   mockDictQuery.isFetchingNextPage = false;
   mockDictQuery.refetch = jest.fn();
+  mockUseLocalSearchParams.mockReturnValue({});
 });
 
 afterEach(() => {
@@ -175,6 +177,36 @@ describe('DictionaryScreen フィルタ', () => {
     fireEvent.press(screen.getByLabelText('カテゴリ'));
     expect(screen.getByLabelText('すべて')).toBeTruthy();
     expect(screen.getByLabelText('樹形')).toBeTruthy();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// category パラメータによる初期絞り込み
+// ---------------------------------------------------------------------------
+
+describe('DictionaryScreen category パラメータ初期絞り込み', () => {
+  it('有効な category パラメータがある場合、該当カテゴリチップが選択済みで表示される', () => {
+    mockUseLocalSearchParams.mockReturnValue({ category: '樹形' });
+    renderWithProviders(<DictionaryScreen />);
+    expect(screen.getByLabelText('樹形').props.accessibilityState.selected).toBe(true);
+    expect(screen.getByLabelText('すべて').props.accessibilityState.selected).toBe(false);
+  });
+
+  it('未知の category パラメータは無視され「すべて」が選択される', () => {
+    mockUseLocalSearchParams.mockReturnValue({ category: '存在しないカテゴリ' });
+    renderWithProviders(<DictionaryScreen />);
+    expect(screen.getByLabelText('すべて').props.accessibilityState.selected).toBe(true);
+  });
+
+  it('category パラメータが配列の場合は先頭要素が使われる', () => {
+    mockUseLocalSearchParams.mockReturnValue({ category: ['管理・育成', '樹形'] });
+    renderWithProviders(<DictionaryScreen />);
+    expect(screen.getByLabelText('管理・育成').props.accessibilityState.selected).toBe(true);
+  });
+
+  it('category パラメータがない場合は「すべて」が選択される', () => {
+    renderWithProviders(<DictionaryScreen />);
+    expect(screen.getByLabelText('すべて').props.accessibilityState.selected).toBe(true);
   });
 });
 

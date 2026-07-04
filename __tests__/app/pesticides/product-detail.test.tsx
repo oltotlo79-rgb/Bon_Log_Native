@@ -40,23 +40,43 @@ const mockRouter = jest.requireMock('expo-router').router;
 // ヘルパー
 // ---------------------------------------------------------------------------
 
+type EffectRatingValue = 'excellent' | 'good' | 'fair' | 'poor' | 'none' | null;
+
+function makeRating(overrides?: {
+  preventionLevel?: EffectRatingValue;
+  treatmentLevel?: EffectRatingValue;
+  efficacyLevel?: EffectRatingValue;
+  persistenceLevel?: EffectRatingValue;
+}) {
+  return {
+    preventionLevel: null as EffectRatingValue,
+    treatmentLevel: null as EffectRatingValue,
+    efficacyLevel: overrides?.efficacyLevel ?? ('good' as EffectRatingValue),
+    persistenceLevel: overrides?.persistenceLevel ?? ('fair' as EffectRatingValue),
+    ...overrides,
+  };
+}
+
 function makeProductDetail(overrides?: Partial<Record<string, unknown>>) {
   return {
     id: 'p1',
     slug: 'product-a',
     name: 'アブラムシ専用殺虫剤A',
-    pesticideType: '殺虫剤',
-    registrationNumber: '農林水産省登録 第12345号',
-    formulationType: { name: '水和剤' },
+    pesticideType: 'insecticide',
+    registrationNumber: '第12345号',
+    formulationType: { name: '水和剤', code: 'WP' },
     description: '接触型の殺虫剤。速効性がある。',
     activeIngredients: [
-      { id: 'i1', slug: 'ingredient-a', name: 'ピリミカルブ', resistanceRisk: 'low' },
+      { id: 'i1', slug: 'ingredient-a', name: 'ピリミカルブ', fracCode: null, iracCode: null, resistanceRisk: 'low' },
     ],
     effects: [
-      { diseasePest: { id: 'dp1', slug: 'aphid', name: 'アブラムシ' } },
+      {
+        diseasePest: { id: 'dp1', slug: 'aphid', name: 'アブラムシ' },
+        rating: makeRating(),
+      },
     ],
     incompatibilities: [
-      { id: 'ic1', name: '○○殺菌剤', formulationTypeName: '乳剤' },
+      { id: 'ic1', slug: 'product-b', name: '○○殺菌剤', formulationTypeName: '乳剤' },
     ],
     ...overrides,
   };
@@ -138,10 +158,10 @@ describe('ProductDetailScreen 正常表示', () => {
     expect(screen.getByText('アブラムシ専用殺虫剤A')).toBeTruthy();
   });
 
-  it('登録番号が表示される', () => {
+  it('登録番号が農林水産省リンクとして表示される', () => {
     mockDetailQuery.data = makeProductDetail();
     renderWithProviders(<ProductDetailScreen />);
-    expect(screen.getByText('農林水産省登録 第12345号')).toBeTruthy();
+    expect(screen.getByText('第12345号（農林水産省）↗')).toBeTruthy();
   });
 
   it('説明が表示される', () => {
@@ -197,10 +217,10 @@ describe('ProductDetailScreen 正常表示', () => {
     expect(screen.queryByText('有効成分')).toBeNull();
   });
 
-  it('登録番号が null のとき表示されない', () => {
+  it('登録番号が null のとき「登録番号は未掲載です」バッジが表示される', () => {
     mockDetailQuery.data = makeProductDetail({ registrationNumber: null });
     renderWithProviders(<ProductDetailScreen />);
-    expect(screen.queryByText(/登録番号/)).toBeNull();
+    expect(screen.getByText('登録番号は未掲載です')).toBeTruthy();
   });
 
   it('formulationType が null のとき剤型セクションが表示されない', () => {
@@ -220,13 +240,14 @@ describe('ProductDetailScreen 正常表示', () => {
       activeIngredients: [
         { id: 'i1', slug: 'ingredient-a', name: 'ピリミカルブ', fracCode: null, iracCode: null, resistanceRisk: null },
       ],
+      effects: [],
     });
     renderWithProviders(<ProductDetailScreen />);
     expect(screen.queryByText(/FRAC:/)).toBeNull();
   });
 
   it('description が null のとき説明テキストが表示されない', () => {
-    mockDetailQuery.data = makeProductDetail({ description: null });
+    mockDetailQuery.data = makeProductDetail({ description: null, effects: [] });
     renderWithProviders(<ProductDetailScreen />);
     expect(screen.queryByText('接触型の殺虫剤。速効性がある。')).toBeNull();
   });

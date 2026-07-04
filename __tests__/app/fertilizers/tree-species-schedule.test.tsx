@@ -4,7 +4,7 @@
  */
 
 import React from 'react';
-import { screen, fireEvent, waitFor } from '@testing-library/react-native';
+import { screen, fireEvent, waitFor, within } from '@testing-library/react-native';
 import TreeSpeciesScheduleScreen from '@/app/fertilizers/tree-species/[slug]/index';
 import { renderWithProviders } from '@/__tests__/utils/test-utils';
 
@@ -178,30 +178,120 @@ describe('TreeSpeciesScheduleScreen 正常表示', () => {
   it('施肥あり月のセルが表示される', () => {
     mockScheduleQuery.data = makeScheduleData();
     renderWithProviders(<TreeSpeciesScheduleScreen />);
-    expect(screen.getByLabelText('4月: 施肥あり（標準）')).toBeTruthy();
+    expect(screen.getByLabelText('4月: 施肥あり（通常）')).toBeTruthy();
   });
 
   it('多め月のセルが表示される', () => {
     mockScheduleQuery.data = makeScheduleData();
     renderWithProviders(<TreeSpeciesScheduleScreen />);
-    expect(screen.getByLabelText('10月: 施肥あり（多め）')).toBeTruthy();
+    expect(screen.getByLabelText('10月: 施肥あり（たっぷり）')).toBeTruthy();
   });
 
   it('月セルをタップすると詳細が表示される', () => {
     mockScheduleQuery.data = makeScheduleData();
     renderWithProviders(<TreeSpeciesScheduleScreen />);
-    fireEvent.press(screen.getByLabelText('4月: 施肥あり（標準）'));
+    fireEvent.press(screen.getByLabelText('4月: 施肥あり（通常）'));
     expect(screen.getByText('4月の詳細')).toBeTruthy();
     expect(screen.getByText('推奨肥料: 固形油粕')).toBeTruthy();
-    expect(screen.getByText('芽出し前の施肥')).toBeTruthy();
+    // description は月グリッドのポイント列と詳細パネル両方に出るため getAllByText で確認
+    expect(screen.getAllByText('芽出し前の施肥').length).toBeGreaterThanOrEqual(1);
   });
 
   it('選択済み月をもう一度タップすると詳細が閉じる', () => {
     mockScheduleQuery.data = makeScheduleData();
     renderWithProviders(<TreeSpeciesScheduleScreen />);
-    fireEvent.press(screen.getByLabelText('4月: 施肥あり（標準）'));
-    fireEvent.press(screen.getByLabelText('4月: 施肥あり（標準）'));
+    fireEvent.press(screen.getByLabelText('4月: 施肥あり（通常）'));
+    fireEvent.press(screen.getByLabelText('4月: 施肥あり（通常）'));
     expect(screen.queryByText('4月の詳細')).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 季節サマリー
+// ---------------------------------------------------------------------------
+
+describe('TreeSpeciesScheduleScreen 季節サマリー', () => {
+  it('季節ラベル（春・夏・秋・冬）が表示される', () => {
+    mockScheduleQuery.data = makeScheduleData();
+    renderWithProviders(<TreeSpeciesScheduleScreen />);
+    const summary = within(screen.getByLabelText('季節ごとの施肥傾向'));
+    expect(summary.getByText('春')).toBeTruthy();
+    expect(summary.getByText('夏')).toBeTruthy();
+    expect(summary.getByText('秋')).toBeTruthy();
+    expect(summary.getByText('冬')).toBeTruthy();
+  });
+
+  it('各季節の支配的な施肥量バッジが表示される（春=通常, 夏=控えめ, 秋=たっぷり, 冬=なし）', () => {
+    mockScheduleQuery.data = makeScheduleData();
+    renderWithProviders(<TreeSpeciesScheduleScreen />);
+    const summary = within(screen.getByLabelText('季節ごとの施肥傾向'));
+    expect(summary.getByText('通常')).toBeTruthy();
+    expect(summary.getByText('控えめ')).toBeTruthy();
+    expect(summary.getByText('たっぷり')).toBeTruthy();
+    expect(summary.getByText('なし')).toBeTruthy();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 年間施肥タイムライン
+// ---------------------------------------------------------------------------
+
+describe('TreeSpeciesScheduleScreen 年間施肥タイムライン', () => {
+  it('年間施肥タイムラインが表示される', () => {
+    mockScheduleQuery.data = makeScheduleData();
+    renderWithProviders(<TreeSpeciesScheduleScreen />);
+    expect(screen.getByLabelText('年間施肥タイムライン')).toBeTruthy();
+  });
+
+  it('月別のアクションバーに施肥量ラベルが設定される', () => {
+    mockScheduleQuery.data = makeScheduleData();
+    renderWithProviders(<TreeSpeciesScheduleScreen />);
+    expect(screen.getByLabelText('4月: 通常')).toBeTruthy();
+    expect(screen.getByLabelText('10月: たっぷり')).toBeTruthy();
+    expect(screen.getByLabelText('1月: なし')).toBeTruthy();
+  });
+
+  it('N・P の栄養素バーにレベルラベルが設定される', () => {
+    mockScheduleQuery.data = makeScheduleData();
+    renderWithProviders(<TreeSpeciesScheduleScreen />);
+    expect(screen.getByLabelText('10月 N: 多め')).toBeTruthy();
+    expect(screen.getByLabelText('10月 P: 多め')).toBeTruthy();
+  });
+
+  it('施肥量の凡例が表示される', () => {
+    mockScheduleQuery.data = makeScheduleData();
+    renderWithProviders(<TreeSpeciesScheduleScreen />);
+    expect(screen.getByText('施肥量:')).toBeTruthy();
+  });
+
+  it('栄養素の凡例が表示される', () => {
+    mockScheduleQuery.data = makeScheduleData();
+    renderWithProviders(<TreeSpeciesScheduleScreen />);
+    expect(screen.getByText('栄養素:')).toBeTruthy();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// NPK 列（月別施肥カレンダー）
+// ---------------------------------------------------------------------------
+
+describe('TreeSpeciesScheduleScreen NPK 列', () => {
+  it('10月の行で N・P が「多め」、K が「—」バッジで表示される', () => {
+    mockScheduleQuery.data = makeScheduleData();
+    renderWithProviders(<TreeSpeciesScheduleScreen />);
+    const row = within(screen.getByLabelText('10月: 施肥あり（たっぷり）'));
+    expect(row.getByLabelText('N: 多め')).toBeTruthy();
+    expect(row.getByLabelText('P: 多め')).toBeTruthy();
+    expect(row.getByLabelText('K: —')).toBeTruthy();
+  });
+
+  it('7月の行で N が「控えめ」、P・K が「—」バッジで表示される', () => {
+    mockScheduleQuery.data = makeScheduleData();
+    renderWithProviders(<TreeSpeciesScheduleScreen />);
+    const row = within(screen.getByLabelText('7月: 施肥あり（控えめ）'));
+    expect(row.getByLabelText('N: 控えめ')).toBeTruthy();
+    expect(row.getByLabelText('P: —')).toBeTruthy();
+    expect(row.getByLabelText('K: —')).toBeTruthy();
   });
 });
 

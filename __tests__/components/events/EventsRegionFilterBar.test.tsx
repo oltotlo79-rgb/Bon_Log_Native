@@ -84,9 +84,14 @@ describe('EventsRegionFilterBar', () => {
       expect(screen.getByLabelText('全国')).toBeTruthy();
     });
 
-    it('「北海道・東北」チップが表示される', () => {
+    it('「北海道」チップが表示される', () => {
       renderBar();
-      expect(screen.getByLabelText('北海道・東北')).toBeTruthy();
+      expect(screen.getByLabelText('北海道')).toBeTruthy();
+    });
+
+    it('「東北」チップが表示される', () => {
+      renderBar();
+      expect(screen.getByLabelText('東北')).toBeTruthy();
     });
 
     it('「関東」チップが表示される', () => {
@@ -94,9 +99,9 @@ describe('EventsRegionFilterBar', () => {
       expect(screen.getByLabelText('関東')).toBeTruthy();
     });
 
-    it('「中部・北陸」チップが表示される', () => {
+    it('「中部」チップが表示される', () => {
       renderBar();
-      expect(screen.getByLabelText('中部・北陸')).toBeTruthy();
+      expect(screen.getByLabelText('中部')).toBeTruthy();
     });
 
     it('「近畿」チップが表示される', () => {
@@ -104,9 +109,14 @@ describe('EventsRegionFilterBar', () => {
       expect(screen.getByLabelText('近畿')).toBeTruthy();
     });
 
-    it('「中国・四国」チップが表示される', () => {
+    it('「中国」チップが表示される', () => {
       renderBar();
-      expect(screen.getByLabelText('中国・四国')).toBeTruthy();
+      expect(screen.getByLabelText('中国')).toBeTruthy();
+    });
+
+    it('「四国」チップが表示される', () => {
+      renderBar();
+      expect(screen.getByLabelText('四国')).toBeTruthy();
     });
 
     it('「九州・沖縄」チップが表示される', () => {
@@ -165,6 +175,22 @@ describe('EventsRegionFilterBar', () => {
       renderBar({ onPrefectureChange });
       fireEvent.press(screen.getByLabelText('全国'));
       expect(onPrefectureChange).not.toHaveBeenCalled();
+    });
+
+    it.each([
+      ['北海道', '北海道'],
+      ['東北', '東北'],
+      ['関東', '関東'],
+      ['中部', '中部'],
+      ['近畿', '近畿'],
+      ['中国', '中国'],
+      ['四国', '四国'],
+      ['九州・沖縄', '九州・沖縄'],
+    ])('9区分「%s」をタップすると onRegionChange に API 用の値 "%s" が渡される', (label, expectedValue) => {
+      const onRegionChange = jest.fn();
+      renderBar({ onRegionChange });
+      fireEvent.press(screen.getByLabelText(label));
+      expect(onRegionChange).toHaveBeenCalledWith(expectedValue);
     });
   });
 
