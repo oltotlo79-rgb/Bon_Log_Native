@@ -24,6 +24,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useOnlineStatus } from '@/hooks/use-online-status';
 import { useCurrentUserProfileQuery, useDeleteAccountMutation } from '@/lib/queries/users';
 import { isApiError } from '@/lib/api/errors';
+import { ROUTE_SETTINGS_PASSWORD } from '@/lib/constants/routes';
 import {
   ERR_OFFLINE_ACTION,
   ERR_ACCOUNT_DELETE_FAILED,
@@ -145,13 +146,9 @@ export default function SettingsAccountScreen() {
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.group}>
-          {/*
-            lib/constants/routes.ts に ROUTE_SETTINGS_PASSWORD が未追加のため、
-            型安全な文字列リテラルを直接使用する（routes.ts への追加は core 担当）。
-          */}
           <TouchableOpacity
             style={styles.item}
-            onPress={() => router.push('/settings/password')}
+            onPress={() => router.push(ROUTE_SETTINGS_PASSWORD)}
             accessibilityRole="button"
             accessibilityLabel="パスワードを変更する"
           >
