@@ -56,6 +56,7 @@ import {
 // ---------------------------------------------------------------------------
 
 const ALERT_ICON_SIZE = 20;
+const ITEM_ICON_SIZE = 20;
 const CHEVRON_SIZE = 20;
 
 // ---------------------------------------------------------------------------
@@ -143,11 +144,39 @@ export default function SettingsAccountScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
+        <View style={styles.group}>
+          {/*
+            lib/constants/routes.ts に ROUTE_SETTINGS_PASSWORD が未追加のため、
+            型安全な文字列リテラルを直接使用する（routes.ts への追加は core 担当）。
+          */}
+          <TouchableOpacity
+            style={styles.item}
+            onPress={() => router.push('/settings/password')}
+            accessibilityRole="button"
+            accessibilityLabel="パスワードを変更する"
+          >
+            <Ionicons
+              name="key-outline"
+              size={ITEM_ICON_SIZE}
+              color={colorTextPrimary}
+              accessibilityElementsHidden
+              importantForAccessibility="no"
+            />
+            <Text style={styles.itemLabel}>パスワードを変更</Text>
+            <Ionicons
+              name="chevron-forward"
+              size={CHEVRON_SIZE}
+              color={colorTextTertiary}
+              accessibilityElementsHidden
+              importantForAccessibility="no"
+            />
+          </TouchableOpacity>
+        </View>
+
         {/*
-          メールアドレス変更・パスワード変更は Web にも同機能が存在しないため
-          Web 準拠として非表示（cfw 側にログイン中ユーザーのメール変更・パスワード変更
-          エンドポイントが存在しない）。サーバーの Phase 1 でパスワード変更 API が
-          実装された後、この画面に導線を追加する。
+          メールアドレス変更（/settings/email）は実装済みだが、サーバー本番 DB への
+          マイグレーション適用完了の連絡を受けるまで導線を非公開にする。
+          連絡を受けたらこのセクションに「メールアドレスを変更」導線を追加する。
         */}
 
         {/* 危険ゾーンセクション */}
@@ -278,6 +307,27 @@ const styles = StyleSheet.create({
     color: colorError,
     letterSpacing: letterSpacingWidest,
     fontWeight: '600',
+  },
+  group: {
+    backgroundColor: colorBackground,
+    borderRadius: radiusLg,
+    borderWidth: 1,
+    borderColor: colorBorder,
+    overflow: 'hidden',
+  },
+  item: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: spacing4,
+    minHeight: 56,
+    paddingVertical: spacing2,
+    gap: spacing3,
+    backgroundColor: colorBackground,
+  },
+  itemLabel: {
+    ...textBase,
+    color: colorTextPrimary,
+    flex: 1,
   },
   dangerGroup: {
     backgroundColor: colorBackground,
