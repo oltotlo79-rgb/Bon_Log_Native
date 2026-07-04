@@ -7,8 +7,14 @@
 import React, { useState } from 'react';
 import { View, Text, Alert, StyleSheet } from 'react-native';
 import { useDisableTwoFactorMutation } from '@/lib/queries/auth';
-import { isApiError } from '@/lib/api/errors';
-import { messageForApiError, ERR_GENERIC, ERR_OFFLINE_ACTION } from '@/lib/constants/errors';
+import { isApiError, type MobileApiErrorCode } from '@/lib/api/errors';
+import {
+  messageForApiError,
+  ERR_GENERIC,
+  ERR_OFFLINE_ACTION,
+  ERR_2FA_DISABLE_INCORRECT_PASSWORD,
+  ERR_2FA_NOT_ENABLED,
+} from '@/lib/constants/errors';
 import { FormErrorMessage } from '@/components/auth/FormErrorMessage';
 import { PasswordField } from '@/components/auth/PasswordField';
 import { AuthPrimaryButton } from '@/components/auth/AuthPrimaryButton';
@@ -35,6 +41,16 @@ export type TwoFactorDisableSectionProps = {
 };
 
 type Step = 'idle' | 'success';
+
+/**
+ * 設定画面の 2FA 無効化フロー専用のエラー文言変換。
+ * パスワード確認・二重無効化のケースを汎用文言より具体的な案内に上書きする。
+ */
+function messageForDisableTwoFactorError(code: MobileApiErrorCode): string {
+  if (code === 'AUTH_INVALID_CREDENTIALS') return ERR_2FA_DISABLE_INCORRECT_PASSWORD;
+  if (code === 'CONFLICT') return ERR_2FA_NOT_ENABLED;
+  return messageForApiError(code);
+}
 
 // ---------------------------------------------------------------------------
 // Component
@@ -82,7 +98,7 @@ export function TwoFactorDisableSection({ isOnline }: TwoFactorDisableSectionPro
           setStep('success');
         },
         onError: (err) => {
-          setError(isApiError(err) ? messageForApiError(err.code) : ERR_GENERIC);
+          setError(isApiError(err) ? messageForDisableTwoFactorError(err.code) : ERR_GENERIC);
         },
       }
     );

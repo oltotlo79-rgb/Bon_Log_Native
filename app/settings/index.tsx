@@ -97,10 +97,7 @@ export default function SettingsScreen() {
         {
           label: 'セキュリティ設定',
           description: '2段階認証の設定',
-          // routes.ts に settingsSecurity ヘルパーがまだ存在しない（2026-07 時点）ため、
-          // ファイルベースルーティングのパスを暫定的に直書きする。
-          // core に routes.ts への ROUTE_SETTINGS_SECURITY 追加を依頼済み。
-          onPress: () => router.push('/settings/security'),
+          onPress: () => router.push(routes.settingsSecurity),
         },
       ],
     },

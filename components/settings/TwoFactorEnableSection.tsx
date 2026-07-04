@@ -15,8 +15,15 @@ import {
   useEnableTwoFactorMutation,
   type TwoFactorSetupResponse,
 } from '@/lib/queries/auth';
-import { isApiError } from '@/lib/api/errors';
-import { messageForApiError, ERR_GENERIC, ERR_OFFLINE_ACTION } from '@/lib/constants/errors';
+import { isApiError, type MobileApiErrorCode } from '@/lib/api/errors';
+import {
+  messageForApiError,
+  ERR_GENERIC,
+  ERR_OFFLINE_ACTION,
+  ERR_2FA_ENABLE_INVALID_CODE,
+  ERR_2FA_SETUP_EXPIRED_SETTINGS,
+  ERR_2FA_ALREADY_ENABLED,
+} from '@/lib/constants/errors';
 import { FormErrorMessage } from '@/components/auth/FormErrorMessage';
 import { AuthPrimaryButton } from '@/components/auth/AuthPrimaryButton';
 import { TwoFactorCodeField, TOTP_CODE_LENGTH } from '@/components/auth/TwoFactorCodeField';
@@ -44,6 +51,17 @@ import {
 // ---------------------------------------------------------------------------
 
 const SHIELD_ICON_SIZE = 22;
+
+/**
+ * 設定画面の 2FA 有効化フロー専用のエラー文言変換。
+ * ログイン経路（messageForApiError）とは表示トーンが異なるコードのみ上書きする。
+ */
+function messageForEnableTwoFactorError(code: MobileApiErrorCode): string {
+  if (code === 'AUTH_2FA_INVALID_CODE') return ERR_2FA_ENABLE_INVALID_CODE;
+  if (code === 'AUTH_2FA_TICKET_EXPIRED') return ERR_2FA_SETUP_EXPIRED_SETTINGS;
+  if (code === 'CONFLICT') return ERR_2FA_ALREADY_ENABLED;
+  return messageForApiError(code);
+}
 
 // ---------------------------------------------------------------------------
 // Props
@@ -89,7 +107,7 @@ export function TwoFactorEnableSection({ isOnline }: TwoFactorEnableSectionProps
       setStep('setup');
       setTimeout(() => codeFieldRef.current?.focus(), 0);
     } catch (err) {
-      setError(isApiError(err) ? messageForApiError(err.code) : ERR_GENERIC);
+      setError(isApiError(err) ? messageForEnableTwoFactorError(err.code) : ERR_GENERIC);
     }
   }
 
@@ -104,7 +122,7 @@ export function TwoFactorEnableSection({ isOnline }: TwoFactorEnableSectionProps
       {
         onSuccess: () => setStep('success'),
         onError: (err) => {
-          setError(isApiError(err) ? messageForApiError(err.code) : ERR_GENERIC);
+          setError(isApiError(err) ? messageForEnableTwoFactorError(err.code) : ERR_GENERIC);
         },
       }
     );

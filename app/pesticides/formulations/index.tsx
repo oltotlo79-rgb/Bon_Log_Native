@@ -28,6 +28,7 @@ import { ScreenEmpty } from '@/components/common/ScreenEmpty';
 import { PesticideDisclaimer } from '@/components/pesticide/PesticideDisclaimer';
 import { useOnlineStatus } from '@/hooks/use-online-status';
 import { ERR_PESTICIDES_LOAD_FAILED } from '@/lib/constants/errors';
+import { routeFormulations, routePesticideProductDetail } from '@/lib/constants/routes';
 import {
   colorBackground,
   colorSurface,
@@ -198,12 +199,11 @@ export default function FormulationsIndexScreen() {
   const refetchProduct = productQueryResult?.refetch;
 
   const handleCardPress = useCallback((code: string) => {
-    // @ts-expect-error Expo Router の typed routes が params 付き static route のオブジェクト形式を正しく解決しない
-    router.push({ pathname: '/pesticides/formulations', params: { formulationTypeCode: code } });
+    router.push(routeFormulations(code));
   }, []);
 
   const handleProductPress = useCallback((slug: string) => {
-    router.push({ pathname: '/pesticides/products/[slug]', params: { slug } });
+    router.push(routePesticideProductDetail(slug));
   }, []);
 
   const handleBackToList = useCallback(() => {

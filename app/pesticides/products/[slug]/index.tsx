@@ -16,6 +16,13 @@ import { PesticideDisclaimer } from '@/components/pesticide/PesticideDisclaimer'
 import { EffectRatingBadge } from '@/components/pesticide/EffectRatingBadge';
 import { useOnlineStatus } from '@/hooks/use-online-status';
 import { ERR_PESTICIDES_LOAD_FAILED } from '@/lib/constants/errors';
+import {
+  routeFormulations,
+  routeSpreaderTypeDetail,
+  routePesticideIngredientDetail,
+  routeDiseasePestDetail,
+  routePesticideProductDetail,
+} from '@/lib/constants/routes';
 import type { components } from '@/lib/api/generated/schema.d.ts';
 import {
   colorBackground,
@@ -123,24 +130,23 @@ export default function ProductDetailScreen() {
   const { data, isLoading, isError, refetch } = usePesticideProductDetailQuery(slug ?? '');
 
   const handleIngredientPress = useCallback((ingredientSlug: string) => {
-    router.push({ pathname: '/pesticides/ingredients/[slug]', params: { slug: ingredientSlug } });
+    router.push(routePesticideIngredientDetail(ingredientSlug));
   }, []);
 
   const handleDiseasePestPress = useCallback((diseasePestSlug: string) => {
-    router.push({ pathname: '/pesticides/disease-pests/[slug]', params: { slug: diseasePestSlug } });
+    router.push(routeDiseasePestDetail(diseasePestSlug));
   }, []);
 
   const handleIncompatPress = useCallback((incompatSlug: string) => {
-    router.push({ pathname: '/pesticides/products/[slug]', params: { slug: incompatSlug } });
+    router.push(routePesticideProductDetail(incompatSlug));
   }, []);
 
   const handleFormulationPress = useCallback((formulationCode: string) => {
-    // @ts-expect-error Expo Router の typed routes が params 付き static route のオブジェクト形式を正しく解決しない
-    router.push({ pathname: '/pesticides/formulations', params: { formulationTypeCode: formulationCode } });
+    router.push(routeFormulations(formulationCode));
   }, []);
 
   const handleSpreaderPress = useCallback((spreaderSlug: string) => {
-    router.push({ pathname: '/pesticides/spreaders/[slug]', params: { slug: spreaderSlug } });
+    router.push(routeSpreaderTypeDetail(spreaderSlug));
   }, []);
 
   const handleMaffLinkPress = useCallback((registrationNumber: string) => {
