@@ -264,6 +264,100 @@ export function useDisableTwoFactorMutation() {
   });
 }
 
+// ---------------------------------------------------------------------------
+// useChangePasswordMutation
+// ---------------------------------------------------------------------------
+
+export type ChangePasswordResult = components['schemas']['SuccessResponse'];
+
+/**
+ * ログイン中ユーザーのパスワード変更ミューテーション（POST /api/v1/auth/password/change）。
+ *
+ * エラー: 401 AUTH_INVALID_CREDENTIALS → 現パスワード不一致 / 400 VALIDATION_ERROR → 新パスワード強度不足 /
+ * 409 CONFLICT → OAuth 専用アカウント（パスワード未設定）/ 429 → レート制限。
+ * 文言変換は lib/constants/errors.ts の messageForChangePasswordError を使用する。
+ * 成功時の特別な invalidate は不要（twoFactorEnabled 等の users.me フィールドに影響しないため）。
+ */
+export function useChangePasswordMutation() {
+  return useMutation<ChangePasswordResult, Error, { currentPassword: string; newPassword: string }>({
+    mutationFn: async ({ currentPassword, newPassword }) => {
+      const { data, error } = await apiClient.POST('/api/v1/auth/password/change', {
+        body: { currentPassword, newPassword },
+      });
+      if (error !== undefined || data === undefined) {
+        throw error ?? new Error('Unexpected error changing password');
+      }
+      return data;
+    },
+  });
+}
+
+// ---------------------------------------------------------------------------
+// useRequestEmailChangeMutation
+// ---------------------------------------------------------------------------
+
+export type RequestEmailChangeResult = components['schemas']['SuccessResponse'];
+
+/**
+ * メールアドレス変更リクエストミューテーション（POST /api/v1/auth/email/change/request）。
+ * 確認メール経由の二段階方式の第一段階。
+ *
+ * 列挙攻撃対策により newEmail の使用状況に関わらず常に 200 を返す。
+ * エラー: 401 AUTH_INVALID_CREDENTIALS → 現パスワード不一致 / 409 CONFLICT → OAuth 専用アカウント / 429 → レート制限。
+ * 文言変換は lib/constants/errors.ts の messageForEmailChangeRequestError を使用する。
+ * 状態変更が確定するのは confirm 後のため invalidate 不要。
+ */
+export function useRequestEmailChangeMutation() {
+  return useMutation<RequestEmailChangeResult, Error, { newEmail: string; currentPassword: string }>({
+    mutationFn: async ({ newEmail, currentPassword }) => {
+      const { data, error } = await apiClient.POST('/api/v1/auth/email/change/request', {
+        body: { newEmail, currentPassword },
+      });
+      if (error !== undefined || data === undefined) {
+        throw error ?? new Error('Unexpected error requesting email change');
+      }
+      return data;
+    },
+  });
+}
+
+// ---------------------------------------------------------------------------
+// useConfirmEmailChangeMutation
+// ---------------------------------------------------------------------------
+
+export type ConfirmEmailChangeResult = components['schemas']['SuccessResponse'];
+
+/**
+ * メールアドレス変更確定ミューテーション（POST /api/v1/auth/email/change/confirm）。
+ * 確認メール経由の二段階方式の第二段階。token 所持自体が新アドレス所有性の証明のため
+ * サーバー側は Bearer 認証を要求しないが、apiClient は未ログイン時に単に
+ * Authorization ヘッダーを付与しないだけなので、既存クライアント経由でそのまま呼べる
+ * （ログイン中に呼ばれても余分な Bearer は無視される）。
+ *
+ * エラー: 401 AUTH_INVALID_CREDENTIALS → トークン無効/期限切れ / 409 CONFLICT → newEmail 使用済み / 429 → レート制限。
+ * onSuccess: users.me を invalidate する（email フィールドが変わるため）。
+ * invalidation-map.md 参照。
+ */
+export function useConfirmEmailChangeMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation<ConfirmEmailChangeResult, Error, { token: string }>({
+    mutationFn: async ({ token }) => {
+      const { data, error } = await apiClient.POST('/api/v1/auth/email/change/confirm', {
+        body: { token },
+      });
+      if (error !== undefined || data === undefined) {
+        throw error ?? new Error('Unexpected error confirming email change');
+      }
+      return data;
+    },
+
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.users.me });
+    },
+  });
+}
+
 /**
  * 新規ユーザー登録ミューテーション。
  * termsAccepted は画面が同意チェック完了後に呼び出す前提のため true を内部で付与する。

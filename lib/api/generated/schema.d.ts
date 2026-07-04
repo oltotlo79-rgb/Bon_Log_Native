@@ -502,6 +502,297 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/auth/password/change": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * ログイン中ユーザーのパスワードを変更
+         * @description 現パスワードを確認した上で新パスワードに変更する（Phase 1: TOTP コードの追加要求は行わない）。
+         *
+         *     重要仕様:
+         *     - OAuth 専用アカウント（パスワード未設定）は 409 CONFLICT
+         *     - 現パスワード不一致は 401 AUTH_INVALID_CREDENTIALS
+         *     - newPassword の強度検証は POST /api/v1/auth/register と同一
+         *     - レート制限: password_change（15 分に 5 回、fail-closed）
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["ChangePasswordRequest"];
+                };
+            };
+            responses: {
+                /** @description パスワード変更成功 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["SuccessResponse"];
+                    };
+                };
+                /** @description バリデーションエラー (VALIDATION_ERROR) */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description Bearer トークンなし (AUTH_REQUIRED)、期限切れ (AUTH_TOKEN_EXPIRED)、または現パスワード不一致 (AUTH_INVALID_CREDENTIALS) */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description アカウント停止 (ACCOUNT_SUSPENDED) またはゲスト (GUEST_NOT_ALLOWED) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description ユーザーが存在しない (NOT_FOUND) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description パスワード未設定の OAuth 専用アカウント (CONFLICT) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description レート制限超過。Retry-After ヘッダー（秒）が返却される。自動リトライ禁止。 */
+                429: {
+                    headers: {
+                        /** @description 次のリクエストまでの待機秒数 */
+                        "Retry-After"?: number;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/email/change/request": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * ログイン中ユーザーのメールアドレス変更をリクエスト
+         * @description 確認メール経由の二段階方式の第一段階。現パスワードを確認した上で、
+         *     新アドレス宛に確認リンクメールを送信する（有効期間: 1 時間）。
+         *     旧アドレス宛にも変更リクエスト通知メール（アカウント乗っ取り検知用）を送信する。
+         *
+         *     重要仕様:
+         *     - 列挙攻撃対策: newEmail が既に他ユーザーに使われている場合も常に 200 を返す（メールは送信しない）
+         *     - OAuth 専用アカウント（パスワード未設定）は 409 CONFLICT
+         *     - 現パスワード不一致は 401 AUTH_INVALID_CREDENTIALS
+         *     - レート制限: email_change_request（15 分に 5 回、fail-closed）
+         *     - 確定は POST /api/v1/auth/email/change/confirm で行う
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["EmailChangeRequest"];
+                };
+            };
+            responses: {
+                /** @description リクエスト受付（newEmail の使用状況に関わらず常に 200） */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["SuccessResponse"];
+                    };
+                };
+                /** @description バリデーションエラー (VALIDATION_ERROR) */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description Bearer トークンなし (AUTH_REQUIRED)、期限切れ (AUTH_TOKEN_EXPIRED)、または現パスワード不一致 (AUTH_INVALID_CREDENTIALS) */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description アカウント停止 (ACCOUNT_SUSPENDED) またはゲスト (GUEST_NOT_ALLOWED) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description パスワード未設定の OAuth 専用アカウント (CONFLICT) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description レート制限超過。Retry-After ヘッダー（秒）が返却される。自動リトライ禁止。 */
+                429: {
+                    headers: {
+                        /** @description 次のリクエストまでの待機秒数 */
+                        "Retry-After"?: number;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/email/change/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * メールアドレス変更を確定
+         * @description 確認メール経由の二段階方式の第二段階。token は確認メール内リンクから取得したもの。
+         *     token 所持自体が新アドレス所有性の証明になるため Bearer 認証は不要（未ログインでも呼べる）。
+         *
+         *     重要仕様:
+         *     - token 無効・期限切れは一律 401 AUTH_INVALID_CREDENTIALS（列挙攻撃防止）
+         *     - request 〜 confirm の間に newEmail が別ユーザーに使われた場合は 409 CONFLICT
+         *     - レート制限: email_change_confirm（IP ベース、1 時間に 10 回、fail-closed）
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["EmailChangeConfirm"];
+                };
+            };
+            responses: {
+                /** @description メールアドレス変更確定成功 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["SuccessResponse"];
+                    };
+                };
+                /** @description バリデーションエラー (VALIDATION_ERROR) */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description トークン無効または期限切れ (AUTH_INVALID_CREDENTIALS) */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description newEmail が別ユーザーに使用済み (CONFLICT) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description レート制限超過。Retry-After ヘッダー（秒）が返却される。自動リトライ禁止。 */
+                429: {
+                    headers: {
+                        /** @description 次のリクエストまでの待機秒数 */
+                        "Retry-After"?: number;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/refresh": {
         parameters: {
             query?: never;
@@ -12549,6 +12840,21 @@ export interface components {
         TwoFactorDisableResponse: {
             /** @enum {boolean} */
             disabled: true;
+        };
+        /** @description ログイン中ユーザーのパスワード変更リクエスト。currentPassword は本人確認用。 */
+        ChangePasswordRequest: {
+            currentPassword: string;
+            newPassword: string;
+        };
+        /** @description ログイン中ユーザーのメールアドレス変更リクエスト。currentPassword は本人確認用。newEmail の重複有無に関わらず常に 200 を返す（列挙攻撃対策）。 */
+        EmailChangeRequest: {
+            /** Format: email */
+            newEmail: string;
+            currentPassword: string;
+        };
+        /** @description メールアドレス変更確認（第二段階）。token は確認メール内リンクから取得したもの。token 所持自体が新アドレス所有性の証明になるため Bearer 認証は不要。 */
+        EmailChangeConfirm: {
+            token: string;
         };
         /** @description トークンリフレッシュのリクエスト。 */
         RefreshRequest: {

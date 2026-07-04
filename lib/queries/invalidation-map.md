@@ -18,6 +18,9 @@
 | 2FA セットアップ発行（`useTwoFactorSetupMutation`） | なし（キャッシュしない設計。呼び出す度に新しい secret/setupId が発行されるため useMutation として扱う） | GET /api/v1/auth/2fa/setup。戻り値は画面のローカル state で保持する |
 | 2FA 有効化（`useEnableTwoFactorMutation`） | `queryKeys.users.me`（onSuccess） | OpenAPI 1.30.0 で UsersMeResponse / UsersMeFullResponse に `twoFactorEnabled` が追加済み。invalidate によりサーバー確定値へ更新される |
 | 2FA 無効化（`useDisableTwoFactorMutation`） | `queryKeys.users.me`（onSuccess） | 同上 |
+| パスワード変更（`useChangePasswordMutation`） | なし | POST /api/v1/auth/password/change。users.me に影響するフィールドがないため invalidate 不要 |
+| メールアドレス変更リクエスト（`useRequestEmailChangeMutation`） | なし（状態変更なし。常に 200） | POST /api/v1/auth/email/change/request。確定は confirm 側で行う |
+| メールアドレス変更確定（`useConfirmEmailChangeMutation`） | `queryKeys.users.me`（onSuccess） | POST /api/v1/auth/email/change/confirm。email フィールドが変わるため invalidate する。Bearer 不要のエンドポイントだが既存 apiClient 経由で問題なく呼べる |
 
 ## フィード・投稿系
 
