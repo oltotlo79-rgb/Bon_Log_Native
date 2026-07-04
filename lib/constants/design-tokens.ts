@@ -639,6 +639,43 @@ export const colorIconUsage = '#0284c7';
 export const colorCategoryOrangeDeepText = '#c2410c';
 
 // ---------------------------------------------------------------------------
+// カラー — 施肥 NPK 栄養バー系（施肥樹種別詳細の月別スケジュールグリッド）
+// ---------------------------------------------------------------------------
+
+/**
+ * 窒素（N）バー「控えめ」レベル背景（Tailwind green-200）。
+ * high/balanced は colorSuccess / colorSuccessBg を流用する。
+ */
+export const colorNutrientNitrogenLowBg = '#bbf7d0';
+
+/**
+ * リン（P）バー「多め」レベル背景（Tailwind rose-500）。
+ * NPK 凡例の P スウォッチにも使用する。
+ */
+export const colorNutrientPhosphorusHighBg = '#f43f5e';
+
+/**
+ * リン（P）バー「控えめ」レベル背景（Tailwind rose-50）。
+ * balanced は colorCategoryRoseBg（rose-100）を流用する。
+ */
+export const colorNutrientPhosphorusLowBg = '#fff1f2';
+
+// ---------------------------------------------------------------------------
+// カラー — 月別施肥スケジュール季節背景系
+// ---------------------------------------------------------------------------
+
+/**
+ * 夏（6-8月）行の背景色（Tailwind sky-50）。
+ * 春は colorCategoryGreenPaleBg、秋は colorCategoryAmberPaleBg を流用する。
+ */
+export const colorSeasonSummerBg = '#f0f9ff';
+
+/**
+ * 冬（12-2月）行の背景色（Tailwind slate-50）。
+ */
+export const colorSeasonWinterBg = '#f8fafc';
+
+// ---------------------------------------------------------------------------
 // カラー — 外部サービスブランド色
 // ---------------------------------------------------------------------------
 
