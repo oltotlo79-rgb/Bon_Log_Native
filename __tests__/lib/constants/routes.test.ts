@@ -14,6 +14,8 @@ import {
   routes,
   ROUTE_TWO_FACTOR_VERIFY,
   ROUTE_PESTICIDES_FORMULATIONS,
+  ROUTE_SETTINGS_PASSWORD,
+  ROUTE_SETTINGS_EMAIL,
 } from '@/lib/constants/routes';
 
 describe('routePostDetail', () => {
@@ -62,6 +64,16 @@ describe('routes オブジェクト（静的パス）', () => {
   it('2FA 確認パスが正しい（ROUTE_TWO_FACTOR_VERIFY 定数と routes.twoFactorVerify が一致する）', () => {
     expect(ROUTE_TWO_FACTOR_VERIFY).toBe('/(auth)/two-factor-verify');
     expect(routes.twoFactorVerify).toBe(ROUTE_TWO_FACTOR_VERIFY);
+  });
+
+  it('パスワード変更パスが正しい（ROUTE_SETTINGS_PASSWORD 定数と routes.settingsPassword が一致する）', () => {
+    expect(ROUTE_SETTINGS_PASSWORD).toBe('/settings/password');
+    expect(routes.settingsPassword).toBe(ROUTE_SETTINGS_PASSWORD);
+  });
+
+  it('メールアドレス変更パスが正しい（ROUTE_SETTINGS_EMAIL 定数と routes.settingsEmail が一致する）', () => {
+    expect(ROUTE_SETTINGS_EMAIL).toBe('/settings/email');
+    expect(routes.settingsEmail).toBe(ROUTE_SETTINGS_EMAIL);
   });
 });
 
