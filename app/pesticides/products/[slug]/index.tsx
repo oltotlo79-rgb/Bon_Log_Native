@@ -139,6 +139,10 @@ export default function ProductDetailScreen() {
     router.push({ pathname: '/pesticides/formulations', params: { formulationTypeCode: formulationCode } });
   }, []);
 
+  const handleSpreaderPress = useCallback((spreaderSlug: string) => {
+    router.push({ pathname: '/pesticides/spreaders/[slug]', params: { slug: spreaderSlug } });
+  }, []);
+
   const handleMaffLinkPress = useCallback((registrationNumber: string) => {
     void Linking.openURL(buildMaffUrl(registrationNumber));
   }, []);
@@ -251,6 +255,25 @@ export default function ProductDetailScreen() {
                 </View>
               );
             })()}
+            {data.spreaderTypes.length > 0 && (
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>展着剤の分類</Text>
+                <View style={styles.spreaderChipRow}>
+                  {data.spreaderTypes.map((spreader) => (
+                    <TouchableOpacity
+                      key={spreader.id}
+                      style={styles.spreaderChip}
+                      onPress={() => handleSpreaderPress(spreader.slug)}
+                      hitSlop={{ top: spacing2, bottom: spacing2, left: spacing2, right: spacing2 }}
+                      accessibilityRole="button"
+                      accessibilityLabel={`${spreader.name}の詳細を見る`}
+                    >
+                      <Text style={styles.spreaderChipText}>{spreader.name}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+            )}
             {resistanceRisk !== null && (
               <View style={styles.infoRow}>
                 <Text style={styles.infoLabel}>耐性がつきやすいか</Text>
@@ -518,6 +541,23 @@ const styles = StyleSheet.create({
   formulationSeparator: {
     ...textXs,
     color: colorTextSecondary,
+  },
+  spreaderChipRow: {
+    flex: 1,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing2,
+  },
+  spreaderChip: {
+    backgroundColor: colorSurfaceMuted,
+    borderRadius: radiusSm,
+    paddingHorizontal: spacing2,
+    paddingVertical: spacing2,
+  },
+  spreaderChipText: {
+    ...textXs,
+    color: colorTextPrimary,
+    fontWeight: '500',
   },
 
   // 耐性リスクバッジ（Web: rounded px-2 py-0.5 text-xs font-medium）

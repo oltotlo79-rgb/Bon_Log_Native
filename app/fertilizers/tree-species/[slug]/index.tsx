@@ -22,6 +22,7 @@ import { ScreenLoading } from '@/components/common/ScreenLoading';
 import { ScreenEmpty } from '@/components/common/ScreenEmpty';
 import { ScreenError } from '@/components/common/ScreenError';
 import { FertilizerDisclaimer } from '@/components/fertilizer/FertilizerDisclaimer';
+import { getTreeBadge } from '@/components/fertilizer/TreeSpeciesCard';
 import { useOnlineStatus } from '@/hooks/use-online-status';
 import { ERR_FERTILIZERS_LOAD_FAILED } from '@/lib/constants/errors';
 import {
@@ -36,6 +37,7 @@ import {
   colorBorderLight,
   colorSuccess,
   colorSuccessBg,
+  colorWarning,
   colorWarningBg,
   colorInfo,
   colorInfoBg,
@@ -62,8 +64,10 @@ import {
   textSm,
   textBase,
   textLg,
+  textXl,
   radiusMd,
   radiusSm,
+  radiusFull,
 } from '@/lib/constants/design-tokens';
 
 // ---------------------------------------------------------------------------
@@ -176,6 +180,7 @@ type FertilizationMonth = {
   potassiumLevel: string | null;
   recommendedType: string | null;
   description: string | null;
+  cautionNote: string | null;
 };
 
 // ---------------------------------------------------------------------------
@@ -302,6 +307,7 @@ const FertilizationTimeline = memo(function FertilizationTimeline({
         potassiumLevel: null,
         recommendedType: null,
         description: null,
+        cautionNote: null,
       }
     );
   });
@@ -633,6 +639,14 @@ const MonthlyScheduleGrid = memo(function MonthlyScheduleGrid({
                     {m.description}
                   </Text>
                 )}
+                {m.cautionNote !== null && (
+                  <View style={gridStyles.cautionRow} accessibilityLabel={`注意: ${m.cautionNote}`}>
+                    <Text style={gridStyles.cautionIcon}>⚠</Text>
+                    <Text style={gridStyles.cautionText} numberOfLines={2}>
+                      {m.cautionNote}
+                    </Text>
+                  </View>
+                )}
               </View>
             </TouchableOpacity>
           </React.Fragment>
@@ -708,6 +722,22 @@ const gridStyles = StyleSheet.create({
     color: colorTextSecondary,
     lineHeight: 16,
   },
+  cautionRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 3,
+    marginTop: 3,
+  },
+  cautionIcon: {
+    ...textXs,
+    color: colorWarning,
+  },
+  cautionText: {
+    ...textXs,
+    color: colorWarning,
+    lineHeight: 16,
+    flex: 1,
+  },
   seasonSeparator: {
     backgroundColor: colorSurfaceMuted,
     borderBottomWidth: 1,
@@ -751,6 +781,12 @@ const MonthDetailPanel = memo(function MonthDetailPanel({ monthData }: MonthDeta
       {monthData.description !== null && (
         <Text style={detailStyles.item}>{monthData.description}</Text>
       )}
+      {monthData.cautionNote !== null && (
+        <View style={detailStyles.cautionRow} accessibilityLabel={`注意: ${monthData.cautionNote}`}>
+          <Text style={detailStyles.cautionIcon}>⚠</Text>
+          <Text style={detailStyles.cautionText}>{monthData.cautionNote}</Text>
+        </View>
+      )}
     </View>
   );
 });
@@ -790,6 +826,21 @@ const detailStyles = StyleSheet.create({
     color: colorTextPrimary,
     lineHeight: 22,
   },
+  cautionRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing2,
+  },
+  cautionIcon: {
+    ...textBase,
+    color: colorWarning,
+  },
+  cautionText: {
+    ...textBase,
+    color: colorWarning,
+    lineHeight: 22,
+    flex: 1,
+  },
 });
 
 // ---------------------------------------------------------------------------
@@ -823,6 +874,8 @@ export default function TreeSpeciesScheduleScreen() {
       ? data?.months.find((m) => m.month === selectedMonth)
       : undefined;
 
+  const categoryBadge = data !== undefined ? getTreeBadge(data.category) : null;
+
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <Stack.Screen
@@ -851,6 +904,55 @@ export default function TreeSpeciesScheduleScreen() {
             { paddingBottom: insets.bottom + spacing8 },
           ]}
         >
+          {/* 見出し：樹種名 + カテゴリバッジ + 英名副題 */}
+          <View style={styles.headerBlock}>
+            <View style={styles.titleRow}>
+              <Text style={styles.treeName} accessibilityRole="header">
+                {treeSpeciesName}
+              </Text>
+              {categoryBadge !== null && (
+                <View style={[styles.categoryBadge, { backgroundColor: categoryBadge.bg }]}>
+                  <Text style={[styles.categoryBadgeText, { color: categoryBadge.text }]}>
+                    {categoryBadge.label}
+                  </Text>
+                </View>
+              )}
+            </View>
+            {data.nameEn !== null && (
+              <Text style={styles.nameEn}>{data.nameEn}</Text>
+            )}
+          </View>
+
+          {/* 概要 */}
+          {data.description !== null && (
+            <View style={styles.textSection}>
+              <Text style={styles.textSectionTitle} accessibilityRole="header">
+                概要
+              </Text>
+              <Text style={styles.textSectionBody}>{data.description}</Text>
+            </View>
+          )}
+
+          {/* 施肥方針 */}
+          {data.fertilizingPolicy !== null && (
+            <View style={styles.textSection}>
+              <Text style={styles.textSectionTitle} accessibilityRole="header">
+                施肥方針
+              </Text>
+              <Text style={styles.textSectionBody}>{data.fertilizingPolicy}</Text>
+            </View>
+          )}
+
+          {/* 代表的な樹種 */}
+          {data.examples !== null && (
+            <View style={styles.textSection}>
+              <Text style={styles.textSectionTitle} accessibilityRole="header">
+                代表的な樹種
+              </Text>
+              <Text style={styles.textSectionBody}>{data.examples}</Text>
+            </View>
+          )}
+
           {/* 季節サマリー */}
           <View style={styles.section}>
             <Text style={styles.sectionTitle} accessibilityRole="header">
@@ -905,8 +1007,6 @@ export default function TreeSpeciesScheduleScreen() {
             </View>
           )}
 
-          {/* 施肥方針（APIに description/fertilizingPolicy/examples が無いため非表示） */}
-
           <FertilizerDisclaimer />
         </ScrollView>
       )}
@@ -930,6 +1030,50 @@ const styles = StyleSheet.create({
   sectionTitle: {
     ...textLg,
     color: colorTextPrimary,
+  },
+  headerBlock: {
+    gap: spacing2,
+  },
+  titleRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'center',
+    gap: spacing2,
+  },
+  treeName: {
+    ...textXl,
+    color: colorTextPrimary,
+  },
+  categoryBadge: {
+    borderRadius: radiusFull,
+    paddingHorizontal: spacing2,
+    paddingVertical: 2,
+  },
+  categoryBadgeText: {
+    ...textXs,
+    fontWeight: '600',
+  },
+  nameEn: {
+    ...textSm,
+    color: colorTextSecondary,
+  },
+  textSection: {
+    borderWidth: 1,
+    borderColor: colorBorderLight,
+    borderRadius: radiusMd,
+    padding: spacing4,
+    backgroundColor: colorSurface,
+    gap: spacing2,
+  },
+  textSectionTitle: {
+    ...textSm,
+    color: colorTextPrimary,
+    fontWeight: '600',
+  },
+  textSectionBody: {
+    ...textSm,
+    color: colorTextSecondary,
+    lineHeight: 20,
   },
   timelineCard: {
     borderWidth: 1,

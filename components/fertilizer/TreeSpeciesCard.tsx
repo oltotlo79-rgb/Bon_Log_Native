@@ -40,15 +40,15 @@ import {
 // カテゴリバッジ設定（Web の TREE_CATEGORY_BADGE に対応）
 // ---------------------------------------------------------------------------
 
-type TreeCategory = 'conifer' | 'deciduous' | 'flowering' | 'fruiting' | 'grass' | 'evergreen';
+export type TreeCategory = 'conifer' | 'deciduous' | 'flowering' | 'fruiting' | 'grass' | 'evergreen';
 
-type BadgeConfig = {
+export type TreeBadgeConfig = {
   label: string;
   bg: string;
   text: string;
 };
 
-const TREE_CATEGORY_CONFIG: Record<TreeCategory, BadgeConfig> = {
+export const TREE_CATEGORY_CONFIG: Record<TreeCategory, TreeBadgeConfig> = {
   conifer:   { label: '松柏類',     bg: colorCategoryGreenBg,  text: colorCategoryGreenText },
   deciduous: { label: '雑木類',     bg: colorCategoryBlueBg,   text: colorCategoryBlueText },
   flowering: { label: '花物',       bg: colorCategoryRoseBg,   text: colorCategoryRoseText },
@@ -57,16 +57,21 @@ const TREE_CATEGORY_CONFIG: Record<TreeCategory, BadgeConfig> = {
   evergreen: { label: '常緑広葉樹', bg: colorCategoryTealBg,   text: colorCategoryTealText },
 };
 
-const FALLBACK_BADGE: BadgeConfig = { label: 'その他', bg: colorSurfaceMuted, text: colorTextSecondary };
+export const TREE_CATEGORY_FALLBACK_BADGE: TreeBadgeConfig = {
+  label: 'その他',
+  bg: colorSurfaceMuted,
+  text: colorTextSecondary,
+};
 
-function getTreeBadge(category: string): BadgeConfig {
+/** カテゴリ文字列を Web と同じ配色バッジ設定へ変換する（未知の値はその他扱い） */
+export function getTreeBadge(category: string): TreeBadgeConfig {
   if (
     category === 'conifer' || category === 'deciduous' || category === 'flowering' ||
     category === 'fruiting' || category === 'grass' || category === 'evergreen'
   ) {
     return TREE_CATEGORY_CONFIG[category];
   }
-  return FALLBACK_BADGE;
+  return TREE_CATEGORY_FALLBACK_BADGE;
 }
 
 // ---------------------------------------------------------------------------
