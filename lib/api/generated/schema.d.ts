@@ -203,6 +203,305 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/auth/2fa/setup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 2FA セットアップを開始
+         * @description TOTP シークレット・otpauth URI・バックアップコードを生成し、Redis に一時保存する（TTL あり）。
+         *
+         *     重要仕様:
+         *     - 平文シークレットは DB に保存されない。setupId で Redis の一時データを参照する
+         *     - setupId は POST /api/v1/auth/2fa/enable に必須で渡す
+         *     - 既に 2FA が有効な場合は 409 CONFLICT
+         *     - レート制限: two_factor_setup（15 分に 10 回）
+         */
+        get: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 2FA セットアップ情報の生成成功 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["TwoFactorSetupResponse"];
+                    };
+                };
+                /** @description Bearer トークンなし (AUTH_REQUIRED) または期限切れ (AUTH_TOKEN_EXPIRED) */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description アカウント停止 (ACCOUNT_SUSPENDED) またはゲスト (GUEST_NOT_ALLOWED) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description ユーザーが存在しない (NOT_FOUND) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description 2FA が既に有効 (CONFLICT) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description レート制限超過。Retry-After ヘッダー（秒）が返却される。自動リトライ禁止。 */
+                429: {
+                    headers: {
+                        /** @description 次のリクエストまでの待機秒数 */
+                        "Retry-After"?: number;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/2fa/enable": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * 2FA を有効化
+         * @description GET /api/v1/auth/2fa/setup で発行された setupId と TOTP コードを検証し、2FA を有効化する。
+         *
+         *     重要仕様:
+         *     - 検証成功後、Redis の一時セットアップデータは削除される（リプレイ防止）
+         *     - setupId が期限切れ/不正な場合は 401 AUTH_2FA_TICKET_EXPIRED
+         *     - レート制限: two_factor_setup（15 分に 10 回）
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["TwoFactorEnableRequest"];
+                };
+            };
+            responses: {
+                /** @description 2FA 有効化成功 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["TwoFactorEnableResponse"];
+                    };
+                };
+                /** @description バリデーションエラー (VALIDATION_ERROR) */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description Bearer トークンなし (AUTH_REQUIRED)、期限切れ (AUTH_TOKEN_EXPIRED)、セットアップ期限切れ (AUTH_2FA_TICKET_EXPIRED)、またはコード不正 (AUTH_2FA_INVALID_CODE) */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description アカウント停止 (ACCOUNT_SUSPENDED) またはゲスト (GUEST_NOT_ALLOWED) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description ユーザーが存在しない (NOT_FOUND) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description 2FA が既に有効 (CONFLICT) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description レート制限超過。Retry-After ヘッダー（秒）が返却される。自動リトライ禁止。 */
+                429: {
+                    headers: {
+                        /** @description 次のリクエストまでの待機秒数 */
+                        "Retry-After"?: number;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/auth/2fa/disable": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * 2FA を無効化
+         * @description パスワードを検証した上で 2FA を無効化する（TOTP コードではなくパスワードで本人確認する）。
+         *
+         *     重要仕様:
+         *     - OAuth 専用アカウント（パスワード未設定）は 409 CONFLICT
+         *     - レート制限: two_factor_setup（15 分に 10 回）
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody: {
+                content: {
+                    "application/json": components["schemas"]["TwoFactorDisableRequest"];
+                };
+            };
+            responses: {
+                /** @description 2FA 無効化成功 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["TwoFactorDisableResponse"];
+                    };
+                };
+                /** @description バリデーションエラー (VALIDATION_ERROR) */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description Bearer トークンなし (AUTH_REQUIRED)、期限切れ (AUTH_TOKEN_EXPIRED)、またはパスワード不正 (AUTH_INVALID_CREDENTIALS) */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description アカウント停止 (ACCOUNT_SUSPENDED) またはゲスト (GUEST_NOT_ALLOWED) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description ユーザーが存在しない (NOT_FOUND) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description 2FA が無効、またはパスワード未設定 (CONFLICT) */
+                409: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description レート制限超過。Retry-After ヘッダー（秒）が返却される。自動リトライ禁止。 */
+                429: {
+                    headers: {
+                        /** @description 次のリクエストまでの待機秒数 */
+                        "Retry-After"?: number;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/auth/refresh": {
         parameters: {
             query?: never;
@@ -1566,6 +1865,108 @@ export interface paths {
                     };
                     content: {
                         "application/json": components["schemas"]["UserPostsResponse"];
+                    };
+                };
+                /** @description バリデーションエラー (VALIDATION_ERROR) */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description Bearer トークンなし (AUTH_REQUIRED) または期限切れ (AUTH_TOKEN_EXPIRED) */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description アカウント停止 (ACCOUNT_SUSPENDED) または非公開アカウントへのアクセス (NOT_FOUND) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description ユーザーが存在しない (NOT_FOUND) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description レート制限超過。Retry-After ヘッダー（秒）が返却される。自動リトライ禁止。 */
+                429: {
+                    headers: {
+                        /** @description 次のリクエストまでの待機秒数 */
+                        "Retry-After"?: number;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/users/{id}/comments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * ユーザーのコメント一覧を取得（カーソルページネーション）
+         * @description 指定ユーザーのコメントをカーソルページネーションで返す（createdAt DESC 順）。
+         *
+         *     重要仕様:
+         *     - 非公開アカウントはフォロワー以外には 403 FORBIDDEN を返す
+         *     - ゲストアクセス可: 公開アカウントのコメントを閲覧できる
+         *     - 非表示 (isHidden) / 削除済み (deletedAt) コメントは除外
+         *     - コメント先の投稿が閲覧不可（非表示/非公開著者等）な場合はそのコメントも除外
+         *     - post は { id, content } のみ（Post に slug/title は存在しないため）。Native は post.id で GET /api/v1/posts/{id} を叩いて遷移する
+         *     - レート制限: timeline（60/分）
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description カーソル */
+                    cursor?: string;
+                    /** @description 取得上限件数 */
+                    limit?: number;
+                };
+                header?: never;
+                path: {
+                    /** @description ユーザー ID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description ユーザーコメント一覧 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["UserCommentsListResponse"];
                     };
                 };
                 /** @description バリデーションエラー (VALIDATION_ERROR) */
@@ -6076,50 +6477,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": {
-                            id: string;
-                            name: string;
-                            nameKana: string | null;
-                            /** @enum {string} */
-                            category: "disease" | "pest" | "beneficial_insect";
-                            description: string | null;
-                            imageUrl: string | null;
-                            slug: string;
-                            bodySizeMinMm: number | null;
-                            bodySizeMaxMm: number | null;
-                            effects: {
-                                pesticide: {
-                                    id: string;
-                                    name: string;
-                                    slug: string;
-                                    /** @enum {string} */
-                                    pesticideType: "fungicide" | "insecticide" | "acaricide" | "compound" | "other";
-                                    formulationType: {
-                                        name: string;
-                                        code: string;
-                                    } | null;
-                                    activeIngredients: {
-                                        id: string;
-                                        name: string;
-                                        fracCode: string | null;
-                                        iracCode: string | null;
-                                        /** @enum {string|null} */
-                                        resistanceRisk: "low" | "medium" | "high" | null;
-                                        slug: string;
-                                    }[];
-                                };
-                                rating: {
-                                    /** @enum {string|null} */
-                                    preventionLevel: "excellent" | "good" | "fair" | "poor" | "none" | null;
-                                    /** @enum {string|null} */
-                                    treatmentLevel: "excellent" | "good" | "fair" | "poor" | "none" | null;
-                                    /** @enum {string|null} */
-                                    efficacyLevel: "excellent" | "good" | "fair" | "poor" | "none" | null;
-                                    /** @enum {string|null} */
-                                    persistenceLevel: "excellent" | "good" | "fair" | "poor" | "none" | null;
-                                };
-                            }[];
-                        };
+                        "application/json": components["schemas"]["DiseasePestDetail"];
                     };
                 };
                 /** @description バリデーションエラー (VALIDATION_ERROR) — slug 形式不正 */
@@ -6313,51 +6671,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": {
-                            id: string;
-                            name: string;
-                            registrationNumber: string | null;
-                            /** @enum {string} */
-                            pesticideType: "fungicide" | "insecticide" | "acaricide" | "compound" | "other";
-                            description: string | null;
-                            slug: string;
-                            formulationType: {
-                                name: string;
-                                code: string;
-                            } | null;
-                            activeIngredients: {
-                                id: string;
-                                name: string;
-                                fracCode: string | null;
-                                iracCode: string | null;
-                                /** @enum {string|null} */
-                                resistanceRisk: "low" | "medium" | "high" | null;
-                                slug: string;
-                            }[];
-                            effects: {
-                                diseasePest: {
-                                    id: string;
-                                    name: string;
-                                    slug: string;
-                                };
-                                rating: {
-                                    /** @enum {string|null} */
-                                    preventionLevel: "excellent" | "good" | "fair" | "poor" | "none" | null;
-                                    /** @enum {string|null} */
-                                    treatmentLevel: "excellent" | "good" | "fair" | "poor" | "none" | null;
-                                    /** @enum {string|null} */
-                                    efficacyLevel: "excellent" | "good" | "fair" | "poor" | "none" | null;
-                                    /** @enum {string|null} */
-                                    persistenceLevel: "excellent" | "good" | "fair" | "poor" | "none" | null;
-                                };
-                            }[];
-                            incompatibilities: {
-                                id: string;
-                                name: string;
-                                slug: string;
-                                formulationTypeName: string | null;
-                            }[];
-                        };
+                        "application/json": components["schemas"]["PesticideDetail"];
                     };
                 };
                 /** @description バリデーションエラー (VALIDATION_ERROR) — slug 形式不正 */
@@ -6708,25 +7022,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": {
-                            id: string;
-                            slug: string;
-                            name: string;
-                            description: string | null;
-                            sortOrder: number;
-                            products: {
-                                id: string;
-                                slug: string;
-                                name: string;
-                                description: string | null;
-                                formulationType: {
-                                    name: string;
-                                    code: string;
-                                } | null;
-                            }[];
-                            effect: string | null;
-                            usageNote: string | null;
-                        };
+                        "application/json": components["schemas"]["SpreaderTypeDetail"];
                     };
                 };
                 /** @description バリデーションエラー (VALIDATION_ERROR) — slug 形式不正 */
@@ -6993,20 +7289,7 @@ export interface paths {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": {
-                            id: string;
-                            slug: string;
-                            title: string;
-                            category: string;
-                            /** Format: date-time */
-                            publishedAt: string;
-                            sortOrder: number;
-                            content: string;
-                            /** Format: date-time */
-                            createdAt: string;
-                            /** Format: date-time */
-                            updatedAt: string;
-                        };
+                        "application/json": components["schemas"]["PesticideColumnDetail"];
                     };
                 };
                 /** @description バリデーションエラー (VALIDATION_ERROR) — slug 形式不正 */
@@ -12239,6 +12522,32 @@ export interface components {
             ticket: string;
             code: string;
         };
+        /** @description GET /api/v1/auth/2fa/setup 成功レスポンス。otpAuthUrl は otpauth:// URI（Native 側でローカルに QR を描画する用途）。setupId は POST /api/v1/auth/2fa/enable に必須で渡す（TOTP シークレットの再送を避けるための一時参照キー）。 */
+        TwoFactorSetupResponse: {
+            secret: string;
+            otpAuthUrl: string;
+            setupId: string;
+            backupCodes: string[];
+        };
+        /** @description 2FA 有効化リクエスト。code は TOTP コード、setupId は GET /api/v1/auth/2fa/setup で発行された参照キー。 */
+        TwoFactorEnableRequest: {
+            code: string;
+            setupId: string;
+        };
+        /** @description 2FA 有効化成功レスポンス。 */
+        TwoFactorEnableResponse: {
+            /** @enum {boolean} */
+            enabled: true;
+        };
+        /** @description 2FA 無効化リクエスト。password は本人確認用（TOTP コードではない）。 */
+        TwoFactorDisableRequest: {
+            password: string;
+        };
+        /** @description 2FA 無効化成功レスポンス。 */
+        TwoFactorDisableResponse: {
+            /** @enum {boolean} */
+            disabled: true;
+        };
         /** @description トークンリフレッシュのリクエスト。 */
         RefreshRequest: {
             refreshToken: string;
@@ -12914,6 +13223,31 @@ export interface components {
             }[];
             nextCursor: string | null;
         };
+        /** @description ユーザーのコメント一覧の 1 件（id, content, createdAt, post）。post は { id, content } のみ（Post に slug/title は存在しないため）。Native は post.id で GET /api/v1/posts/{id} を叩いて遷移する。 */
+        UserCommentItem: {
+            id: string;
+            content: string;
+            /** Format: date-time */
+            createdAt: string;
+            post: {
+                id: string;
+                content: string | null;
+            };
+        };
+        /** @description GET /api/v1/users/{id}/comments 成功レスポンス。createdAt DESC 順。 */
+        UserCommentsListResponse: {
+            items: {
+                id: string;
+                content: string;
+                /** Format: date-time */
+                createdAt: string;
+                post: {
+                    id: string;
+                    content: string | null;
+                };
+            }[];
+            nextCursor: string | null;
+        };
         /** @description ユーザープロフィール取得レスポンス。 */
         UserProfileResponse: {
             id: string;
@@ -13439,10 +13773,16 @@ export interface components {
             potassiumLevel: string | null;
             recommendedType: string | null;
             description: string | null;
+            cautionNote: string | null;
         };
         /** @description GET /api/v1/fertilizers/tree-species/{slug}/schedule 成功レスポンス。treeSpeciesName・slug を含む。months は月順で最大 12 件。 */
         FertilizationScheduleResponse: {
             treeSpeciesName: string;
+            nameEn: string | null;
+            category: string;
+            description: string | null;
+            examples: string | null;
+            fertilizingPolicy: string | null;
             slug: string;
             months: {
                 month: number;
@@ -13452,6 +13792,7 @@ export interface components {
                 potassiumLevel: string | null;
                 recommendedType: string | null;
                 description: string | null;
+                cautionNote: string | null;
             }[];
         };
         /**
@@ -13916,7 +14257,7 @@ export interface components {
             slug: string;
             formulationTypeName: string | null;
         };
-        /** @description 農薬製品詳細（formulationType, activeIngredients, effects, incompatibilities を含む）。 */
+        /** @description 農薬製品詳細（formulationType, activeIngredients, effects, incompatibilities, spreaderTypes を含む）。 */
         PesticideDetail: {
             id: string;
             name: string;
@@ -13960,6 +14301,11 @@ export interface components {
                 name: string;
                 slug: string;
                 formulationTypeName: string | null;
+            }[];
+            spreaderTypes: {
+                id: string;
+                slug: string;
+                name: string;
             }[];
         };
         /** @description GET /api/v1/pesticides/products 成功レスポンス。name ASC 順。 */
