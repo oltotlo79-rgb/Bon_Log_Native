@@ -33,7 +33,9 @@ import {
 // ---------------------------------------------------------------------------
 
 const FIELD_HEIGHT = 52;
-const TOTP_MAX_LENGTH = 6;
+
+/** TOTP コードの桁数。有効化フォームの送信可否判定でも共有するため export する。 */
+export const TOTP_CODE_LENGTH = 6;
 
 // ---------------------------------------------------------------------------
 // Props
@@ -76,7 +78,7 @@ export const TwoFactorCodeField = forwardRef<TextInput, TwoFactorCodeFieldProps>
       if (mode === 'totp') {
         // TOTP モードでは数字のみ・先頭 6 文字に切り詰める
         const digitsOnly = text.replace(/\D/g, '');
-        onChangeText(digitsOnly.slice(0, TOTP_MAX_LENGTH));
+        onChangeText(digitsOnly.slice(0, TOTP_CODE_LENGTH));
       } else {
         onChangeText(text);
       }
