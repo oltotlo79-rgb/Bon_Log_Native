@@ -132,16 +132,20 @@ const FILTER_CHIPS: FilterChipDef[] = [
 const DISEASE_PEST_FILTER_KEYS: readonly DiseasePestCategoryFilter[] = ['disease', 'pest', 'beneficial_insect'] as const;
 const PESTICIDE_TYPE_FILTER_KEYS: readonly PesticideTypeFilter[] = ['fungicide', 'insecticide', 'acaricide', 'compound'] as const;
 
+function isDiseasePestCategory(value: FilterTag): value is DiseasePestCategory {
+  return DISEASE_PEST_FILTER_KEYS.some((category) => category === value);
+}
+
+function isPesticideType(value: FilterTag): value is PesticideTypeFilter {
+  return PESTICIDE_TYPE_FILTER_KEYS.some((type) => type === value);
+}
+
 function toDiseasePestCategory(key: FilterTag): DiseasePestCategory | undefined {
-  return (DISEASE_PEST_FILTER_KEYS as readonly string[]).includes(key)
-    ? (key as DiseasePestCategory)
-    : undefined;
+  return isDiseasePestCategory(key) ? key : undefined;
 }
 
 function toPesticideType(key: FilterTag): PesticideType | undefined {
-  return (PESTICIDE_TYPE_FILTER_KEYS as readonly string[]).includes(key)
-    ? (key as PesticideType)
-    : undefined;
+  return isPesticideType(key) ? key : undefined;
 }
 
 // ---------------------------------------------------------------------------

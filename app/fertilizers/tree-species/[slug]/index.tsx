@@ -45,6 +45,14 @@ import {
   colorCategoryBlueText,
   colorCategoryAmberBg,
   colorCategoryAmberText,
+  colorNutrientNitrogenLowBg,
+  colorNutrientPhosphorusHighBg,
+  colorNutrientPhosphorusLowBg,
+  colorCategoryRoseBg,
+  colorCategoryGreenPaleBg,
+  colorSeasonSummerBg,
+  colorCategoryAmberPaleBg,
+  colorSeasonWinterBg,
   spacing2,
   spacing3,
   spacing4,
@@ -118,15 +126,15 @@ const NUTRIENT_LEVEL_LABEL: Record<NutrientLevel, string> = {
 const N_BAR_BG: Record<NutrientLevel, string> = {
   high: colorSuccess,
   balanced: colorSuccessBg,
-  low: '#bbf7d0',
+  low: colorNutrientNitrogenLowBg,
   none: colorSurfaceMuted,
 };
 
 // P の色（rose 系）
 const P_BAR_BG: Record<NutrientLevel, string> = {
-  high: '#f43f5e',
-  balanced: '#ffe4e6',
-  low: '#fff1f2',
+  high: colorNutrientPhosphorusHighBg,
+  balanced: colorCategoryRoseBg,
+  low: colorNutrientPhosphorusLowBg,
   none: colorSurfaceMuted,
 };
 
@@ -134,7 +142,7 @@ const P_BAR_BG: Record<NutrientLevel, string> = {
 const K_BAR_BG: Record<NutrientLevel, string> = {
   high: colorInfo,
   balanced: colorInfoBg,
-  low: '#e0f2fe',
+  low: colorCategoryBlueBg,
   none: colorSurfaceMuted,
 };
 
@@ -174,10 +182,13 @@ type FertilizationMonth = {
 // 季節ごとの支配的アクション計算（Web の computeSeasonSummary に対応）
 // ---------------------------------------------------------------------------
 
+function isMonthInSeason(months: readonly number[], month: number): boolean {
+  return months.includes(month);
+}
+
 function computeSeasonSummary(months: FertilizationMonth[]) {
   return SEASONS.map((season) => {
-    const seasonMonthNums = season.months as readonly number[];
-    const seasonMonths = months.filter((m) => seasonMonthNums.includes(m.month));
+    const seasonMonths = months.filter((m) => isMonthInSeason(season.months, m.month));
     const counts = new Map<FertilizerAction, number>();
     for (const m of seasonMonths) {
       const action = toFertilizerAction(m.action);
@@ -387,7 +398,7 @@ const FertilizationTimeline = memo(function FertilizationTimeline({
         <Text style={timelineStyles.legendTitle}>栄養素:</Text>
         {[
           { label: 'N', color: colorSuccess },
-          { label: 'P', color: '#f43f5e' },
+          { label: 'P', color: colorNutrientPhosphorusHighBg },
           { label: 'K', color: colorInfo },
         ].map((n) => (
           <View key={n.label} style={timelineStyles.legendItem}>
@@ -537,10 +548,10 @@ type MonthlyScheduleGridProps = {
 };
 
 function getSeasonBg(month: number): string {
-  if (month >= 3 && month <= 5) return '#f0fdf4';
-  if (month >= 6 && month <= 8) return '#f0f9ff';
-  if (month >= 9 && month <= 11) return '#fffbeb';
-  return '#f8fafc';
+  if (month >= 3 && month <= 5) return colorCategoryGreenPaleBg;
+  if (month >= 6 && month <= 8) return colorSeasonSummerBg;
+  if (month >= 9 && month <= 11) return colorCategoryAmberPaleBg;
+  return colorSeasonWinterBg;
 }
 
 function getSeasonHeaderLabel(month: number): string | null {
