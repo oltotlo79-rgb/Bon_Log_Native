@@ -131,6 +131,7 @@ export default function SettingsProfileScreen() {
     bonsaiStartMonth: null,
     birthDate: null,
     isPremium: false,
+    twoFactorEnabled: false,
   });
 
   const updateProfileMutation = useUpdateProfileMutation(profile?.id ?? '');

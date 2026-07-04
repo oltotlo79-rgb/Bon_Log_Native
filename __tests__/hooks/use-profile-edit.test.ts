@@ -27,6 +27,7 @@ const BASE_PROFILE: UsersMeFullResponse = {
   bonsaiStartMonth: 3,
   birthDate: null,
   isPremium: false,
+  twoFactorEnabled: false,
 };
 
 // ---------------------------------------------------------------------------
@@ -99,6 +100,7 @@ describe('isDirty', () => {
       bonsaiStartMonth: null,
       birthDate: null,
       isPremium: false,
+      twoFactorEnabled: false,
     };
 
     const { result, rerender } = renderHook(
@@ -130,6 +132,7 @@ describe('isDirty', () => {
       bonsaiStartMonth: null,
       birthDate: null,
       isPremium: false,
+      twoFactorEnabled: false,
     };
 
     const { result, rerender } = renderHook(

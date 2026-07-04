@@ -76,6 +76,7 @@ export function useCurrentUserProfileQuery({ enabled = true }: { enabled?: boole
         bonsaiStartMonth: profileData.bonsaiStartMonth,
         birthDate: null,
         isPremium: meData.isPremium,
+        twoFactorEnabled: meData.twoFactorEnabled,
       };
     },
     staleTime: STALE_TIME_STANDARD,

@@ -35,18 +35,18 @@ describe('SettingsAccountScreen', () => {
     expect(screen.getByRole('button', { name: '戻る' })).toBeTruthy();
   });
 
-  it('メールアドレス変更ボタンが準備中（disabled）で表示される', () => {
+  it('メールアドレス変更ボタンが表示されない（Web に同機能が存在しないため非表示）', () => {
     renderWithProviders(<SettingsAccountScreen />);
-    const button = screen.getByRole('button', { name: 'メールアドレスを変更（準備中）' });
-    expect(button).toBeTruthy();
-    expect(button.props.accessibilityState?.disabled).toBe(true);
+    expect(
+      screen.queryByRole('button', { name: 'メールアドレスを変更（準備中）' })
+    ).toBeNull();
   });
 
-  it('パスワード変更ボタンが準備中（disabled）で表示される', () => {
+  it('パスワード変更ボタンが表示されない（Web に同機能が存在しないため非表示）', () => {
     renderWithProviders(<SettingsAccountScreen />);
-    const button = screen.getByRole('button', { name: 'パスワードを変更（準備中）' });
-    expect(button).toBeTruthy();
-    expect(button.props.accessibilityState?.disabled).toBe(true);
+    expect(
+      screen.queryByRole('button', { name: 'パスワードを変更（準備中）' })
+    ).toBeNull();
   });
 
   it('【審査要件】アカウント削除ボタンが表示されている（Google Play 要件）', () => {

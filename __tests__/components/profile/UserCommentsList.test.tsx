@@ -89,6 +89,7 @@ function makeCommentItem(
     content: '春の芽摘みが順調です',
     createdAt: '2025-06-01T10:00:00Z',
     post: { id: 'post-1', content: '黒松の春管理について' },
+    media: [],
     ...overrides,
   };
 }
@@ -269,6 +270,71 @@ describe('UserCommentsList', () => {
       renderUserCommentsList();
       expect(screen.getByText('一件目のコメント')).toBeTruthy();
       expect(screen.getByText('二件目のコメント')).toBeTruthy();
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // メディア表示（画像サムネイル・動画プレースホルダー）
+  // -------------------------------------------------------------------------
+
+  describe('メディア表示', () => {
+    it('media が空配列のとき画像・動画のプレースホルダーが表示されない', () => {
+      const item = makeCommentItem({ media: [] });
+      mockUseUserCommentsQuery.mockReturnValue({
+        ...defaultQueryResult,
+        data: makePageData([item]),
+      });
+      renderUserCommentsList();
+      expect(screen.queryByLabelText('添付画像')).toBeNull();
+      expect(screen.queryByLabelText('添付動画')).toBeNull();
+    });
+
+    it('画像メディアが sortOrder 順にサムネイル表示される', () => {
+      const item = makeCommentItem({
+        media: [
+          { id: 'media-2', url: 'https://cdn.bon-log.com/2.jpg', type: 'image', sortOrder: 1 },
+          { id: 'media-1', url: 'https://cdn.bon-log.com/1.jpg', type: 'image', sortOrder: 0 },
+        ],
+      });
+      mockUseUserCommentsQuery.mockReturnValue({
+        ...defaultQueryResult,
+        data: makePageData([item]),
+      });
+      renderUserCommentsList();
+      const thumbnails = screen.getAllByLabelText('添付画像');
+      expect(thumbnails).toHaveLength(2);
+      expect(thumbnails[0].props.source).toEqual({ uri: 'https://cdn.bon-log.com/1.jpg' });
+      expect(thumbnails[1].props.source).toEqual({ uri: 'https://cdn.bon-log.com/2.jpg' });
+    });
+
+    it('type video のメディアは play アイコンのプレースホルダーで表示される', () => {
+      const item = makeCommentItem({
+        media: [{ id: 'media-1', url: 'https://cdn.bon-log.com/1.mp4', type: 'video', sortOrder: 0 }],
+      });
+      mockUseUserCommentsQuery.mockReturnValue({
+        ...defaultQueryResult,
+        data: makePageData([item]),
+      });
+      renderUserCommentsList();
+      expect(screen.getByLabelText('添付動画')).toBeTruthy();
+      expect(screen.getByTestId('icon-play-circle-outline', { hidden: true })).toBeTruthy();
+      expect(screen.queryByLabelText('添付画像')).toBeNull();
+    });
+
+    it('画像と動画が混在する場合、両方のプレースホルダーが表示される', () => {
+      const item = makeCommentItem({
+        media: [
+          { id: 'media-1', url: 'https://cdn.bon-log.com/1.jpg', type: 'image', sortOrder: 0 },
+          { id: 'media-2', url: 'https://cdn.bon-log.com/1.mp4', type: 'video', sortOrder: 1 },
+        ],
+      });
+      mockUseUserCommentsQuery.mockReturnValue({
+        ...defaultQueryResult,
+        data: makePageData([item]),
+      });
+      renderUserCommentsList();
+      expect(screen.getAllByLabelText('添付画像')).toHaveLength(1);
+      expect(screen.getAllByLabelText('添付動画')).toHaveLength(1);
     });
   });
 

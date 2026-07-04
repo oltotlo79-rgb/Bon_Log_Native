@@ -12461,6 +12461,7 @@ export interface components {
             avatarUrl: string | null;
             bio: string | null;
             isPremium: boolean;
+            twoFactorEnabled: boolean;
         };
         /** @description PATCH /api/v1/users/me 成功時の更新後プロフィール全フィールド。 */
         UsersMeFullResponse: {
@@ -12477,6 +12478,7 @@ export interface components {
             bonsaiStartMonth: number | null;
             birthDate: string | null;
             isPremium: boolean;
+            twoFactorEnabled: boolean;
         };
         /**
          * @description プロフィール部分更新リクエスト。すべてのフィールドが optional。
@@ -13223,7 +13225,7 @@ export interface components {
             }[];
             nextCursor: string | null;
         };
-        /** @description ユーザーのコメント一覧の 1 件（id, content, createdAt, post）。post は { id, content } のみ（Post に slug/title は存在しないため）。Native は post.id で GET /api/v1/posts/{id} を叩いて遷移する。 */
+        /** @description ユーザーのコメント一覧の 1 件（id, content, createdAt, post, media）。post は { id, content } のみ（Post に slug/title は存在しないため）。Native は post.id で GET /api/v1/posts/{id} を叩いて遷移する。 */
         UserCommentItem: {
             id: string;
             content: string;
@@ -13233,6 +13235,12 @@ export interface components {
                 id: string;
                 content: string | null;
             };
+            media: {
+                id: string;
+                url: string;
+                type: string;
+                sortOrder: number;
+            }[];
         };
         /** @description GET /api/v1/users/{id}/comments 成功レスポンス。createdAt DESC 順。 */
         UserCommentsListResponse: {
@@ -13245,6 +13253,12 @@ export interface components {
                     id: string;
                     content: string | null;
                 };
+                media: {
+                    id: string;
+                    url: string;
+                    type: string;
+                    sortOrder: number;
+                }[];
             }[];
             nextCursor: string | null;
         };

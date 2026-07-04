@@ -33,7 +33,6 @@ import {
 } from '@/lib/constants/errors';
 import {
   colorBackground,
-  colorSurface,
   colorSurfaceWashi,
   colorTextPrimary,
   colorTextSecondary,
@@ -50,7 +49,6 @@ import {
   textSm,
   textLg,
   letterSpacingWidest,
-  shadowWashi,
 } from '@/lib/constants/design-tokens';
 
 // ---------------------------------------------------------------------------
@@ -145,41 +143,12 @@ export default function SettingsAccountScreen() {
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
-        {/* ログイン情報セクション */}
-        <View style={styles.sectionHeader}>
-          <Text style={styles.sectionLabel}>ログイン情報</Text>
-        </View>
-
-        <View style={styles.group}>
-          {/*
-            メールアドレス変更・パスワード変更は認証済みユーザー向け API が
-            サーバー未提供のため接続できない（cfw 側にログイン中ユーザーの
-            メール変更・パスワード変更エンドポイントが存在しない）。
-            準備中の案内に留め、押せるが遷移しないボタンを残さない。
-          */}
-          <TouchableOpacity
-            style={[styles.item, styles.itemBorder]}
-            disabled
-            accessibilityRole="button"
-            accessibilityLabel="メールアドレスを変更（準備中）"
-            accessibilityState={{ disabled: true }}
-          >
-            <Text style={[styles.itemLabel, styles.itemLabelDisabled]}>
-              メールアドレスを変更（準備中）
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.item}
-            disabled
-            accessibilityRole="button"
-            accessibilityLabel="パスワードを変更（準備中）"
-            accessibilityState={{ disabled: true }}
-          >
-            <Text style={[styles.itemLabel, styles.itemLabelDisabled]}>
-              パスワードを変更（準備中）
-            </Text>
-          </TouchableOpacity>
-        </View>
+        {/*
+          メールアドレス変更・パスワード変更は Web にも同機能が存在しないため
+          Web 準拠として非表示（cfw 側にログイン中ユーザーのメール変更・パスワード変更
+          エンドポイントが存在しない）。サーバーの Phase 1 でパスワード変更 API が
+          実装された後、この画面に導線を追加する。
+        */}
 
         {/* 危険ゾーンセクション */}
         <View style={styles.dangerSectionHeader}>
@@ -293,42 +262,6 @@ const styles = StyleSheet.create({
     padding: spacing4,
     gap: spacing6,
     paddingBottom: spacing6,
-  },
-  sectionHeader: {
-    paddingHorizontal: spacing2,
-    paddingBottom: spacing2,
-  },
-  sectionLabel: {
-    ...textSm,
-    color: colorTextSecondary,
-    fontWeight: '600',
-    letterSpacing: letterSpacingWidest,
-  },
-  group: {
-    backgroundColor: colorSurface,
-    borderRadius: radiusLg,
-    ...shadowWashi,
-    overflow: 'hidden',
-  },
-  item: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: spacing4,
-    minHeight: 56,
-    paddingVertical: spacing2,
-    gap: spacing3,
-  },
-  itemBorder: {
-    borderBottomWidth: 1,
-    borderBottomColor: colorBorderLight,
-  },
-  itemLabel: {
-    ...textBase,
-    color: colorTextPrimary,
-    flex: 1,
-  },
-  itemLabelDisabled: {
-    color: colorTextTertiary,
   },
   dangerSectionHeader: {
     flexDirection: 'row',

@@ -16,7 +16,7 @@
 | 新規登録（register） | なし（201 = メール確認待ち。ログインしないため状態変更なし） | 成功後は verify-email-sent 画面へ遷移するのみ |
 | 確認メール再送（`useResendVerificationMutation`） | なし（状態変更なし。常に 200 = キャッシュ無効化不要） | 429 のみ ERR_VERIFY_EMAIL_RESEND_RATE_LIMITED として throw する |
 | 2FA セットアップ発行（`useTwoFactorSetupMutation`） | なし（キャッシュしない設計。呼び出す度に新しい secret/setupId が発行されるため useMutation として扱う） | GET /api/v1/auth/2fa/setup。戻り値は画面のローカル state で保持する |
-| 2FA 有効化（`useEnableTwoFactorMutation`） | `queryKeys.users.me`（onSuccess） | 2026-07 時点で UsersMeResponse / UsersMeFullResponse に 2FA 状態フィールドは存在しない（生成スキーマ未追加）。反映されるフィールドが増えた場合に備えて invalidate だけ先行実施 |
+| 2FA 有効化（`useEnableTwoFactorMutation`） | `queryKeys.users.me`（onSuccess） | OpenAPI 1.30.0 で UsersMeResponse / UsersMeFullResponse に `twoFactorEnabled` が追加済み。invalidate によりサーバー確定値へ更新される |
 | 2FA 無効化（`useDisableTwoFactorMutation`） | `queryKeys.users.me`（onSuccess） | 同上 |
 
 ## フィード・投稿系

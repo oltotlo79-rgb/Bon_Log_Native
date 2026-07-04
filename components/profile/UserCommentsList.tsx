@@ -7,7 +7,7 @@
  * （Web 版 components/user/ProfileTabs.tsx のコメントタブに準拠）。
  */
 
-import React, { useCallback } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import {
   FlatList,
   View,
@@ -16,6 +16,8 @@ import {
   StyleSheet,
   RefreshControl,
 } from 'react-native';
+import { Image } from 'expo-image';
+import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useUserCommentsQuery, type UserCommentItem } from '@/lib/queries/comments';
 import { formatRelativeTime, formatAbsoluteDateTime } from '@/lib/utils/relative-time';
@@ -25,18 +27,32 @@ import { isApiError } from '@/lib/api/errors';
 import {
   colorActionPrimary,
   colorSurface,
+  colorSurfaceMuted,
   colorBorderLight,
   colorTextPrimary,
   colorTextSecondary,
+  colorTextTertiary,
   spacing2,
   spacing3,
   spacing4,
   spacing6,
+  radiusMd,
   textBase,
   textSm,
 } from '@/lib/constants/design-tokens';
 import { ERR_LOAD_FAILED, ERR_FORBIDDEN } from '@/lib/constants/errors';
 import { routePostDetail } from '@/lib/constants/routes';
+
+// ---------------------------------------------------------------------------
+// メディア型ガード
+// ---------------------------------------------------------------------------
+
+type UserCommentMediaItem = UserCommentItem['media'][number];
+
+/** 生成型上 type は string のため、動画判定は文字列比較の型ガードで絞る */
+function isVideoMediaType(type: string): boolean {
+  return type === 'video';
+}
 
 // ---------------------------------------------------------------------------
 // 定数
@@ -47,6 +63,11 @@ const END_REACHED_THRESHOLD = 0.5;
 
 /** 見出しに表示する投稿本文の最大文字数（Web 版 COMMENT_PREVIEW_LENGTH に相当） */
 const POST_PREVIEW_LENGTH = 40;
+
+/** メディアサムネイルの一辺サイズ（Web 版 w-20 h-20 = 80px に相当） */
+const MEDIA_THUMBNAIL_SIZE = 80;
+
+const VIDEO_ICON_SIZE = 28;
 
 // ---------------------------------------------------------------------------
 // 投稿冒頭テキストの見出し文言
@@ -62,6 +83,55 @@ function buildPostPreviewLabel(postContent: string | null): string {
       : postContent;
   return `「${truncated}」への返信`;
 }
+
+// ---------------------------------------------------------------------------
+// メディアサムネイル行（sortOrder 順。0 件なら何も描画しない）
+// ---------------------------------------------------------------------------
+
+type CommentMediaThumbnailsProps = {
+  media: readonly UserCommentMediaItem[];
+};
+
+const CommentMediaThumbnails = React.memo(function CommentMediaThumbnails({
+  media,
+}: CommentMediaThumbnailsProps) {
+  const sortedMedia = useMemo(
+    () => [...media].sort((a, b) => a.sortOrder - b.sortOrder),
+    [media]
+  );
+
+  if (sortedMedia.length === 0) return null;
+
+  return (
+    <View style={styles.mediaRow}>
+      {sortedMedia.map((m) =>
+        isVideoMediaType(m.type) ? (
+          <View
+            key={m.id}
+            style={styles.mediaCell}
+            accessibilityLabel="添付動画"
+          >
+            <Ionicons
+              name="play-circle-outline"
+              size={VIDEO_ICON_SIZE}
+              color={colorTextTertiary}
+              accessibilityElementsHidden
+              importantForAccessibility="no"
+            />
+          </View>
+        ) : (
+          <Image
+            key={m.id}
+            source={{ uri: m.url }}
+            style={styles.mediaCell}
+            contentFit="cover"
+            accessibilityLabel="添付画像"
+          />
+        )
+      )}
+    </View>
+  );
+});
 
 // ---------------------------------------------------------------------------
 // アイテムセル（memo 化で FlatList 内の不要な再レンダリングを防ぐ）
@@ -91,6 +161,7 @@ const CommentCell = React.memo(function CommentCell({ item }: CommentCellProps) 
         {postPreviewLabel}
       </Text>
       <Text style={styles.commentContent}>{item.content}</Text>
+      <CommentMediaThumbnails media={item.media} />
       <Text style={styles.time} accessibilityLabel={absoluteDateTime}>
         {relativeTime}
       </Text>
@@ -252,6 +323,20 @@ const styles = StyleSheet.create({
   commentContent: {
     ...textBase,
     color: colorTextPrimary,
+  },
+  mediaRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing2,
+  },
+  mediaCell: {
+    width: MEDIA_THUMBNAIL_SIZE,
+    height: MEDIA_THUMBNAIL_SIZE,
+    borderRadius: radiusMd,
+    backgroundColor: colorSurfaceMuted,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
   },
   time: {
     ...textSm,
