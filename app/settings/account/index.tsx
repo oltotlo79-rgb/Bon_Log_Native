@@ -151,33 +151,33 @@ export default function SettingsAccountScreen() {
         </View>
 
         <View style={styles.group}>
+          {/*
+            メールアドレス変更・パスワード変更は認証済みユーザー向け API が
+            サーバー未提供のため接続できない（cfw 側にログイン中ユーザーの
+            メール変更・パスワード変更エンドポイントが存在しない）。
+            準備中の案内に留め、押せるが遷移しないボタンを残さない。
+          */}
           <TouchableOpacity
             style={[styles.item, styles.itemBorder]}
+            disabled
             accessibilityRole="button"
-            accessibilityLabel="メールアドレスを変更する"
+            accessibilityLabel="メールアドレスを変更（準備中）"
+            accessibilityState={{ disabled: true }}
           >
-            <Text style={styles.itemLabel}>メールアドレスを変更</Text>
-            <Ionicons
-              name="chevron-forward"
-              size={CHEVRON_SIZE}
-              color={colorTextTertiary}
-              accessibilityElementsHidden
-              importantForAccessibility="no"
-            />
+            <Text style={[styles.itemLabel, styles.itemLabelDisabled]}>
+              メールアドレスを変更（準備中）
+            </Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.item}
+            disabled
             accessibilityRole="button"
-            accessibilityLabel="パスワードを変更する"
+            accessibilityLabel="パスワードを変更（準備中）"
+            accessibilityState={{ disabled: true }}
           >
-            <Text style={styles.itemLabel}>パスワードを変更</Text>
-            <Ionicons
-              name="chevron-forward"
-              size={CHEVRON_SIZE}
-              color={colorTextTertiary}
-              accessibilityElementsHidden
-              importantForAccessibility="no"
-            />
+            <Text style={[styles.itemLabel, styles.itemLabelDisabled]}>
+              パスワードを変更（準備中）
+            </Text>
           </TouchableOpacity>
         </View>
 
@@ -326,6 +326,9 @@ const styles = StyleSheet.create({
     ...textBase,
     color: colorTextPrimary,
     flex: 1,
+  },
+  itemLabelDisabled: {
+    color: colorTextTertiary,
   },
   dangerSectionHeader: {
     flexDirection: 'row',

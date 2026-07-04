@@ -8,6 +8,8 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import * as WebBrowser from 'expo-web-browser';
+import * as Sentry from '@sentry/react-native';
 import { useLogoutMutation } from '@/lib/queries/auth';
 import {
   colorBackground,
@@ -27,6 +29,7 @@ import {
   shadowWashi,
 } from '@/lib/constants/design-tokens';
 import { routes } from '@/lib/constants/routes';
+import { HELP_URL } from '@/lib/constants/external-links';
 
 type SettingItem = {
   label: string;
@@ -64,6 +67,15 @@ export default function SettingsScreen() {
         },
       ]
     );
+  }
+
+  async function handleOpenBrowser(url: string) {
+    try {
+      await WebBrowser.openBrowserAsync(url);
+    } catch (error) {
+      // アプリ内ブラウザ起動失敗はサイレントにキャッチ（クラッシュさせない）
+      Sentry.captureException(error);
+    }
   }
 
   const settingGroups: SettingGroup[] = [
@@ -109,15 +121,15 @@ export default function SettingsScreen() {
       items: [
         {
           label: 'ヘルプ',
-          onPress: () => {},
+          onPress: () => void handleOpenBrowser(HELP_URL),
         },
         {
           label: '利用規約',
-          onPress: () => {},
+          onPress: () => router.push(routes.legalDocument('terms')),
         },
         {
           label: 'プライバシーポリシー',
-          onPress: () => {},
+          onPress: () => router.push(routes.legalDocument('privacy')),
         },
       ],
     },

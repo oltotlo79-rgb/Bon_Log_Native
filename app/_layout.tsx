@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Stack, router, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -20,7 +20,11 @@ import { ScreenLoading } from '@/components/common/ScreenLoading';
 import { initializeAuth } from '@/lib/auth';
 import { useAuth } from '@/lib/auth/use-auth';
 import { ROUTE_LOGIN, ROUTE_FEED } from '@/lib/constants/routes';
-import { setupPushNotifications } from '@/lib/push';
+import {
+  setupPushNotifications,
+  setupNotificationNavigation,
+  flushPendingNotificationRoute,
+} from '@/lib/push';
 import { initBilling } from '@/lib/billing';
 import { usePushRegistration } from '@/hooks/use-push-registration';
 
@@ -55,8 +59,15 @@ export function ErrorBoundary({
 // ---------------------------------------------------------------------------
 
 function AuthGuard() {
-  const { status } = useAuth();
+  const { status, isSignedIn } = useAuth();
   const segments = useSegments();
+  // setupNotificationNavigation は起動時に 1 回だけ登録するため、
+  // canNavigateNow から最新の isSignedIn を読めるよう ref に保持する。
+  const isSignedInRef = useRef(isSignedIn);
+
+  useEffect(() => {
+    isSignedInRef.current = isSignedIn;
+  }, [isSignedIn]);
 
   usePushRegistration({ status });
 
@@ -71,6 +82,20 @@ function AuthGuard() {
       router.replace(ROUTE_FEED);
     }
   }, [status, segments]);
+
+  useEffect(() => {
+    const cleanup = setupNotificationNavigation({
+      navigate: (route) => router.push(route),
+      canNavigateNow: () => isSignedInRef.current,
+    });
+    return cleanup;
+  }, []);
+
+  useEffect(() => {
+    if (isSignedIn) {
+      flushPendingNotificationRoute((route) => router.push(route));
+    }
+  }, [isSignedIn]);
 
   return null;
 }
