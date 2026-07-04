@@ -13,7 +13,8 @@ import {
 
 /**
  * フォアグラウンド受信時にバナー・サウンド・バッジを表示する。
- * タップ→画面遷移ロジックは別途 lib/push/device-registration のリスナーで処理する。
+ * タップ→画面遷移ロジックは別途 lib/push/notification-navigation の
+ * setupNotificationNavigation() で処理する。
  */
 function configureNotificationHandler(): void {
   Notifications.setNotificationHandler({
