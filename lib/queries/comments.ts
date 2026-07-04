@@ -7,7 +7,7 @@ import { useInfiniteQuery, useMutation, useQueryClient, type InfiniteData } from
 import { apiClient } from '@/lib/api/client';
 import { queryKeys } from '@/lib/queries/keys';
 import { STALE_TIME_STANDARD } from '@/lib/constants/query';
-import { COMMENTS_PAGE_SIZE } from '@/lib/constants/limits/pagination';
+import { COMMENTS_PAGE_SIZE, USER_COMMENTS_PAGE_SIZE } from '@/lib/constants/limits/pagination';
 import type { components } from '@/lib/api/generated/schema.d.ts';
 
 export type CommentItem = components['schemas']['CommentsListResponse']['items'][number];
@@ -15,6 +15,10 @@ export type CommentResponse = components['schemas']['CommentResponse'];
 export type SuccessResponse = components['schemas']['SuccessResponse'];
 
 type CommentsListResponse = components['schemas']['CommentsListResponse'];
+
+export type UserCommentItem = components['schemas']['UserCommentsListResponse']['items'][number];
+
+type UserCommentsListResponse = components['schemas']['UserCommentsListResponse'];
 
 // ---------------------------------------------------------------------------
 // クエリ
@@ -46,6 +50,45 @@ export function useCommentsQuery(postId: string) {
     getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
     staleTime: STALE_TIME_STANDARD,
     enabled: postId.length > 0,
+  });
+}
+
+/**
+ * 指定ユーザーが投稿したコメント一覧の無限スクロールクエリ。
+ *
+ * GET /api/v1/users/{id}/comments。item の post は { id, content } のみ
+ * （Post に slug/title は存在しないため、遷移は post.id で GET /api/v1/posts/{id} を叩く）。
+ * レート制限は timeline 区分のためポーリング等は行わない。
+ * userId が空文字の場合はフェッチを行わない（enabled=false）。
+ */
+export function useUserCommentsQuery(userId: string) {
+  return useInfiniteQuery<
+    UserCommentsListResponse,
+    Error,
+    InfiniteData<UserCommentsListResponse>,
+    ReturnType<typeof queryKeys.users.comments>,
+    string | undefined
+  >({
+    queryKey: queryKeys.users.comments(userId),
+    queryFn: async ({ pageParam }) => {
+      const { data, error } = await apiClient.GET('/api/v1/users/{id}/comments', {
+        params: {
+          path: { id: userId },
+          query: {
+            cursor: pageParam ?? undefined,
+            limit: USER_COMMENTS_PAGE_SIZE,
+          },
+        },
+      });
+      if (error !== undefined || data === undefined) {
+        throw error ?? new Error('Unexpected error fetching user comments');
+      }
+      return data;
+    },
+    initialPageParam: undefined,
+    getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
+    staleTime: STALE_TIME_STANDARD,
+    enabled: userId.length > 0,
   });
 }
 

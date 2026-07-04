@@ -181,6 +181,89 @@ export type RegisterParams = {
 /** register 成功時の戻り値。201 { success: true } の確認のみ。 */
 export type RegisterResult = components['schemas']['SuccessResponse'];
 
+// ---------------------------------------------------------------------------
+// 2FA 管理（ログイン後の設定画面から呼び出す。ログインフローの verifyTwoFactor とは別物）
+// ---------------------------------------------------------------------------
+
+export type TwoFactorSetupResponse = components['schemas']['TwoFactorSetupResponse'];
+export type TwoFactorEnableResponse = components['schemas']['TwoFactorEnableResponse'];
+export type TwoFactorDisableResponse = components['schemas']['TwoFactorDisableResponse'];
+
+/**
+ * 2FA セットアップ情報（シークレット・otpAuthUrl・setupId・バックアップコード）を発行するミューテーション。
+ *
+ * GET /api/v1/auth/2fa/setup だが、呼び出すたびに新しい secret/setupId が Redis に発行される
+ * 副作用を持つため useQuery ではなく useMutation として扱う
+ * （useQuery だとフォーカス復帰・マウント時の自動 refetch で意図せず再発行され、
+ * two_factor_setup レート制限（15分に10回）を消費しかねない）。
+ * 戻り値はキャッシュしない。画面側は mutateAsync の戻り値をローカル state で保持すること。
+ */
+export function useTwoFactorSetupMutation() {
+  return useMutation<TwoFactorSetupResponse, Error, void>({
+    mutationFn: async () => {
+      const { data, error } = await apiClient.GET('/api/v1/auth/2fa/setup');
+      if (error !== undefined || data === undefined) {
+        throw error ?? new Error('Unexpected error starting 2FA setup');
+      }
+      return data;
+    },
+  });
+}
+
+/**
+ * 2FA を有効化するミューテーション（POST /api/v1/auth/2fa/enable）。
+ * setupId は useTwoFactorSetupMutation の戻り値を渡す。
+ *
+ * onSuccess: users.me を invalidate する（2FA 状態が反映され得るフィールドのため）。
+ * invalidation-map.md 参照。
+ */
+export function useEnableTwoFactorMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation<TwoFactorEnableResponse, Error, { code: string; setupId: string }>({
+    mutationFn: async ({ code, setupId }) => {
+      const { data, error } = await apiClient.POST('/api/v1/auth/2fa/enable', {
+        body: { code, setupId },
+      });
+      if (error !== undefined || data === undefined) {
+        throw error ?? new Error('Unexpected error enabling 2FA');
+      }
+      return data;
+    },
+
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.users.me });
+    },
+  });
+}
+
+/**
+ * 2FA を無効化するミューテーション（DELETE /api/v1/auth/2fa/disable）。
+ * TOTP コードではなくパスワードで本人確認する。
+ *
+ * onSuccess: users.me を invalidate する（2FA 状態が反映され得るフィールドのため）。
+ * invalidation-map.md 参照。
+ */
+export function useDisableTwoFactorMutation() {
+  const queryClient = useQueryClient();
+
+  return useMutation<TwoFactorDisableResponse, Error, { password: string }>({
+    mutationFn: async ({ password }) => {
+      const { data, error } = await apiClient.DELETE('/api/v1/auth/2fa/disable', {
+        body: { password },
+      });
+      if (error !== undefined || data === undefined) {
+        throw error ?? new Error('Unexpected error disabling 2FA');
+      }
+      return data;
+    },
+
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: queryKeys.users.me });
+    },
+  });
+}
+
 /**
  * 新規ユーザー登録ミューテーション。
  * termsAccepted は画面が同意チェック完了後に呼び出す前提のため true を内部で付与する。

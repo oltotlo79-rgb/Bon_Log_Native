@@ -15,6 +15,9 @@
 | Google サインイン | なし（ログイン成功と同等） | — |
 | 新規登録（register） | なし（201 = メール確認待ち。ログインしないため状態変更なし） | 成功後は verify-email-sent 画面へ遷移するのみ |
 | 確認メール再送（`useResendVerificationMutation`） | なし（状態変更なし。常に 200 = キャッシュ無効化不要） | 429 のみ ERR_VERIFY_EMAIL_RESEND_RATE_LIMITED として throw する |
+| 2FA セットアップ発行（`useTwoFactorSetupMutation`） | なし（キャッシュしない設計。呼び出す度に新しい secret/setupId が発行されるため useMutation として扱う） | GET /api/v1/auth/2fa/setup。戻り値は画面のローカル state で保持する |
+| 2FA 有効化（`useEnableTwoFactorMutation`） | `queryKeys.users.me`（onSuccess） | 2026-07 時点で UsersMeResponse / UsersMeFullResponse に 2FA 状態フィールドは存在しない（生成スキーマ未追加）。反映されるフィールドが増えた場合に備えて invalidate だけ先行実施 |
+| 2FA 無効化（`useDisableTwoFactorMutation`） | `queryKeys.users.me`（onSuccess） | 同上 |
 
 ## フィード・投稿系
 
@@ -128,6 +131,7 @@
 | `queryKeys.posts.detail(id)` | `usePostQuery` | 投稿更新・削除・いいね後の整合・リポスト後の整合・アンケート投票後 |
 | `queryKeys.users.posts(userId)` | `useUserPostsQuery` | 引用投稿作成後（自分の投稿一覧タブに表示されるため） |
 | `queryKeys.comments.byPost(postId)` | `useCommentsQuery` | コメント作成・削除時 |
+| `queryKeys.users.comments(userId)` | `useUserCommentsQuery` | コメント作成・削除時（当該ユーザーのコメントの場合。現状は明示的な invalidate 対象に含めていない — 低頻度画面のため次回表示時の自然な stale 更新に委ねる） |
 | `queryKeys.users.meProfile` | `useCurrentUserProfileQuery` | プロフィール更新成功時（useUpdateProfileMutation の onSuccess で setQueryData + invalidate） |
 | `queryKeys.users.detail(id)` | `useUserProfileQuery` | フォロー変更・プロフィール更新・ブロック・ミュート時 |
 | `queryKeys.users.blocks` | `useBlockedUsersQuery` | ブロック・ブロック解除時 |

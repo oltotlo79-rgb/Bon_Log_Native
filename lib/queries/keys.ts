@@ -63,6 +63,8 @@ export const queryKeys = {
     mutes: ['users', 'me', 'mutes'] as const,
     /** ユーザー投稿一覧（GET /api/v1/users/{id}/posts・無限スクロール） */
     posts: (userId: string) => ['users', 'posts', userId] as const,
+    /** ユーザーコメント一覧（GET /api/v1/users/{id}/comments・無限スクロール） */
+    comments: (userId: string) => ['users', 'comments', userId] as const,
   },
 
   /** 通知 */
