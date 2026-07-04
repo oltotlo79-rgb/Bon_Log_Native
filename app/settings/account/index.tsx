@@ -24,7 +24,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useOnlineStatus } from '@/hooks/use-online-status';
 import { useCurrentUserProfileQuery, useDeleteAccountMutation } from '@/lib/queries/users';
 import { isApiError } from '@/lib/api/errors';
-import { ROUTE_SETTINGS_PASSWORD } from '@/lib/constants/routes';
+import { ROUTE_SETTINGS_PASSWORD, ROUTE_SETTINGS_EMAIL } from '@/lib/constants/routes';
 import {
   ERR_OFFLINE_ACTION,
   ERR_ACCOUNT_DELETE_FAILED,
@@ -147,7 +147,7 @@ export default function SettingsAccountScreen() {
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.group}>
           <TouchableOpacity
-            style={styles.item}
+            style={[styles.item, styles.itemBorder]}
             onPress={() => router.push(ROUTE_SETTINGS_PASSWORD)}
             accessibilityRole="button"
             accessibilityLabel="パスワードを変更する"
@@ -168,13 +168,29 @@ export default function SettingsAccountScreen() {
               importantForAccessibility="no"
             />
           </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.item}
+            onPress={() => router.push(ROUTE_SETTINGS_EMAIL)}
+            accessibilityRole="button"
+            accessibilityLabel="メールアドレスを変更する"
+          >
+            <Ionicons
+              name="mail-outline"
+              size={ITEM_ICON_SIZE}
+              color={colorTextPrimary}
+              accessibilityElementsHidden
+              importantForAccessibility="no"
+            />
+            <Text style={styles.itemLabel}>メールアドレスを変更</Text>
+            <Ionicons
+              name="chevron-forward"
+              size={CHEVRON_SIZE}
+              color={colorTextTertiary}
+              accessibilityElementsHidden
+              importantForAccessibility="no"
+            />
+          </TouchableOpacity>
         </View>
-
-        {/*
-          メールアドレス変更（/settings/email）は実装済みだが、サーバー本番 DB への
-          マイグレーション適用完了の連絡を受けるまで導線を非公開にする。
-          連絡を受けたらこのセクションに「メールアドレスを変更」導線を追加する。
-        */}
 
         {/* 危険ゾーンセクション */}
         <View style={styles.dangerSectionHeader}>
@@ -320,6 +336,10 @@ const styles = StyleSheet.create({
     paddingVertical: spacing2,
     gap: spacing3,
     backgroundColor: colorBackground,
+  },
+  itemBorder: {
+    borderBottomWidth: 1,
+    borderBottomColor: colorBorderLight,
   },
   itemLabel: {
     ...textBase,
