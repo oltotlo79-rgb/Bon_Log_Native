@@ -78,6 +78,7 @@ function makeProductDetail(overrides?: Partial<Record<string, unknown>>) {
     incompatibilities: [
       { id: 'ic1', slug: 'product-b', name: '○○殺菌剤', formulationTypeName: '乳剤' },
     ],
+    spreaderTypes: [],
     ...overrides,
   };
 }
@@ -181,10 +182,7 @@ describe('ProductDetailScreen 正常表示', () => {
     mockDetailQuery.data = makeProductDetail();
     renderWithProviders(<ProductDetailScreen />);
     fireEvent.press(screen.getByLabelText('ピリミカルブの詳細を見る'));
-    expect(mockRouter.push).toHaveBeenCalledWith({
-      pathname: '/pesticides/ingredients/[slug]',
-      params: { slug: 'ingredient-a' },
-    });
+    expect(mockRouter.push).toHaveBeenCalledWith('/pesticides/ingredients/ingredient-a');
   });
 
   it('対象病害虫セクションが表示される', () => {
@@ -198,10 +196,7 @@ describe('ProductDetailScreen 正常表示', () => {
     mockDetailQuery.data = makeProductDetail();
     renderWithProviders(<ProductDetailScreen />);
     fireEvent.press(screen.getByLabelText('アブラムシの詳細を見る'));
-    expect(mockRouter.push).toHaveBeenCalledWith({
-      pathname: '/pesticides/disease-pests/[slug]',
-      params: { slug: 'aphid' },
-    });
+    expect(mockRouter.push).toHaveBeenCalledWith('/pesticides/disease-pests/aphid');
   });
 
   it('混用不可農薬セクションが表示される', () => {
@@ -256,6 +251,43 @@ describe('ProductDetailScreen 正常表示', () => {
     mockDetailQuery.data = makeProductDetail({ effects: [] });
     renderWithProviders(<ProductDetailScreen />);
     expect(screen.queryByText('効果のある病害虫')).toBeNull();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 展着剤の分類
+// ---------------------------------------------------------------------------
+
+describe('ProductDetailScreen 展着剤の分類', () => {
+  it('spreaderTypes が空のとき「展着剤の分類」行が表示されない', () => {
+    mockDetailQuery.data = makeProductDetail({ spreaderTypes: [] });
+    renderWithProviders(<ProductDetailScreen />);
+    expect(screen.queryByText('展着剤の分類')).toBeNull();
+  });
+
+  it('spreaderTypes があるとき「展着剤の分類」行とチップが表示される', () => {
+    mockDetailQuery.data = makeProductDetail({
+      spreaderTypes: [
+        { id: 's1', slug: 'spreader-a', name: '展着剤A' },
+        { id: 's2', slug: 'spreader-b', name: '展着剤B' },
+      ],
+    });
+    renderWithProviders(<ProductDetailScreen />);
+    expect(screen.getByText('展着剤の分類')).toBeTruthy();
+    expect(screen.getByText('展着剤A')).toBeTruthy();
+    expect(screen.getByText('展着剤B')).toBeTruthy();
+  });
+
+  it('展着剤チップタップで展着剤詳細画面へ push する', () => {
+    mockDetailQuery.data = makeProductDetail({
+      spreaderTypes: [{ id: 's1', slug: 'spreader-a', name: '展着剤A' }],
+    });
+    renderWithProviders(<ProductDetailScreen />);
+    fireEvent.press(screen.getByLabelText('展着剤Aの詳細を見る'));
+    expect(mockRouter.push).toHaveBeenCalledWith({
+      pathname: '/pesticides/spreaders/[slug]',
+      params: { slug: 'spreader-a' },
+    });
   });
 });
 

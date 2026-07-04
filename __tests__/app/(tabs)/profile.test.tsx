@@ -54,6 +54,20 @@ jest.mock('@/hooks/use-online-status', () => ({
   useOnlineStatus: jest.fn(() => true),
 }));
 
+jest.mock('@/lib/queries/comments', () => ({
+  useUserCommentsQuery: jest.fn(() => ({
+    data: { pages: [{ items: [], nextCursor: null }] },
+    isLoading: false,
+    isError: false,
+    error: null,
+    fetchNextPage: jest.fn(),
+    hasNextPage: false,
+    isFetchingNextPage: false,
+    refetch: jest.fn(),
+    isRefetching: false,
+  })),
+}));
+
 // ---------------------------------------------------------------------------
 // ヘルパー
 // ---------------------------------------------------------------------------
@@ -409,5 +423,49 @@ describe('ProfileScreen: refetch', () => {
     renderWithProviders(<ProfileScreen />);
     // data 状態では FlatList を通じてプロフィールヘッダーと空状態が表示される
     expect(screen.getByText('まだ投稿がありません')).toBeTruthy();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// タブ切替（投稿 / コメント）
+// ---------------------------------------------------------------------------
+
+describe('ProfileScreen: タブ切替', () => {
+  it('初期表示は投稿タブが選択されている', () => {
+    renderWithProviders(<ProfileScreen />);
+    const postsTab = screen.getByRole('tab', { name: '投稿' });
+    expect(postsTab.props.accessibilityState.selected).toBe(true);
+  });
+
+  it('初期表示で投稿タブの空状態が表示される', () => {
+    renderWithProviders(<ProfileScreen />);
+    expect(screen.getByText('まだ投稿がありません')).toBeTruthy();
+  });
+
+  it('コメントタブをタップすると選択状態が切り替わる', () => {
+    renderWithProviders(<ProfileScreen />);
+    fireEvent.press(screen.getByRole('tab', { name: 'コメント' }));
+    const commentsTab = screen.getByRole('tab', { name: 'コメント' });
+    expect(commentsTab.props.accessibilityState.selected).toBe(true);
+  });
+
+  it('コメントタブをタップすると UserCommentsList の空状態が表示される', () => {
+    renderWithProviders(<ProfileScreen />);
+    fireEvent.press(screen.getByRole('tab', { name: 'コメント' }));
+    expect(screen.getByText('まだコメントがありません')).toBeTruthy();
+  });
+
+  it('コメントタブでは投稿タブの空状態が表示されない', () => {
+    renderWithProviders(<ProfileScreen />);
+    fireEvent.press(screen.getByRole('tab', { name: 'コメント' }));
+    expect(screen.queryByText('まだ投稿がありません')).toBeNull();
+  });
+
+  it('投稿タブへ戻ると投稿一覧が再び表示される', () => {
+    renderWithProviders(<ProfileScreen />);
+    fireEvent.press(screen.getByRole('tab', { name: 'コメント' }));
+    fireEvent.press(screen.getByRole('tab', { name: '投稿' }));
+    expect(screen.getByText('まだ投稿がありません')).toBeTruthy();
+    expect(screen.queryByText('まだコメントがありません')).toBeNull();
   });
 });

@@ -70,6 +70,7 @@ function makeProductDetail(overrides?: Partial<Record<string, unknown>>) {
     incompatibilities: [
       { id: 'ic1', slug: 'product-b', name: '○○殺菌剤', formulationTypeName: '乳剤' },
     ],
+    spreaderTypes: [],
     ...overrides,
   };
 }
@@ -196,10 +197,7 @@ describe('ProductDetailScreen 混用不可行タップ', () => {
     mockDetailQuery.data = makeProductDetail();
     renderWithProviders(<ProductDetailScreen />);
     fireEvent.press(screen.getByLabelText('○○殺菌剤の詳細を見る'));
-    expect(mockRouter.push).toHaveBeenCalledWith({
-      pathname: '/pesticides/products/[slug]',
-      params: { slug: 'product-b' },
-    });
+    expect(mockRouter.push).toHaveBeenCalledWith('/pesticides/products/product-b');
   });
 
   it('混用不可農薬が複数ある場合それぞれタップできる', () => {
@@ -211,9 +209,6 @@ describe('ProductDetailScreen 混用不可行タップ', () => {
     });
     renderWithProviders(<ProductDetailScreen />);
     fireEvent.press(screen.getByLabelText('△△農薬の詳細を見る'));
-    expect(mockRouter.push).toHaveBeenCalledWith({
-      pathname: '/pesticides/products/[slug]',
-      params: { slug: 'product-c' },
-    });
+    expect(mockRouter.push).toHaveBeenCalledWith('/pesticides/products/product-c');
   });
 });

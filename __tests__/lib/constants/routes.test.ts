@@ -9,8 +9,11 @@ import {
   routeUserDetail,
   routeSearchByQuery,
   routeSearchByGenre,
+  routeSpreaderTypeDetail,
+  routeFormulations,
   routes,
   ROUTE_TWO_FACTOR_VERIFY,
+  ROUTE_PESTICIDES_FORMULATIONS,
 } from '@/lib/constants/routes';
 
 describe('routePostDetail', () => {
@@ -122,6 +125,59 @@ describe('routeSearchByGenre', () => {
     expect(routes.searchByGenre('deciduous')).toEqual({
       pathname: '/(tabs)/search',
       params: { genre: 'deciduous' },
+    });
+  });
+});
+
+describe('routeSpreaderTypeDetail', () => {
+  it('展着剤 slug で { pathname, params } オブジェクトを返す', () => {
+    expect(routeSpreaderTypeDetail('foam-type')).toEqual({
+      pathname: '/pesticides/spreaders/[slug]',
+      params: { slug: 'foam-type' },
+    });
+  });
+
+  it('空文字でも正しい形式を返す', () => {
+    expect(routeSpreaderTypeDetail('')).toEqual({
+      pathname: '/pesticides/spreaders/[slug]',
+      params: { slug: '' },
+    });
+  });
+
+  it('routes.spreaderTypeDetail として呼び出せる', () => {
+    expect(routes.spreaderTypeDetail('silicone-type')).toEqual({
+      pathname: '/pesticides/spreaders/[slug]',
+      params: { slug: 'silicone-type' },
+    });
+  });
+});
+
+describe('routeFormulations', () => {
+  it('formulationTypeCode を渡すと params に含めて返す', () => {
+    expect(routeFormulations('EW')).toEqual({
+      pathname: ROUTE_PESTICIDES_FORMULATIONS,
+      params: { formulationTypeCode: 'EW' },
+    });
+  });
+
+  it('引数省略時は params が空オブジェクトになる', () => {
+    expect(routeFormulations()).toEqual({
+      pathname: ROUTE_PESTICIDES_FORMULATIONS,
+      params: {},
+    });
+  });
+
+  it('routes.formulations として呼び出せる', () => {
+    expect(routes.formulations('WP')).toEqual({
+      pathname: ROUTE_PESTICIDES_FORMULATIONS,
+      params: { formulationTypeCode: 'WP' },
+    });
+  });
+
+  it('routes.formulations も引数省略できる', () => {
+    expect(routes.formulations()).toEqual({
+      pathname: ROUTE_PESTICIDES_FORMULATIONS,
+      params: {},
     });
   });
 });
