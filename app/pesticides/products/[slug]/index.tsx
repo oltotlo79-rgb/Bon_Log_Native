@@ -222,20 +222,23 @@ export default function ProductDetailScreen() {
             <Text style={styles.sectionTitle} accessibilityRole="header">
               基本情報
             </Text>
-            {data.registrationNumber !== null && (
-              <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>登録番号</Text>
-                <TouchableOpacity
-                  onPress={() => handleMaffLinkPress(data.registrationNumber as string)}
-                  accessibilityRole="link"
-                  accessibilityLabel={`${data.registrationNumber} 農林水産省の詳細ページを開く`}
-                >
-                  <Text style={styles.infoValueLink}>
-                    {data.registrationNumber}（農林水産省）↗
-                  </Text>
-                </TouchableOpacity>
-              </View>
-            )}
+            {data.registrationNumber !== null && (() => {
+              const registrationNumber = data.registrationNumber;
+              return (
+                <View style={styles.infoRow}>
+                  <Text style={styles.infoLabel}>登録番号</Text>
+                  <TouchableOpacity
+                    onPress={() => handleMaffLinkPress(registrationNumber)}
+                    accessibilityRole="link"
+                    accessibilityLabel={`${registrationNumber} 農林水産省の詳細ページを開く`}
+                  >
+                    <Text style={styles.infoValueLink}>
+                      {registrationNumber}（農林水産省）↗
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              );
+            })()}
             {data.formulationType !== null && (() => {
               const ft = data.formulationType;
               return (
