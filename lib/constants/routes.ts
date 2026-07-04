@@ -66,6 +66,9 @@ export const ROUTE_SETTINGS_ACCOUNT = '/settings/account' as const;
 /** 通知設定 */
 export const ROUTE_SETTINGS_NOTIFICATIONS = '/settings/notifications' as const;
 
+/** セキュリティ設定（2段階認証等） */
+export const ROUTE_SETTINGS_SECURITY = '/settings/security' as const;
+
 /** ブロックリスト */
 export const ROUTE_SETTINGS_BLOCKED = '/settings/blocked' as const;
 
@@ -152,6 +155,9 @@ export const ROUTE_HORMONES = '/hormones' as const;
 
 /** 農薬病害虫図鑑（3 カタログのタブ画面想定） */
 export const ROUTE_PESTICIDES = '/pesticides' as const;
+
+/** 剤型の違い一覧（フィルタ用クエリパラメータ formulationTypeCode を受け付ける） */
+export const ROUTE_PESTICIDES_FORMULATIONS = '/pesticides/formulations' as const;
 
 /** 法的文章一覧 */
 export const ROUTE_LEGAL = '/legal' as const;
@@ -254,6 +260,38 @@ export function routePesticideProductDetail(slug: string): `/pesticides/products
  */
 export function routePesticideIngredientDetail(slug: string): `/pesticides/ingredients/${string}` {
   return `/pesticides/ingredients/${slug}`;
+}
+
+/**
+ * 農薬病害虫 詳細（展着剤タイプ）へのパスを返す。
+ * Expo Router の dynamic route: `app/pesticides/spreaders/[slug]/index.tsx`
+ *
+ * 使い方: `router.push(routeSpreaderTypeDetail('foam-type'))`
+ */
+export function routeSpreaderTypeDetail(slug: string): {
+  pathname: '/pesticides/spreaders/[slug]';
+  params: { slug: string };
+} {
+  return { pathname: '/pesticides/spreaders/[slug]', params: { slug } };
+}
+
+/**
+ * 剤型の違い一覧画面へのパスを返す。
+ * Expo Router の static route: `app/pesticides/formulations/index.tsx`
+ * formulationTypeCode を渡すと該当剤型に絞り込んだ製品一覧を表示する（Web の ?formulation=CODE 相当）。
+ * 省略時は剤型一覧をそのまま表示する。
+ *
+ * 使い方: `router.push(routeFormulations('EW'))` / `router.push(routeFormulations())`
+ */
+export function routeFormulations(formulationTypeCode?: string): {
+  pathname: typeof ROUTE_PESTICIDES_FORMULATIONS;
+  params: { formulationTypeCode?: string };
+} {
+  const params: { formulationTypeCode?: string } = {};
+  if (formulationTypeCode !== undefined) {
+    params.formulationTypeCode = formulationTypeCode;
+  }
+  return { pathname: ROUTE_PESTICIDES_FORMULATIONS, params };
 }
 
 /**
@@ -529,6 +567,7 @@ export const routes = {
   settingsProfile: ROUTE_SETTINGS_PROFILE,
   settingsAccount: ROUTE_SETTINGS_ACCOUNT,
   settingsNotifications: ROUTE_SETTINGS_NOTIFICATIONS,
+  settingsSecurity: ROUTE_SETTINGS_SECURITY,
   settingsBlocked: ROUTE_SETTINGS_BLOCKED,
   settingsMuted: ROUTE_SETTINGS_MUTED,
   settingsSubscription: ROUTE_SETTINGS_SUBSCRIPTION,
@@ -548,6 +587,7 @@ export const routes = {
   fertilizers: ROUTE_FERTILIZERS,
   hormones: ROUTE_HORMONES,
   pesticides: ROUTE_PESTICIDES,
+  pesticidesFormulations: ROUTE_PESTICIDES_FORMULATIONS,
   legal: ROUTE_LEGAL,
   analytics: ROUTE_ANALYTICS,
 
@@ -559,6 +599,8 @@ export const routes = {
   diseasePestDetail: routeDiseasePestDetail,
   pesticideProductDetail: routePesticideProductDetail,
   pesticideIngredientDetail: routePesticideIngredientDetail,
+  spreaderTypeDetail: routeSpreaderTypeDetail,
+  formulations: routeFormulations,
   legalDocument: routeLegalDocument,
 
   // wave-2 browse
