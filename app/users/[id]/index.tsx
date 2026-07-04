@@ -22,6 +22,8 @@ import { OfflineBanner } from '@/components/common/OfflineBanner';
 import { UserActionMenu } from '@/components/user/UserActionMenu';
 import { ProfileHeader } from '@/components/profile/ProfileHeader';
 import { UserPostsList } from '@/components/profile/UserPostsList';
+import { UserCommentsList } from '@/components/profile/UserCommentsList';
+import { ProfileTabBar, type ProfileTab } from '@/components/profile/ProfileTabBar';
 import { isApiError } from '@/lib/api/errors';
 import { routeMessageThread } from '@/lib/constants/routes';
 import {
@@ -140,6 +142,7 @@ function UserDetailContent({ userId, isOffline }: UserDetailContentProps) {
     useStartConversationMutation();
 
   const [menuVisible, setMenuVisible] = useState(false);
+  const [activeTab, setActiveTab] = useState<ProfileTab>('posts');
 
   const handleRefetch = useCallback(() => {
     void refetch();
@@ -216,30 +219,35 @@ function UserDetailContent({ userId, isOffline }: UserDetailContentProps) {
   // 他者のプロフィールかつログイン済みの場合のみメッセージボタンを表示する
   const showMessageButton = !data.isSelf && currentUserId !== undefined;
 
-  const profileHeaderComponent = (
-    <ProfileHeader
-      id={userId}
-      nickname={data.nickname}
-      avatarUrl={data.avatarUrl}
-      headerUrl={data.headerUrl}
-      bio={data.bio}
-      location={data.location}
-      bonsaiStartYear={data.bonsaiStartYear}
-      bonsaiStartMonth={data.bonsaiStartMonth}
-      createdAt={data.createdAt}
-      isPublic={data.isPublic}
-      isPremium={false}
-      postsCount={data.postsCount}
-      followersCount={data.followersCount}
-      followingCount={data.followingCount}
-      isSelf={data.isSelf}
-      following={data.following}
-      requested={data.requested}
-      currentUserId={currentUserId}
-      onOpenMenu={showMenu ? handleOpenMenu : undefined}
-      onMessagePress={showMessageButton ? handleMessagePress : undefined}
-    />
+  const listHeaderComponent = (
+    <View>
+      <ProfileHeader
+        id={userId}
+        nickname={data.nickname}
+        avatarUrl={data.avatarUrl}
+        headerUrl={data.headerUrl}
+        bio={data.bio}
+        location={data.location}
+        bonsaiStartYear={data.bonsaiStartYear}
+        bonsaiStartMonth={data.bonsaiStartMonth}
+        createdAt={data.createdAt}
+        isPublic={data.isPublic}
+        isPremium={false}
+        postsCount={data.postsCount}
+        followersCount={data.followersCount}
+        followingCount={data.followingCount}
+        isSelf={data.isSelf}
+        following={data.following}
+        requested={data.requested}
+        currentUserId={currentUserId}
+        onOpenMenu={showMenu ? handleOpenMenu : undefined}
+        onMessagePress={showMessageButton ? handleMessagePress : undefined}
+      />
+      <ProfileTabBar activeTab={activeTab} onSelect={setActiveTab} />
+    </View>
   );
+
+  const canViewContent = data.isPublic || data.isSelf || data.following;
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
@@ -249,22 +257,40 @@ function UserDetailContent({ userId, isOffline }: UserDetailContentProps) {
         showMenu={showMenu}
         onMenuPress={showMenu ? handleOpenMenu : undefined}
       />
-      <UserPostsList
-        userId={userId}
-        currentUserId={currentUserId}
-        ListHeaderComponent={profileHeaderComponent}
-        emptyComponent={
-          data.isPublic || data.isSelf || data.following ? (
-            <ScreenEmpty
-              iconName="document-text-outline"
-              title="まだ投稿がありません"
-            />
-          ) : (
-            <PrivateAccountNotice />
-          )
-        }
-        isOffline={isOffline}
-      />
+      {activeTab === 'posts' ? (
+        <UserPostsList
+          userId={userId}
+          currentUserId={currentUserId}
+          ListHeaderComponent={listHeaderComponent}
+          emptyComponent={
+            canViewContent ? (
+              <ScreenEmpty
+                iconName="document-text-outline"
+                title="まだ投稿がありません"
+              />
+            ) : (
+              <PrivateAccountNotice />
+            )
+          }
+          isOffline={isOffline}
+        />
+      ) : (
+        <UserCommentsList
+          userId={userId}
+          ListHeaderComponent={listHeaderComponent}
+          emptyComponent={
+            canViewContent ? (
+              <ScreenEmpty
+                iconName="chatbubble-ellipses-outline"
+                title="まだコメントがありません"
+              />
+            ) : (
+              <PrivateAccountNotice />
+            )
+          }
+          isOffline={isOffline}
+        />
+      )}
 
       {menuVisible && !data.isSelf && (
         <UserActionMenu

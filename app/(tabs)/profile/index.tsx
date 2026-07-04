@@ -5,7 +5,7 @@
  * ユーザーの投稿一覧を無限スクロールで表示する。
  */
 
-import React, { useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -19,6 +19,8 @@ import { ScreenEmpty } from '@/components/common/ScreenEmpty';
 import { OfflineBanner } from '@/components/common/OfflineBanner';
 import { ProfileHeader } from '@/components/profile/ProfileHeader';
 import { UserPostsList } from '@/components/profile/UserPostsList';
+import { UserCommentsList } from '@/components/profile/UserCommentsList';
+import { ProfileTabBar, type ProfileTab } from '@/components/profile/ProfileTabBar';
 import {
   colorBackground,
   colorSurfaceWashi,
@@ -37,6 +39,7 @@ import { routes } from '@/lib/constants/routes';
 
 export default function ProfileScreen() {
   const isOffline = !useOnlineStatus();
+  const [activeTab, setActiveTab] = useState<ProfileTab>('posts');
 
   const {
     data: me,
@@ -122,48 +125,65 @@ export default function ProfileScreen() {
   const followersCount = profile?.followersCount ?? 0;
   const followingCount = profile?.followingCount ?? 0;
 
-  const profileHeaderComponent = (
-    <ProfileHeader
-      id={me.id}
-      nickname={nickname}
-      avatarUrl={avatarUrl}
-      headerUrl={headerUrl}
-      bio={bio}
-      location={location}
-      bonsaiStartYear={bonsaiStartYear}
-      bonsaiStartMonth={bonsaiStartMonth}
-      createdAt={createdAt}
-      isPublic={isPublic}
-      isPremium={isPremium}
-      postsCount={postsCount}
-      followersCount={followersCount}
-      followingCount={followingCount}
-      isSelf
-      following={false}
-      requested={false}
-      currentUserId={me.id}
-    />
+  const listHeaderComponent = (
+    <View>
+      <ProfileHeader
+        id={me.id}
+        nickname={nickname}
+        avatarUrl={avatarUrl}
+        headerUrl={headerUrl}
+        bio={bio}
+        location={location}
+        bonsaiStartYear={bonsaiStartYear}
+        bonsaiStartMonth={bonsaiStartMonth}
+        createdAt={createdAt}
+        isPublic={isPublic}
+        isPremium={isPremium}
+        postsCount={postsCount}
+        followersCount={followersCount}
+        followingCount={followingCount}
+        isSelf
+        following={false}
+        requested={false}
+        currentUserId={me.id}
+      />
+      <ProfileTabBar activeTab={activeTab} onSelect={setActiveTab} />
+    </View>
   );
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
       {renderHeader}
       <OfflineBanner isVisible={isOffline} />
-      <UserPostsList
-        userId={me.id}
-        currentUserId={me.id}
-        ListHeaderComponent={profileHeaderComponent}
-        emptyComponent={
-          <ScreenEmpty
-            iconName="document-text-outline"
-            title="まだ投稿がありません"
-            description="最初の投稿を作成してみましょう。"
-            actionLabel="投稿する"
-            onAction={() => router.push(routes.postNew)}
-          />
-        }
-        isOffline={isOffline}
-      />
+      {activeTab === 'posts' ? (
+        <UserPostsList
+          userId={me.id}
+          currentUserId={me.id}
+          ListHeaderComponent={listHeaderComponent}
+          emptyComponent={
+            <ScreenEmpty
+              iconName="document-text-outline"
+              title="まだ投稿がありません"
+              description="最初の投稿を作成してみましょう。"
+              actionLabel="投稿する"
+              onAction={() => router.push(routes.postNew)}
+            />
+          }
+          isOffline={isOffline}
+        />
+      ) : (
+        <UserCommentsList
+          userId={me.id}
+          ListHeaderComponent={listHeaderComponent}
+          emptyComponent={
+            <ScreenEmpty
+              iconName="chatbubble-ellipses-outline"
+              title="まだコメントがありません"
+            />
+          }
+          isOffline={isOffline}
+        />
+      )}
     </SafeAreaView>
   );
 }
