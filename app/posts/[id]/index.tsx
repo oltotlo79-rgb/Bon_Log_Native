@@ -346,17 +346,26 @@ function PostDetailContent({ postId }: PostDetailContentProps) {
     ]);
   }, [isOnline, postId, deletePostMutation, showToast]);
 
+  const handleLikeError = useCallback(
+    (message: string) => {
+      showToast(message, 'error');
+    },
+    [showToast]
+  );
+
   const renderCommentItem = useCallback(
     ({ item }: { item: CommentItemData }) => (
       <CommentItem
         item={item}
+        postId={postId}
         currentUserId={currentUserId}
         onReply={handleReply}
         onDelete={handleDeleteComment}
         deletingId={deletingCommentId ?? undefined}
+        onLikeError={handleLikeError}
       />
     ),
-    [currentUserId, handleReply, handleDeleteComment, deletingCommentId]
+    [postId, currentUserId, handleReply, handleDeleteComment, deletingCommentId, handleLikeError]
   );
 
   const comments = commentsData?.pages.flatMap((page) => page.items) ?? [];

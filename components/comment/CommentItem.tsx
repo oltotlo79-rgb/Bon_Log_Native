@@ -8,12 +8,13 @@
  * 返信ボタンで親コンポーネントに返信モードを通知する。
  * メンションは item.mentionedUsers でニックネームに解決して表示する（Web の CommentContent 準拠）。
  * 添付メディアはプロフィールのコメントタブ（UserCommentsList）と同じサムネイル表示に揃える。
- * 返信件数はサーバーに子コメント取得 API が存在しないため、件数表示とタップ導線までを対応範囲とする
- * （docs/design/comment-composer.md §12「返信コメントの取得方法」参照。子コメントの実データ表示は core 対応待ち）。
+ * 返信は展開時に useCommentRepliesQuery で実データを取得し、自身を isReply=true で再帰的に描画する。
+ * Web（CommentCard）が depth===0 のときのみ返信リストへインデント（左マージン + 縦線）を付け、
+ * それより深い階層は同じインデント幅のまま平坦に積む挙動に合わせ、isReply の 1 段階のみでスタイルを分岐する。
  */
 
 import React, { useMemo, useState, useCallback } from 'react';
-import { View, Text, StyleSheet, Pressable, Alert, Platform, Modal } from 'react-native';
+import { View, Text, StyleSheet, Pressable, Alert, Platform, Modal, ActivityIndicator } from 'react-native';
 import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -39,19 +40,24 @@ import {
   textBase,
   textSm,
   textMd,
+  textXs,
 } from '@/lib/constants/design-tokens';
 import { UserAvatar } from '@/components/common/UserAvatar';
 import { formatRelativeTime, formatAbsoluteDateTime } from '@/lib/utils/relative-time';
 import { parseContentSegments } from '@/lib/utils/parse-content-segments';
 import { routeUserDetail, routeSearchByQuery } from '@/lib/constants/routes';
 import { UserActionMenu } from '@/components/user/UserActionMenu';
-import type { CommentItem as CommentItemData } from '@/lib/queries/comments';
+import { CommentLikeButton } from '@/components/comment/CommentLikeButton';
+import { useCommentRepliesQuery, type CommentItem as CommentItemData } from '@/lib/queries/comments';
+import { ERR_GENERIC } from '@/lib/constants/errors';
 
 // ---------------------------------------------------------------------------
 // 定数
 // ---------------------------------------------------------------------------
 
 const AVATAR_SIZE = 36;
+const REPLY_AVATAR_SIZE = 32;
+const REPLY_INDENT = 44;
 const COMMENT_MENU_BUTTON_SIZE = 44;
 const COMMENT_MENU_ICON_SIZE = 18;
 const ACTION_BUTTON_HEIGHT = 36;
@@ -127,6 +133,11 @@ export type ReplyTarget = {
 
 type CommentItemProps = {
   item: CommentItemData;
+  /**
+   * コメントいいねのキャッシュ特定に使う投稿 ID。
+   * テスト等 postId を省略する呼び出し元との互換のため既定値は空文字（キャッシュ無効化のみ無害に skip される）。
+   */
+  postId?: string;
   /** 閲覧者のユーザー ID（未認証は undefined）。自分のコメント判定と通報導線の表示制御に使用する。 */
   currentUserId: string | undefined;
   /** 「返信する」ボタンのコールバック（返信モードを親が管理する） */
@@ -135,6 +146,10 @@ type CommentItemProps = {
   onDelete?: (commentId: string) => void;
   /** 削除処理中のコメント ID（グレーアウト表示） */
   deletingId?: string;
+  /** いいね失敗時のエラーメッセージ通知（画面共通の Toast へ委譲する） */
+  onLikeError?: (message: string) => void;
+  /** 返信一覧内で再帰描画される子コメントかどうか（インデント・アバターサイズを切り替える） */
+  isReply?: boolean;
 };
 
 // ---------------------------------------------------------------------------
@@ -143,10 +158,13 @@ type CommentItemProps = {
 
 function CommentItemInner({
   item,
+  postId = '',
   currentUserId,
   onReply,
   onDelete,
   deletingId,
+  onLikeError,
+  isReply = false,
 }: CommentItemProps) {
   const relativeTime = useMemo(
     () => formatRelativeTime(item.createdAt),
@@ -178,6 +196,14 @@ function CommentItemInner({
   const isOwnComment = currentUserId !== undefined && currentUserId === item.user.id;
   const canShowOthersMenu = currentUserId !== undefined && !isOwnComment && !item.isDeleted;
   const isDeleting = deletingId === item.id;
+  const avatarSize = isReply ? REPLY_AVATAR_SIZE : AVATAR_SIZE;
+
+  // 展開時のみフェッチする（enabled=false は commentId 空文字で表現される）
+  const repliesQuery = useCommentRepliesQuery(repliesExpanded ? item.id : '');
+  const replyItems = useMemo(
+    () => repliesQuery.data?.pages.flatMap((page) => page.items) ?? [],
+    [repliesQuery.data]
+  );
 
   const handlePressAvatar = useCallback(() => {
     router.push(routeUserDetail(item.user.id));
@@ -200,6 +226,16 @@ function CommentItemInner({
   const handleToggleReplies = useCallback(() => {
     setRepliesExpanded((prev) => !prev);
   }, []);
+
+  const handleLoadMoreReplies = useCallback(() => {
+    if (repliesQuery.hasNextPage && !repliesQuery.isFetchingNextPage) {
+      void repliesQuery.fetchNextPage();
+    }
+  }, [repliesQuery]);
+
+  const handleRetryReplies = useCallback(() => {
+    void repliesQuery.refetch();
+  }, [repliesQuery]);
 
   const handleConfirmDelete = useCallback(() => {
     if (Platform.OS === 'ios') {
@@ -230,17 +266,17 @@ function CommentItemInner({
       style={isDeleting ? styles.containerDeleting : undefined}
     >
       <View style={styles.container}>
-        {/* アバター */}
+        {/* アバター（返信は Web の depth=1 表示に合わせて一回り小さくする） */}
         <Pressable
           onPress={handlePressAvatar}
           accessibilityRole="imagebutton"
           accessibilityLabel={`${item.user.nickname}のプロフィールを表示`}
-          style={styles.avatarButton}
+          style={[styles.avatarButton, { width: avatarSize, height: avatarSize }]}
         >
           <UserAvatar
             avatarUrl={item.user.avatarUrl}
             userId={item.user.id}
-            size={AVATAR_SIZE}
+            size={avatarSize}
             accessibilityLabel={`${item.user.nickname}のプロフィール画像`}
             recyclingKey={item.user.id}
           />
@@ -337,23 +373,38 @@ function CommentItemInner({
           {/* 添付メディア（UserCommentsList と同じサムネイル表示）*/}
           {!item.isDeleted && <CommentMediaThumbnails media={item.media} />}
 
-          {/* アクション行（返信ボタン）*/}
-          {!item.isDeleted && onReply !== undefined && (
+          {/* 編集済みバッジ（Web の CommentCard 準拠: 本文の直後に表示） */}
+          {!item.isDeleted && item.editedAt !== null && (
+            <Text style={styles.editedBadge}>（編集済み）</Text>
+          )}
+
+          {/* アクション行（いいね・返信ボタン）*/}
+          {!item.isDeleted && (
             <View style={styles.actionsRow}>
-              <Pressable
-                style={styles.actionButton}
-                onPress={handlePressReply}
-                accessibilityRole="button"
-                accessibilityLabel={`${item.user.nickname}のコメントに返信する`}
-                hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
-              >
-                <Text style={styles.actionButtonText}>返信する</Text>
-              </Pressable>
+              <CommentLikeButton
+                postId={postId}
+                commentId={item.id}
+                parentId={item.parentId}
+                isLiked={item.isLiked}
+                likeCount={item.likeCount}
+                currentUserId={currentUserId}
+                onError={onLikeError}
+              />
+              {onReply !== undefined && (
+                <Pressable
+                  style={styles.actionButton}
+                  onPress={handlePressReply}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${item.user.nickname}のコメントに返信する`}
+                  hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
+                >
+                  <Text style={styles.actionButtonText}>返信する</Text>
+                </Pressable>
+              )}
             </View>
           )}
 
-          {/* 返信件数の表示・トグル（子コメントの実データ取得 API が未提供のため、
-              件数表示とトグル導線までを対応範囲とする） */}
+          {/* 返信件数の表示・トグル + 実データ（useCommentRepliesQuery）の展開表示 */}
           {!item.isDeleted && item.replyCount > 0 && (
             <View>
               <Pressable
@@ -376,10 +427,58 @@ function CommentItemInner({
                   {repliesExpanded ? '返信を非表示' : `${item.replyCount}件の返信を表示`}
                 </Text>
               </Pressable>
+
               {repliesExpanded && (
-                <Text style={styles.repliesPendingNotice}>
-                  返信スレッドの表示は今後のアップデートで対応予定です。
-                </Text>
+                <View style={isReply ? styles.repliesListNested : styles.repliesListRoot}>
+                  {repliesQuery.isLoading && (
+                    <ActivityIndicator
+                      size="small"
+                      color={colorTextTertiary}
+                      style={styles.repliesLoading}
+                      accessibilityLabel="返信を読み込み中"
+                    />
+                  )}
+
+                  {repliesQuery.isError && (
+                    <Pressable
+                      onPress={handleRetryReplies}
+                      accessibilityRole="button"
+                      accessibilityLabel="返信の読み込みを再試行する"
+                      style={styles.repliesErrorButton}
+                    >
+                      <Text style={styles.repliesErrorText}>{ERR_GENERIC}</Text>
+                    </Pressable>
+                  )}
+
+                  {replyItems.map((reply) => (
+                    <CommentItem
+                      key={reply.id}
+                      item={reply}
+                      postId={postId}
+                      currentUserId={currentUserId}
+                      onReply={onReply}
+                      onDelete={onDelete}
+                      deletingId={deletingId}
+                      onLikeError={onLikeError}
+                      isReply
+                    />
+                  ))}
+
+                  {repliesQuery.hasNextPage && (
+                    <Pressable
+                      onPress={handleLoadMoreReplies}
+                      accessibilityRole="button"
+                      accessibilityLabel="さらに返信を読み込む"
+                      style={styles.loadMoreReplies}
+                    >
+                      {repliesQuery.isFetchingNextPage ? (
+                        <ActivityIndicator size="small" color={colorTextTertiary} />
+                      ) : (
+                        <Text style={styles.loadMoreRepliesText}>さらに返信を読み込む</Text>
+                      )}
+                    </Pressable>
+                  )}
+                </View>
               )}
             </View>
           )}
@@ -542,10 +641,41 @@ const styles = StyleSheet.create({
     color: colorTextSecondary,
     fontWeight: '600',
   },
-  repliesPendingNotice: {
-    ...textSm,
-    color: colorTextTertiary,
+  repliesListRoot: {
+    marginTop: spacing2,
+    marginLeft: REPLY_INDENT,
+    paddingLeft: spacing3,
+    borderLeftWidth: 2,
+    borderLeftColor: colorBorderLight,
+    gap: spacing3,
+  },
+  repliesListNested: {
+    marginTop: spacing2,
+    gap: spacing3,
+  },
+  repliesLoading: {
+    marginVertical: spacing2,
+  },
+  repliesErrorButton: {
     paddingVertical: spacing2,
+  },
+  repliesErrorText: {
+    ...textSm,
+    color: colorError,
+  },
+  loadMoreReplies: {
+    minHeight: 32,
+    justifyContent: 'center',
+    paddingVertical: spacing2,
+  },
+  loadMoreRepliesText: {
+    ...textSm,
+    color: colorTextLink,
+    fontWeight: '600',
+  },
+  editedBadge: {
+    ...textXs,
+    color: colorTextTertiary,
   },
   deletedContainer: {
     borderWidth: 1,
