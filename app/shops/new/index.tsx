@@ -15,12 +15,15 @@ import {
   Pressable,
   Alert,
   TextInput,
+  ActivityIndicator,
 } from 'react-native';
 import { router } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useCreateShopMutation, useGenresQuery } from '@/lib/queries/shops';
+import { useCreateShopMutation, useGenresQuery, useGeocodeMutation } from '@/lib/queries/shops';
 import { useOnlineStatus } from '@/hooks/use-online-status';
 import { FormErrorMessage } from '@/components/auth/FormErrorMessage';
+import { isApiError } from '@/lib/api/client';
 import {
   colorBackground,
   colorSurfaceWashi,
@@ -34,6 +37,8 @@ import {
   colorActionSecondary,
   colorActionSecondaryText,
   colorSurfaceMuted,
+  colorSuccess,
+  colorSuccessBg,
   spacing2,
   spacing3,
   spacing4,
@@ -49,6 +54,8 @@ import {
   ERR_SHOP_CREATE_FAILED,
   ERR_SHOP_DUPLICATE_ADDRESS,
   ERR_OFFLINE_ACTION,
+  ERR_GENERIC,
+  messageForApiError,
 } from '@/lib/constants/errors';
 
 // ---------------------------------------------------------------------------
@@ -98,6 +105,7 @@ export default function ShopNewScreen() {
   const isOnline = useOnlineStatus();
   const { mutate: createShop, isPending } = useCreateShopMutation();
   const { data: genresData } = useGenresQuery('shop');
+  const { mutateAsync: geocodeAddress, isPending: isGeocoding } = useGeocodeMutation();
 
   const [name, setName] = useState('');
   const [address, setAddress] = useState('');
@@ -109,6 +117,9 @@ export default function ShopNewScreen() {
   const [businessHours, setBusinessHours] = useState('');
   const [closedDays, setClosedDays] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [geocodeError, setGeocodeError] = useState<string | null>(null);
+  const [geocodedAddress, setGeocodedAddress] = useState<string | null>(null);
+  const [showManualCoords, setShowManualCoords] = useState(false);
 
   const genres = genresData?.items ?? [];
   const hasInput = name.trim().length > 0 || address.trim().length > 0;
@@ -136,6 +147,27 @@ export default function ShopNewScreen() {
       }
       return [...prev, genreId];
     });
+  }, []);
+
+  const handleGeocode = useCallback(async () => {
+    const trimmedAddress = address.trim();
+    if (trimmedAddress.length === 0) return;
+
+    setGeocodeError(null);
+    setGeocodedAddress(null);
+
+    try {
+      const result = await geocodeAddress(trimmedAddress);
+      setLat(String(result.latitude));
+      setLng(String(result.longitude));
+      setGeocodedAddress(result.formattedAddress);
+    } catch (err) {
+      setGeocodeError(isApiError(err) ? messageForApiError(err.code) : ERR_GENERIC);
+    }
+  }, [address, geocodeAddress]);
+
+  const handleToggleManualCoords = useCallback(() => {
+    setShowManualCoords((prev) => !prev);
   }, []);
 
   const handleCancel = useCallback(() => {
@@ -262,6 +294,35 @@ export default function ShopNewScreen() {
               textAlignVertical="top"
             />
             <Text style={styles.counter}>{address.length}/{ADDRESS_MAX}</Text>
+
+            <Pressable
+              onPress={() => void handleGeocode()}
+              disabled={isPending || isGeocoding || address.trim().length === 0}
+              style={[
+                styles.geocodeButton,
+                (isPending || isGeocoding || address.trim().length === 0) && styles.inputDisabled,
+              ]}
+              accessibilityRole="button"
+              accessibilityLabel="住所から位置を取得"
+              accessibilityState={{ disabled: isPending || isGeocoding || address.trim().length === 0 }}
+            >
+              {isGeocoding ? (
+                <ActivityIndicator size="small" color={colorActionSecondaryText} />
+              ) : (
+                <Text style={styles.geocodeButtonText}>住所から位置を取得</Text>
+              )}
+            </Pressable>
+
+            {geocodeError !== null && (
+              <Text style={styles.fieldError}>{geocodeError}</Text>
+            )}
+            {geocodedAddress !== null && (
+              <View style={styles.geocodeSuccess}>
+                <Text style={styles.geocodeSuccessText}>
+                  位置情報を取得しました：{geocodedAddress}
+                </Text>
+              </View>
+            )}
           </View>
 
           {/* ジャンル */}
@@ -290,42 +351,64 @@ export default function ShopNewScreen() {
             </View>
           </View>
 
-          {/* 緯度・経度 */}
+          {/* 緯度・経度（詳細設定・手動修正用） */}
           <View style={styles.fieldGroup}>
-            <Text style={styles.fieldLabel}>緯度（任意）</Text>
-            <TextInput
-              value={lat}
-              onChangeText={setLat}
-              placeholder="例: 35.6812"
-              placeholderTextColor={colorTextTertiary}
-              keyboardType="decimal-pad"
-              editable={!isPending}
-              style={[styles.textInput, isPending && styles.inputDisabled]}
-              accessibilityLabel="緯度（任意）"
-            />
-            {lat.trim().length > 0 && !isLatValid && (
-              <Text style={styles.fieldError}>緯度は -90〜90 の数値を入力してください。</Text>
-            )}
-          </View>
+            <Pressable
+              onPress={handleToggleManualCoords}
+              disabled={isPending}
+              style={styles.manualCoordsToggle}
+              accessibilityRole="button"
+              accessibilityLabel={showManualCoords ? '緯度・経度の手動編集を閉じる' : '緯度・経度を手動で編集'}
+              accessibilityState={{ expanded: showManualCoords }}
+            >
+              <Text style={styles.manualCoordsToggleText}>緯度・経度を手動で編集（任意）</Text>
+              <Ionicons
+                name={showManualCoords ? 'chevron-up' : 'chevron-down'}
+                size={18}
+                color={colorTextSecondary}
+              />
+            </Pressable>
 
-          <View style={styles.fieldGroup}>
-            <Text style={styles.fieldLabel}>経度（任意）</Text>
-            <TextInput
-              value={lng}
-              onChangeText={setLng}
-              placeholder="例: 139.7671"
-              placeholderTextColor={colorTextTertiary}
-              keyboardType="decimal-pad"
-              editable={!isPending}
-              style={[styles.textInput, isPending && styles.inputDisabled]}
-              accessibilityLabel="経度（任意）"
-            />
-            {lng.trim().length > 0 && !isLngValid && (
-              <Text style={styles.fieldError}>経度は -180〜180 の数値を入力してください。</Text>
+            {showManualCoords && (
+              <View style={styles.manualCoordsBody}>
+                <View style={styles.fieldGroup}>
+                  <Text style={styles.fieldLabel}>緯度（任意）</Text>
+                  <TextInput
+                    value={lat}
+                    onChangeText={setLat}
+                    placeholder="例: 35.6812"
+                    placeholderTextColor={colorTextTertiary}
+                    keyboardType="decimal-pad"
+                    editable={!isPending}
+                    style={[styles.textInput, isPending && styles.inputDisabled]}
+                    accessibilityLabel="緯度（任意）"
+                  />
+                  {lat.trim().length > 0 && !isLatValid && (
+                    <Text style={styles.fieldError}>緯度は -90〜90 の数値を入力してください。</Text>
+                  )}
+                </View>
+
+                <View style={styles.fieldGroup}>
+                  <Text style={styles.fieldLabel}>経度（任意）</Text>
+                  <TextInput
+                    value={lng}
+                    onChangeText={setLng}
+                    placeholder="例: 139.7671"
+                    placeholderTextColor={colorTextTertiary}
+                    keyboardType="decimal-pad"
+                    editable={!isPending}
+                    style={[styles.textInput, isPending && styles.inputDisabled]}
+                    accessibilityLabel="経度（任意）"
+                  />
+                  {lng.trim().length > 0 && !isLngValid && (
+                    <Text style={styles.fieldError}>経度は -180〜180 の数値を入力してください。</Text>
+                  )}
+                  <Text style={styles.hint}>
+                    緯度・経度を入力すると「地図アプリで開く」機能が有効になります。
+                  </Text>
+                </View>
+              </View>
             )}
-            <Text style={styles.hint}>
-              緯度・経度を入力すると「地図アプリで開く」機能が有効になります。
-            </Text>
           </View>
 
           {/* 電話番号 */}
@@ -522,5 +605,43 @@ const styles = StyleSheet.create({
     ...textSm,
     color: colorTextTertiary,
     textAlign: 'right',
+  },
+  geocodeButton: {
+    minHeight: 44,
+    paddingHorizontal: spacing3,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: colorActionSecondary,
+    borderRadius: radiusMd,
+    alignSelf: 'flex-start',
+  },
+  geocodeButtonText: {
+    ...textSm,
+    color: colorActionSecondaryText,
+    fontWeight: '600',
+  },
+  geocodeSuccess: {
+    backgroundColor: colorSuccessBg,
+    borderRadius: radiusMd,
+    padding: spacing3,
+  },
+  geocodeSuccessText: {
+    ...textSm,
+    color: colorSuccess,
+  },
+  manualCoordsToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    minHeight: 44,
+  },
+  manualCoordsToggleText: {
+    ...textSm,
+    color: colorTextPrimary,
+    fontWeight: '600',
+  },
+  manualCoordsBody: {
+    gap: spacing4,
+    paddingTop: spacing2,
   },
 });

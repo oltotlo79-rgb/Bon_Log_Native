@@ -146,6 +146,9 @@ const DiseasePestCard = memo(function DiseasePestCard({ item, cardWidth }: Disea
         {item.description !== null && (
           <Text style={styles.cardDesc} numberOfLines={2}>{item.description}</Text>
         )}
+        {item.effectsCount > 0 && (
+          <Text style={styles.cardEffectsCount}>対応薬剤 {item.effectsCount}件</Text>
+        )}
       </View>
     </TouchableOpacity>
   );
@@ -511,6 +514,11 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   cardDesc: {
+    ...textXs,
+    color: colorTextSecondary,
+    lineHeight: 16,
+  },
+  cardEffectsCount: {
     ...textXs,
     color: colorTextSecondary,
     lineHeight: 16,

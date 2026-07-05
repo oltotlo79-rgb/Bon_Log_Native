@@ -286,6 +286,9 @@ const DiseasePestCell = memo(function DiseasePestCell({ item, onPress }: Disease
         <View style={[styles.smallBadge, { backgroundColor: badge.bg }]}>
           <Text style={[styles.smallBadgeText, { color: badge.text }]}>{badge.label}</Text>
         </View>
+        {item.effectsCount > 0 && (
+          <Text style={styles.gridCellEffectsCount}>対応薬剤 {item.effectsCount}件</Text>
+        )}
       </View>
     </TouchableOpacity>
   );
@@ -944,5 +947,9 @@ const styles = StyleSheet.create({
     fontSize: 9,
     lineHeight: 13,
     fontFamily: fontFamilySerifBold,
+  },
+  gridCellEffectsCount: {
+    ...textXs,
+    color: colorTextSecondary,
   },
 });
