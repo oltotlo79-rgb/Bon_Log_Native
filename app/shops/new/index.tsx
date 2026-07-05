@@ -55,6 +55,7 @@ import {
   ERR_SHOP_DUPLICATE_ADDRESS,
   ERR_OFFLINE_ACTION,
   ERR_GENERIC,
+  ERR_GEOCODE_ADDRESS_NOT_FOUND,
   messageForApiError,
 } from '@/lib/constants/errors';
 
@@ -162,7 +163,13 @@ export default function ShopNewScreen() {
       setLng(String(result.longitude));
       setGeocodedAddress(result.formattedAddress);
     } catch (err) {
-      setGeocodeError(isApiError(err) ? messageForApiError(err.code) : ERR_GENERIC);
+      if (isApiError(err)) {
+        setGeocodeError(
+          err.code === 'NOT_FOUND' ? ERR_GEOCODE_ADDRESS_NOT_FOUND : messageForApiError(err.code)
+        );
+      } else {
+        setGeocodeError(ERR_GENERIC);
+      }
     }
   }, [address, geocodeAddress]);
 
