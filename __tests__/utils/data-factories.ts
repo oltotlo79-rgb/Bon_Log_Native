@@ -26,6 +26,7 @@ export function makeCommentItem(overrides?: Partial<CommentItem>): CommentItem {
     likeCount: 0,
     replyCount: 0,
     isLiked: false,
+    editedAt: null,
     user: {
       id: 'user-1',
       nickname: '盆栽太郎',

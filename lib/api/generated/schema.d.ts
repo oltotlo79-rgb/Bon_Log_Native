@@ -2030,6 +2030,97 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/comments/{id}/replies": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * コメント返信一覧取得
+         * @description 指定コメントへの返信一覧を作成日時昇順のカーソルページネーションで返す。
+         *
+         *     重要仕様:
+         *     - 可視性判定は client 申告ではなく親コメントの実 postId で行う
+         *     - 親コメントが非表示/削除済み/閲覧不可（非公開・停止著者等）の場合は空リストを返す（404 にはしない）
+         *     - ブロック済みユーザーの返信は isBlockedUser: true として含まれる（非表示はクライアント側で判断）
+         *     - レート制限: api（60/分）
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description カーソル */
+                    cursor?: string;
+                    /** @description 取得上限件数 */
+                    limit?: number;
+                };
+                header?: never;
+                path: {
+                    /** @description 親コメント ID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description 返信一覧 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["CommentsListResponse"];
+                    };
+                };
+                /** @description バリデーションエラー (VALIDATION_ERROR) */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description Bearer トークンなし (AUTH_REQUIRED) または期限切れ (AUTH_TOKEN_EXPIRED) */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description アカウント停止 (ACCOUNT_SUSPENDED) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description レート制限超過。Retry-After ヘッダー（秒）が返却される。自動リトライ禁止。 */
+                429: {
+                    headers: {
+                        /** @description 次のリクエストまでの待機秒数 */
+                        "Retry-After"?: number;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/users/{id}": {
         parameters: {
             query?: never;
@@ -2076,6 +2167,107 @@ export interface paths {
                     };
                 };
                 /** @description アカウント停止 (ACCOUNT_SUSPENDED) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description ユーザーが存在しない (NOT_FOUND) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description レート制限超過。Retry-After ヘッダー（秒）が返却される。自動リトライ禁止。 */
+                429: {
+                    headers: {
+                        /** @description 次のリクエストまでの待機秒数 */
+                        "Retry-After"?: number;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/users/{id}/likes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * ユーザーがいいねした投稿一覧を取得（カーソルページネーション）
+         * @description 指定ユーザーがいいねした投稿をカーソルページネーションで返す。
+         *
+         *     重要仕様:
+         *     - 非公開アカウントはフォロワー以外には 403 FORBIDDEN を返す
+         *     - ゲストアクセス可: 公開アカウントのいいね一覧を閲覧できる
+         *     - いいね先の投稿自体も閲覧者から見える範囲（非表示/非公開著者/停止著者を除外）に絞る
+         *     - isLiked / isBookmarked / isReposted は閲覧者基準（対象ユーザー基準ではない）で解決される
+         *     - レート制限: timeline（30/分）
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description カーソル */
+                    cursor?: string;
+                    /** @description 取得上限件数 */
+                    limit?: number;
+                };
+                header?: never;
+                path: {
+                    /** @description ユーザー ID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description ユーザーがいいねした投稿一覧 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["UserLikesResponse"];
+                    };
+                };
+                /** @description バリデーションエラー (VALIDATION_ERROR) */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description Bearer トークンなし (AUTH_REQUIRED) または期限切れ (AUTH_TOKEN_EXPIRED) */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description アカウント停止 (ACCOUNT_SUSPENDED) または非公開アカウントへのアクセス (NOT_FOUND) */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -2258,6 +2450,210 @@ export interface paths {
                     };
                     content: {
                         "application/json": components["schemas"]["UserCommentsListResponse"];
+                    };
+                };
+                /** @description バリデーションエラー (VALIDATION_ERROR) */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description Bearer トークンなし (AUTH_REQUIRED) または期限切れ (AUTH_TOKEN_EXPIRED) */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description アカウント停止 (ACCOUNT_SUSPENDED) または非公開アカウントへのアクセス (NOT_FOUND) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description ユーザーが存在しない (NOT_FOUND) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description レート制限超過。Retry-After ヘッダー（秒）が返却される。自動リトライ禁止。 */
+                429: {
+                    headers: {
+                        /** @description 次のリクエストまでの待機秒数 */
+                        "Retry-After"?: number;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/users/{id}/followers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * ユーザーのフォロワー一覧を取得（カーソルページネーション）
+         * @description 指定ユーザーのフォロワー一覧を createdAt DESC 順で返す。
+         *
+         *     重要仕様:
+         *     - 非公開アカウントはフォロワー以外には 403 FORBIDDEN を返す
+         *     - ゲストアクセス可: 公開アカウントのフォロワー一覧を閲覧できる
+         *     - カーソルは複合キー（Follow.followerId + followingId）のうち followerId 側を使う
+         *       （followingId は対象ユーザーで固定のため、可変側の followerId をカーソル値にする）
+         *     - isFollowedBy: 一覧内のユーザーが閲覧者をフォローしているか（逆方向）
+         *     - レート制限: timeline（30/分）
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description カーソル（前ページ最終行の followerId） */
+                    cursor?: string;
+                    /** @description 取得上限件数 */
+                    limit?: number;
+                };
+                header?: never;
+                path: {
+                    /** @description ユーザー ID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description フォロワー一覧 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["UserConnectionsListResponse"];
+                    };
+                };
+                /** @description バリデーションエラー (VALIDATION_ERROR) */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description Bearer トークンなし (AUTH_REQUIRED) または期限切れ (AUTH_TOKEN_EXPIRED) */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description アカウント停止 (ACCOUNT_SUSPENDED) または非公開アカウントへのアクセス (NOT_FOUND) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description ユーザーが存在しない (NOT_FOUND) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description レート制限超過。Retry-After ヘッダー（秒）が返却される。自動リトライ禁止。 */
+                429: {
+                    headers: {
+                        /** @description 次のリクエストまでの待機秒数 */
+                        "Retry-After"?: number;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/users/{id}/following": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * ユーザーのフォロー中一覧を取得（カーソルページネーション）
+         * @description 指定ユーザーがフォローしているユーザー一覧を createdAt DESC 順で返す。
+         *
+         *     重要仕様:
+         *     - 非公開アカウントはフォロワー以外には 403 FORBIDDEN を返す
+         *     - ゲストアクセス可: 公開アカウントのフォロー中一覧を閲覧できる
+         *     - カーソルは複合キー（Follow.followerId + followingId）のうち followingId 側を使う
+         *       （followers 一覧と対称: followerId が対象ユーザーで固定のため、可変側の followingId をカーソル値にする）
+         *     - isFollowedBy: 一覧内のユーザーが閲覧者をフォローしているか（逆方向）
+         *     - レート制限: timeline（30/分）
+         */
+        get: {
+            parameters: {
+                query?: {
+                    /** @description カーソル（前ページ最終行の followingId） */
+                    cursor?: string;
+                    /** @description 取得上限件数 */
+                    limit?: number;
+                };
+                header?: never;
+                path: {
+                    /** @description ユーザー ID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description フォロー中一覧 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["UserConnectionsListResponse"];
                     };
                 };
                 /** @description バリデーションエラー (VALIDATION_ERROR) */
@@ -2809,6 +3205,163 @@ export interface paths {
                     };
                 };
                 /** @description 投稿が存在しないか閲覧権限なし (NOT_FOUND) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description レート制限超過。Retry-After ヘッダー（秒）が返却される。自動リトライ禁止。 */
+                429: {
+                    headers: {
+                        /** @description 次のリクエストまでの待機秒数 */
+                        "Retry-After"?: number;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/comments/{id}/like": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * コメントにいいねを付ける（冪等）
+         * @description 対象コメントにいいねを付与する。既にいいね済みでも 200 を返す（冪等設計）。
+         *
+         *     重要仕様:
+         *     - 不存在・非表示・削除済みコメント、または所属投稿が閲覧不可（client 申告ではなく実 postId で判定）な場合は 404 NOT_FOUND
+         *     - ゲストアカウントは 403 GUEST_NOT_ALLOWED
+         *     - likeCount は操作後の最新値（楽観更新の確定値として使用できる）
+         *     - 通知（comment_like）は同一ユーザーへの重複通知を防ぐ重複排除が働く
+         *     - レート制限: toggle_like（30/分）、超過時は 429 + Retry-After ヘッダー
+         */
+        post: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description コメント ID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description いいね付与成功（既にいいね済みでも 200） */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["LikeResponse"];
+                    };
+                };
+                /** @description Bearer トークンなし (AUTH_REQUIRED) または期限切れ (AUTH_TOKEN_EXPIRED) */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description アカウント停止 (ACCOUNT_SUSPENDED) またはゲスト不可 (GUEST_NOT_ALLOWED) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description コメントが存在しないか閲覧権限なし (NOT_FOUND) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description レート制限超過。Retry-After ヘッダー（秒）が返却される。自動リトライ禁止。 */
+                429: {
+                    headers: {
+                        /** @description 次のリクエストまでの待機秒数 */
+                        "Retry-After"?: number;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
+        /**
+         * コメントのいいねを解除する（冪等）
+         * @description 対象コメントのいいねを解除する。いいねしていなくても 200 を返す（冪等設計）。
+         *
+         *     重要仕様:
+         *     - 不存在・非表示・削除済みコメント、または所属投稿が閲覧不可（client 申告ではなく実 postId で判定）な場合は 404 NOT_FOUND
+         *     - ゲストアカウントは 403 GUEST_NOT_ALLOWED
+         *     - likeCount は操作後の最新値
+         *     - レート制限: toggle_like（30/分）、超過時は 429 + Retry-After ヘッダー
+         */
+        delete: {
+            parameters: {
+                query?: never;
+                header?: never;
+                path: {
+                    /** @description コメント ID */
+                    id: string;
+                };
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description いいね解除成功（いいねしていなくても 200） */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["LikeResponse"];
+                    };
+                };
+                /** @description Bearer トークンなし (AUTH_REQUIRED) または期限切れ (AUTH_TOKEN_EXPIRED) */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description アカウント停止 (ACCOUNT_SUSPENDED) またはゲスト不可 (GUEST_NOT_ALLOWED) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description コメントが存在しないか閲覧権限なし (NOT_FOUND) */
                 404: {
                     headers: {
                         [name: string]: unknown;
@@ -12722,6 +13275,102 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/geocode": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * 住所ジオコーディング
+         * @description 国土地理院 (GSI) 住所検索 API を用いて住所文字列を緯度経度に変換する。
+         *     複数候補がある場合も先頭（最も一致度が高い）の1件のみを返す。
+         *
+         *     重要仕様:
+         *     - ゲスト可（Bearer 認証は必須だがゲストトークンで呼び出し可）
+         *     - 日本国内住所限定（GSI の仕様上、国外住所は解決不可）
+         *     - 住所が解決できない場合は 404 NOT_FOUND
+         *     - レート制限: geocode（15/分）
+         */
+        get: {
+            parameters: {
+                query: {
+                    /** @description 検索する住所文字列 */
+                    address: string;
+                };
+                header?: never;
+                path?: never;
+                cookie?: never;
+            };
+            requestBody?: never;
+            responses: {
+                /** @description ジオコーディング成功 */
+                200: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["GeocodeResponse"];
+                    };
+                };
+                /** @description バリデーションエラー (VALIDATION_ERROR) */
+                400: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description Bearer トークンなし (AUTH_REQUIRED) または期限切れ (AUTH_TOKEN_EXPIRED) */
+                401: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description アカウント停止 (ACCOUNT_SUSPENDED) */
+                403: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description 住所が解決できない (NOT_FOUND) */
+                404: {
+                    headers: {
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description レート制限超過。Retry-After ヘッダー（秒）が返却される。自動リトライ禁止。 */
+                429: {
+                    headers: {
+                        /** @description 次のリクエストまでの待機秒数 */
+                        "Retry-After"?: number;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+            };
+        };
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -13125,6 +13774,107 @@ export interface components {
             }[];
             nextCursor: string | null;
         };
+        /** @description ユーザーがいいねした投稿一覧レスポンス。カーソルページネーション形式（形状は UserPostsResponse と同一）。 */
+        UserLikesResponse: {
+            items: {
+                id: string;
+                content: string;
+                /** Format: date-time */
+                createdAt: string;
+                /** Format: date-time */
+                updatedAt: string;
+                userId: string;
+                user: {
+                    id: string;
+                    nickname: string;
+                    avatarUrl: string | null;
+                    isBlocked: boolean;
+                    isMuted: boolean;
+                };
+                media: {
+                    id: string;
+                    url: string;
+                    type: string;
+                    sortOrder: number;
+                }[];
+                genres: {
+                    id: string;
+                    name: string;
+                    category: string;
+                }[];
+                likeCount: number;
+                commentCount: number;
+                repostCount: number;
+                isLiked: boolean;
+                isBookmarked: boolean;
+                isReposted: boolean;
+                quotePost: {
+                    id: string;
+                    content: string;
+                    user: {
+                        id: string;
+                        nickname: string;
+                        avatarUrl: string | null;
+                    };
+                    media?: {
+                        id: string;
+                        url: string;
+                        type: string;
+                        sortOrder: number;
+                    }[];
+                } | null;
+                repostPost: {
+                    id: string;
+                    content: string;
+                    user: {
+                        id: string;
+                        nickname: string;
+                        avatarUrl: string | null;
+                    };
+                    media?: {
+                        id: string;
+                        url: string;
+                        type: string;
+                        sortOrder: number;
+                    }[];
+                } | null;
+                poll: {
+                    id: string;
+                    postId: string;
+                    duration: number;
+                    /** Format: date-time */
+                    expiresAt: string;
+                    /** Format: date-time */
+                    createdAt: string;
+                    options: {
+                        id: string;
+                        pollId: string;
+                        text: string;
+                        sortOrder: number;
+                        _count: {
+                            votes: number;
+                        };
+                    }[];
+                    votes?: {
+                        id: string;
+                        pollId: string;
+                        optionId: string;
+                        userId: string;
+                        /** Format: date-time */
+                        createdAt: string;
+                    }[];
+                    _count: {
+                        votes: number;
+                    };
+                } | null;
+                mentionedUsers: {
+                    id: string;
+                    nickname: string;
+                    avatarUrl: string | null;
+                }[];
+            }[];
+            nextCursor: string | null;
+        };
         /** @description リポスト操作後の状態。reposted は操作後の状態、repostCount は最新の総リポスト数。 */
         RepostResponse: {
             reposted: boolean;
@@ -13238,7 +13988,7 @@ export interface components {
             /** @default [] */
             mediaTypes: ("image" | "video")[];
         };
-        /** @description 単一コメントのレスポンス（作成時に返却）。 */
+        /** @description 単一コメントのレスポンス（作成時に返却）。editedAt は編集済みなら編集日時、未編集なら null。 */
         CommentResponse: {
             id: string;
             postId: string;
@@ -13254,6 +14004,8 @@ export interface components {
             likeCount: number;
             replyCount: number;
             isLiked: boolean;
+            /** Format: date-time */
+            editedAt: string | null;
             user: {
                 id: string;
                 nickname: string;
@@ -13510,6 +14262,8 @@ export interface components {
                 likeCount: number;
                 replyCount: number;
                 isLiked: boolean;
+                /** Format: date-time */
+                editedAt: string | null;
                 user: {
                     id: string;
                     nickname: string;
@@ -13706,6 +14460,35 @@ export interface components {
                 following: boolean;
                 requested: boolean;
                 isPublic: boolean;
+            }[];
+            nextCursor: string | null;
+        };
+        /** @description フォロワー/フォロー中一覧の 1 件。SearchUserItem に isFollowedBy（一覧内ユーザー→閲覧者の逆方向フォロー状態）を追加した形。 */
+        UserConnectionItem: {
+            id: string;
+            nickname: string;
+            avatarUrl: string | null;
+            bio: string | null;
+            followersCount: number;
+            followingCount: number;
+            following: boolean;
+            requested: boolean;
+            isPublic: boolean;
+            isFollowedBy: boolean;
+        };
+        /** @description フォロワー/フォロー中一覧レスポンス。複合キーカーソルページネーション。 */
+        UserConnectionsListResponse: {
+            items: {
+                id: string;
+                nickname: string;
+                avatarUrl: string | null;
+                bio: string | null;
+                followersCount: number;
+                followingCount: number;
+                following: boolean;
+                requested: boolean;
+                isPublic: boolean;
+                isFollowedBy: boolean;
             }[];
             nextCursor: string | null;
         };
@@ -14420,7 +15203,7 @@ export interface components {
          * @enum {string}
          */
         ResistanceRisk: "low" | "medium" | "high";
-        /** @description 病害虫一覧の 1 件（id, name, nameKana, category, description, imageUrl, slug, bodySizeMinMm, bodySizeMaxMm）。bodySizeMinMm/bodySizeMaxMm は害虫・益虫の体長範囲（mm）。未設定は null。 */
+        /** @description 病害虫一覧の 1 件（id, name, nameKana, category, description, imageUrl, slug, bodySizeMinMm, bodySizeMaxMm, effectsCount）。bodySizeMinMm/bodySizeMaxMm は害虫・益虫の体長範囲（mm）。未設定は null。effectsCount は登録済みの効果（防除対象農薬）件数。 */
         DiseasePestItem: {
             id: string;
             name: string;
@@ -14432,6 +15215,7 @@ export interface components {
             slug: string;
             bodySizeMinMm: number | null;
             bodySizeMaxMm: number | null;
+            effectsCount: number;
         };
         /** @description 病害虫詳細の農薬効果 1 件（pesticide 情報 + rating）。 */
         DiseasePestEffectItem: {
@@ -14478,6 +15262,7 @@ export interface components {
             slug: string;
             bodySizeMinMm: number | null;
             bodySizeMaxMm: number | null;
+            effectsCount: number;
             effects: {
                 pesticide: {
                     id: string;
@@ -14524,6 +15309,7 @@ export interface components {
                 slug: string;
                 bodySizeMinMm: number | null;
                 bodySizeMaxMm: number | null;
+                effectsCount: number;
             }[];
             nextCursor: string | null;
         };
@@ -16120,6 +16906,16 @@ export interface components {
         /** @description メッセージ送信リクエスト。content は必須・非空・最大 1000 文字。 */
         SendMessageRequest: {
             content: string;
+        };
+        /** @description 住所ジオコーディングのクエリパラメータ（address のみ）。 */
+        GeocodeQuery: {
+            address: string;
+        };
+        /** @description 住所ジオコーディング結果（国土地理院 GSI 住所検索 API の単一の最良候補）。 */
+        GeocodeResponse: {
+            latitude: number;
+            longitude: number;
+            formattedAddress: string;
         };
     };
     responses: never;
