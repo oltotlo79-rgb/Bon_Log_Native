@@ -1,9 +1,8 @@
 /**
  * @module app/hormones/diagram/index
  * ホルモン相互作用ダイアグラム画面。Web 版 /hormones/diagram に対応。
- * SVG 禁止のため View の絶対配置でノードを円形配置し、
- * ノードタップで下部に相互作用一覧をパネル表示するインタラクティブ方式を採用。
- * 線描画が不要になるため RN の制約（SVG 禁止）と相性が良い。
+ * ノード・エッジの描画は WebView 内のインライン SVG（HormoneInteractionDiagramView）に委譲し、
+ * ノードタップは postMessage 経由で受け取って下部の詳細パネルに反映する。
  */
 
 import React, { useState, useCallback, useMemo, memo } from 'react';
@@ -14,7 +13,6 @@ import {
   Pressable,
   ScrollView,
   RefreshControl,
-  useWindowDimensions,
 } from 'react-native';
 import { Stack, router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -25,6 +23,7 @@ import { ScreenLoading } from '@/components/common/ScreenLoading';
 import { ScreenError } from '@/components/common/ScreenError';
 import { ScreenEmpty } from '@/components/common/ScreenEmpty';
 import { HormoneDisclaimer } from '@/components/hormone/HormoneDisclaimer';
+import { HormoneInteractionDiagramView } from '@/components/hormone/HormoneInteractionDiagramView';
 import { useOnlineStatus } from '@/hooks/use-online-status';
 import { ERR_HORMONES_LOAD_FAILED } from '@/lib/constants/errors';
 import { routeHormoneDetail } from '@/lib/constants/routes';
@@ -35,7 +34,6 @@ import {
   colorBorder,
   colorTextPrimary,
   colorTextSecondary,
-  colorTextInverse,
   colorActionPrimary,
   colorInteractionSynergyBg,
   colorInteractionSynergyText,
@@ -48,8 +46,6 @@ import {
   colorDiagramEdgeModulation,
   colorDiagramNodeMajor,
   colorDiagramNodeSecondary,
-  colorDiagramNodeSelected,
-  colorDiagramNodeSelectedBorder,
   spacing2,
   spacing3,
   spacing4,
@@ -68,15 +64,11 @@ import {
 // 型
 // ---------------------------------------------------------------------------
 
-type HormoneItem = components['schemas']['HormoneItem'];
 type HormoneInteractionItem = components['schemas']['HormoneInteractionListResponse']['items'][number];
 
 // ---------------------------------------------------------------------------
-// ダイアグラム定数（Web 版 hormone-techniques.ts の移植）
+// ダイアグラム凡例・種類フィルタ定数（Web 版 hormone-techniques.ts の移植）
 // ---------------------------------------------------------------------------
-
-const NODE_RADIUS = 36;
-const NODE_LABEL_MAX_LENGTH = 4;
 
 const INTERACTION_TYPE_CONFIG: Record<string, {
   label: string;
@@ -110,33 +102,6 @@ const INTERACTION_TYPE_CONFIG: Record<string, {
 
 const NODE_COLOR_MAJOR     = colorDiagramNodeMajor;
 const NODE_COLOR_SECONDARY = colorDiagramNodeSecondary;
-const NODE_COLOR_SELECTED  = colorDiagramNodeSelected;
-
-// ---------------------------------------------------------------------------
-// 円形配置計算
-// ---------------------------------------------------------------------------
-
-type NodePosition = {
-  x: number;
-  y: number;
-};
-
-function calcCirclePositions(
-  items: HormoneItem[],
-  cx: number,
-  cy: number,
-  radius: number,
-): Map<string, NodePosition> {
-  const positions = new Map<string, NodePosition>();
-  items.forEach((h, i) => {
-    const angle = (2 * Math.PI * i) / items.length - Math.PI / 2;
-    positions.set(h.id, {
-      x: cx + radius * Math.cos(angle),
-      y: cy + radius * Math.sin(angle),
-    });
-  });
-  return positions;
-}
 
 // ---------------------------------------------------------------------------
 // 凡例コンポーネント
@@ -216,72 +181,11 @@ const InteractionPairCard = memo(function InteractionPairCard({
 });
 
 // ---------------------------------------------------------------------------
-// ホルモンノード（Pressable）
-// ---------------------------------------------------------------------------
-
-type HormoneNodeProps = {
-  hormone: HormoneItem;
-  position: NodePosition;
-  isSelected: boolean;
-  isHighlighted: boolean;
-  onPress: (id: string) => void;
-};
-
-const HormoneNode = memo(function HormoneNode({
-  hormone,
-  position,
-  isSelected,
-  isHighlighted,
-  onPress,
-}: HormoneNodeProps) {
-  const handlePress = useCallback(() => { onPress(hormone.id); }, [hormone.id, onPress]);
-
-  const bgColor = isSelected
-    ? NODE_COLOR_SELECTED
-    : hormone.category === 'major'
-      ? NODE_COLOR_MAJOR
-      : NODE_COLOR_SECONDARY;
-
-  const label =
-    hormone.name.length > NODE_LABEL_MAX_LENGTH
-      ? hormone.name.slice(0, NODE_LABEL_MAX_LENGTH) + '…'
-      : hormone.name;
-
-  return (
-    <Pressable
-      onPress={handlePress}
-      style={[
-        styles.node,
-        {
-          left: position.x - NODE_RADIUS,
-          top: position.y - NODE_RADIUS,
-          width: NODE_RADIUS * 2,
-          height: NODE_RADIUS * 2,
-          borderRadius: NODE_RADIUS,
-          backgroundColor: bgColor,
-          opacity: isHighlighted ? 1 : 0.25,
-          borderWidth: isSelected ? 3 : 0,
-          borderColor: isSelected ? colorDiagramNodeSelectedBorder : 'transparent',
-        },
-      ]}
-      accessibilityRole="button"
-      accessibilityLabel={`${hormone.name}のホルモン。タップで相互作用を表示`}
-      accessibilityState={{ selected: isSelected }}
-    >
-      <Text style={styles.nodeLabel} numberOfLines={2} adjustsFontSizeToFit>
-        {label}
-      </Text>
-    </Pressable>
-  );
-});
-
-// ---------------------------------------------------------------------------
 // Screen
 // ---------------------------------------------------------------------------
 
 export default function HormoneDiagramScreen() {
   const insets = useSafeAreaInsets();
-  const { width: screenWidth } = useWindowDimensions();
   const isOnline = useOnlineStatus();
 
   const { data: hormones, isLoading: isHormonesLoading, isError: isHormonesError, refetch: refetchHormones } =
@@ -302,8 +206,8 @@ export default function HormoneDiagramScreen() {
     void refetchInteractions();
   }, [refetchHormones, refetchInteractions]);
 
-  const handleNodePress = useCallback((nodeId: string) => {
-    setSelectedNodeId((prev) => (prev === nodeId ? null : nodeId));
+  const handleNodeSelect = useCallback((nodeId: string | null) => {
+    setSelectedNodeId(nodeId);
   }, []);
 
   const handleToggleType = useCallback((type: string) => {
@@ -318,14 +222,6 @@ export default function HormoneDiagramScreen() {
     });
   }, []);
 
-  // ダイアグラムエリアのサイズ（横幅 - パディング）
-  const diagramSize = screenWidth - spacing4 * 2;
-  const cx = diagramSize / 2;
-  const cy = diagramSize / 2;
-  // 内側（五大ホルモン）・外側（二次ホルモン）の半径
-  const majorRadius = diagramSize * 0.28;
-  const secondaryRadius = diagramSize * 0.42;
-
   const majorHormones = useMemo(
     () => (hormones ?? []).filter((h) => h.category === 'major'),
     [hormones],
@@ -335,12 +231,6 @@ export default function HormoneDiagramScreen() {
     [hormones],
   );
   const allHormones = useMemo(() => [...majorHormones, ...secondaryHormones], [majorHormones, secondaryHormones]);
-
-  const positions = useMemo(() => {
-    const majorPos = calcCirclePositions(majorHormones, cx, cy, majorRadius);
-    const secondaryPos = calcCirclePositions(secondaryHormones, cx, cy, secondaryRadius);
-    return new Map([...majorPos, ...secondaryPos]);
-  }, [majorHormones, secondaryHormones, cx, cy, majorRadius, secondaryRadius]);
 
   const allInteractions = useMemo(() => interactionsData?.items ?? [], [interactionsData]);
 
@@ -360,19 +250,6 @@ export default function HormoneDiagramScreen() {
       (i) => i.hormoneAId === selectedHormone.id || i.hormoneBId === selectedHormone.id,
     );
   }, [selectedHormone, filteredInteractions]);
-
-  const isNodeHighlighted = useCallback(
-    (nodeId: string): boolean => {
-      if (selectedNodeId === null) return true;
-      if (nodeId === selectedNodeId) return true;
-      return filteredInteractions.some(
-        (i) =>
-          (i.hormoneAId === selectedNodeId && i.hormoneBId === nodeId) ||
-          (i.hormoneBId === selectedNodeId && i.hormoneAId === nodeId),
-      );
-    },
-    [selectedNodeId, filteredInteractions],
-  );
 
   if (isLoading) {
     return (
@@ -460,26 +337,13 @@ export default function HormoneDiagramScreen() {
           })}
         </View>
 
-        {/* ダイアグラムエリア */}
-        <View
-          style={[styles.diagramArea, { width: diagramSize, height: diagramSize }]}
-          accessibilityLabel="ホルモン相互作用ダイアグラム"
-        >
-          {allHormones.map((hormone) => {
-            const pos = positions.get(hormone.id);
-            if (pos === undefined) return null;
-            return (
-              <HormoneNode
-                key={hormone.id}
-                hormone={hormone}
-                position={pos}
-                isSelected={selectedNodeId === hormone.id}
-                isHighlighted={isNodeHighlighted(hormone.id)}
-                onPress={handleNodePress}
-              />
-            );
-          })}
-        </View>
+        {/* ダイアグラム本体（WebView 内インライン SVG） */}
+        <HormoneInteractionDiagramView
+          hormones={allHormones}
+          interactions={allInteractions}
+          activeTypes={activeTypes}
+          onNodeSelect={handleNodeSelect}
+        />
 
         <DiagramLegend />
 
@@ -599,25 +463,6 @@ const styles = StyleSheet.create({
   },
   filterChipText: {
     ...textXs,
-  },
-
-  // ---- ダイアグラムエリア ----
-  diagramArea: {
-    position: 'relative',
-    alignSelf: 'center',
-  },
-  node: {
-    position: 'absolute',
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: 4,
-  },
-  nodeLabel: {
-    color: colorTextInverse,
-    fontSize: 10,
-    fontFamily: fontFamilySerifBold,
-    textAlign: 'center',
-    lineHeight: 13,
   },
 
   // ---- 凡例 ----
