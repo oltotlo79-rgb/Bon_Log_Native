@@ -8,7 +8,7 @@ import { screen, fireEvent, waitFor } from '@testing-library/react-native';
 import ShopNewScreen from '@/app/shops/new/index';
 import { renderWithProviders } from '@/__tests__/utils/test-utils';
 import { ApiError } from '@/lib/api/errors';
-import { ERR_RATE_LIMIT, ERR_NOT_FOUND } from '@/lib/constants/errors';
+import { ERR_RATE_LIMIT, ERR_GEOCODE_ADDRESS_NOT_FOUND } from '@/lib/constants/errors';
 
 const mockRouter = jest.requireMock('expo-router').router;
 
@@ -151,7 +151,7 @@ describe('ShopNewScreen', () => {
       expect(mockGeocodeAddress).toHaveBeenCalledWith('新宿区○○1-2-3');
     });
 
-    it('404 NOT_FOUND のとき ERR_NOT_FOUND が表示される', async () => {
+    it('404 NOT_FOUND のとき ERR_GEOCODE_ADDRESS_NOT_FOUND が表示される', async () => {
       mockGeocodeAddress.mockRejectedValue(
         new ApiError({ code: 'NOT_FOUND', status: 404, message: 'not found' })
       );
@@ -161,7 +161,7 @@ describe('ShopNewScreen', () => {
       fireEvent.press(screen.getByRole('button', { name: '住所から位置を取得' }));
 
       await waitFor(() => {
-        expect(screen.getByText(ERR_NOT_FOUND)).toBeTruthy();
+        expect(screen.getByText(ERR_GEOCODE_ADDRESS_NOT_FOUND)).toBeTruthy();
       });
     });
 
