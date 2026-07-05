@@ -7,7 +7,7 @@ import { useQuery, useMutation, useInfiniteQuery, useQueryClient, type InfiniteD
 import { apiClient } from '@/lib/api/client';
 import { queryKeys } from '@/lib/queries/keys';
 import { STALE_TIME_STANDARD } from '@/lib/constants/query';
-import { USER_POSTS_PAGE_SIZE } from '@/lib/constants/limits/pagination';
+import { USER_POSTS_PAGE_SIZE, USER_LIKED_POSTS_PAGE_SIZE } from '@/lib/constants/limits/pagination';
 import type { components } from '@/lib/api/generated/schema.d.ts';
 
 export type PostDetail = components['schemas']['PostResponse'];
@@ -16,6 +16,7 @@ export type SuccessResponse = components['schemas']['SuccessResponse'];
 export type RepostResponse = components['schemas']['RepostResponse'];
 export type PollVoteResponse = components['schemas']['PollVoteResponse'];
 export type UserPostsResponse = components['schemas']['UserPostsResponse'];
+export type UserLikesResponse = components['schemas']['UserLikesResponse'];
 
 // ---------------------------------------------------------------------------
 // クエリ
@@ -205,6 +206,46 @@ export function useUserPostsQuery(userId: string) {
       });
       if (error !== undefined || data === undefined) {
         throw error ?? new Error('Unexpected error fetching user posts');
+      }
+      return data;
+    },
+    initialPageParam: undefined,
+    getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
+    staleTime: STALE_TIME_STANDARD,
+    enabled: userId.length > 0,
+  });
+}
+
+/**
+ * 指定ユーザーがいいねした投稿一覧をカーソルページネーションで取得する無限スクロールクエリ。
+ * 非公開アカウントへの非フォロワーアクセスはサーバーが 403 を返す。ゲストアクセス可（公開アカウントのみ）。
+ * isLiked / isBookmarked / isReposted は閲覧者基準（対象ユーザー基準ではない）で解決される。
+ * userId が空文字の場合はフェッチを行わない（enabled=false）。
+ *
+ * invalidation-map.md 参照: ユーザーいいね一覧 → 現状は明示的な invalidate 対象に含めない
+ * （低頻度画面のため次回表示時の自然な stale 更新に委ねる）。
+ */
+export function useUserLikedPostsQuery(userId: string) {
+  return useInfiniteQuery<
+    UserLikesResponse,
+    Error,
+    InfiniteData<UserLikesResponse>,
+    ReturnType<typeof queryKeys.users.likes>,
+    string | undefined
+  >({
+    queryKey: queryKeys.users.likes(userId),
+    queryFn: async ({ pageParam }) => {
+      const { data, error } = await apiClient.GET('/api/v1/users/{id}/likes', {
+        params: {
+          path: { id: userId },
+          query: {
+            cursor: pageParam ?? undefined,
+            limit: USER_LIKED_POSTS_PAGE_SIZE,
+          },
+        },
+      });
+      if (error !== undefined || data === undefined) {
+        throw error ?? new Error('Unexpected error fetching user liked posts');
       }
       return data;
     },

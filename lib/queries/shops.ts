@@ -18,6 +18,7 @@ export type ReviewItem = components['schemas']['ReviewItem'];
 export type ReviewListResponse = components['schemas']['ReviewListResponse'];
 export type GenreListResponse = components['schemas']['GenreListResponse'];
 export type ShopMapPinsResponse = components['schemas']['ShopMapPinsResponse'];
+export type GeocodeResponse = components['schemas']['GeocodeResponse'];
 
 // ---------------------------------------------------------------------------
 // クエリ
@@ -277,6 +278,33 @@ export function useCreateReviewMutation() {
     onSettled: (_data, _error, { shopId }) => {
       void queryClient.invalidateQueries({ queryKey: queryKeys.shops.reviews(shopId) });
       void queryClient.invalidateQueries({ queryKey: queryKeys.shops.detail(shopId) });
+    },
+  });
+}
+
+// ---------------------------------------------------------------------------
+// ジオコーディング
+// ---------------------------------------------------------------------------
+
+/**
+ * 住所文字列を緯度経度に変換するミューテーション（GET /api/v1/geocode）。
+ *
+ * レート制限が 15/分と厳しいため、useQuery による自動リフェッチの対象にせず、
+ * 呼び出し側が明示的に mutateAsync(address) を実行する useMutation として実装する。
+ * 住所が解決できない場合は 404 NOT_FOUND の ApiError をそのまま throw する
+ * （frontend が「住所を解決できませんでした」等のフィードバックを表示すること）。
+ * キャッシュを持たないため invalidation 対象なし。
+ */
+export function useGeocodeMutation() {
+  return useMutation<GeocodeResponse, Error, string>({
+    mutationFn: async (address) => {
+      const { data, error } = await apiClient.GET('/api/v1/geocode', {
+        params: { query: { address } },
+      });
+      if (error !== undefined || data === undefined) {
+        throw error ?? new Error('Unexpected error geocoding address');
+      }
+      return data;
     },
   });
 }

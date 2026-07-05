@@ -13,7 +13,11 @@
 import { useInfiniteQuery, useMutation, useQueryClient, type InfiniteData, type QueryKey } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api/client';
 import { queryKeys } from '@/lib/queries/keys';
-import { FOLLOW_REQUESTS_PAGE_SIZE } from '@/lib/constants/limits/pagination';
+import {
+  FOLLOW_REQUESTS_PAGE_SIZE,
+  USER_FOLLOWERS_PAGE_SIZE,
+  USER_FOLLOWING_PAGE_SIZE,
+} from '@/lib/constants/limits/pagination';
 import { STALE_TIME_STANDARD } from '@/lib/constants/query';
 import type { components } from '@/lib/api/generated/schema.d.ts';
 
@@ -22,6 +26,8 @@ type UserProfileResponse = components['schemas']['UserProfileResponse'];
 type SearchUsersResponse = components['schemas']['SearchUsersResponse'];
 type FollowRequestsListResponse = components['schemas']['FollowRequestsListResponse'];
 type SuccessResponse = components['schemas']['SuccessResponse'];
+export type UserConnectionsListResponse = components['schemas']['UserConnectionsListResponse'];
+export type UserConnectionItem = components['schemas']['UserConnectionItem'];
 
 /** フォローリクエスト 1 件の型。requester に bio が含まれる点に注意。 */
 export type FollowRequestItem = components['schemas']['FollowRequestItem'];
@@ -334,5 +340,89 @@ export function useRejectFollowRequestMutation() {
         );
       }
     },
+  });
+}
+
+// ---------------------------------------------------------------------------
+// useUserFollowersQuery / useUserFollowingQuery
+// ---------------------------------------------------------------------------
+
+/**
+ * 指定ユーザーのフォロワー一覧の無限スクロールクエリ（GET /api/v1/users/{id}/followers）。
+ * カーソルは followerId 側（createdAt DESC 順）。
+ * 非公開アカウントはフォロワー以外には 403 FORBIDDEN を返す（ApiError をそのまま throw）。
+ * userId が空文字の場合はフェッチを行わない（enabled=false）。
+ *
+ * following（フォロー中一覧）とはカーソルの意味が異なるため、queryKeys.users.followers で
+ * キャッシュを分離する（同一キーで混用しない）。
+ */
+export function useUserFollowersQuery(userId: string) {
+  return useInfiniteQuery<
+    UserConnectionsListResponse,
+    Error,
+    InfiniteData<UserConnectionsListResponse>,
+    ReturnType<typeof queryKeys.users.followers>,
+    string | undefined
+  >({
+    queryKey: queryKeys.users.followers(userId),
+    queryFn: async ({ pageParam }) => {
+      const { data, error } = await apiClient.GET('/api/v1/users/{id}/followers', {
+        params: {
+          path: { id: userId },
+          query: {
+            cursor: pageParam ?? undefined,
+            limit: USER_FOLLOWERS_PAGE_SIZE,
+          },
+        },
+      });
+      if (error !== undefined || data === undefined) {
+        throw error ?? new Error('Unexpected error fetching followers');
+      }
+      return data;
+    },
+    initialPageParam: undefined,
+    getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
+    staleTime: STALE_TIME_STANDARD,
+    enabled: userId.length > 0,
+  });
+}
+
+/**
+ * 指定ユーザーのフォロー中一覧の無限スクロールクエリ（GET /api/v1/users/{id}/following）。
+ * カーソルは followingId 側（createdAt DESC 順）。
+ * 非公開アカウントはフォロワー以外には 403 FORBIDDEN を返す（ApiError をそのまま throw）。
+ * userId が空文字の場合はフェッチを行わない（enabled=false）。
+ *
+ * followers（フォロワー一覧）とはカーソルの意味が異なるため、queryKeys.users.following で
+ * キャッシュを分離する（同一キーで混用しない）。
+ */
+export function useUserFollowingQuery(userId: string) {
+  return useInfiniteQuery<
+    UserConnectionsListResponse,
+    Error,
+    InfiniteData<UserConnectionsListResponse>,
+    ReturnType<typeof queryKeys.users.following>,
+    string | undefined
+  >({
+    queryKey: queryKeys.users.following(userId),
+    queryFn: async ({ pageParam }) => {
+      const { data, error } = await apiClient.GET('/api/v1/users/{id}/following', {
+        params: {
+          path: { id: userId },
+          query: {
+            cursor: pageParam ?? undefined,
+            limit: USER_FOLLOWING_PAGE_SIZE,
+          },
+        },
+      });
+      if (error !== undefined || data === undefined) {
+        throw error ?? new Error('Unexpected error fetching following');
+      }
+      return data;
+    },
+    initialPageParam: undefined,
+    getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
+    staleTime: STALE_TIME_STANDARD,
+    enabled: userId.length > 0,
   });
 }

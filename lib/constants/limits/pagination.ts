@@ -93,3 +93,15 @@ export const HORMONE_COLUMNS_PAGE_SIZE = 20;
 
 /** 施肥コラム一覧のページ取得件数 */
 export const FERTILIZER_COLUMNS_PAGE_SIZE = 20;
+
+/** コメント返信一覧のページ取得件数 */
+export const COMMENT_REPLIES_PAGE_SIZE = 20;
+
+/** フォロワー一覧のページ取得件数 */
+export const USER_FOLLOWERS_PAGE_SIZE = 20;
+
+/** フォロー中一覧のページ取得件数 */
+export const USER_FOLLOWING_PAGE_SIZE = 20;
+
+/** ユーザーがいいねした投稿一覧のページ取得件数 */
+export const USER_LIKED_POSTS_PAGE_SIZE = 20;

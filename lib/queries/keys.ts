@@ -38,8 +38,10 @@ export const queryKeys = {
   comments: {
     /** ルートキー */
     all: ['comments'] as const,
-    /** 指定投稿のコメント一覧 */
+    /** 指定投稿のコメント一覧（トップレベルのみ） */
     byPost: (postId: string) => ['comments', postId] as const,
+    /** 指定コメントへの返信一覧 */
+    replies: (commentId: string) => ['comments', 'replies', commentId] as const,
   },
 
   /** ユーザー */
@@ -65,6 +67,18 @@ export const queryKeys = {
     posts: (userId: string) => ['users', 'posts', userId] as const,
     /** ユーザーコメント一覧（GET /api/v1/users/{id}/comments・無限スクロール） */
     comments: (userId: string) => ['users', 'comments', userId] as const,
+    /**
+     * フォロワー一覧（GET /api/v1/users/{id}/followers・無限スクロール）。
+     * カーソルは followerId 側。following とはカーソルの意味が異なるためキャッシュを分離する。
+     */
+    followers: (userId: string) => ['users', 'followers', userId] as const,
+    /**
+     * フォロー中一覧（GET /api/v1/users/{id}/following・無限スクロール）。
+     * カーソルは followingId 側。followers とはカーソルの意味が異なるためキャッシュを分離する。
+     */
+    following: (userId: string) => ['users', 'following', userId] as const,
+    /** ユーザーがいいねした投稿一覧（GET /api/v1/users/{id}/likes・無限スクロール） */
+    likes: (userId: string) => ['users', 'likes', userId] as const,
   },
 
   /** 通知 */

@@ -33,8 +33,9 @@
 | リポスト・リポスト解除（`useToggleRepostMutation`） | `queryKeys.posts.detail(postId)` のみ（onSettled で invalidate） | フィード・詳細の isReposted / repostCount は onMutate で楽観更新、onError でロールバック。フィード再取得は重いため invalidate しない |
 | 引用投稿作成（`useQuotePostMutation`） | `queryKeys.posts.feed()` / 自分の `queryKeys.users.posts(currentUserId)`（onSettled） | 楽観更新なし。自分の投稿一覧（ユーザー投稿タブ）に新規引用投稿が追加されるため users.posts も invalidate |
 | アンケート投票（`useVotePollMutation`） | `queryKeys.posts.detail(postId)`（postId あり時・onSettled）/ `queryKeys.posts.all`（postId なし時・onSettled） | 楽観更新なし（二重投票・期限切れ・不正 optionId の拒否があるため）。投票後の最新集計は投稿詳細のリフェッチで反映する |
-| コメント作成（`useCreateCommentMutation`） | `queryKeys.comments.byPost(postId)` / `queryKeys.posts.detail(postId)`（onSettled） | コメント数カウントも投稿詳細に含まれるため。楽観更新なし |
+| コメント作成（`useCreateCommentMutation`） | `queryKeys.comments.byPost(postId)` / `queryKeys.posts.detail(postId)`（onSettled）/ `queryKeys.comments.replies(parentId)`（parentId 指定時・返信作成時のみ・onSettled） | コメント数カウントも投稿詳細に含まれるため。楽観更新なし |
 | コメント削除（`useDeleteCommentMutation`） | `queryKeys.comments.byPost(postId)` / `queryKeys.posts.detail(postId)`（onSettled） | 同上 |
+| コメントいいね・いいね取り消し（`useToggleCommentLikeMutation(postId)`） | `queryKeys.comments.byPost(postId)`（onSettled）/ `queryKeys.comments.replies(parentId)`（parentId 指定時・onSettled） | onMutate で `queryKeys.comments.all` prefix 一致の全キャッシュ（byPost + replies）から該当 commentId の isLiked/likeCount を楽観更新、onError でロールバック。対象コメントが byPost/replies のどちらにあるか呼び出し側は判別不要 |
 | フォロー・フォロー解除（`useToggleFollowMutation`） | 対象の `queryKeys.users.detail(targetId)` / `queryKeys.posts.feed()`（onSettled で invalidate） | onMutate で users.detail の following/requested/followersCount と search.users キャッシュ内の該当 item を楽観更新。onSuccess で FollowResponse 確定値（following/requested/followerCount）を users.detail と search.users item に書き込む。onSettled で users.detail と posts.feed を invalidate |
 | フォローリクエスト承認（`useApproveFollowRequestMutation`） | `queryKeys.users.detail(requesterId)` / `queryKeys.notifications.unreadCount` / `queryKeys.notifications.list()`（onSuccess で invalidate） | onSuccess で followRequests.list() のキャッシュから該当 id を setQueryData で除去（承認後は pending 一覧に出ないため）。承認でフォロー関係が成立するため users.detail と notifications も invalidate |
 | フォローリクエスト拒否（`useRejectFollowRequestMutation`） | なし（setQueryData のみ） | onSuccess で followRequests.list() のキャッシュから該当 id を setQueryData で除去。拒否は通知なし・フォロー関係変化なしのため invalidate 不要 |
@@ -87,6 +88,7 @@
 | 盆栽園登録（`useCreateShopMutation`） | `queryKeys.shops.all`（onSettled） | 409 CONFLICT（同一住所重複）はそのまま伝播 |
 | 盆栽園更新（`useUpdateShopMutation`） | `queryKeys.shops.detail(id)` / `queryKeys.shops.all`（onSettled） | 楽観更新なし。403 権限なし / 404 はそのまま伝播 |
 | レビュー投稿（`useCreateReviewMutation`） | `queryKeys.shops.reviews(shopId)` / `queryKeys.shops.detail(shopId)`（onSettled） | averageRating / reviewCount が変わるため detail も invalidate。409 CONFLICT（二重投稿）はそのまま伝播 |
+| ジオコーディング（`useGeocodeMutation`） | なし（キャッシュを持たない） | GET /api/v1/geocode。レート制限（15/分）が厳しいため useQuery ではなく useMutation として実装し、呼び出し側が明示的に mutateAsync(address) を実行する。404（住所解決不可）はそのまま伝播 |
 
 ## 予約投稿系（lib/queries/scheduled-posts.ts）
 
@@ -133,8 +135,12 @@
 | `queryKeys.posts.feed()` | `useFeedQuery` | 投稿作成・削除・フォロー変更・ブロック・ミュート・引用投稿作成時 |
 | `queryKeys.posts.detail(id)` | `usePostQuery` | 投稿更新・削除・いいね後の整合・リポスト後の整合・アンケート投票後 |
 | `queryKeys.users.posts(userId)` | `useUserPostsQuery` | 引用投稿作成後（自分の投稿一覧タブに表示されるため） |
-| `queryKeys.comments.byPost(postId)` | `useCommentsQuery` | コメント作成・削除時 |
+| `queryKeys.comments.byPost(postId)` | `useCommentsQuery` | コメント作成・削除・コメントいいね時 |
+| `queryKeys.comments.replies(commentId)` | `useCommentRepliesQuery` | 返信作成時（parentId=commentId）・返信へのいいね時（parentId 指定時） |
 | `queryKeys.users.comments(userId)` | `useUserCommentsQuery` | コメント作成・削除時（当該ユーザーのコメントの場合。現状は明示的な invalidate 対象に含めていない — 低頻度画面のため次回表示時の自然な stale 更新に委ねる） |
+| `queryKeys.users.followers(userId)` | `useUserFollowersQuery` | フォロー変更時（現状は明示的な invalidate 対象に含めていない — 低頻度画面のため次回表示時の自然な stale 更新に委ねる。following とはカーソルの意味が異なるためキャッシュ分離） |
+| `queryKeys.users.following(userId)` | `useUserFollowingQuery` | フォロー変更時（同上。followers とはカーソルの意味が異なるためキャッシュ分離） |
+| `queryKeys.users.likes(userId)` | `useUserLikedPostsQuery` | いいね変更時（現状は明示的な invalidate 対象に含めていない — 低頻度画面のため次回表示時の自然な stale 更新に委ねる） |
 | `queryKeys.users.meProfile` | `useCurrentUserProfileQuery` | プロフィール更新成功時（useUpdateProfileMutation の onSuccess で setQueryData + invalidate） |
 | `queryKeys.users.detail(id)` | `useUserProfileQuery` | フォロー変更・プロフィール更新・ブロック・ミュート時 |
 | `queryKeys.users.blocks` | `useBlockedUsersQuery` | ブロック・ブロック解除時 |
