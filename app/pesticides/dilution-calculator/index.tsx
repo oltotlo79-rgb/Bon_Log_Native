@@ -60,8 +60,16 @@ const DROPS_PER_ML = 20;
 // この値未満の薬剤量は計量誤差が大きく危険
 const MIN_MEASURABLE_ML = 0.1;
 
-// 水量プリセット（mL）
-const WATER_VOLUME_PRESETS: number[] = [200, 500, 1000, 2000];
+// 水量プリセット（Web 版 DILUTION_CALCULATOR_WATER_PRESETS と一致させる）
+type WaterVolumePreset = { label: string; value: number };
+
+const WATER_VOLUME_PRESETS: WaterVolumePreset[] = [
+  { label: '500mL', value: 500 },
+  { label: '1L', value: 1000 },
+  { label: '2L', value: 2000 },
+  { label: '5L', value: 5000 },
+  { label: '10L', value: 10000 },
+];
 
 // 希釈倍率プリセット
 const DILUTION_RATIO_PRESETS: number[] = [500, 1000, 1500, 2000, 3000];
@@ -87,21 +95,29 @@ function calcRequiredWater(pesticideMl: number, dilutionRatio: number): number {
 }
 
 /**
- * mL 値を表示用文字列に変換する。
- * 1000 mL 以上は L も併記。0.5 mL 未満は滴数も併記。
+ * 薬剤量（mL）を表示用文字列に変換する（Web 版 formatResult に一致）。
+ * 小数第2位までの条件付き丸め（1mL を 1.00mL と冗長表示しない）。1mL 未満は滴数も併記。
  */
-function formatMlDisplay(ml: number): string {
-  const rounded = Math.round(ml * 1000) / 1000;
-  let result = `${rounded.toFixed(2)}mL`;
-  if (ml < 0.5) {
+function formatPesticideAmount(ml: number): string {
+  const rounded = Math.round(ml * 100) / 100;
+  if (ml < 1) {
     const drops = Math.round(ml * DROPS_PER_ML);
-    result += `（約${drops}滴）`;
+    return `${rounded}mL（約${drops}滴）`;
   }
+  return `${rounded}mL`;
+}
+
+/**
+ * 必要水量（mL）を表示用文字列に変換する（Web 版 formatWaterResult に一致）。
+ * 小数第1位までの条件付き丸め。1000mL 以上は括弧形式で L も併記する。
+ */
+function formatRequiredWater(ml: number): string {
+  const rounded = Math.round(ml * 10) / 10;
   if (ml >= 1000) {
-    const liters = ml / 1000;
-    result += ` / ${liters.toFixed(1)}L`;
+    const liters = Math.round(ml / 100) / 10;
+    return `${rounded}mL（${liters}L）`;
   }
-  return result;
+  return `${rounded}mL`;
 }
 
 // ---------------------------------------------------------------------------
@@ -168,7 +184,7 @@ const DilutionResult = memo(function DilutionResult({
         <>
           <View style={styles.resultValueRow}>
             <Text style={styles.resultLabel}>必要な薬剤量</Text>
-            <Text style={styles.resultValue}>{formatMlDisplay(resultMl)}</Text>
+            <Text style={styles.resultValue}>{formatPesticideAmount(resultMl)}</Text>
           </View>
           <Text style={styles.resultNote}>
             水{waterMl}mLに対して{dilutionRatio}倍希釈
@@ -178,7 +194,7 @@ const DilutionResult = memo(function DilutionResult({
         <>
           <View style={styles.resultValueRow}>
             <Text style={styles.resultLabel}>必要水量</Text>
-            <Text style={styles.resultValue}>{formatMlDisplay(resultMl)}</Text>
+            <Text style={styles.resultValue}>{formatRequiredWater(resultMl)}</Text>
           </View>
           <Text style={styles.resultNote}>
             薬剤{pesticideMl}mLを{dilutionRatio}倍に希釈する場合
@@ -292,11 +308,11 @@ export default function DilutionCalculatorScreen() {
                 placeholderTextColor={colorTextSecondary}
               />
               <View style={styles.presetRow}>
-                {WATER_VOLUME_PRESETS.map((v) => (
+                {WATER_VOLUME_PRESETS.map(({ label, value }) => (
                   <PresetButton
-                    key={v}
-                    label={`${v}mL`}
-                    onPress={() => { setWaterInput(String(v)); }}
+                    key={value}
+                    label={label}
+                    onPress={() => { setWaterInput(String(value)); }}
                   />
                 ))}
               </View>

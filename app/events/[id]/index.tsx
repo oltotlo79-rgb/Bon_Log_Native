@@ -67,6 +67,9 @@ import {
 const ICON_SIZE = 18;
 const AVATAR_SIZE = 20;
 
+// Web 版 formatEventDateTime の date-fns 'E' 相当（日本語曜日短縮形）
+const WEEKDAY_LABELS = ['日', '月', '火', '水', '木', '金', '土'] as const;
+
 // ---------------------------------------------------------------------------
 // 型ガード
 // ---------------------------------------------------------------------------
@@ -234,7 +237,9 @@ export default function EventDetailScreen() {
 
         {/* 情報セクション */}
         <View style={styles.infoSection}>
-          <InfoRow iconName="calendar-outline" text={formatDateRange(event.startDate, event.endDate)} />
+          {startDate !== null && (
+            <DateTimeInfoRow startDate={startDate} endDate={endDate} />
+          )}
 
           {/* 都道府県・市区町村・会場をまとめて表示（Web 版の分割レイアウトを1行に集約） */}
           {(event.prefecture != null || event.city != null || event.venue != null) && (
@@ -244,13 +249,9 @@ export default function EventDetailScreen() {
             />
           )}
 
-          <InfoRow
-            iconName="ticket-outline"
-            text={event.admissionFee != null && event.admissionFee.length > 0
-              ? `入場料: ${event.admissionFee}`
-              : '無料'
-            }
-          />
+          {event.admissionFee != null && event.admissionFee.length > 0 && (
+            <InfoRow iconName="ticket-outline" text={`入場料: ${event.admissionFee}`} />
+          )}
           {event.organizer != null && event.organizer.length > 0 && (
             <InfoRow iconName="person-outline" text={`主催: ${event.organizer}`} />
           )}
@@ -385,16 +386,50 @@ function InfoRow({ iconName, text }: InfoRowProps) {
 }
 
 // ---------------------------------------------------------------------------
+// DateTimeInfoRow（開始・終了の日時を Web 版同様 2 行で表示）
+// ---------------------------------------------------------------------------
+
+type DateTimeInfoRowProps = {
+  startDate: Date;
+  endDate: Date | null;
+};
+
+function DateTimeInfoRow({ startDate, endDate }: DateTimeInfoRowProps) {
+  return (
+    <View style={styles.dateInfoRow}>
+      <Ionicons
+        name="calendar-outline"
+        size={ICON_SIZE}
+        color={colorTextSecondary}
+        style={styles.dateInfoIcon}
+        accessibilityElementsHidden
+        importantForAccessibility="no"
+      />
+      <View style={styles.dateInfoTextColumn}>
+        <Text style={styles.infoText}>{formatEventDateTime(startDate)}</Text>
+        {endDate !== null && (
+          <Text style={styles.dateInfoEndText}>{`〜 ${formatEventDateTime(endDate)}`}</Text>
+        )}
+      </View>
+    </View>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // ユーティリティ
 // ---------------------------------------------------------------------------
 
-function formatDateRange(startDate: string, endDate?: string | null): string {
-  const start = new Date(startDate);
-  const startStr = `${start.getFullYear()}年${start.getMonth() + 1}月${start.getDate()}日`;
-  if (endDate === undefined || endDate === null) return startStr;
-  const end = new Date(endDate);
-  const endStr = `${end.getFullYear()}年${end.getMonth() + 1}月${end.getDate()}日`;
-  return `${startStr} 〜 ${endStr}`;
+/**
+ * 開催日時を Web 版 formatEventDateTime（date-fns 'yyyy年M月d日(E) HH:mm'）と同形式に整形する。
+ */
+function formatEventDateTime(date: Date): string {
+  const year = date.getFullYear();
+  const month = date.getMonth() + 1;
+  const day = date.getDate();
+  const weekday = WEEKDAY_LABELS[date.getDay()];
+  const hours = String(date.getHours()).padStart(2, '0');
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  return `${year}年${month}月${day}日(${weekday}) ${hours}:${minutes}`;
 }
 
 function isNotFoundError(error: Error | null): boolean {
@@ -515,6 +550,24 @@ const styles = StyleSheet.create({
     ...textBase,
     color: colorTextPrimary,
     flex: 1,
+  },
+  dateInfoRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: spacing3,
+    paddingVertical: spacing2,
+    minHeight: 44,
+  },
+  dateInfoIcon: {
+    marginTop: 2,
+  },
+  dateInfoTextColumn: {
+    flex: 1,
+    gap: 2,
+  },
+  dateInfoEndText: {
+    ...textBase,
+    color: colorTextSecondary,
   },
   descriptionSection: {
     gap: spacing2,

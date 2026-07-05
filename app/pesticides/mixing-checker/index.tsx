@@ -1,7 +1,8 @@
 /**
  * @module app/pesticides/mixing-checker/index
  * 混用チェッカー画面。Web 版 /pesticides/mixing-checker に対応。
- * useMixingDataQuery の全データを使い、農薬 2 剤のペアを選んで混用可否を判定する。
+ * useMixingDataQuery の全データを使い、農薬 2〜3 剤（3剤目は任意）を選んで
+ * 選択された全ペアの混用可否を判定する（Web 版 MixingChecker と同構成）。
  * 選択は数百件対応の Modal + TextInput + FlatList 方式。
  * 仕様: docs/design/pesticides-web-parity.md §4-11
  */
@@ -96,7 +97,7 @@ function isIncompatible(
 type PesticidePickerModalProps = {
   visible: boolean;
   pesticides: MixingDataPesticideItem[];
-  excludeId: string | null;
+  excludeIds: string[];
   onSelect: (item: MixingDataPesticideItem) => void;
   onClose: () => void;
   title: string;
@@ -105,7 +106,7 @@ type PesticidePickerModalProps = {
 const PesticidePickerModal = memo(function PesticidePickerModal({
   visible,
   pesticides,
-  excludeId,
+  excludeIds,
   onSelect,
   onClose,
   title,
@@ -115,12 +116,12 @@ const PesticidePickerModal = memo(function PesticidePickerModal({
 
   const filtered = useMemo(() => {
     const keyword = searchText.trim();
-    const pool = excludeId !== null
-      ? pesticides.filter((p) => p.id !== excludeId)
+    const pool = excludeIds.length > 0
+      ? pesticides.filter((p) => !excludeIds.includes(p.id))
       : pesticides;
     if (keyword.length === 0) return pool;
     return pool.filter((p) => p.name.includes(keyword));
-  }, [pesticides, excludeId, searchText]);
+  }, [pesticides, excludeIds, searchText]);
 
   const handleClose = useCallback(() => {
     setSearchText('');
@@ -235,47 +236,70 @@ type PesticideSelectorProps = {
   label: string;
   selectedItem: MixingDataPesticideItem | null;
   onPress: () => void;
+  /** 任意項目（農薬3）のみ選択解除ボタンを表示するために渡す */
+  onClear?: () => void;
 };
 
 const PesticideSelector = memo(function PesticideSelector({
   label,
   selectedItem,
   onPress,
+  onClear,
 }: PesticideSelectorProps) {
   return (
     <View style={styles.selectorWrapper}>
       <Text style={styles.selectorLabel}>{label}</Text>
-      <TouchableOpacity
-        style={styles.selectorButton}
-        onPress={onPress}
-        activeOpacity={0.7}
-        accessibilityRole="button"
-        accessibilityLabel={
-          selectedItem !== null
-            ? `${label}: ${selectedItem.name}（タップして変更）`
-            : `${label}を選択する`
-        }
-      >
-        {selectedItem !== null ? (
-          <View style={styles.selectorSelected}>
-            <Text style={styles.selectorSelectedName} numberOfLines={1}>
-              {selectedItem.name}
-            </Text>
-            <Text style={styles.selectorSelectedType}>
-              {PESTICIDE_TYPE_LABELS[selectedItem.pesticideType]}
-            </Text>
-          </View>
-        ) : (
-          <Text style={styles.selectorPlaceholder}>農薬を選択する</Text>
+      <View style={styles.selectorRow}>
+        <TouchableOpacity
+          style={[styles.selectorButton, styles.selectorButtonFlex]}
+          onPress={onPress}
+          activeOpacity={0.7}
+          accessibilityRole="button"
+          accessibilityLabel={
+            selectedItem !== null
+              ? `${label}: ${selectedItem.name}（タップして変更）`
+              : `${label}を選択する`
+          }
+        >
+          {selectedItem !== null ? (
+            <View style={styles.selectorSelected}>
+              <Text style={styles.selectorSelectedName} numberOfLines={1}>
+                {selectedItem.name}
+              </Text>
+              <Text style={styles.selectorSelectedType}>
+                {PESTICIDE_TYPE_LABELS[selectedItem.pesticideType]}
+              </Text>
+            </View>
+          ) : (
+            <Text style={styles.selectorPlaceholder}>農薬を選択する</Text>
+          )}
+          <Ionicons
+            name="chevron-down"
+            size={16}
+            color={colorTextSecondary}
+            accessibilityElementsHidden
+            importantForAccessibility="no"
+          />
+        </TouchableOpacity>
+
+        {selectedItem !== null && onClear !== undefined && (
+          <TouchableOpacity
+            style={styles.selectorClearButton}
+            onPress={onClear}
+            accessibilityRole="button"
+            accessibilityLabel={`${label}の選択を解除`}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <Ionicons
+              name="close-circle"
+              size={20}
+              color={colorTextSecondary}
+              accessibilityElementsHidden
+              importantForAccessibility="no"
+            />
+          </TouchableOpacity>
         )}
-        <Ionicons
-          name="chevron-down"
-          size={16}
-          color={colorTextSecondary}
-          accessibilityElementsHidden
-          importantForAccessibility="no"
-        />
-      </TouchableOpacity>
+      </View>
     </View>
   );
 });
@@ -323,7 +347,7 @@ const MixingResultCard = memo(function MixingResultCard({
               { color: incompatible ? colorError : colorSuccess },
             ]}
           >
-            {incompatible ? '混用不可' : '問題報告なし'}
+            {incompatible ? '混用不可' : '混用可能'}
           </Text>
         </View>
       </View>
@@ -347,7 +371,14 @@ const MixingResultCard = memo(function MixingResultCard({
 // Screen
 // ---------------------------------------------------------------------------
 
-type ModalTarget = 'pesticide1' | 'pesticide2';
+type ModalTarget = 'pesticide1' | 'pesticide2' | 'pesticide3';
+
+type MixingPairResult = {
+  key: string;
+  pesticide1: MixingDataPesticideItem;
+  pesticide2: MixingDataPesticideItem;
+  incompatible: boolean;
+};
 
 export default function MixingCheckerScreen() {
   const insets = useSafeAreaInsets();
@@ -357,6 +388,7 @@ export default function MixingCheckerScreen() {
 
   const [pesticide1, setPesticide1] = useState<MixingDataPesticideItem | null>(null);
   const [pesticide2, setPesticide2] = useState<MixingDataPesticideItem | null>(null);
+  const [pesticide3, setPesticide3] = useState<MixingDataPesticideItem | null>(null);
   const [modalTarget, setModalTarget] = useState<ModalTarget | null>(null);
 
   const handleRefresh = useCallback(() => { void refetch(); }, [refetch]);
@@ -367,20 +399,21 @@ export default function MixingCheckerScreen() {
 
   const handleSelect = useCallback(
     (item: MixingDataPesticideItem) => {
+      // モーダルは選択済みの他 2 剤を除外して表示するため、ここでの重複解除は不要
       if (modalTarget === 'pesticide1') {
         setPesticide1(item);
-        // 農薬1と農薬2が同じ場合はリセット
-        if (pesticide2?.id === item.id) setPesticide2(null);
       } else if (modalTarget === 'pesticide2') {
         setPesticide2(item);
-        if (pesticide1?.id === item.id) setPesticide1(null);
+      } else if (modalTarget === 'pesticide3') {
+        setPesticide3(item);
       }
       setModalTarget(null);
     },
-    [modalTarget, pesticide1, pesticide2]
+    [modalTarget]
   );
 
   const handleCloseModal = useCallback(() => { setModalTarget(null); }, []);
+  const handleClearPesticide3 = useCallback(() => { setPesticide3(null); }, []);
 
   const incompatibilities = useMemo(
     () => data?.incompatibilities ?? [],
@@ -388,17 +421,59 @@ export default function MixingCheckerScreen() {
   );
   const pesticides = useMemo(() => data?.pesticides ?? [], [data]);
 
-  // 両方選択済みのときのみ判定
-  const mixingResult = useMemo(() => {
-    if (pesticide1 === null || pesticide2 === null) return null;
-    return isIncompatible(pesticide1.id, pesticide2.id, incompatibilities);
-  }, [pesticide1, pesticide2, incompatibilities]);
+  // 選択された全ペア（1-2, 1-3, 2-3）の可否を判定する（Web 版 MixingChecker と同じ組み合わせ方）
+  const mixingResults = useMemo<MixingPairResult[]>(() => {
+    const pairs: MixingPairResult[] = [];
 
-  // モーダル側で除外するID
-  const excludeIdForModal =
+    if (pesticide1 !== null && pesticide2 !== null) {
+      pairs.push({
+        key: `${pesticide1.id}-${pesticide2.id}`,
+        pesticide1,
+        pesticide2,
+        incompatible: isIncompatible(pesticide1.id, pesticide2.id, incompatibilities),
+      });
+    }
+
+    if (pesticide3 !== null) {
+      if (pesticide1 !== null) {
+        pairs.push({
+          key: `${pesticide1.id}-${pesticide3.id}`,
+          pesticide1,
+          pesticide2: pesticide3,
+          incompatible: isIncompatible(pesticide1.id, pesticide3.id, incompatibilities),
+        });
+      }
+      if (pesticide2 !== null) {
+        pairs.push({
+          key: `${pesticide2.id}-${pesticide3.id}`,
+          pesticide1: pesticide2,
+          pesticide2: pesticide3,
+          incompatible: isIncompatible(pesticide2.id, pesticide3.id, incompatibilities),
+        });
+      }
+    }
+
+    return pairs;
+  }, [pesticide1, pesticide2, pesticide3, incompatibilities]);
+
+  // 農薬1・2の両方が選択されて初めて結果セクションを表示する（Web 版と同じ表示条件）
+  const showResults = pesticide1 !== null && pesticide2 !== null;
+
+  // モーダル側で除外するID（選択済みの他 2 剤を候補から除く）
+  const excludeIdsForModal = useMemo(() => {
+    const ids: string[] = [];
+    if (modalTarget !== 'pesticide1' && pesticide1 !== null) ids.push(pesticide1.id);
+    if (modalTarget !== 'pesticide2' && pesticide2 !== null) ids.push(pesticide2.id);
+    if (modalTarget !== 'pesticide3' && pesticide3 !== null) ids.push(pesticide3.id);
+    return ids;
+  }, [modalTarget, pesticide1, pesticide2, pesticide3]);
+
+  const modalTitle =
     modalTarget === 'pesticide1'
-      ? (pesticide2?.id ?? null)
-      : (pesticide1?.id ?? null);
+      ? '農薬 1 を選択'
+      : modalTarget === 'pesticide2'
+        ? '農薬 2 を選択'
+        : '農薬 3 を選択';
 
   if (isLoading) {
     return (
@@ -444,10 +519,10 @@ export default function MixingCheckerScreen() {
         <PesticidePickerModal
           visible
           pesticides={pesticides}
-          excludeId={excludeIdForModal}
+          excludeIds={excludeIdsForModal}
           onSelect={handleSelect}
           onClose={handleCloseModal}
-          title={modalTarget === 'pesticide1' ? '農薬 1 を選択' : '農薬 2 を選択'}
+          title={modalTitle}
         />
       )}
 
@@ -478,16 +553,24 @@ export default function MixingCheckerScreen() {
             selectedItem={pesticide2}
             onPress={() => { openModal('pesticide2'); }}
           />
+          <View style={styles.divider} />
+          <PesticideSelector
+            label="農薬 3（任意）"
+            selectedItem={pesticide3}
+            onPress={() => { openModal('pesticide3'); }}
+            onClear={handleClearPesticide3}
+          />
         </View>
 
-        {/* 判定結果 */}
-        {mixingResult !== null && pesticide1 !== null && pesticide2 !== null && (
+        {/* 判定結果（選択された全ペア分を並べる） */}
+        {showResults && mixingResults.map((pair) => (
           <MixingResultCard
-            pesticide1={pesticide1}
-            pesticide2={pesticide2}
-            incompatible={mixingResult}
+            key={pair.key}
+            pesticide1={pair.pesticide1}
+            pesticide2={pair.pesticide2}
+            incompatible={pair.incompatible}
           />
-        )}
+        ))}
 
         {/* 注意書き */}
         <View style={styles.noteCard}>
@@ -547,6 +630,11 @@ const styles = StyleSheet.create({
     color: colorTextSecondary,
     fontFamily: fontFamilySerifBold,
   },
+  selectorRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing2,
+  },
   selectorButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -558,6 +646,15 @@ const styles = StyleSheet.create({
     paddingVertical: spacing3,
     backgroundColor: colorBackground,
     minHeight: 44,
+  },
+  selectorButtonFlex: {
+    flex: 1,
+  },
+  selectorClearButton: {
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   selectorSelected: {
     flex: 1,

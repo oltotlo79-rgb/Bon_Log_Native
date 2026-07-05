@@ -108,6 +108,13 @@ const DEFAULT_SORT_BY: ShopsListParams['sortBy'] = 'location';
 
 type ShopListItem = ShopListResponse['items'][number];
 
+// 緯度経度を持つ盆栽園のみ地図ピンにできる（Web 版 MapWrapper が受け取る shops と同条件）
+function hasMapCoordinates(
+  item: ShopListItem
+): item is ShopListItem & { latitude: number; longitude: number } {
+  return item.latitude !== null && item.longitude !== null;
+}
+
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
@@ -175,7 +182,29 @@ export default function ShopsScreen() {
     refetch: refetchMapPins,
   } = useShopMapPinsQuery();
 
-  const mapItems: ShopMapItem[] = mapPinsData?.items ?? [];
+  // Web 版（getShops の絞り込み結果を MapWrapper にそのまま渡す構成）に合わせ、
+  // 検索・都道府県・地方・ジャンルのいずれかが有効なときは全件ピンではなく
+  // 読み込み済みの絞り込み結果（ページ追加読み込みで増える）をピンにする。
+  const hasActiveMapFilter =
+    (committedSearch !== undefined && committedSearch.length > 0) ||
+    genreId !== undefined ||
+    prefecture !== undefined ||
+    region !== undefined;
+
+  const mapItems: ShopMapItem[] = hasActiveMapFilter
+    ? allItems.filter(hasMapCoordinates).map((item) => ({
+        id: item.id,
+        name: item.name,
+        latitude: item.latitude,
+        longitude: item.longitude,
+        address: item.address,
+        averageRating: item.averageRating,
+        reviewCount: item.reviewCount,
+      }))
+    : (mapPinsData?.items ?? []);
+
+  const isMapDataLoading = hasActiveMapFilter ? false : isMapPinsLoading;
+  const isMapDataError = hasActiveMapFilter ? false : isMapPinsError;
 
   const handleSearch = useCallback(() => {
     const trimmed = search.trim();
@@ -363,9 +392,9 @@ export default function ShopsScreen() {
             <BonsaiMapView
               shops={mapItems}
               isOnline={isOnline}
-              isMapLoading={isMapPinsLoading}
-              isMapError={isMapPinsError}
-              onRetryMapData={() => void refetchMapPins()}
+              isMapLoading={isMapDataLoading}
+              isMapError={isMapDataError}
+              onRetryMapData={hasActiveMapFilter ? undefined : () => void refetchMapPins()}
             />
             {allItems.length > 0 && (
               <Text style={styles.resultCount}>盆栽園一覧 {allItems.length}件</Text>
