@@ -2,8 +2,9 @@
  * @module components/profile/ProfileHeader
  * Web 版 ProfileHeader（components/user/ProfileHeader.tsx）のモバイル移植版。
  * カバー画像 / アバター / ニックネーム / プレミアム&非公開バッジ /
- * bio / location / 盆栽歴 / 参加日 / 統計(投稿・フォロー中・フォロワー) /
+ * bio / location / 盆栽歴 / 参加日 / 統計(投稿・フォロー中・フォロワー・いいね) /
  * 編集ボタン(自分) またはフォロー+通報・ブロック(他人) を含む。
+ * フォロー中・フォロワー・いいねの統計はタップで各一覧画面へ遷移する（Web版と同じ導線）。
  */
 
 import React from 'react';
@@ -27,7 +28,6 @@ import {
   spacing3,
   spacing4,
   spacing5,
-  spacing6,
   radiusFull,
   radiusMd,
   radiusLg,
@@ -38,7 +38,12 @@ import {
   textSm,
   textXs,
 } from '@/lib/constants/design-tokens';
-import { ROUTE_SETTINGS_PROFILE } from '@/lib/constants/routes';
+import {
+  ROUTE_SETTINGS_PROFILE,
+  routeUserFollowers,
+  routeUserFollowing,
+  routeUserLikes,
+} from '@/lib/constants/routes';
 
 // ---------------------------------------------------------------------------
 // 定数
@@ -50,6 +55,9 @@ const AVATAR_BORDER_WIDTH = 3;
 
 // アバターが上にはみ出す量
 const AVATAR_OVERLAP = AVATAR_SIZE / 2;
+
+// 統計リンクのタップ領域を 44pt 以上確保するための余白
+const STAT_LINK_HIT_SLOP = { top: 8, bottom: 8, left: 4, right: 4 } as const;
 
 // ---------------------------------------------------------------------------
 // 盆栽歴計算（Web版 profile-utils.ts と同一ロジック）
@@ -132,6 +140,33 @@ function StatItem({ count, label }: StatItemProps) {
       <Text style={styles.statCount}>{count}</Text>
       <Text style={styles.statLabel}>{label}</Text>
     </View>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// StatLink（フォロー中・フォロワー・いいね一覧へ遷移するタップ可能な統計）
+// ---------------------------------------------------------------------------
+
+type StatLinkProps = {
+  /** いいねは Web 版同様に件数を表示しないため任意 */
+  count?: number;
+  label: string;
+  onPress: () => void;
+  accessibilityLabel: string;
+};
+
+function StatLink({ count, label, onPress, accessibilityLabel }: StatLinkProps) {
+  return (
+    <TouchableOpacity
+      style={styles.statItem}
+      onPress={onPress}
+      accessibilityRole="button"
+      accessibilityLabel={accessibilityLabel}
+      hitSlop={STAT_LINK_HIT_SLOP}
+    >
+      {count !== undefined && <Text style={styles.statCount}>{count}</Text>}
+      <Text style={styles.statLabel}>{label}</Text>
+    </TouchableOpacity>
   );
 }
 
@@ -339,11 +374,26 @@ function ProfileHeaderInner({
           </View>
         </View>
 
-        {/* 統計 */}
+        {/* 統計（フォロー中・フォロワー・いいねは Web 版同様に一覧画面へ遷移する） */}
         <View style={styles.statsRow}>
           <StatItem count={postsCount} label="投稿" />
-          <StatItem count={followingCount} label="フォロー中" />
-          <StatItem count={followersCount} label="フォロワー" />
+          <StatLink
+            count={followingCount}
+            label="フォロー中"
+            onPress={() => router.push(routeUserFollowing(id))}
+            accessibilityLabel={`フォロー中 ${followingCount}人。一覧を見る`}
+          />
+          <StatLink
+            count={followersCount}
+            label="フォロワー"
+            onPress={() => router.push(routeUserFollowers(id))}
+            accessibilityLabel={`フォロワー ${followersCount}人。一覧を見る`}
+          />
+          <StatLink
+            label="いいね"
+            onPress={() => router.push(routeUserLikes(id))}
+            accessibilityLabel="いいねした投稿一覧を見る"
+          />
         </View>
       </View>
     </View>
@@ -494,7 +544,8 @@ const styles = StyleSheet.create({
   },
   statsRow: {
     flexDirection: 'row',
-    gap: spacing6,
+    flexWrap: 'wrap',
+    gap: spacing4,
     marginTop: spacing2,
   },
   statItem: {

@@ -143,6 +143,45 @@ export function routeUserDetail(id: string): `/users/${string}` {
   return `/users/${id}`;
 }
 
+/**
+ * フォロワー一覧画面へのパスを返す。
+ * Expo Router の dynamic route: `app/users/[id]/followers/index.tsx`
+ *
+ * 使い方: `router.push(routeUserFollowers('abc123'))`
+ */
+export function routeUserFollowers(id: string): {
+  pathname: '/users/[id]/followers';
+  params: { id: string };
+} {
+  return { pathname: '/users/[id]/followers', params: { id } };
+}
+
+/**
+ * フォロー中一覧画面へのパスを返す。
+ * Expo Router の dynamic route: `app/users/[id]/following/index.tsx`
+ *
+ * 使い方: `router.push(routeUserFollowing('abc123'))`
+ */
+export function routeUserFollowing(id: string): {
+  pathname: '/users/[id]/following';
+  params: { id: string };
+} {
+  return { pathname: '/users/[id]/following', params: { id } };
+}
+
+/**
+ * いいねした投稿一覧画面へのパスを返す。
+ * Expo Router の dynamic route: `app/users/[id]/likes/index.tsx`
+ *
+ * 使い方: `router.push(routeUserLikes('abc123'))`
+ */
+export function routeUserLikes(id: string): {
+  pathname: '/users/[id]/likes';
+  params: { id: string };
+} {
+  return { pathname: '/users/[id]/likes', params: { id } };
+}
+
 // ---------------------------------------------------------------------------
 // ウェーブ1 閲覧系スタック画面
 // ---------------------------------------------------------------------------
@@ -586,6 +625,9 @@ export const routes = {
   postEdit: routePostEdit,
   postQuote: routePostQuote,
   userDetail: routeUserDetail,
+  userFollowers: routeUserFollowers,
+  userFollowing: routeUserFollowing,
+  userLikes: routeUserLikes,
   searchByQuery: routeSearchByQuery,
   searchByGenre: routeSearchByGenre,
 
