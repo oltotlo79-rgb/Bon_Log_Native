@@ -7,7 +7,7 @@
  * APIキー不要の OSM/Leaflet を WebView 内で動作させる方式を採用する。
  */
 
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -29,7 +29,9 @@ import {
   colorTextSecondary,
   colorTextTertiary,
   colorActionPrimary,
+  colorActionPrimaryText,
   colorBorderLight,
+  spacing2,
   spacing3,
   spacing4,
   radiusMd,
@@ -37,6 +39,7 @@ import {
   textSm,
   textXs,
 } from '@/lib/constants/design-tokens';
+import { ERR_LOAD_FAILED } from '@/lib/constants/errors';
 
 // ---------------------------------------------------------------------------
 // 定数
@@ -49,6 +52,11 @@ const MAP_GEOLOCATION_ZOOM = 14;
 const MAP_HEIGHT = 220;
 const LOCATION_BUTTON_SIZE = 44;
 const LOCATION_ICON_SIZE = 22;
+const RETRY_BUTTON_MIN_WIDTH = 96;
+
+// Leaflet の CDN 読み込みが失敗（ネットワーク遮断・CDN 障害等）してもフリーズしないよう、
+// postMessage('ready') が一定時間届かなければタイムアウトとしてエラー表示へフォールバックする。
+const MAP_READY_TIMEOUT_MS = 8000;
 
 // ---------------------------------------------------------------------------
 // 型
@@ -69,12 +77,13 @@ type Props = {
   isOnline: boolean;
   isMapLoading?: boolean;
   isMapError?: boolean;
+  /** 盆栽園ピン取得クエリの再試行（isMapError 時のみ使用） */
+  onRetryMapData?: () => void;
 };
 
-// WebView から postMessage で送られてくるデータの型
-type MapMessage =
-  | { type: 'shopSelected'; shopId: string }
-  | { type: 'ready' };
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
 
 // ---------------------------------------------------------------------------
 // Leaflet HTML 生成
@@ -94,14 +103,13 @@ function buildLeafletHtml(shops: ShopMapItem[]): string {
     }))
   );
 
+  // unpkg が遮断・障害のネットワーク環境向けに jsdelivr へのフォールバック読み込みを用意する
+  // （読み込み失敗時に無限ローディングへ陥っていた根本原因への対処）。
   return `<!DOCTYPE html>
 <html lang="ja">
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
-    crossorigin=""/>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     html, body { height: 100%; width: 100%; overflow: hidden; }
@@ -146,95 +154,142 @@ function buildLeafletHtml(shops: ShopMapItem[]): string {
     }
     .leaflet-container { font-family: sans-serif; }
   </style>
+  <script>
+    // ready / error の通知と CDN フォールバックは、外部スクリプトタグより先に定義しておく
+    // （onload/onerror ハンドラの評価時に未定義になるのを防ぐため）。
+    var shops = ${markersJson};
+
+    function notifyError(message) {
+      if (window.ReactNativeWebView) {
+        window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'error', message: String(message) }));
+      }
+    }
+
+    window.onerror = function (message) {
+      notifyError(message);
+      return true;
+    };
+
+    function loadCssFallback() {
+      var link = document.createElement('link');
+      link.rel = 'stylesheet';
+      link.href = 'https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css';
+      document.head.appendChild(link);
+    }
+
+    function loadLeafletScriptFallback() {
+      var script = document.createElement('script');
+      script.src = 'https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js';
+      script.onload = initMap;
+      script.onerror = function () {
+        notifyError('leaflet failed to load from all CDN sources');
+      };
+      document.body.appendChild(script);
+    }
+
+    function buildStars(rating) {
+      if (!rating) return '';
+      var full = Math.floor(rating);
+      var half = rating % 1 >= 0.5;
+      var stars = '';
+      for (var i = 0; i < 5; i++) {
+        if (i < full) {
+          stars += '<span style="color:#b8860b">&#9733;</span>';
+        } else if (i === full && half) {
+          stars += '<span style="color:#b8860b">&#9734;</span>';
+        } else {
+          stars += '<span style="color:#ccc">&#9733;</span>';
+        }
+      }
+      return stars;
+    }
+
+    function sendShopId(shopId) {
+      var msg = JSON.stringify({ type: 'shopSelected', shopId: shopId });
+      if (window.ReactNativeWebView) {
+        window.ReactNativeWebView.postMessage(msg);
+      }
+    }
+
+    function moveToLocation(lat, lng) {
+      if (window.__bonsaiMap) {
+        window.__bonsaiMap.setView([lat, lng], ${MAP_GEOLOCATION_ZOOM});
+      }
+    }
+
+    function initMap() {
+      try {
+        if (typeof L === 'undefined') {
+          notifyError('leaflet global is undefined after script load');
+          return;
+        }
+
+        var map = L.map('map', {
+          center: [${MAP_DEFAULT_CENTER_LAT}, ${MAP_DEFAULT_CENTER_LNG}],
+          zoom: ${MAP_DEFAULT_ZOOM},
+          zoomControl: true
+        });
+        window.__bonsaiMap = map;
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+          maxZoom: 19
+        }).addTo(map);
+
+        var pinSvg = [
+          '<svg width="32" height="44" viewBox="0 0 32 44" fill="none" xmlns="http://www.w3.org/2000/svg">',
+          '<path d="M16 0C7.163 0 0 7.163 0 16c0 12 16 28 16 28s16-16 16-28c0-8.837-7.163-16-16-16z" fill="#3a6b42"/>',
+          '<circle cx="16" cy="14" r="7" fill="white"/>',
+          '<path d="M16 10c-1.5 0-2.5 1-2.5 2 0 .5.2 1 .5 1.3-.8.4-1.5 1.2-1.5 2.2 0 1.4 1.3 2.5 3.5 2.5s3.5-1.1 3.5-2.5c0-1-.7-1.8-1.5-2.2.3-.3.5-.8.5-1.3 0-1-1-2-2.5-2z" fill="#3a6b42"/>',
+          '</svg>'
+        ].join('');
+
+        var shopPinIcon = L.divIcon({
+          className: '',
+          html: pinSvg,
+          iconSize: [32, 44],
+          iconAnchor: [16, 44],
+          popupAnchor: [0, -44]
+        });
+
+        shops.forEach(function (shop) {
+          var marker = L.marker([shop.lat, shop.lng], { icon: shopPinIcon });
+
+          var ratingHtml = '';
+          if (shop.rating !== null) {
+            ratingHtml = '<div class="popup-rating">' + buildStars(shop.rating) + ' (' + shop.reviewCount + '件)</div>';
+          }
+
+          var popupContent = [
+            '<div class="popup-inner">',
+            '<div class="popup-name">' + shop.name + '</div>',
+            '<div class="popup-address">' + shop.address + '</div>',
+            ratingHtml,
+            '<a class="popup-link" onclick="sendShopId(\'' + shop.id + '\')">詳細を見る</a>',
+            '</div>'
+          ].join('');
+
+          marker.bindPopup(popupContent, { className: 'custom-popup' });
+          marker.addTo(map);
+        });
+
+        if (window.ReactNativeWebView) {
+          window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'ready' }));
+        }
+      } catch (e) {
+        notifyError(e && e.message ? e.message : String(e));
+      }
+    }
+  </script>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+    crossorigin="" onerror="loadCssFallback()"/>
 </head>
 <body>
 <div id="map"></div>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
   integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV/XN/WLs="
-  crossorigin=""></script>
-<script>
-  var shops = ${markersJson};
-
-  var map = L.map('map', {
-    center: [${MAP_DEFAULT_CENTER_LAT}, ${MAP_DEFAULT_CENTER_LNG}],
-    zoom: ${MAP_DEFAULT_ZOOM},
-    zoomControl: true
-  });
-
-  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
-    maxZoom: 19
-  }).addTo(map);
-
-  var pinSvg = [
-    '<svg width="32" height="44" viewBox="0 0 32 44" fill="none" xmlns="http://www.w3.org/2000/svg">',
-    '<path d="M16 0C7.163 0 0 7.163 0 16c0 12 16 28 16 28s16-16 16-28c0-8.837-7.163-16-16-16z" fill="#3a6b42"/>',
-    '<circle cx="16" cy="14" r="7" fill="white"/>',
-    '<path d="M16 10c-1.5 0-2.5 1-2.5 2 0 .5.2 1 .5 1.3-.8.4-1.5 1.2-1.5 2.2 0 1.4 1.3 2.5 3.5 2.5s3.5-1.1 3.5-2.5c0-1-.7-1.8-1.5-2.2.3-.3.5-.8.5-1.3 0-1-1-2-2.5-2z" fill="#3a6b42"/>',
-    '</svg>'
-  ].join('');
-
-  var shopPinIcon = L.divIcon({
-    className: '',
-    html: pinSvg,
-    iconSize: [32, 44],
-    iconAnchor: [16, 44],
-    popupAnchor: [0, -44]
-  });
-
-  function buildStars(rating) {
-    if (!rating) return '';
-    var full = Math.floor(rating);
-    var half = rating % 1 >= 0.5;
-    var stars = '';
-    for (var i = 0; i < 5; i++) {
-      if (i < full) {
-        stars += '<span style="color:#b8860b">&#9733;</span>';
-      } else if (i === full && half) {
-        stars += '<span style="color:#b8860b">&#9734;</span>';
-      } else {
-        stars += '<span style="color:#ccc">&#9733;</span>';
-      }
-    }
-    return stars;
-  }
-
-  shops.forEach(function(shop) {
-    var marker = L.marker([shop.lat, shop.lng], { icon: shopPinIcon });
-
-    var ratingHtml = '';
-    if (shop.rating !== null) {
-      ratingHtml = '<div class="popup-rating">' + buildStars(shop.rating) + ' (' + shop.reviewCount + '件)</div>';
-    }
-
-    var popupContent = [
-      '<div class="popup-inner">',
-      '<div class="popup-name">' + shop.name + '</div>',
-      '<div class="popup-address">' + shop.address + '</div>',
-      ratingHtml,
-      '<a class="popup-link" onclick="sendShopId(\'' + shop.id + '\')">詳細を見る</a>',
-      '</div>'
-    ].join('');
-
-    marker.bindPopup(popupContent, { className: 'custom-popup' });
-    marker.addTo(map);
-  });
-
-  function sendShopId(shopId) {
-    var msg = JSON.stringify({ type: 'shopSelected', shopId: shopId });
-    if (window.ReactNativeWebView) {
-      window.ReactNativeWebView.postMessage(msg);
-    }
-  }
-
-  function moveToLocation(lat, lng) {
-    map.setView([lat, lng], ${MAP_GEOLOCATION_ZOOM});
-  }
-
-  if (window.ReactNativeWebView) {
-    window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'ready' }));
-  }
-</script>
+  crossorigin="" onload="initMap()" onerror="loadLeafletScriptFallback()"></script>
 </body>
 </html>`;
 }
@@ -248,46 +303,78 @@ export const BonsaiMapView = React.memo(function BonsaiMapView({
   isOnline,
   isMapLoading = false,
   isMapError = false,
+  onRetryMapData,
 }: Props) {
   const webViewRef = useRef<WebView>(null);
   const [isMapReady, setIsMapReady] = useState(false);
   const [isLocating, setIsLocating] = useState(false);
+  // WebView 内での読み込み失敗（CDN 障害・JS 実行エラー・タイムアウト）を検知した状態
+  const [webViewLoadError, setWebViewLoadError] = useState(false);
+  // 再試行時に WebView を完全に再マウントし、CDN 読み込みをやり直させるためのキー
+  const [reloadAttempt, setReloadAttempt] = useState(0);
 
   const htmlContent = buildLeafletHtml(shops);
 
+  const handleWebViewFailure = useCallback(() => {
+    setIsMapReady(false);
+    setWebViewLoadError(true);
+  }, []);
+
   const handleMessage = useCallback(
     (event: WebViewMessageEvent) => {
-      const raw: unknown = JSON.parse(event.nativeEvent.data);
-
-      // 型ガードで安全に絞る
-      if (
-        typeof raw !== 'object' ||
-        raw === null ||
-        !('type' in raw) ||
-        typeof (raw as Record<string, unknown>).type !== 'string'
-      ) {
+      let parsed: unknown;
+      try {
+        parsed = JSON.parse(event.nativeEvent.data);
+      } catch {
         return;
       }
 
-      const msg = raw as MapMessage;
+      if (!isRecord(parsed) || typeof parsed.type !== 'string') {
+        return;
+      }
 
-      if (msg.type === 'ready') {
+      if (parsed.type === 'ready') {
         setIsMapReady(true);
+        setWebViewLoadError(false);
         return;
       }
 
-      if (msg.type === 'shopSelected') {
-        if (
-          typeof (msg as { type: string; shopId: unknown }).shopId !== 'string'
-        ) {
-          return;
-        }
-        const shopId = (msg as { type: string; shopId: string }).shopId;
-        router.push({ pathname: '/shops/[id]', params: { id: shopId } });
+      if (parsed.type === 'error') {
+        handleWebViewFailure();
+        return;
+      }
+
+      if (parsed.type === 'shopSelected' && typeof parsed.shopId === 'string') {
+        router.push({ pathname: '/shops/[id]', params: { id: parsed.shopId } });
       }
     },
-    []
+    [handleWebViewFailure]
   );
+
+  const handleRetryMapLoad = useCallback(() => {
+    setIsMapReady(false);
+    setWebViewLoadError(false);
+    setReloadAttempt((n) => n + 1);
+  }, []);
+
+  // postMessage('ready') が一定時間届かない場合（CDN 遮断・スクリプト実行失敗等）は
+  // 無限ローディングにせず、エラー表示 + 再試行導線へフォールバックする。
+  useEffect(() => {
+    if (!isOnline || isMapLoading || isMapError || webViewLoadError) {
+      return undefined;
+    }
+
+    const timer = setTimeout(() => {
+      setIsMapReady((ready) => {
+        if (!ready) {
+          setWebViewLoadError(true);
+        }
+        return ready;
+      });
+    }, MAP_READY_TIMEOUT_MS);
+
+    return () => clearTimeout(timer);
+  }, [isOnline, isMapLoading, isMapError, webViewLoadError, reloadAttempt]);
 
   const handleLocationPress = useCallback(async () => {
     setIsLocating(true);
@@ -350,7 +437,17 @@ export const BonsaiMapView = React.memo(function BonsaiMapView({
           accessibilityElementsHidden
           importantForAccessibility="no"
         />
-        <Text style={styles.offlineText}>地図データを読み込めませんでした</Text>
+        <Text style={styles.offlineText}>{ERR_LOAD_FAILED}</Text>
+        {onRetryMapData !== undefined && (
+          <Pressable
+            style={({ pressed }) => [styles.retryButton, pressed && styles.retryButtonPressed]}
+            onPress={onRetryMapData}
+            accessibilityRole="button"
+            accessibilityLabel="盆栽園マップを再読み込み"
+          >
+            <Text style={styles.retryButtonText}>再試行</Text>
+          </Pressable>
+        )}
       </View>
     );
   }
@@ -364,17 +461,46 @@ export const BonsaiMapView = React.memo(function BonsaiMapView({
     );
   }
 
+  if (webViewLoadError) {
+    return (
+      <View style={styles.offlineContainer} accessibilityRole="text">
+        <Ionicons
+          name="alert-circle-outline"
+          size={24}
+          color={colorTextTertiary}
+          accessibilityElementsHidden
+          importantForAccessibility="no"
+        />
+        <Text style={styles.offlineText}>{ERR_LOAD_FAILED}</Text>
+        <Pressable
+          style={({ pressed }) => [styles.retryButton, pressed && styles.retryButtonPressed]}
+          onPress={handleRetryMapLoad}
+          accessibilityRole="button"
+          accessibilityLabel="盆栽園マップを再読み込み"
+        >
+          <Text style={styles.retryButtonText}>再試行</Text>
+        </Pressable>
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container} accessibilityLabel="盆栽園マップ">
       <WebView
+        key={reloadAttempt}
         ref={webViewRef}
         source={{ html: htmlContent }}
         style={styles.webView}
         originWhitelist={['*']}
         onMessage={handleMessage}
+        onError={handleWebViewFailure}
+        onHttpError={handleWebViewFailure}
         javaScriptEnabled
         domStorageEnabled
         startInLoadingState
+        // Android: 外側の FlatList（ListHeaderComponent）にネストしても
+        // 地図領域内のパン操作のタッチを WebView 側へ正しく渡すために必要。
+        nestedScrollEnabled
         renderLoading={() => (
           <View style={styles.loadingOverlay}>
             <ActivityIndicator size="small" color={colorActionPrimary} />
@@ -489,5 +615,23 @@ const styles = StyleSheet.create({
     ...textXs,
     color: colorTextTertiary,
     textAlign: 'center',
+  },
+  retryButton: {
+    backgroundColor: colorActionPrimary,
+    borderRadius: radiusMd,
+    paddingVertical: spacing2,
+    paddingHorizontal: spacing4,
+    minWidth: RETRY_BUTTON_MIN_WIDTH,
+    minHeight: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  retryButtonPressed: {
+    opacity: 0.8,
+  },
+  retryButtonText: {
+    ...textXs,
+    color: colorActionPrimaryText,
+    fontWeight: '600',
   },
 });

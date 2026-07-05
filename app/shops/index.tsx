@@ -91,12 +91,16 @@ type SortOption = {
   value: ShopsListParams['sortBy'];
 };
 
+// Web 版（ShopSearchForm）の並び順と一致させる: 北から順 → 新着順 → 評価順 → 名前順
 const SORT_OPTIONS: SortOption[] = [
+  { label: '北から順', value: 'location' },
+  { label: '新着順', value: 'newest' },
   { label: '評価順', value: 'rating' },
   { label: '名前順', value: 'name' },
-  { label: '新着順', value: 'newest' },
-  { label: '北から順', value: 'location' },
 ];
+
+// Web 版のデフォルトソート（getShops の既定値・ShopSearchForm の initialSort）と一致させる
+const DEFAULT_SORT_BY: ShopsListParams['sortBy'] = 'location';
 
 // ---------------------------------------------------------------------------
 // 型
@@ -117,7 +121,7 @@ export default function ShopsScreen() {
   const [search, setSearch] = useState('');
   const [committedSearch, setCommittedSearch] = useState<string | undefined>(undefined);
   const [genreId, setGenreId] = useState<string | undefined>(undefined);
-  const [sortBy, setSortBy] = useState<ShopsListParams['sortBy']>('rating');
+  const [sortBy, setSortBy] = useState<ShopsListParams['sortBy']>(DEFAULT_SORT_BY);
   const [prefecture, setPrefecture] = useState<PrefectureName | undefined>(undefined);
   const [region, setRegion] = useState<RegionName | undefined>(undefined);
   const [isPrefectureModalVisible, setIsPrefectureModalVisible] = useState(false);
@@ -168,6 +172,7 @@ export default function ShopsScreen() {
     data: mapPinsData,
     isLoading: isMapPinsLoading,
     isError: isMapPinsError,
+    refetch: refetchMapPins,
   } = useShopMapPinsQuery();
 
   const mapItems: ShopMapItem[] = mapPinsData?.items ?? [];
@@ -195,18 +200,20 @@ export default function ShopsScreen() {
 
   const renderItem = useCallback(
     ({ item }: { item: ShopListItem }) => (
-      <ShopCard
-        id={item.id}
-        name={item.name}
-        address={item.address}
-        phone={item.phone}
-        businessHours={item.businessHours}
-        closedDays={item.closedDays}
-        genres={item.genres.map((g) => g.name)}
-        averageRating={item.averageRating}
-        reviewCount={item.reviewCount}
-        onPress={() => router.push(routeShopDetail(item.id))}
-      />
+      <View style={styles.listItemWrapper}>
+        <ShopCard
+          id={item.id}
+          name={item.name}
+          address={item.address}
+          phone={item.phone}
+          businessHours={item.businessHours}
+          closedDays={item.closedDays}
+          genres={item.genres.map((g) => g.name)}
+          averageRating={item.averageRating}
+          reviewCount={item.reviewCount}
+          onPress={() => router.push(routeShopDetail(item.id))}
+        />
+      </View>
     ),
     []
   );
@@ -227,7 +234,7 @@ export default function ShopsScreen() {
     genreId !== undefined ||
     prefecture !== undefined ||
     region !== undefined ||
-    sortBy !== 'rating';
+    sortBy !== DEFAULT_SORT_BY;
 
   if (isLoading) {
     return (
@@ -323,7 +330,7 @@ export default function ShopsScreen() {
           setGenreId(undefined);
           setPrefecture(undefined);
           setRegion(undefined);
-          setSortBy('rating');
+          setSortBy(DEFAULT_SORT_BY);
         }}
       />
       <PrefecturePickerModal
@@ -339,49 +346,57 @@ export default function ShopsScreen() {
         onClose={() => setIsRegionModalVisible(false)}
       />
 
-      {/* 地図は FlatList の外に配置して全幅表示を確保する */}
-      <BonsaiMapView
-        shops={mapItems}
-        isOnline={isOnline}
-        isMapLoading={isMapPinsLoading}
-        isMapError={isMapPinsError}
-      />
-
-      {allItems.length === 0 ? (
-        <ScreenEmpty
-          iconName="map-outline"
-          title="盆栽園が登録されていません"
-          description={
-            hasActiveFilter
-              ? '条件を変えて再検索してみましょう。'
-              : '右下のボタンから盆栽園を登録してみましょう。'
-          }
-        />
-      ) : (
-        <FlatList
-          data={allItems}
-          keyExtractor={keyExtractor}
-          renderItem={renderItem}
-          onEndReached={handleLoadMore}
-          onEndReachedThreshold={0.3}
-          ListFooterComponent={renderFooter}
-          ListHeaderComponent={
-            <Text style={styles.resultCount}>盆栽園一覧 {allItems.length}件</Text>
-          }
-          contentContainerStyle={[
-            styles.listContent,
-            { paddingBottom: insets.bottom + FAB_SIZE + spacing6 * 2 },
-          ]}
-          refreshControl={
-            <RefreshControl
-              refreshing={isRefetching && !isLoading}
-              onRefresh={handleRefresh}
-              tintColor={colorActionPrimary}
+      {/*
+        地図をリストの外に固定配置すると下の盆栽園カードのスクロール領域が狭くなるため、
+        FlatList の ListHeaderComponent に含めて画面全体を一体でスクロールする構成にする。
+        地図自体は全幅表示を保つため contentContainerStyle には横paddingを持たせない。
+      */}
+      <FlatList
+        style={styles.list}
+        data={allItems}
+        keyExtractor={keyExtractor}
+        renderItem={renderItem}
+        onEndReached={handleLoadMore}
+        onEndReachedThreshold={0.3}
+        ListHeaderComponent={
+          <>
+            <BonsaiMapView
+              shops={mapItems}
+              isOnline={isOnline}
+              isMapLoading={isMapPinsLoading}
+              isMapError={isMapPinsError}
+              onRetryMapData={() => void refetchMapPins()}
             />
-          }
-          accessibilityRole="list"
-        />
-      )}
+            {allItems.length > 0 && (
+              <Text style={styles.resultCount}>盆栽園一覧 {allItems.length}件</Text>
+            )}
+          </>
+        }
+        ListEmptyComponent={
+          <ScreenEmpty
+            iconName="map-outline"
+            title="盆栽園が登録されていません"
+            description={
+              hasActiveFilter
+                ? '条件を変えて再検索してみましょう。'
+                : '右下のボタンから盆栽園を登録してみましょう。'
+            }
+          />
+        }
+        ListFooterComponent={renderFooter}
+        contentContainerStyle={[
+          styles.listContent,
+          { paddingBottom: insets.bottom + FAB_SIZE + spacing6 * 2 },
+        ]}
+        refreshControl={
+          <RefreshControl
+            refreshing={isRefetching && !isLoading}
+            onRefresh={handleRefresh}
+            tintColor={colorActionPrimary}
+          />
+        }
+        accessibilityRole="list"
+      />
 
       {/* FAB */}
       {isLoggedIn && (
@@ -947,14 +962,22 @@ const styles = StyleSheet.create({
   },
 
   // リスト
+  // 地図は ListHeaderComponent 内で全幅表示するため、横paddingはコンテンツ側（各要素）で個別に持つ
+  list: {
+    flex: 1,
+  },
   resultCount: {
     ...textSm,
     color: colorTextTertiary,
-    paddingBottom: spacing2,
-  },
-  listContent: {
     paddingHorizontal: spacing4,
     paddingTop: spacing3,
+    paddingBottom: spacing2,
+  },
+  listItemWrapper: {
+    paddingHorizontal: spacing4,
+  },
+  listContent: {
+    flexGrow: 1,
   },
   footer: {
     paddingVertical: spacing4,
