@@ -2,10 +2,11 @@
  * @module app/scheduled-posts/index
  * 予約投稿一覧画面（プレミアム限定）。
  * 非プレミアムユーザーはロック画面へリダイレクトする。
+ * Web 版 components/post/ScheduledPostList.tsx と同じ 予約中/公開済み/その他 タブ構成に準拠する。
  * 仕様: docs/design/scheduled-posts.md §3
  */
 
-import React, { useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   View,
   Text,
@@ -27,6 +28,7 @@ import { ScreenLoading } from '@/components/common/ScreenLoading';
 import { ScreenEmpty } from '@/components/common/ScreenEmpty';
 import { ScreenError } from '@/components/common/ScreenError';
 import { OfflineBanner } from '@/components/common/OfflineBanner';
+import { CatalogTabs } from '@/components/browse/CatalogTabs';
 import {
   colorBackground,
   colorSurfaceWashi,
@@ -72,6 +74,25 @@ const PENDING_LIMIT = 10;
 // ---------------------------------------------------------------------------
 
 type ScheduledPostStatus = 'pending' | 'published' | 'failed' | 'cancelled';
+
+// Web 版 ScheduledPostList.tsx の Tabs 構成（予約中/公開済み/その他）に対応
+type ScheduledPostsTab = 'pending' | 'published' | 'other';
+
+const TAB_LABEL: Record<ScheduledPostsTab, string> = {
+  pending: '予約中',
+  published: '公開済み',
+  other: 'その他',
+};
+
+const TAB_EMPTY_TITLE: Record<ScheduledPostsTab, string> = {
+  pending: '予約中の投稿はありません',
+  published: '公開済みの予約投稿はありません',
+  other: '失敗・キャンセルされた投稿はありません',
+};
+
+function isScheduledPostsTab(value: string): value is ScheduledPostsTab {
+  return value === 'pending' || value === 'published' || value === 'other';
+}
 
 // ---------------------------------------------------------------------------
 // StatusBadge
@@ -153,6 +174,7 @@ const ScheduledPostCard = React.memo(ScheduledPostCardInner);
 export default function ScheduledPostsScreen() {
   const insets = useSafeAreaInsets();
   const isOnline = useOnlineStatus();
+  const [activeTab, setActiveTab] = useState<ScheduledPostsTab>('pending');
 
   const { data: currentUser, isLoading: isUserLoading } = useCurrentUserQuery();
 
@@ -181,7 +203,34 @@ export default function ScheduledPostsScreen() {
   const allItems: ScheduledPostItem[] =
     data?.pages.flatMap((page) => page.items) ?? [];
 
-  const pendingCount = allItems.filter((item) => item.status === 'pending').length;
+  // 予約投稿は件数が少ないため、タブ切替をクライアント側で行えるよう
+  // 次ページが存在する間は自動取得して全件を確保する（イベントカレンダーと同じ方式）。
+  React.useEffect(() => {
+    if (hasNextPage && !isFetchingNextPage) {
+      void fetchNextPage();
+    }
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
+
+  const pendingItems = allItems.filter((item) => item.status === 'pending');
+  const publishedItems = allItems.filter((item) => item.status === 'published');
+  const otherItems = allItems.filter(
+    (item) => item.status === 'failed' || item.status === 'cancelled'
+  );
+
+  const tabItems: Record<ScheduledPostsTab, ScheduledPostItem[]> = {
+    pending: pendingItems,
+    published: publishedItems,
+    other: otherItems,
+  };
+
+  const displayedItems = tabItems[activeTab];
+
+  const tabs = (['pending', 'published', 'other'] as const).map((tab) => ({
+    key: tab,
+    label: `${TAB_LABEL[tab]} (${tabItems[tab].length})`,
+  }));
+
+  const pendingCount = pendingItems.length;
   const isFabDisabled = pendingCount >= PENDING_LIMIT;
 
   const handleRefresh = useCallback(() => {
@@ -252,15 +301,25 @@ export default function ScheduledPostsScreen() {
 
       <ScheduledPostsHeader />
 
-      {allItems.length === 0 ? (
+      <CatalogTabs
+        tabs={tabs}
+        activeKey={activeTab}
+        onChange={(key) => {
+          if (isScheduledPostsTab(key)) {
+            setActiveTab(key);
+          }
+        }}
+      />
+
+      {displayedItems.length === 0 ? (
         <ScreenEmpty
           iconName="calendar-outline"
-          title="予約投稿はありません"
-          description="右下のボタンから投稿を予約してみましょう。"
+          title={TAB_EMPTY_TITLE[activeTab]}
+          description={activeTab === 'pending' ? '右下のボタンから投稿を予約してみましょう。' : undefined}
         />
       ) : (
         <FlatList
-          data={allItems}
+          data={displayedItems}
           keyExtractor={keyExtractor}
           renderItem={renderItem}
           onEndReached={handleLoadMore}

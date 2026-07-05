@@ -182,7 +182,7 @@ export default function ProductDetailScreen() {
             { paddingBottom: insets.bottom + spacing8 },
           ]}
         >
-          {/* ヘッダー：薬剤名 + 種別バッジ */}
+          {/* ヘッダー：薬剤名 + 種別バッジ（Web版は種別バッジのみ。剤型は基本情報セクションに表示） */}
           <View style={styles.headerBlock}>
             <Text style={styles.name}>{data.name}</Text>
             <View style={styles.chipsRow}>
@@ -191,11 +191,6 @@ export default function ProductDetailScreen() {
                   {PESTICIDE_TYPE_LABEL[data.pesticideType]}
                 </Text>
               </View>
-              {data.formulationType !== null && (
-                <View style={styles.categoryChip}>
-                  <Text style={styles.categoryChipText}>{data.formulationType.name}</Text>
-                </View>
-              )}
             </View>
           </View>
 
@@ -305,11 +300,11 @@ export default function ProductDetailScreen() {
             )}
           </View>
 
-          {/* 有効成分（Web版のFRAC/IRACタグ付き） */}
+          {/* 成分（原体）（Web版のFRAC/IRACタグ付き） */}
           {data.activeIngredients.length > 0 && (
             <View style={styles.infoSection}>
               <Text style={styles.sectionTitle} accessibilityRole="header">
-                有効成分
+                成分（原体）
               </Text>
               {data.activeIngredients.map((ingredient) => (
                 <TouchableOpacity
@@ -417,6 +412,18 @@ export default function ProductDetailScreen() {
                         <EffectRatingBadge rating={effect.rating.efficacyLevel} label="効果" />
                       )}
                       <EffectRatingBadge rating={effect.rating.persistenceLevel} label="持続" />
+                      <View style={styles.resistanceInline}>
+                        <Text style={styles.resistanceInlineLabel}>耐性</Text>
+                        {resistanceRisk !== null ? (
+                          <View style={styles.codeTag}>
+                            <Text style={styles.codeTagText}>
+                              {RESISTANCE_RISK_LABEL[resistanceRisk]}
+                            </Text>
+                          </View>
+                        ) : (
+                          <Text style={styles.resistanceInlineLabel}>—</Text>
+                        )}
+                      </View>
                     </View>
                   </TouchableOpacity>
                 );
@@ -633,6 +640,17 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: spacing2,
     marginTop: 4,
+    alignItems: 'center',
+  },
+  // 耐性インジケータ（Web版の「耐性」ラベル + バッジ/ダッシュ表示に対応）
+  resistanceInline: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing2,
+  },
+  resistanceInlineLabel: {
+    ...textXs,
+    color: colorTextSecondary,
   },
 
   // 混用不可農薬セクション（警告スタイル：Web版の border-destructive/30 bg-destructive/5 に対応）

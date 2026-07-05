@@ -4,13 +4,14 @@
  * 仕様: docs/design/browse-screens.md §2.4
  */
 
-import React, { useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   View,
   Text,
   ScrollView,
   StyleSheet,
   TouchableOpacity,
+  Pressable,
 } from 'react-native';
 import { Stack, router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -84,6 +85,10 @@ const CATEGORY_COLOR_FALLBACK: CategoryColors = {
   text: colorCategoryFallbackText,
 };
 
+// Web版 lib/constants/limits/ui.ts の TERM_DESCRIPTION_COLLAPSE_THRESHOLD と同値
+const DESCRIPTION_COLLAPSE_THRESHOLD = 500;
+const DESCRIPTION_COLLAPSED_LINES = 6;
+
 // ---------------------------------------------------------------------------
 // Screen
 // ---------------------------------------------------------------------------
@@ -92,6 +97,7 @@ export default function DictionaryDetailScreen() {
   const insets = useSafeAreaInsets();
   const isOnline = useOnlineStatus();
   const params = useLocalSearchParams();
+  const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
 
   // slug は useLocalSearchParams で string | string[] を返すため型ガードで絞る
   const rawSlug = params['slug'];
@@ -165,8 +171,32 @@ export default function DictionaryDetailScreen() {
 
           <View style={styles.separator} />
 
-          {/* 本文 */}
-          <Text style={styles.body}>{data.term.description}</Text>
+          {/* 本文（Web版 TermDescriptionExpanded と同じ閾値で折りたたむ） */}
+          {(() => {
+            const needsCollapse = data.term.description.length > DESCRIPTION_COLLAPSE_THRESHOLD;
+            return (
+              <View style={styles.bodyWrapper}>
+                <Text
+                  style={styles.body}
+                  numberOfLines={needsCollapse && !isDescriptionExpanded ? DESCRIPTION_COLLAPSED_LINES : undefined}
+                >
+                  {data.term.description}
+                </Text>
+                {needsCollapse && (
+                  <Pressable
+                    style={styles.readMoreButton}
+                    onPress={() => setIsDescriptionExpanded((prev) => !prev)}
+                    accessibilityRole="button"
+                    accessibilityLabel={isDescriptionExpanded ? '折りたたむ' : '続きを読む'}
+                  >
+                    <Text style={styles.readMoreText}>
+                      {isDescriptionExpanded ? '折りたたむ' : '続きを読む'}
+                    </Text>
+                  </Pressable>
+                )}
+              </View>
+            );
+          })()}
 
           {/* 関連語 */}
           {data.related.length > 0 && (
@@ -183,6 +213,9 @@ export default function DictionaryDetailScreen() {
                     accessibilityRole="button"
                     accessibilityLabel={`${rel.term}の詳細を見る`}
                   >
+                    <Text style={styles.relatedChipReading} numberOfLines={1}>
+                      {rel.reading}
+                    </Text>
                     <Text style={styles.relatedChipText}>{rel.term}</Text>
                   </TouchableOpacity>
                 ))}
@@ -305,11 +338,23 @@ const styles = StyleSheet.create({
     backgroundColor: colorBorderLight,
     marginVertical: spacing4,
   },
+  bodyWrapper: {
+    marginBottom: spacing4,
+  },
   body: {
     ...textBase,
     color: colorTextPrimary,
     lineHeight: 22,
-    marginBottom: spacing4,
+  },
+  readMoreButton: {
+    marginTop: spacing2,
+    minHeight: 44,
+    justifyContent: 'center',
+  },
+  readMoreText: {
+    ...textSm,
+    color: colorTextLink,
+    fontWeight: '600',
   },
   relatedSection: {
     marginBottom: spacing4,
@@ -327,12 +372,17 @@ const styles = StyleSheet.create({
   relatedChip: {
     paddingHorizontal: spacing3,
     paddingVertical: spacing2,
-    borderRadius: radiusFull,
+    borderRadius: radiusMd,
     borderWidth: 1,
     borderColor: colorBorderLight,
     backgroundColor: colorBackground,
-    minHeight: 36,
+    minHeight: 44,
     justifyContent: 'center',
+  },
+  relatedChipReading: {
+    ...textXs,
+    color: colorTextSecondary,
+    lineHeight: 14,
   },
   relatedChipText: {
     ...textSm,

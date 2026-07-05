@@ -76,11 +76,19 @@ import {
 
 type FertilizerAction = 'none' | 'light' | 'moderate' | 'heavy';
 
+// Web版 lib/utils/fertilizer.ts の FERTILIZER_ACTION_BADGE に対応
 const ACTION_LABEL: Record<FertilizerAction, string> = {
-  none: 'なし',
+  none: '不要',
   light: '控えめ',
   moderate: '通常',
   heavy: 'たっぷり',
+};
+
+const ACTION_ICON: Record<FertilizerAction, string> = {
+  none: '—',
+  light: '△',
+  moderate: '○',
+  heavy: '◎',
 };
 
 const ACTION_BADGE_BG: Record<FertilizerAction, string> = {
@@ -119,11 +127,19 @@ function toFertilizerAction(value: string): FertilizerAction {
 
 type NutrientLevel = 'high' | 'balanced' | 'low' | 'none';
 
+// Web版 lib/utils/fertilizer.ts の NUTRIENT_LEVEL_BADGE に対応
 const NUTRIENT_LEVEL_LABEL: Record<NutrientLevel, string> = {
   high: '多め',
-  balanced: '通常',
+  balanced: 'バランス',
   low: '控えめ',
   none: '不要',
+};
+
+const NUTRIENT_LEVEL_ICON: Record<NutrientLevel, string> = {
+  high: '↑',
+  balanced: '→',
+  low: '↓',
+  none: '—',
 };
 
 // N の色（emerald 系）
@@ -161,11 +177,12 @@ function toNutrientLevel(value: string | null): NutrientLevel {
 // 季節定義
 // ---------------------------------------------------------------------------
 
+// emoji は Web版 app/(main)/fertilizers/schedules/[slug]/page.tsx の computeSeasonSummary に対応
 const SEASONS = [
-  { label: '春', months: [3, 4, 5] },
-  { label: '夏', months: [6, 7, 8] },
-  { label: '秋', months: [9, 10, 11] },
-  { label: '冬', months: [12, 1, 2] },
+  { label: '春', emoji: '🌱', months: [3, 4, 5] },
+  { label: '夏', emoji: '☀️', months: [6, 7, 8] },
+  { label: '秋', emoji: '🍂', months: [9, 10, 11] },
+  { label: '冬', emoji: '❄️', months: [12, 1, 2] },
 ] as const;
 
 // ---------------------------------------------------------------------------
@@ -209,7 +226,7 @@ function computeSeasonSummary(months: FertilizationMonth[]) {
       }
     }
 
-    return { label: season.label, dominantAction: dominant };
+    return { label: season.label, emoji: season.emoji, dominantAction: dominant };
   });
 }
 
@@ -231,10 +248,11 @@ const SeasonSummaryGrid = memo(function SeasonSummaryGrid({ months }: SeasonSumm
         const textColor = ACTION_BADGE_TEXT[season.dominantAction];
         return (
           <View key={season.label} style={summaryStyles.cell} accessibilityRole="text">
+            <Text style={summaryStyles.seasonEmoji}>{season.emoji}</Text>
             <Text style={summaryStyles.seasonLabel}>{season.label}</Text>
             <View style={[summaryStyles.badge, { backgroundColor: bg }]}>
               <Text style={[summaryStyles.badgeText, { color: textColor }]}>
-                {ACTION_LABEL[season.dominantAction]}
+                {ACTION_ICON[season.dominantAction]} {ACTION_LABEL[season.dominantAction]}
               </Text>
             </View>
           </View>
@@ -259,6 +277,10 @@ const summaryStyles = StyleSheet.create({
     gap: spacing2,
     minHeight: 64,
     justifyContent: 'center',
+  },
+  seasonEmoji: {
+    fontSize: 18,
+    lineHeight: 22,
   },
   seasonLabel: {
     ...textSm,
@@ -349,7 +371,9 @@ const FertilizationTimeline = memo(function FertilizationTimeline({
                   { width: cellWidth, backgroundColor: ACTION_BAR_BG[action] },
                 ]}
                 accessibilityLabel={`${plan.month}月: ${ACTION_LABEL[action]}`}
-              />
+              >
+                <Text style={timelineStyles.actionCellIcon}>{ACTION_ICON[action]}</Text>
+              </View>
             );
           })}
         </View>
@@ -444,6 +468,14 @@ const timelineStyles = StyleSheet.create({
   },
   actionCell: {
     height: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  actionCellIcon: {
+    fontSize: 12,
+    lineHeight: 16,
+    fontWeight: '700',
+    color: colorTextPrimary,
   },
   nutrientLabel: {
     ...textXs,
@@ -520,10 +552,12 @@ const NutrientLevelBadge = memo(function NutrientLevelBadge({
   };
   const bg = bgMap[nutrient][nl];
   const label = nl === 'none' ? '—' : NUTRIENT_LEVEL_LABEL[nl];
+  // Web版 NutrientLevelIndicator は ↑→↓— アイコンのみを表示する（ラベルは a11y 用に保持）
+  const icon = NUTRIENT_LEVEL_ICON[nl];
 
   return (
     <View style={[badgeStyles.container, { backgroundColor: bg }]} accessibilityLabel={`${nutrient}: ${label}`}>
-      <Text style={badgeStyles.text}>{label}</Text>
+      <Text style={badgeStyles.text}>{icon}</Text>
     </View>
   );
 });

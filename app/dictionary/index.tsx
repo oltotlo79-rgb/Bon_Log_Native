@@ -293,7 +293,7 @@ export default function DictionaryScreen() {
       <View style={styles.searchBarContainer}>
         <TextInput
           style={styles.searchInput}
-          placeholder="用語を検索..."
+          placeholder="用語・読み・説明文で検索…"
           placeholderTextColor={colorTextSecondary}
           value={searchText}
           onChangeText={handleSearchChange}
