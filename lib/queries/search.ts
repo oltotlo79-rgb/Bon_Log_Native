@@ -8,6 +8,7 @@ import { apiClient } from '@/lib/api/client';
 import { queryKeys, type SearchPostsFilter } from '@/lib/queries/keys';
 import { STALE_TIME_SEARCH } from '@/lib/constants/query';
 import { FEED_PAGE_SIZE, USERS_PAGE_SIZE } from '@/lib/constants/limits/pagination';
+import { hasSearchPostsFilter } from '@/lib/utils/search-filter';
 import type { components } from '@/lib/api/generated/schema.d.ts';
 
 export type SearchPostItem = components['schemas']['SearchPostsResponse']['items'][number];
@@ -20,7 +21,9 @@ type HashtagSearchResponse = components['schemas']['HashtagSearchResponse'];
 
 /**
  * 投稿検索の無限スクロールクエリ。
- * q が空文字の場合はフェッチを行わない（enabled=false）。
+ * q が空文字でもフィルタ（ジャンル等）のいずれかが指定されていればフェッチする
+ * （サーバー API は q 任意でフィルタのみの検索を受け付ける。Web と同様）。
+ * q が空文字かつフィルタ未指定の場合のみフェッチを行わない（enabled=false）。
  * ブロック済みユーザーの投稿はサーバー側で除外済み。
  * 未指定フィルタはリクエストに含めない（undefined をそのまま渡す）。
  */
@@ -50,7 +53,7 @@ export function useSearchPostsQuery(q: string, filter?: SearchPostsFilter) {
     initialPageParam: undefined,
     getNextPageParam: (lastPage) => lastPage.nextCursor ?? undefined,
     staleTime: STALE_TIME_SEARCH,
-    enabled: q.length > 0,
+    enabled: q.length > 0 || hasSearchPostsFilter(filter),
   });
 }
 

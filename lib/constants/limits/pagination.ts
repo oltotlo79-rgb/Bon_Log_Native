@@ -16,8 +16,8 @@ export const COMMENTS_PAGE_SIZE = 20;
 /** ユーザー検索・一覧のページ取得件数 */
 export const USERS_PAGE_SIZE = 20;
 
-/** おすすめユーザーの取得件数（検索画面の初期表示） */
-export const RECOMMENDED_USERS_LIMIT = 5;
+/** おすすめユーザーの取得件数（検索画面の初期表示。Web 準拠で 10 件） */
+export const RECOMMENDED_USERS_LIMIT = 10;
 
 /** トレンドハッシュタグの取得件数 */
 export const TRENDING_HASHTAGS_LIMIT = 10;
