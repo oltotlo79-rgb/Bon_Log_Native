@@ -5,9 +5,20 @@
  */
 
 import React from 'react';
-import { screen, fireEvent, waitFor } from '@testing-library/react-native';
+import { screen, fireEvent, waitFor, act } from '@testing-library/react-native';
 import HormoneDiagramScreen from '@/app/hormones/diagram/index';
 import { renderWithProviders } from '@/__tests__/utils/test-utils';
+
+// ノードは WebView 内インライン SVG（HormoneInteractionDiagramView）に描画されるため、
+// ノードタップは postMessage 経由の nodeSelected イベントをシミュレートして検証する
+// （components/shops/BonsaiMapView.test.tsx の WebView メッセージ検証パターンを踏襲）。
+async function selectNode(nodeId: string | null) {
+  const webview = screen.getByTestId('mock-webview');
+  const msg = JSON.stringify({ type: 'nodeSelected', nodeId });
+  await act(async () => {
+    fireEvent(webview, 'message', { nativeEvent: { data: msg } });
+  });
+}
 
 // ---------------------------------------------------------------------------
 // モック
@@ -157,13 +168,12 @@ describe('HormoneDiagramScreen 空状態', () => {
 // ---------------------------------------------------------------------------
 
 describe('HormoneDiagramScreen ノード表示', () => {
-  it('ホルモンノードが表示される', () => {
+  it('ホルモンノードは WebView 内インライン SVG で描画される', () => {
     mockHormonesQuery.data = makeHormones();
     mockInteractionsQuery.data = makeInteractions();
     renderWithProviders(<HormoneDiagramScreen />);
-    expect(screen.getByLabelText('オーキシンのホルモン。タップで相互作用を表示')).toBeTruthy();
-    expect(screen.getByLabelText('サイトカイニンのホルモン。タップで相互作用を表示')).toBeTruthy();
-    expect(screen.getByLabelText('ジベレリンのホルモン。タップで相互作用を表示')).toBeTruthy();
+    expect(screen.getByLabelText('ホルモン相互作用のネットワーク図')).toBeTruthy();
+    expect(screen.getByTestId('mock-webview')).toBeTruthy();
   });
 
   it('イントロテキストが表示される', () => {
@@ -192,7 +202,7 @@ describe('HormoneDiagramScreen ノードタップ', () => {
     mockHormonesQuery.data = makeHormones();
     mockInteractionsQuery.data = makeInteractions();
     renderWithProviders(<HormoneDiagramScreen />);
-    fireEvent.press(screen.getByLabelText('オーキシンのホルモン。タップで相互作用を表示'));
+    await selectNode('h1');
     await waitFor(() => {
       expect(screen.getByText('オーキシン の相互作用')).toBeTruthy();
     });
@@ -202,7 +212,7 @@ describe('HormoneDiagramScreen ノードタップ', () => {
     mockHormonesQuery.data = makeHormones();
     mockInteractionsQuery.data = makeInteractions();
     renderWithProviders(<HormoneDiagramScreen />);
-    fireEvent.press(screen.getByLabelText('オーキシンのホルモン。タップで相互作用を表示'));
+    await selectNode('h1');
     await waitFor(() => {
       expect(screen.getByLabelText('オーキシンとサイトカイニンの拮抗関係')).toBeTruthy();
     });
@@ -212,7 +222,7 @@ describe('HormoneDiagramScreen ノードタップ', () => {
     mockHormonesQuery.data = makeHormones();
     mockInteractionsQuery.data = makeInteractions();
     renderWithProviders(<HormoneDiagramScreen />);
-    fireEvent.press(screen.getByLabelText('オーキシンのホルモン。タップで相互作用を表示'));
+    await selectNode('h1');
     await waitFor(() => {
       expect(screen.getByLabelText('オーキシンの詳細を見る')).toBeTruthy();
     });
@@ -222,7 +232,7 @@ describe('HormoneDiagramScreen ノードタップ', () => {
     mockHormonesQuery.data = makeHormones();
     mockInteractionsQuery.data = makeInteractions();
     renderWithProviders(<HormoneDiagramScreen />);
-    fireEvent.press(screen.getByLabelText('オーキシンのホルモン。タップで相互作用を表示'));
+    await selectNode('h1');
     await waitFor(() => { expect(screen.getByLabelText('オーキシンの詳細を見る')).toBeTruthy(); });
     fireEvent.press(screen.getByLabelText('オーキシンの詳細を見る'));
     expect(mockRouter.push).toHaveBeenCalledWith('/hormones/auxin');
@@ -232,9 +242,9 @@ describe('HormoneDiagramScreen ノードタップ', () => {
     mockHormonesQuery.data = makeHormones();
     mockInteractionsQuery.data = makeInteractions();
     renderWithProviders(<HormoneDiagramScreen />);
-    fireEvent.press(screen.getByLabelText('オーキシンのホルモン。タップで相互作用を表示'));
+    await selectNode('h1');
     await waitFor(() => { expect(screen.getByText('オーキシン の相互作用')).toBeTruthy(); });
-    fireEvent.press(screen.getByLabelText('オーキシンのホルモン。タップで相互作用を表示'));
+    await selectNode(null);
     await waitFor(() => {
       expect(screen.queryByText('オーキシン の相互作用')).toBeNull();
     });

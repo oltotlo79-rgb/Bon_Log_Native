@@ -110,6 +110,10 @@ describe('PostComposer アンケート機能', () => {
       act(() => {
         fireEvent.changeText(inputs[0], '通常投稿のテスト');
       });
+      // ジャンル必須化（新規投稿）のため送信前に1つ選択する
+      act(() => {
+        fireEvent.press(screen.getByRole('checkbox', { name: '松柏類を選択' }));
+      });
       await act(async () => {
         fireEvent.press(screen.getByRole('button', { name: '投稿する' }));
       });
@@ -216,6 +220,10 @@ describe('PostComposer アンケート機能', () => {
       act(() => {
         fireEvent.changeText(inputs[0], '本文');
       });
+      // ジャンル必須化（新規投稿）のため1つ選択する
+      act(() => {
+        fireEvent.press(screen.getByRole('checkbox', { name: '松柏類を選択' }));
+      });
       // アンケートを追加
       act(() => {
         fireEvent.press(
@@ -295,6 +303,10 @@ describe('PostComposer アンケート機能', () => {
       );
       act(() => {
         fireEvent.changeText(inputs[0], '本文');
+      });
+      // ジャンル必須化（新規投稿）のため1つ選択する
+      act(() => {
+        fireEvent.press(screen.getByRole('checkbox', { name: '松柏類を選択' }));
       });
       // アンケート追加
       act(() => {

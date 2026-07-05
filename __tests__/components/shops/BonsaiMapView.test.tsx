@@ -165,7 +165,7 @@ describe('BonsaiMapView - WebView メッセージ受信', () => {
     await act(async () => {
       expect(() => {
         fireEvent(webview, 'message', { nativeEvent: { data: '不正なJSON{{{' } });
-      }).toThrow();
+      }).not.toThrow();
     });
 
     expect(mockRouterPush).not.toHaveBeenCalled();

@@ -101,26 +101,26 @@ describe('DilutionCalculatorScreen モード切替', () => {
 // ---------------------------------------------------------------------------
 
 describe('DilutionCalculatorScreen 正モード計算', () => {
-  it('水量1000mL・倍率1000倍 → 薬剤量1.00mL が結果に表示される', () => {
+  it('水量1000mL・倍率1000倍 → 薬剤量1mL が結果に表示される（1mL は冗長な小数表示をしない）', () => {
     renderWithProviders(<DilutionCalculatorScreen />);
     fireEvent.changeText(screen.getByLabelText('水量をミリリットルで入力'), '1000');
     fireEvent.changeText(screen.getByLabelText('希釈倍率を入力'), '1000');
     expect(screen.getByText('計算結果')).toBeTruthy();
-    expect(screen.getByText(/1\.00mL/)).toBeTruthy();
+    expect(screen.getByText('1mL')).toBeTruthy();
   });
 
-  it('水量500mL・倍率1000倍 → 薬剤量0.50mL が結果に表示される', () => {
+  it('水量500mL・倍率1000倍 → 薬剤量0.5mL（1mL未満は滴数併記）が結果に表示される', () => {
     renderWithProviders(<DilutionCalculatorScreen />);
     fireEvent.changeText(screen.getByLabelText('水量をミリリットルで入力'), '500');
     fireEvent.changeText(screen.getByLabelText('希釈倍率を入力'), '1000');
-    expect(screen.getByText(/0\.50mL/)).toBeTruthy();
+    expect(screen.getByText('0.5mL（約10滴）')).toBeTruthy();
   });
 
-  it('水量2000mL・倍率500倍 → 薬剤量4.00mL が結果に表示される', () => {
+  it('水量2000mL・倍率500倍 → 薬剤量4mL が結果に表示される', () => {
     renderWithProviders(<DilutionCalculatorScreen />);
     fireEvent.changeText(screen.getByLabelText('水量をミリリットルで入力'), '2000');
     fireEvent.changeText(screen.getByLabelText('希釈倍率を入力'), '500');
-    expect(screen.getByText(/4\.00mL/)).toBeTruthy();
+    expect(screen.getByText('4mL')).toBeTruthy();
   });
 
   it('結果にノート（水量・倍率の説明）が表示される', () => {
@@ -136,21 +136,21 @@ describe('DilutionCalculatorScreen 正モード計算', () => {
 // ---------------------------------------------------------------------------
 
 describe('DilutionCalculatorScreen 逆モード計算', () => {
-  it('薬剤量1mL・倍率1000倍 → 必要水量1000.00mL が結果に表示される', () => {
+  it('薬剤量1mL・倍率1000倍 → 必要水量1000mL（1L）が結果に表示される', () => {
     renderWithProviders(<DilutionCalculatorScreen />);
     fireEvent.press(screen.getByLabelText('必要水量を計算'));
     fireEvent.changeText(screen.getByLabelText('薬剤量をミリリットルで入力'), '1');
     fireEvent.changeText(screen.getByLabelText('希釈倍率を入力'), '1000');
     expect(screen.getByText('計算結果')).toBeTruthy();
-    expect(screen.getByText(/1000\.00mL/)).toBeTruthy();
+    expect(screen.getByText('1000mL（1L）')).toBeTruthy();
   });
 
-  it('薬剤量2mL・倍率500倍 → 必要水量1000.00mL が結果に表示される', () => {
+  it('薬剤量2mL・倍率500倍 → 必要水量1000mL（1L）が結果に表示される', () => {
     renderWithProviders(<DilutionCalculatorScreen />);
     fireEvent.press(screen.getByLabelText('必要水量を計算'));
     fireEvent.changeText(screen.getByLabelText('薬剤量をミリリットルで入力'), '2');
     fireEvent.changeText(screen.getByLabelText('希釈倍率を入力'), '500');
-    expect(screen.getByText(/1000\.00mL/)).toBeTruthy();
+    expect(screen.getByText('1000mL（1L）')).toBeTruthy();
   });
 
   it('結果に薬剤量と希釈倍率のノートが表示される', () => {
@@ -172,7 +172,7 @@ describe('DilutionCalculatorScreen L 表記', () => {
     fireEvent.press(screen.getByLabelText('必要水量を計算'));
     fireEvent.changeText(screen.getByLabelText('薬剤量をミリリットルで入力'), '2');
     fireEvent.changeText(screen.getByLabelText('希釈倍率を入力'), '1000');
-    expect(screen.getByText(/\/.*L/)).toBeTruthy();
+    expect(screen.getByText('2000mL（2L）')).toBeTruthy();
   });
 });
 
@@ -203,18 +203,25 @@ describe('DilutionCalculatorScreen 極小量', () => {
 // ---------------------------------------------------------------------------
 
 describe('DilutionCalculatorScreen プリセット', () => {
-  it('水量プリセット「200mL」をタップすると水量入力が 200 になる', () => {
+  it('水量プリセット「500mL」をタップすると水量入力が 500 になる', () => {
     renderWithProviders(<DilutionCalculatorScreen />);
-    fireEvent.press(screen.getByLabelText('200mLを設定'));
+    fireEvent.press(screen.getByLabelText('500mLを設定'));
     const waterInput = screen.getByLabelText('水量をミリリットルで入力');
-    expect(waterInput.props.value).toBe('200');
+    expect(waterInput.props.value).toBe('500');
   });
 
-  it('水量プリセット「1000mL」をタップすると水量入力が 1000 になる', () => {
+  it('水量プリセット「1L」をタップすると水量入力が 1000 になる', () => {
     renderWithProviders(<DilutionCalculatorScreen />);
-    fireEvent.press(screen.getByLabelText('1000mLを設定'));
+    fireEvent.press(screen.getByLabelText('1Lを設定'));
     const waterInput = screen.getByLabelText('水量をミリリットルで入力');
     expect(waterInput.props.value).toBe('1000');
+  });
+
+  it('水量プリセット「10L」をタップすると水量入力が 10000 になる（境界値）', () => {
+    renderWithProviders(<DilutionCalculatorScreen />);
+    fireEvent.press(screen.getByLabelText('10Lを設定'));
+    const waterInput = screen.getByLabelText('水量をミリリットルで入力');
+    expect(waterInput.props.value).toBe('10000');
   });
 
   it('希釈倍率プリセット「500倍」をタップすると倍率入力が 500 になる', () => {

@@ -7,7 +7,7 @@
  */
 
 import React from 'react';
-import { screen, fireEvent, waitFor } from '@testing-library/react-native';
+import { screen, fireEvent, waitFor, within } from '@testing-library/react-native';
 import { renderWithProviders } from '@/__tests__/utils/test-utils';
 import { EngagementTrendView } from '@/components/analytics/EngagementTrendView';
 import { ApiError } from '@/lib/api/errors';
@@ -207,9 +207,10 @@ describe('EngagementTrendView: サマリカード', () => {
     expect(screen.getByText('70')).toBeTruthy();
   });
 
-  it('「いいね」ラベルが表示される', () => {
+  it('「いいね」ラベルが表示される（棒グラフ凡例にも同名があるためサマリカード内で検証）', () => {
     renderWithProviders(<EngagementTrendView period={30} />);
-    expect(screen.getByText('いいね')).toBeTruthy();
+    const summaryCard = within(screen.getByLabelText('エンゲージメント合計 70'));
+    expect(summaryCard.getByText('いいね')).toBeTruthy();
   });
 
   it('いいね合計値が表示される（12+20+9=41）', () => {
@@ -217,9 +218,10 @@ describe('EngagementTrendView: サマリカード', () => {
     expect(screen.getByText('41')).toBeTruthy();
   });
 
-  it('「コメント」ラベルが表示される', () => {
+  it('「コメント」ラベルが表示される（棒グラフ凡例にも同名があるためサマリカード内で検証）', () => {
     renderWithProviders(<EngagementTrendView period={30} />);
-    expect(screen.getByText('コメント')).toBeTruthy();
+    const summaryCard = within(screen.getByLabelText('エンゲージメント合計 70'));
+    expect(summaryCard.getByText('コメント')).toBeTruthy();
   });
 
   it('コメント合計値が表示される（8+15+6=29）', () => {
@@ -252,15 +254,22 @@ describe('EngagementTrendView: 棒グラフ', () => {
     expect(screen.getByLabelText('エンゲージメント推移棒グラフ')).toBeTruthy();
   });
 
-  it('各 trend エントリのアクセシビリティラベルが表示される', () => {
+  it('各 trend エントリのアクセシビリティラベルが表示される（積み上げ2色: いいね・コメント）', () => {
     renderWithProviders(<EngagementTrendView period={30} />);
-    expect(screen.getByLabelText('2025-06-01: エンゲージメント 20, いいね 12, コメント 8')).toBeTruthy();
-    expect(screen.getByLabelText('2025-06-02: エンゲージメント 35, いいね 20, コメント 15')).toBeTruthy();
+    expect(screen.getByLabelText('2025-06-01: いいね 12, コメント 8')).toBeTruthy();
+    expect(screen.getByLabelText('2025-06-02: いいね 20, コメント 15')).toBeTruthy();
   });
 
   it('「エンゲージメント推移（日次）」セクションタイトルが表示される', () => {
     renderWithProviders(<EngagementTrendView period={30} />);
     expect(screen.getByText('エンゲージメント推移（日次）')).toBeTruthy();
+  });
+
+  it('サマリカードと凡例の両方に「いいね」「コメント」が表示される（積み上げ2色の凡例追加分）', () => {
+    renderWithProviders(<EngagementTrendView period={30} />);
+    // サマリカード内の1件 + 棒グラフ凡例の1件 = 2件ずつ表示される
+    expect(screen.getAllByText('いいね')).toHaveLength(2);
+    expect(screen.getAllByText('コメント')).toHaveLength(2);
   });
 });
 

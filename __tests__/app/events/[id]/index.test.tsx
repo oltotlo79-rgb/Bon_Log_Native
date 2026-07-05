@@ -200,7 +200,7 @@ describe('EventDetailScreen', () => {
       expect(screen.getByText('会館ホール')).toBeTruthy();
     });
 
-    it('admissionFee が null のとき「無料」が表示される', () => {
+    it('admissionFee が null のとき入場料の行が表示されない（Web 準拠で非表示化）', () => {
       mockUseEventDetailQuery.mockReturnValue({
         data: makeEvent({ admissionFee: null }),
         isLoading: false,
@@ -209,7 +209,8 @@ describe('EventDetailScreen', () => {
         refetch: jest.fn(),
       });
       renderWithProviders(<EventDetailScreen />);
-      expect(screen.getByText('無料')).toBeTruthy();
+      expect(screen.queryByText('無料')).toBeNull();
+      expect(screen.queryByText(/入場料/)).toBeNull();
     });
 
     it('admissionFee が指定されているとき「入場料: 大人500円」形式で表示される', () => {
@@ -510,7 +511,7 @@ describe('EventDetailScreen', () => {
   });
 
   describe('formatDateRange — 日付範囲表示', () => {
-    it('開催日範囲が日本語フォーマットで表示される', () => {
+    it('開催日・終了日が曜日・時刻付きの日本語フォーマットで2行表示される', () => {
       mockUseEventDetailQuery.mockReturnValue({
         data: makeEvent({ startDate: '2025-09-15', endDate: '2025-09-17' }),
         isLoading: false,
@@ -519,7 +520,9 @@ describe('EventDetailScreen', () => {
         refetch: jest.fn(),
       });
       renderWithProviders(<EventDetailScreen />);
-      expect(screen.getByText(/2025年.*9月.*15日.*〜.*2025年.*9月.*17日/)).toBeTruthy();
+      // 開始日と終了日は曜日・時刻付きで別々の Text 行として表示される（Web 版準拠）
+      expect(screen.getByText(/2025年9月15日\(.\) \d{2}:\d{2}/)).toBeTruthy();
+      expect(screen.getByText(/〜 2025年9月17日\(.\) \d{2}:\d{2}/)).toBeTruthy();
     });
 
     it('endDate が null のとき開始日のみ表示される', () => {

@@ -5,10 +5,11 @@
  */
 
 import React from 'react';
-import { screen, fireEvent } from '@testing-library/react-native';
+import { screen, fireEvent, within } from '@testing-library/react-native';
 import FeedScreen from '@/app/(tabs)/feed/index';
 import { ROUTE_POST_NEW, ROUTE_SEARCH } from '@/lib/constants/routes';
 import { renderWithProviders } from '@/__tests__/utils/test-utils';
+import { colorActionPrimary } from '@/lib/constants/design-tokens';
 
 const mockRouter = jest.requireMock('expo-router').router;
 
@@ -89,6 +90,23 @@ describe('FeedScreen', () => {
     const fab = screen.getByRole('button', { name: '新規投稿' });
     fireEvent.press(fab);
     expect(mockRouter.push).toHaveBeenCalledWith(ROUTE_POST_NEW);
+  });
+
+  it('FAB は 80px 四方かつ primary 色の円形ボタンである', () => {
+    renderWithProviders(<FeedScreen />);
+    const fab = screen.getByRole('button', { name: '新規投稿' });
+    const flatStyle = Object.assign({}, ...(fab.props.style as object[]).filter(
+      (s): s is Record<string, unknown> => typeof s === 'object' && s !== null
+    ));
+    expect(flatStyle.width).toBe(80);
+    expect(flatStyle.height).toBe(80);
+    expect(flatStyle.backgroundColor).toBe(colorActionPrimary);
+  });
+
+  it('FAB にはペンアイコン（pencil）が表示される', () => {
+    renderWithProviders(<FeedScreen />);
+    const fab = screen.getByRole('button', { name: '新規投稿' });
+    expect(within(fab).getByTestId('icon-pencil')).toBeTruthy();
   });
 
   describe('OfflineBanner', () => {

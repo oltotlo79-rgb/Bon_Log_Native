@@ -171,10 +171,10 @@ describe('ProductDetailScreen 正常表示', () => {
     expect(screen.getByText('接触型の殺虫剤。速効性がある。')).toBeTruthy();
   });
 
-  it('有効成分セクションが表示される', () => {
+  it('成分（原体）セクションが表示される', () => {
     mockDetailQuery.data = makeProductDetail();
     renderWithProviders(<ProductDetailScreen />);
-    expect(screen.getByText('有効成分')).toBeTruthy();
+    expect(screen.getByText('成分（原体）')).toBeTruthy();
     expect(screen.getByText('ピリミカルブ')).toBeTruthy();
   });
 
@@ -206,10 +206,10 @@ describe('ProductDetailScreen 正常表示', () => {
     expect(screen.getByText('○○殺菌剤')).toBeTruthy();
   });
 
-  it('有効成分が空のとき「有効成分」セクションが表示されない', () => {
+  it('有効成分が空のとき「成分（原体）」セクションが表示されない', () => {
     mockDetailQuery.data = makeProductDetail({ activeIngredients: [] });
     renderWithProviders(<ProductDetailScreen />);
-    expect(screen.queryByText('有効成分')).toBeNull();
+    expect(screen.queryByText('成分（原体）')).toBeNull();
   });
 
   it('登録番号が null のとき「登録番号は未掲載です」バッジが表示される', () => {

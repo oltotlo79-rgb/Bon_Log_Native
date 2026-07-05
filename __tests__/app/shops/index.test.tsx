@@ -232,9 +232,9 @@ describe('ShopsScreen', () => {
       expect(screen.getByRole('radio', { name: '北から順' })).toBeTruthy();
     });
 
-    it('初期状態で「評価順」チップが選択状態（selected=true）', () => {
+    it('初期状態で「北から順」チップが選択状態（selected=true）', () => {
       renderWithProviders(<ShopsScreen />);
-      const chip = screen.getByRole('radio', { name: '評価順' });
+      const chip = screen.getByRole('radio', { name: '北から順' });
       expect(chip.props.accessibilityState?.selected).toBe(true);
     });
 
@@ -290,7 +290,7 @@ describe('ShopsScreen', () => {
       expect(screen.getByRole('button', { name: '絞り込みをリセット' })).toBeTruthy();
     });
 
-    it('リセットボタンをタップするとソートが「評価順」に戻る', () => {
+    it('リセットボタンをタップするとソートが「北から順」に戻る', () => {
       mockUseShopsListQuery.mockReturnValue({
         ...defaultQuery,
         data: { pages: [{ items: [], nextCursor: null }], pageParams: [undefined] },
@@ -298,8 +298,8 @@ describe('ShopsScreen', () => {
       renderWithProviders(<ShopsScreen />);
       fireEvent.press(screen.getByRole('radio', { name: '名前順' }));
       fireEvent.press(screen.getByRole('button', { name: '絞り込みをリセット' }));
-      const ratingChip = screen.getByRole('radio', { name: '評価順' });
-      expect(ratingChip.props.accessibilityState?.selected).toBe(true);
+      const locationChip = screen.getByRole('radio', { name: '北から順' });
+      expect(locationChip.props.accessibilityState?.selected).toBe(true);
     });
 
     it('リセットボタンをタップするとリセットボタンが非表示になる', () => {

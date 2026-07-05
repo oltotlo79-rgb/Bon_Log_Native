@@ -88,20 +88,20 @@ describe('ScheduledPostsScreen', () => {
     });
   });
 
-  describe('ステータスフィルタ', () => {
-    it('「すべて」チップが表示される', () => {
+  describe('ステータスフィルタ（3タブ構成: 予約中/公開済み/その他）', () => {
+    it('「予約中」タブが表示される', () => {
       renderWithProviders(<ScheduledPostsScreen />);
-      expect(screen.getByRole('radio', { name: 'すべて' })).toBeTruthy();
+      expect(screen.getByRole('tab', { name: /^予約中/ })).toBeTruthy();
     });
 
-    it('「保留中」チップが表示される', () => {
+    it('「公開済み」タブが表示される', () => {
       renderWithProviders(<ScheduledPostsScreen />);
-      expect(screen.getByRole('radio', { name: '保留中' })).toBeTruthy();
+      expect(screen.getByRole('tab', { name: /^公開済み/ })).toBeTruthy();
     });
 
-    it('「公開済み」チップが表示される', () => {
+    it('「その他」タブが表示される', () => {
       renderWithProviders(<ScheduledPostsScreen />);
-      expect(screen.getByRole('radio', { name: '公開済み' })).toBeTruthy();
+      expect(screen.getByRole('tab', { name: /^その他/ })).toBeTruthy();
     });
   });
 
@@ -161,13 +161,33 @@ describe('ScheduledPostsScreen', () => {
   });
 
   describe('空状態', () => {
-    it('items が空のとき「予約投稿はありません」が表示される', () => {
+    it('items が空のとき既定タブ（予約中）の空文言「予約中の投稿はありません」が表示される', () => {
       mockUseScheduledPostsQuery.mockReturnValue({
         ...defaultQuery,
         data: { pages: [{ items: [], nextCursor: null }], pageParams: [undefined] },
       });
       renderWithProviders(<ScheduledPostsScreen />);
-      expect(screen.getByText('予約投稿はありません')).toBeTruthy();
+      expect(screen.getByText('予約中の投稿はありません')).toBeTruthy();
+    });
+
+    it('「公開済み」タブが空のとき「公開済みの予約投稿はありません」が表示される', () => {
+      mockUseScheduledPostsQuery.mockReturnValue({
+        ...defaultQuery,
+        data: { pages: [{ items: [], nextCursor: null }], pageParams: [undefined] },
+      });
+      renderWithProviders(<ScheduledPostsScreen />);
+      fireEvent.press(screen.getByRole('tab', { name: /^公開済み/ }));
+      expect(screen.getByText('公開済みの予約投稿はありません')).toBeTruthy();
+    });
+
+    it('「その他」タブが空のとき「失敗・キャンセルされた投稿はありません」が表示される', () => {
+      mockUseScheduledPostsQuery.mockReturnValue({
+        ...defaultQuery,
+        data: { pages: [{ items: [], nextCursor: null }], pageParams: [undefined] },
+      });
+      renderWithProviders(<ScheduledPostsScreen />);
+      fireEvent.press(screen.getByRole('tab', { name: /^その他/ }));
+      expect(screen.getByText('失敗・キャンセルされた投稿はありません')).toBeTruthy();
     });
   });
 
@@ -236,7 +256,7 @@ describe('ScheduledPostsScreen', () => {
       expect(screen.getByText('予約投稿テスト')).toBeTruthy();
     });
 
-    it('ステータスフィルタで「保留中」選択するとpending のみ表示される', () => {
+    it('既定タブ「予約中」では pending のみ表示される', () => {
       mockUseScheduledPostsQuery.mockReturnValue({
         ...defaultQuery,
         data: {
@@ -253,9 +273,31 @@ describe('ScheduledPostsScreen', () => {
         },
       });
       renderWithProviders(<ScheduledPostsScreen />);
-      fireEvent.press(screen.getByRole('radio', { name: '保留中' }));
       expect(screen.getByText('予約投稿テスト')).toBeTruthy();
       expect(screen.getAllByText('予約中').length).toBeGreaterThan(0);
+      expect(screen.queryByText('公開済み')).toBeNull();
+    });
+
+    it('「公開済み」タブに切り替えると published のみ表示される', () => {
+      mockUseScheduledPostsQuery.mockReturnValue({
+        ...defaultQuery,
+        data: {
+          pages: [
+            {
+              items: [
+                makeScheduledPostItem('sp-1', 'pending'),
+                makeScheduledPostItem('sp-2', 'published'),
+              ],
+              nextCursor: null,
+            },
+          ],
+          pageParams: [undefined],
+        },
+      });
+      renderWithProviders(<ScheduledPostsScreen />);
+      fireEvent.press(screen.getByRole('tab', { name: /^公開済み/ }));
+      expect(screen.getByText('予約投稿テスト')).toBeTruthy();
+      expect(screen.getAllByText('公開済み').length).toBeGreaterThan(0);
     });
   });
 });

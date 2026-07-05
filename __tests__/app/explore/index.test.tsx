@@ -184,23 +184,23 @@ describe('ExploreScreen トレンドハッシュタグ', () => {
   it('ハッシュタグのアクセシビリティラベルが表示される', () => {
     mockHashtagsQuery.data = makeHashtagsData();
     renderWithProviders(<ExploreScreen />);
-    expect(screen.getByLabelText('#黒松の投稿を見る（100件）')).toBeTruthy();
-    expect(screen.getByLabelText('#五葉松の投稿を見る（80件）')).toBeTruthy();
+    expect(screen.getByLabelText('#黒松の投稿を見る（100）')).toBeTruthy();
+    expect(screen.getByLabelText('#五葉松の投稿を見る（80）')).toBeTruthy();
   });
 
   it('ハッシュタグタップで routeExplorePostsByHashtag へ遷移する', () => {
     mockHashtagsQuery.data = makeHashtagsData();
     renderWithProviders(<ExploreScreen />);
-    fireEvent.press(screen.getByLabelText('#黒松の投稿を見る（100件）'));
+    fireEvent.press(screen.getByLabelText('#黒松の投稿を見る（100）'));
     expect(mockRouter.push).toHaveBeenCalledWith(
       expect.objectContaining({ params: expect.objectContaining({ hashtag: '黒松' }) })
     );
   });
 
-  it('ハッシュタグのカウントが表示される', () => {
+  it('ハッシュタグのカウントが素の数値表記で表示される', () => {
     mockHashtagsQuery.data = makeHashtagsData();
     renderWithProviders(<ExploreScreen />);
-    expect(screen.getByText('（100件）')).toBeTruthy();
+    expect(screen.getByText('100')).toBeTruthy();
   });
 
   it('トレンドセクションにエラーが表示される', () => {

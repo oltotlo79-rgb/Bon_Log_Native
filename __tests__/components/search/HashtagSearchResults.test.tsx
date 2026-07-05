@@ -21,6 +21,23 @@ jest.mock('@/lib/queries/search', () => ({
   useSearchHashtagsQuery: (...args: unknown[]) => mockUseSearchHashtagsQuery(...args),
 }));
 
+// rawQuery が空のとき（Web の PopularTags 準拠）人気タグを表示するため useTrendingHashtagsQuery をモック
+const mockUseTrendingHashtagsQuery = jest.fn();
+
+jest.mock('@/lib/queries/explore', () => ({
+  useTrendingHashtagsQuery: () => mockUseTrendingHashtagsQuery(),
+}));
+
+// 既定は空入力以外のテストに影響しないよう空リストで即座に成功させる
+const defaultTrendingState = {
+  data: { items: [] },
+  isLoading: false,
+  isError: false,
+  error: null,
+  refetch: jest.fn(),
+};
+mockUseTrendingHashtagsQuery.mockReturnValue(defaultTrendingState);
+
 // デフォルトは即時返し（value をそのまま返す）。
 // debounce 遅延をテストするケースでは個別に上書きする。
 let mockDebouncedValue: (value: string) => string = (v) => v;
@@ -90,28 +107,80 @@ function makeSuccessState(items: ReturnType<typeof makeHashtagItem>[]) {
 // テスト
 // ---------------------------------------------------------------------------
 
-describe('HashtagSearchResults — 空入力案内', () => {
+describe('HashtagSearchResults — 空入力案内（人気タグ表示）', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockDebouncedValue = (v) => v;
     mockUseSearchHashtagsQuery.mockReturnValue(emptyResultState);
   });
 
-  it('rawQuery が空文字のとき「タグを検索」案内が表示される', () => {
+  it('rawQuery が空文字のとき人気タグ見出し「人気のタグ」が表示される', () => {
+    mockUseTrendingHashtagsQuery.mockReturnValue({
+      data: { items: [makeHashtagItem({ id: 'tag-1', name: '松', count: 300 })] },
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: jest.fn(),
+    });
     renderWithProviders(<HashtagSearchResults rawQuery="" />);
-    expect(screen.getByText('タグを検索')).toBeTruthy();
+    expect(screen.getByText('人気のタグ')).toBeTruthy();
   });
 
-  it('rawQuery が空文字のとき説明文が表示される', () => {
+  it('rawQuery が空文字のとき人気タグの候補が表示される', () => {
+    mockUseTrendingHashtagsQuery.mockReturnValue({
+      data: { items: [makeHashtagItem({ id: 'tag-1', name: '松', count: 300 })] },
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: jest.fn(),
+    });
     renderWithProviders(<HashtagSearchResults rawQuery="" />);
-    expect(screen.getByText('ハッシュタグを入力すると候補が表示されます')).toBeTruthy();
+    expect(screen.getByText('#松')).toBeTruthy();
+    expect(screen.getByText('300件の投稿')).toBeTruthy();
+  });
+
+  it('rawQuery が空文字で人気タグが 0 件のとき空状態が表示される', () => {
+    mockUseTrendingHashtagsQuery.mockReturnValue({
+      data: { items: [] },
+      isLoading: false,
+      isError: false,
+      error: null,
+      refetch: jest.fn(),
+    });
+    renderWithProviders(<HashtagSearchResults rawQuery="" />);
+    expect(screen.getByText('人気のタグはまだありません')).toBeTruthy();
+  });
+
+  it('rawQuery が空文字で人気タグ読み込み中のときローディング表示になる', () => {
+    mockUseTrendingHashtagsQuery.mockReturnValue({
+      data: undefined,
+      isLoading: true,
+      isError: false,
+      error: null,
+      refetch: jest.fn(),
+    });
+    renderWithProviders(<HashtagSearchResults rawQuery="" />);
+    expect(screen.queryByText('人気のタグ')).toBeNull();
+  });
+
+  it('rawQuery が空文字で人気タグ取得エラーのときエラー表示になる', () => {
+    mockUseTrendingHashtagsQuery.mockReturnValue({
+      data: undefined,
+      isLoading: false,
+      isError: true,
+      error: new Error('trending failed'),
+      refetch: jest.fn(),
+    });
+    renderWithProviders(<HashtagSearchResults rawQuery="" />);
+    expect(screen.getByText('読み込めませんでした')).toBeTruthy();
   });
 
   it('rawQuery が空文字のとき useSearchHashtagsQuery が空文字クエリで呼ばれる（フックはReactルールで必ず呼ばれる）', () => {
+    mockUseTrendingHashtagsQuery.mockReturnValue(defaultTrendingState);
     renderWithProviders(<HashtagSearchResults rawQuery="" />);
     // Reactのフックルールにより useSearchHashtagsQuery は必ず呼ばれる。
     // rawQuery='' の場合、debouncedQ='' のため enabled=false がサーバー側フックで設定されるが
-    // フック自体の呼び出しは発生する。コンポーネントは早期リターンで案内 UI を表示する。
+    // フック自体の呼び出しは発生する。コンポーネントは早期リターンで人気タグ UI を表示する。
     expect(mockUseSearchHashtagsQuery).toHaveBeenCalledWith('', expect.any(Number));
   });
 });

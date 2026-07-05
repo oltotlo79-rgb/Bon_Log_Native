@@ -80,19 +80,19 @@ describe('EventCard', () => {
       expect(screen.getByText('東京都')).toBeTruthy();
     });
 
-    it('venue のみ渡した場合は venue が表示される', () => {
+    it('venue のみ渡した場合は「 / 会場」形式で venue が表示される（Web 版の会場区切りに準拠）', () => {
       renderCard({ prefecture: null, city: null, venue: '東京都立庭園美術館' });
-      expect(screen.getByText('東京都立庭園美術館')).toBeTruthy();
+      expect(screen.getByText('/ 東京都立庭園美術館')).toBeTruthy();
     });
 
-    it('prefecture と venue が両方あるとスペース区切りで結合される', () => {
+    it('prefecture と venue が両方あるとスラッシュ区切りで結合される', () => {
       renderCard({ prefecture: '東京都', city: null, venue: '上野美術館' });
-      expect(screen.getByText('東京都 上野美術館')).toBeTruthy();
+      expect(screen.getByText('東京都 / 上野美術館')).toBeTruthy();
     });
 
-    it('prefecture・city・venue 全部あると3つが結合される', () => {
+    it('prefecture・city・venue 全部あると「都道府県 市区町村 / 会場」形式で結合される', () => {
       renderCard({ prefecture: '東京都', city: '台東区', venue: '上野美術館' });
-      expect(screen.getByText('東京都 台東区 上野美術館')).toBeTruthy();
+      expect(screen.getByText('東京都 台東区 / 上野美術館')).toBeTruthy();
     });
 
     it('city だけ渡した場合は city が表示される', () => {

@@ -30,9 +30,34 @@ const mockPostsQuery = {
   isFetching: false,
 };
 
+// PostsView は前期間比バッジ用に useAnalyticsPeriodComparisonQuery も呼ぶ（読み込み中・失敗時も
+// メインクエリの表示分岐には影響しない付随データ）。モックしないと未定義呼び出しで失敗するため必須。
+const mockPeriodComparisonQuery = {
+  data: undefined as unknown,
+  isLoading: false,
+  isError: false,
+  error: null as unknown,
+  refetch: jest.fn(),
+};
+
 jest.mock('@/lib/queries/analytics', () => ({
   useAnalyticsPostsQuery: () => mockPostsQuery,
+  useAnalyticsPeriodComparisonQuery: () => mockPeriodComparisonQuery,
 }));
+
+function makePeriodComparisonData(overrides?: Partial<{
+  posts: { current: number; previous: number; change: number | null };
+  likes: { current: number; previous: number; change: number | null };
+  comments: { current: number; previous: number; change: number | null };
+}>) {
+  return {
+    posts: { current: 42, previous: 30, change: 40 },
+    likes: { current: 200, previous: 220, change: -9.1 },
+    comments: { current: 50, previous: 50, change: 0 },
+    followers: { current: 100, previous: 90, change: 11.1 },
+    ...overrides,
+  };
+}
 
 // ---------------------------------------------------------------------------
 // テストデータファクトリ
@@ -72,6 +97,11 @@ beforeEach(() => {
   mockPostsQuery.error = null;
   mockPostsQuery.isFetching = false;
   mockPostsQuery.refetch = jest.fn();
+  mockPeriodComparisonQuery.data = undefined;
+  mockPeriodComparisonQuery.isLoading = false;
+  mockPeriodComparisonQuery.isError = false;
+  mockPeriodComparisonQuery.error = null;
+  mockPeriodComparisonQuery.refetch = jest.fn();
 });
 
 // ---------------------------------------------------------------------------
@@ -204,6 +234,57 @@ describe('PostsView: サマリ指標', () => {
   it('avgEngagement（平均エンゲ）が表示される', () => {
     renderWithProviders(<PostsView period={30} />);
     expect(screen.getByLabelText('平均エンゲ: 4.5')).toBeTruthy();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 前期間比の変化バッジ（useAnalyticsPeriodComparisonQuery）
+// ---------------------------------------------------------------------------
+
+describe('PostsView: 前期間比の変化バッジ', () => {
+  beforeEach(() => {
+    mockPostsQuery.data = makePostsData();
+  });
+
+  it('period-comparison が未取得のとき変化バッジは表示されない', () => {
+    mockPeriodComparisonQuery.data = undefined;
+    renderWithProviders(<PostsView period={30} />);
+    expect(screen.getByLabelText('投稿数: 42')).toBeTruthy();
+    expect(screen.queryByText(/前期間比/)).toBeNull();
+  });
+
+  it('増加時は「投稿数: 42、前期間比+40%」のラベルと + 表記が付く', () => {
+    mockPeriodComparisonQuery.data = makePeriodComparisonData();
+    renderWithProviders(<PostsView period={30} />);
+    expect(screen.getByLabelText('投稿数: 42、前期間比+40%')).toBeTruthy();
+    expect(screen.getByText('+40%')).toBeTruthy();
+  });
+
+  it('減少時は「いいね: 200、前期間比-9.1%」のラベルが付く（+ を付けない）', () => {
+    mockPeriodComparisonQuery.data = makePeriodComparisonData();
+    renderWithProviders(<PostsView period={30} />);
+    expect(screen.getByLabelText('いいね: 200、前期間比-9.1%')).toBeTruthy();
+    expect(screen.getByText('-9.1%')).toBeTruthy();
+  });
+
+  it('変化なし（change=0）でもバッジ自体は表示される（+ は付かない）', () => {
+    mockPeriodComparisonQuery.data = makePeriodComparisonData();
+    renderWithProviders(<PostsView period={30} />);
+    expect(screen.getByLabelText('コメント: 50、前期間比0%')).toBeTruthy();
+  });
+
+  it('平均エンゲには前期間比データがなくバッジが表示されない', () => {
+    mockPeriodComparisonQuery.data = makePeriodComparisonData();
+    renderWithProviders(<PostsView period={30} />);
+    expect(screen.getByLabelText('平均エンゲ: 4.5')).toBeTruthy();
+  });
+
+  it('change が null のときバッジが表示されない', () => {
+    mockPeriodComparisonQuery.data = makePeriodComparisonData({
+      posts: { current: 42, previous: 42, change: null },
+    });
+    renderWithProviders(<PostsView period={30} />);
+    expect(screen.getByLabelText('投稿数: 42')).toBeTruthy();
   });
 });
 

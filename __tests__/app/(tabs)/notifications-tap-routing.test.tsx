@@ -208,10 +208,10 @@ describe('通知タップ → router.push 遷移先の検証', () => {
   });
 
   // -----------------------------------------------------------------------
-  // 無遷移型: message / system → push されない
+  // message → routes.messages / system → routes.notifications（会話IDを保持しないため一覧へ着地）
   // -----------------------------------------------------------------------
 
-  it('type="message" のとき → router.push が呼ばれない', () => {
+  it('type="message" のとき → routes.messages で push する', () => {
     const notification = makeNotificationItem({
       type: 'message',
       postId: null,
@@ -223,10 +223,11 @@ describe('通知タップ → router.push 遷移先の検証', () => {
 
     fireEvent.press(screen.getByRole('button'));
 
-    expect(mockRouter.push).not.toHaveBeenCalled();
+    expect(mockRouter.push).toHaveBeenCalledTimes(1);
+    expect(mockRouter.push).toHaveBeenCalledWith(routes.messages);
   });
 
-  it('type="system" のとき → router.push が呼ばれない', () => {
+  it('type="system" のとき → routes.notifications で push する', () => {
     const notification = makeNotificationItem({
       type: 'system',
       postId: null,
@@ -238,7 +239,8 @@ describe('通知タップ → router.push 遷移先の検証', () => {
 
     fireEvent.press(screen.getByRole('button'));
 
-    expect(mockRouter.push).not.toHaveBeenCalled();
+    expect(mockRouter.push).toHaveBeenCalledTimes(1);
+    expect(mockRouter.push).toHaveBeenCalledWith(routes.notifications);
   });
 
   // -----------------------------------------------------------------------

@@ -247,7 +247,7 @@ describe('MixingCheckerScreen 混用不可ペア', () => {
 // ---------------------------------------------------------------------------
 
 describe('MixingCheckerScreen 問題なしペア', () => {
-  it('混用不可登録のないペアを選択すると「問題報告なし」バッジが表示される', async () => {
+  it('混用不可登録のないペアを選択すると「混用可能」バッジが表示される', async () => {
     mockMixingDataQuery.data = makeMixingData(false);
     renderWithProviders(<MixingCheckerScreen />);
 
@@ -261,7 +261,7 @@ describe('MixingCheckerScreen 問題なしペア', () => {
     fireEvent.press(screen.getByLabelText('農薬B（殺虫剤）を選択'));
 
     await waitFor(() => {
-      expect(screen.getByText('問題報告なし')).toBeTruthy();
+      expect(screen.getByText('混用可能')).toBeTruthy();
     });
   });
 });
@@ -289,6 +289,73 @@ describe('MixingCheckerScreen 双方向判定', () => {
 
     await waitFor(() => {
       expect(screen.getByText('混用不可')).toBeTruthy();
+    });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 3剤対応（農薬3は任意。1-2, 1-3, 2-3 の全ペアを判定する）
+// ---------------------------------------------------------------------------
+
+describe('MixingCheckerScreen 3剤対応', () => {
+  it('「農薬 3（任意）を選択する」をタップするとモーダルが開く', async () => {
+    mockMixingDataQuery.data = makeMixingData();
+    renderWithProviders(<MixingCheckerScreen />);
+    fireEvent.press(screen.getByLabelText('農薬 3（任意）を選択する'));
+    await waitFor(() => {
+      expect(screen.getByText('農薬 3 を選択')).toBeTruthy();
+    });
+  });
+
+  it('農薬1・2・3をすべて選択すると 1-2, 1-3, 2-3 の3ペア分の判定結果が表示される', async () => {
+    mockMixingDataQuery.data = makeMixingData(true);
+    renderWithProviders(<MixingCheckerScreen />);
+
+    fireEvent.press(screen.getByLabelText('農薬 1を選択する'));
+    await waitFor(() => { expect(screen.getByLabelText('農薬A（殺菌剤）を選択')).toBeTruthy(); });
+    fireEvent.press(screen.getByLabelText('農薬A（殺菌剤）を選択'));
+    await waitFor(() => { expect(screen.getByLabelText('農薬 1: 農薬A（タップして変更）')).toBeTruthy(); });
+
+    fireEvent.press(screen.getByLabelText('農薬 2を選択する'));
+    await waitFor(() => { expect(screen.getByLabelText('農薬B（殺虫剤）を選択')).toBeTruthy(); });
+    fireEvent.press(screen.getByLabelText('農薬B（殺虫剤）を選択'));
+    await waitFor(() => { expect(screen.getByLabelText('農薬 2: 農薬B（タップして変更）')).toBeTruthy(); });
+
+    fireEvent.press(screen.getByLabelText('農薬 3（任意）を選択する'));
+    await waitFor(() => { expect(screen.getByLabelText('農薬C（殺ダニ剤）を選択')).toBeTruthy(); });
+    fireEvent.press(screen.getByLabelText('農薬C（殺ダニ剤）を選択'));
+
+    await waitFor(() => {
+      expect(screen.getByText('混用不可')).toBeTruthy(); // 農薬A × 農薬B
+      expect(screen.getAllByText('混用可能')).toHaveLength(2); // 農薬A × 農薬C, 農薬B × 農薬C
+    });
+  });
+
+  it('農薬3の選択解除ボタンをタップすると農薬3がクリアされ判定ペアから外れる', async () => {
+    mockMixingDataQuery.data = makeMixingData(false);
+    renderWithProviders(<MixingCheckerScreen />);
+
+    fireEvent.press(screen.getByLabelText('農薬 1を選択する'));
+    await waitFor(() => { expect(screen.getByLabelText('農薬A（殺菌剤）を選択')).toBeTruthy(); });
+    fireEvent.press(screen.getByLabelText('農薬A（殺菌剤）を選択'));
+
+    fireEvent.press(screen.getByLabelText('農薬 2を選択する'));
+    await waitFor(() => { expect(screen.getByLabelText('農薬B（殺虫剤）を選択')).toBeTruthy(); });
+    fireEvent.press(screen.getByLabelText('農薬B（殺虫剤）を選択'));
+
+    fireEvent.press(screen.getByLabelText('農薬 3（任意）を選択する'));
+    await waitFor(() => { expect(screen.getByLabelText('農薬C（殺ダニ剤）を選択')).toBeTruthy(); });
+    fireEvent.press(screen.getByLabelText('農薬C（殺ダニ剤）を選択'));
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('農薬 3（任意）: 農薬C（タップして変更）')).toBeTruthy();
+    });
+
+    fireEvent.press(screen.getByLabelText('農薬 3（任意）の選択を解除'));
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('農薬 3（任意）を選択する')).toBeTruthy();
+      expect(screen.getAllByText('混用可能')).toHaveLength(1); // 農薬A × 農薬B のみ
     });
   });
 });
