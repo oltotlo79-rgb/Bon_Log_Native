@@ -44,7 +44,6 @@ import {
   colorTextSecondary,
   colorBorderLight,
   colorActionPrimary,
-  colorActionPrimaryText,
   spacing2,
   spacing3,
   spacing4,
@@ -64,7 +63,6 @@ import {
 // ---------------------------------------------------------------------------
 
 const AVATAR_SIZE = 44;
-const CHEVRON_SIZE = 16;
 const CHIP_HIT_SLOP = { top: 8, bottom: 8, left: 4, right: 4 } as const;
 
 // ---------------------------------------------------------------------------
@@ -89,10 +87,10 @@ const TagChip = memo(function TagChip({ item }: TagChipProps) {
       activeOpacity={0.7}
       hitSlop={CHIP_HIT_SLOP}
       accessibilityRole="button"
-      accessibilityLabel={`#${item.name}の投稿を見る（${item.count}件）`}
+      accessibilityLabel={`#${item.name}の投稿を見る（${item.count}）`}
     >
       <Text style={styles.chipName}>#{item.name}</Text>
-      <Text style={styles.chipCount}>（{item.count}件）</Text>
+      <Text style={styles.chipCount}>{item.count}</Text>
     </TouchableOpacity>
   );
 });
@@ -517,11 +515,4 @@ const styles = StyleSheet.create({
     ...textSm,
     color: colorTextSecondary,
   },
-  chevronIcon: {
-    marginLeft: spacing2,
-  },
 });
-
-// 未使用変数の警告を避けるために型チェックのみ使用する参照
-void (colorActionPrimaryText satisfies string);
-void (CHEVRON_SIZE satisfies number);

@@ -14,8 +14,12 @@ import {
   RefreshControl,
   ListRenderItem,
 } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
-import { useAnalyticsPostsQuery } from '@/lib/queries/analytics';
+import {
+  useAnalyticsPostsQuery,
+  useAnalyticsPeriodComparisonQuery,
+} from '@/lib/queries/analytics';
 import type { AnalyticsPostsResponse } from '@/lib/queries/analytics';
 import { isApiError } from '@/lib/api/errors';
 import { useOnlineStatus } from '@/hooks/use-online-status';
@@ -29,19 +33,19 @@ import { routePostDetail } from '@/lib/constants/routes';
 import {
   colorBackground,
   colorSurface,
-  colorSurfaceMuted,
   colorTextPrimary,
   colorTextSecondary,
   colorTextTertiary,
   colorBorderLight,
   colorActionPrimary,
+  colorSuccess,
+  colorError,
   spacing1,
   spacing2,
   spacing3,
   spacing4,
   spacing6,
   radiusMd,
-  radiusXs,
   textXs,
   textSm,
   textBase,
@@ -54,6 +58,7 @@ import {
 // ---------------------------------------------------------------------------
 
 const TOP_POSTS_LIMIT = 5;
+const CHANGE_BADGE_ICON_SIZE = 12;
 
 // ---------------------------------------------------------------------------
 // サマリカード（1枚）
@@ -62,12 +67,54 @@ const TOP_POSTS_LIMIT = 5;
 type MetricTileProps = {
   value: string;
   label: string;
+  /** 前期間比の変化率（%）。Web の StatCard と同じく null/undefined は非表示。 */
+  change?: number | null;
 };
 
-const MetricTile = memo(function MetricTile({ value, label }: MetricTileProps) {
+const MetricTile = memo(function MetricTile({ value, label, change }: MetricTileProps) {
+  const hasChange = change !== undefined && change !== null;
+  const changeLabel = hasChange ? `${change > 0 ? '+' : ''}${change}%` : null;
+  const changeAccessibilityLabel = hasChange ? `、前期間比${changeLabel}` : '';
+
   return (
-    <View style={styles.tile} accessibilityLabel={`${label}: ${value}`}>
-      <Text style={styles.tileValue}>{value}</Text>
+    <View
+      style={styles.tile}
+      accessibilityLabel={`${label}: ${value}${changeAccessibilityLabel}`}
+    >
+      <View style={styles.tileValueRow}>
+        <Text style={styles.tileValue}>{value}</Text>
+        {hasChange && (
+          <View style={styles.changeBadge}>
+            {change > 0 && (
+              <Ionicons
+                name="trending-up"
+                size={CHANGE_BADGE_ICON_SIZE}
+                color={colorSuccess}
+                accessibilityElementsHidden
+                importantForAccessibility="no"
+              />
+            )}
+            {change < 0 && (
+              <Ionicons
+                name="trending-down"
+                size={CHANGE_BADGE_ICON_SIZE}
+                color={colorError}
+                accessibilityElementsHidden
+                importantForAccessibility="no"
+              />
+            )}
+            <Text
+              style={[
+                styles.changeText,
+                change > 0 && styles.changeTextPositive,
+                change < 0 && styles.changeTextNegative,
+              ]}
+            >
+              {changeLabel}
+            </Text>
+          </View>
+        )}
+      </View>
       <Text style={styles.tileLabel}>{label}</Text>
     </View>
   );
@@ -129,6 +176,9 @@ export function PostsView({ period }: PostsViewProps) {
   const isOnline = useOnlineStatus();
   const { data, isLoading, isError, error, refetch, isFetching } =
     useAnalyticsPostsQuery(period);
+  // 前期間比バッジ用。読み込み中・失敗時は表示しない付随データのため、
+  // メインクエリのローディング/エラー判定には含めない。
+  const { data: periodComparison } = useAnalyticsPeriodComparisonQuery(period);
 
   const isPremiumRequired = isApiError(error) && error.code === 'PREMIUM_REQUIRED';
 
@@ -179,9 +229,21 @@ export function PostsView({ period }: PostsViewProps) {
           <OfflineBanner isVisible={!isOnline} />
           {/* サマリ 4枚 */}
           <View style={styles.tilesRow}>
-            <MetricTile value={data.totalPosts.toLocaleString()} label="投稿数" />
-            <MetricTile value={data.totalLikes.toLocaleString()} label="いいね" />
-            <MetricTile value={data.totalComments.toLocaleString()} label="コメント" />
+            <MetricTile
+              value={data.totalPosts.toLocaleString()}
+              label="投稿数"
+              change={periodComparison?.posts.change}
+            />
+            <MetricTile
+              value={data.totalLikes.toLocaleString()}
+              label="いいね"
+              change={periodComparison?.likes.change}
+            />
+            <MetricTile
+              value={data.totalComments.toLocaleString()}
+              label="コメント"
+              change={periodComparison?.comments.change}
+            />
             <MetricTile
               value={`${data.avgEngagement.toFixed(1)}`}
               label="平均エンゲ"
@@ -230,6 +292,11 @@ const styles = StyleSheet.create({
     borderColor: colorBorderLight,
     gap: spacing1,
   },
+  tileValueRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    gap: spacing1,
+  },
   tileValue: {
     ...text2xl,
     color: colorTextPrimary,
@@ -237,6 +304,22 @@ const styles = StyleSheet.create({
   tileLabel: {
     ...textXs,
     color: colorTextSecondary,
+  },
+  changeBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 2,
+  },
+  changeText: {
+    ...textXs,
+    color: colorTextSecondary,
+    fontWeight: '600',
+  },
+  changeTextPositive: {
+    color: colorSuccess,
+  },
+  changeTextNegative: {
+    color: colorError,
   },
   sectionTitle: {
     ...textSm,
@@ -290,13 +373,4 @@ const styles = StyleSheet.create({
     ...textXs,
     color: colorTextTertiary,
   },
-  // 未使用警告抑止
-  _unusedSurfaceMuted: {
-    backgroundColor: colorSurfaceMuted,
-    borderRadius: radiusXs,
-  },
 });
-
-// 未使用のデザイントークン変数を参照して lint 警告を抑止する
-void (colorSurfaceMuted satisfies string);
-void (radiusXs satisfies number);

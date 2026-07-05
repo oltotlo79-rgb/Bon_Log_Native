@@ -18,9 +18,6 @@ import {
   colorTextSecondary,
   colorBorderLight,
   colorActionPrimary,
-  colorError,
-  colorSuccess,
-  colorWarning,
   colorSurfaceMuted,
   spacing2,
   spacing3,
@@ -47,34 +44,35 @@ const CELL_MIN_HEIGHT = 72;
 
 type NotificationTypeConfig = {
   iconName: React.ComponentProps<typeof Ionicons>['name'];
-  color: string;
 };
 
+// Web (components/notification/NotificationItem.tsx) は種別を問わず
+// text-muted-foreground で統一しているため、アイコン色は常に colorTextSecondary。
 function getTypeConfig(type: string): NotificationTypeConfig {
   switch (type) {
     case 'like':
     case 'comment_like':
-      return { iconName: 'heart', color: colorError };
+      return { iconName: 'heart' };
     case 'comment':
     case 'reply':
-      return { iconName: 'chatbubble', color: colorTextSecondary };
+      return { iconName: 'chatbubble' };
     case 'follow':
     case 'follow_request_approved':
-      return { iconName: 'person-add', color: colorSuccess };
+      return { iconName: 'person-add' };
     case 'follow_request':
-      return { iconName: 'person-add', color: colorTextSecondary };
+      return { iconName: 'person-add' };
     case 'quote':
     case 'repost':
-      return { iconName: 'repeat', color: colorTextSecondary };
+      return { iconName: 'repeat' };
     case 'mention':
-      return { iconName: 'at', color: colorTextSecondary };
+      return { iconName: 'at' };
     case 'message':
-      return { iconName: 'mail', color: colorTextSecondary };
+      return { iconName: 'mail' };
     case 'subscription_expiring':
-      return { iconName: 'star', color: colorWarning };
+      return { iconName: 'star' };
     case 'system':
     default:
-      return { iconName: 'notifications', color: colorTextSecondary };
+      return { iconName: 'notifications' };
   }
 }
 
@@ -185,7 +183,7 @@ function NotificationItemBase({ notification, onPress }: NotificationItemProps) 
           <Ionicons
             name={typeConfig.iconName}
             size={TYPE_BADGE_ICON_SIZE}
-            color={typeConfig.color}
+            color={colorTextSecondary}
             accessibilityElementsHidden
             importantForAccessibility="no"
           />

@@ -26,6 +26,7 @@ import { useOnlineStatus } from '@/hooks/use-online-status';
 import { ScreenLoading } from '@/components/common/ScreenLoading';
 import { ScreenError } from '@/components/common/ScreenError';
 import { OfflineBanner } from '@/components/common/OfflineBanner';
+import { BonsaiMapView } from '@/components/shops/BonsaiMapView';
 import {
   colorBackground,
   colorSurfaceWashi,
@@ -265,6 +266,26 @@ export default function ShopDetailScreen() {
             <ShopInfoRow iconName="close-circle-outline" text={`定休日: ${shop.closedDays}`} />
           )}
         </View>
+
+        {/* 該当店舗マーカー付きの小地図（Web の MapWrapperSmall に相当） */}
+        {shop.latitude !== null && shop.longitude !== null && (
+          <View style={styles.mapSection}>
+            <BonsaiMapView
+              shops={[
+                {
+                  id: shop.id,
+                  name: shop.name,
+                  latitude: shop.latitude,
+                  longitude: shop.longitude,
+                  address: shop.address,
+                  averageRating: shop.averageRating,
+                  reviewCount: shop.reviewCount,
+                },
+              ]}
+              isOnline={isOnline}
+            />
+          </View>
+        )}
 
         {/* レビューセクション */}
         <View style={styles.reviewsSection}>
@@ -536,6 +557,12 @@ const styles = StyleSheet.create({
     borderBottomColor: colorBorderLight,
     paddingVertical: spacing3,
     gap: spacing2,
+  },
+  mapSection: {
+    borderRadius: radiusLg,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: colorBorderLight,
   },
   infoRow: {
     flexDirection: 'row',

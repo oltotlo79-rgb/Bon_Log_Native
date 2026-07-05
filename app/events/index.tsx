@@ -87,9 +87,10 @@ export default function EventsScreen() {
   const [calendarMonth, setCalendarMonth] = useState(now.getMonth() + 1);
 
   // ---------------------------------------------------------------------------
-  // カレンダービュー用クエリ（全件・過去含む・year/month 指定なし）
-  // Web 版 EventContentSection と同じく月指定なしで全イベントを取得し、
-  // カレンダーコンポーネント内の月ナビゲーションで描画月を切り替える。
+  // カレンダービュー用クエリ（year/month 指定なし）
+  // Web 版 EventContentSection は単一の getEvents({ showPast }) 結果をカレンダーと
+  // 「今後のイベント」双方に使い回す（showPast の既定値は false）。
+  // カレンダー側だけ過去イベントを常時含める挙動はしないため、リストと同じ showPast を渡す。
   // limit は API 上限（MAX_PAGE_LIMIT）を指定し、通常件数のデータであれば
   // 1 ページで完結させてリクエスト数を最小化する。
   // ---------------------------------------------------------------------------
@@ -97,10 +98,10 @@ export default function EventsScreen() {
     () => ({
       region: selectedRegion.length > 0 ? selectedRegion : undefined,
       prefecture: selectedPrefecture,
-      showPast: true as const,
+      showPast: showPast || undefined,
       limit: MAX_PAGE_LIMIT,
     }),
-    [selectedRegion, selectedPrefecture]
+    [selectedRegion, selectedPrefecture, showPast]
   );
 
   const {

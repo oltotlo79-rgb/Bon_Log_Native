@@ -39,7 +39,6 @@ import {
   radiusXs,
   textXs,
   textSm,
-  textBase,
   textLg,
   text2xl,
 } from '@/lib/constants/design-tokens';
@@ -493,12 +492,4 @@ const styles = StyleSheet.create({
     color: colorTextPrimary,
     fontWeight: '600',
   },
-  // 未使用変数参照ガード
-  _base: {
-    ...textBase,
-    color: colorTextPrimary,
-  },
 });
-
-// 未使用のデザイントークン変数を参照して lint 警告を抑止する
-void (textBase satisfies object);

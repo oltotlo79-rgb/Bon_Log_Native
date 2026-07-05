@@ -34,7 +34,6 @@ import {
   spacing2,
   spacing3,
   spacing4,
-  spacing6,
   spacing8,
   radiusMd,
   radiusXs,
@@ -50,6 +49,10 @@ import {
 
 const TREND_BAR_HEIGHT = 100;
 const BAR_MIN_FRACTION = 0.02;
+// Web (components/analytics/LikeChart.tsx) の bg-primary/60・bg-primary/30 に合わせた
+// いいね・コメントの積み上げ棒の不透明度。
+const LIKES_BAR_OPACITY = 0.6;
+const COMMENTS_BAR_OPACITY = 0.3;
 
 // ---------------------------------------------------------------------------
 // 型エイリアス
@@ -105,7 +108,8 @@ type TrendBarChartProps = {
 };
 
 const TrendBarChart = memo(function TrendBarChart({ trend }: TrendBarChartProps) {
-  const maxEngagement = Math.max(...trend.map((d) => d.engagement), 1);
+  // Web (LikeChart) と同じく「いいね＋コメント」の合計が最大の日を基準にする
+  const maxValue = Math.max(...trend.map((d) => d.likes + d.comments), 1);
 
   const firstDate = trend[0];
   const lastDate = trend[trend.length - 1];
@@ -126,17 +130,24 @@ const TrendBarChart = memo(function TrendBarChart({ trend }: TrendBarChartProps)
         accessibilityLabel="エンゲージメント推移棒グラフ"
       >
         {trend.map((entry) => {
-          const fraction = Math.max(entry.engagement / maxEngagement, BAR_MIN_FRACTION);
+          const likesFraction = Math.max(entry.likes / maxValue, entry.likes > 0 ? BAR_MIN_FRACTION : 0);
+          const commentsFraction = Math.max(
+            entry.comments / maxValue,
+            entry.comments > 0 ? BAR_MIN_FRACTION : 0
+          );
+          const fillerFraction = Math.max(1 - likesFraction - commentsFraction, 0);
 
           return (
             <View
               key={entry.date}
               style={styles.trendBarWrapper}
-              accessibilityLabel={`${entry.date}: エンゲージメント ${entry.engagement}, いいね ${entry.likes}, コメント ${entry.comments}`}
+              accessibilityLabel={`${entry.date}: いいね ${entry.likes}, コメント ${entry.comments}`}
             >
+              {/* column-reverse: 先頭の子から下→上へ積む（コメントが下、いいねが上） */}
               <View style={styles.trendBarTrack}>
-                <View style={[styles.trendBarFill, { flex: fraction }]} />
-                <View style={{ flex: 1 - fraction }} />
+                <View style={[styles.trendBarComments, { flex: commentsFraction }]} />
+                <View style={[styles.trendBarLikes, { flex: likesFraction }]} />
+                <View style={{ flex: fillerFraction }} />
               </View>
             </View>
           );
@@ -153,10 +164,12 @@ const TrendBarChart = memo(function TrendBarChart({ trend }: TrendBarChartProps)
         </Text>
       </View>
 
-      {/* 凡例 */}
+      {/* 凡例（Web の LikeChart と同じくいいね／コメントの2色） */}
       <View style={styles.legendRow}>
-        <View style={styles.legendDot} />
-        <Text style={styles.legendText}>エンゲージメント（いいね＋コメント）の高さ</Text>
+        <View style={[styles.legendSwatch, styles.legendSwatchLikes]} />
+        <Text style={styles.legendText}>いいね</Text>
+        <View style={[styles.legendSwatch, styles.legendSwatchComments]} />
+        <Text style={styles.legendText}>コメント</Text>
       </View>
     </View>
   );
@@ -342,8 +355,13 @@ const styles = StyleSheet.create({
     flexDirection: 'column-reverse',
     overflow: 'hidden',
   },
-  trendBarFill: {
+  trendBarLikes: {
     backgroundColor: colorActionPrimary,
+    opacity: LIKES_BAR_OPACITY,
+  },
+  trendBarComments: {
+    backgroundColor: colorActionPrimary,
+    opacity: COMMENTS_BAR_OPACITY,
   },
   dateRow: {
     flexDirection: 'row',
@@ -358,11 +376,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: spacing2,
   },
-  legendDot: {
+  legendSwatch: {
     width: 8,
     height: 8,
     borderRadius: radiusXs,
     backgroundColor: colorActionPrimary,
+  },
+  legendSwatchLikes: {
+    opacity: LIKES_BAR_OPACITY,
+  },
+  legendSwatchComments: {
+    opacity: COMMENTS_BAR_OPACITY,
   },
   legendText: {
     ...textXs,
@@ -409,11 +433,4 @@ const styles = StyleSheet.create({
     width: 36,
     textAlign: 'right',
   },
-  // 未使用変数参照ガード
-  _spacer: {
-    paddingVertical: spacing6,
-  },
 });
-
-// 未使用のデザイントークン変数を参照して lint 警告を抑止する
-void (spacing6 satisfies number);

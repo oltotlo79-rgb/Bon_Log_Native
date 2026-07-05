@@ -102,13 +102,13 @@ function EventCardInner({
   // 終了日がない単日イベントは「開催中」にしない（Web 版と同じ判定）
   const isOngoing = !isEnded && start <= now && end != null && end >= now;
 
-  const locationParts: string[] = [];
-  if (prefecture != null && prefecture.length > 0) locationParts.push(prefecture);
-  if (city != null && city.length > 0) locationParts.push(city);
-  if (venue != null && venue.length > 0) locationParts.push(venue);
-  const locationText = locationParts.join(' ');
+  // Web (components/event/EventCard.tsx) と同じ区切り: 「都道府県 市区町村 / 会場」
+  const hasAdmissionFee = admissionFee != null && admissionFee.length > 0;
+  let locationText = prefecture ?? '';
+  if (city != null && city.length > 0) locationText += ` ${city}`;
+  if (venue != null && venue.length > 0) locationText += ` / ${venue}`;
 
-  const hasBadge = isEnded || isOngoing || hasSales;
+  const hasBadge = hasAdmissionFee || hasSales || isEnded || isOngoing;
 
   return (
     <Pressable
@@ -148,12 +148,18 @@ function EventCardInner({
           </View>
         )}
 
-        {admissionFee != null && admissionFee.length > 0 && (
-          <Text style={styles.admission}>{admissionFee}</Text>
-        )}
-
         {hasBadge && (
           <View style={styles.badgeRow}>
+            {hasAdmissionFee && (
+              <View style={styles.badgeAdmission}>
+                <Text style={styles.badgeAdmissionText}>{admissionFee}</Text>
+              </View>
+            )}
+            {hasSales && (
+              <View style={styles.badgeSales}>
+                <Text style={styles.badgeSalesText}>即売あり</Text>
+              </View>
+            )}
             {isEnded && (
               <View style={styles.badgeEnded}>
                 <Text style={styles.badgeEndedText}>終了</Text>
@@ -162,11 +168,6 @@ function EventCardInner({
             {isOngoing && (
               <View style={styles.badgeOngoing}>
                 <Text style={styles.badgeOngoingText}>開催中</Text>
-              </View>
-            )}
-            {hasSales && (
-              <View style={styles.badgeSales}>
-                <Text style={styles.badgeSalesText}>即売あり</Text>
               </View>
             )}
           </View>
@@ -257,15 +258,21 @@ const styles = StyleSheet.create({
     color: colorTextTertiary,
     flex: 1,
   },
-  admission: {
-    ...textSm,
-    color: colorTextSecondary,
-  },
   badgeRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: BADGE_GAP,
     marginTop: spacing2,
+  },
+  badgeAdmission: {
+    paddingHorizontal: spacing2,
+    paddingVertical: 2,
+    borderRadius: radiusFull,
+    backgroundColor: colorSurfaceMuted,
+  },
+  badgeAdmissionText: {
+    ...textXs,
+    color: colorTextPrimary,
   },
   badgeEnded: {
     paddingHorizontal: spacing2,

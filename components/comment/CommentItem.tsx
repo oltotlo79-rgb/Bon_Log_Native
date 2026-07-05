@@ -25,6 +25,7 @@ import {
   colorTextSecondary,
   colorTextTertiary,
   colorTextLink,
+  colorTextHashtag,
   colorError,
   colorBackground,
   spacing2,
@@ -42,7 +43,7 @@ import {
 import { UserAvatar } from '@/components/common/UserAvatar';
 import { formatRelativeTime, formatAbsoluteDateTime } from '@/lib/utils/relative-time';
 import { parseContentSegments } from '@/lib/utils/parse-content-segments';
-import { routeUserDetail } from '@/lib/constants/routes';
+import { routeUserDetail, routeSearchByQuery } from '@/lib/constants/routes';
 import { UserActionMenu } from '@/components/user/UserActionMenu';
 import type { CommentItem as CommentItemData } from '@/lib/queries/comments';
 
@@ -313,7 +314,13 @@ function CommentItemInner({
                 }
                 if (segment.type === 'hashtag') {
                   return (
-                    <Text key={index} style={styles.hashtag}>
+                    <Text
+                      key={index}
+                      style={styles.hashtag}
+                      onPress={() => router.push(routeSearchByQuery(segment.tag))}
+                      accessibilityRole="link"
+                      accessibilityLabel={`${segment.tag}を検索`}
+                    >
                       {segment.tag}
                     </Text>
                   );
@@ -508,7 +515,7 @@ const styles = StyleSheet.create({
   },
   hashtag: {
     ...textBase,
-    color: colorTextSecondary,
+    color: colorTextHashtag,
   },
   mediaRow: {
     flexDirection: 'row',

@@ -5,7 +5,7 @@
  * 仕様: docs/design/scheduled-posts.md §3
  */
 
-import React, { useCallback, useState } from 'react';
+import React, { useCallback } from 'react';
 import {
   View,
   Text,
@@ -41,7 +41,6 @@ import {
   colorBorderLight,
   colorActionPrimary,
   colorActionPrimaryText,
-  spacing1,
   spacing2,
   spacing3,
   spacing4,
@@ -67,17 +66,6 @@ import {
 const FAB_SIZE = 56;
 const FAB_ICON_SIZE = 24;
 const PENDING_LIMIT = 10;
-
-// ステータスフィルタ
-type StatusFilter = 'all' | 'pending' | 'published' | 'failed' | 'cancelled';
-
-const STATUS_FILTERS: { label: string; value: StatusFilter }[] = [
-  { label: 'すべて', value: 'all' },
-  { label: '保留中', value: 'pending' },
-  { label: '公開済み', value: 'published' },
-  { label: '失敗', value: 'failed' },
-  { label: 'キャンセル', value: 'cancelled' },
-];
 
 // ---------------------------------------------------------------------------
 // 型
@@ -165,7 +153,6 @@ const ScheduledPostCard = React.memo(ScheduledPostCardInner);
 export default function ScheduledPostsScreen() {
   const insets = useSafeAreaInsets();
   const isOnline = useOnlineStatus();
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
 
   const { data: currentUser, isLoading: isUserLoading } = useCurrentUserQuery();
 
@@ -193,11 +180,6 @@ export default function ScheduledPostsScreen() {
 
   const allItems: ScheduledPostItem[] =
     data?.pages.flatMap((page) => page.items) ?? [];
-
-  const filteredItems =
-    statusFilter === 'all'
-      ? allItems
-      : allItems.filter((item) => isKnownStatus(item.status) && item.status === statusFilter);
 
   const pendingCount = allItems.filter((item) => item.status === 'pending').length;
   const isFabDisabled = pendingCount >= PENDING_LIMIT;
@@ -264,54 +246,21 @@ export default function ScheduledPostsScreen() {
     );
   }
 
-  const emptyTitle =
-    statusFilter === 'all'
-      ? '予約投稿はありません'
-      : `${STATUS_FILTERS.find((f) => f.value === statusFilter)?.label ?? ''}の投稿はありません`;
-
-  const emptyDesc =
-    statusFilter === 'all'
-      ? '右下のボタンから投稿を予約してみましょう。'
-      : '他のステータスに切り替えてご確認ください。';
-
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
       <OfflineBanner isVisible={!isOnline} />
 
       <ScheduledPostsHeader />
 
-      {/* ステータスフィルタバー */}
-      <View style={styles.filterBar}>
-        {STATUS_FILTERS.map((f) => (
-          <Pressable
-            key={f.value}
-            style={[styles.filterChip, statusFilter === f.value && styles.filterChipSelected]}
-            onPress={() => setStatusFilter(f.value)}
-            accessibilityRole="radio"
-            accessibilityState={{ selected: statusFilter === f.value }}
-            accessibilityLabel={f.label}
-          >
-            <Text
-              style={[
-                styles.filterChipText,
-                statusFilter === f.value && styles.filterChipTextSelected,
-              ]}
-            >
-              {f.label}
-            </Text>
-          </Pressable>
-        ))}
-      </View>
-
-      {filteredItems.length === 0 ? (
+      {allItems.length === 0 ? (
         <ScreenEmpty
           iconName="calendar-outline"
-          title={emptyTitle}
-          description={emptyDesc}
+          title="予約投稿はありません"
+          description="右下のボタンから投稿を予約してみましょう。"
         />
       ) : (
         <FlatList
-          data={filteredItems}
+          data={allItems}
           keyExtractor={keyExtractor}
           renderItem={renderItem}
           onEndReached={handleLoadMore}
@@ -429,37 +378,6 @@ const styles = StyleSheet.create({
   },
   headerRight: {
     minWidth: 60,
-  },
-  filterBar: {
-    flexDirection: 'row',
-    backgroundColor: colorSurfaceWashi,
-    borderBottomWidth: 1,
-    borderBottomColor: colorBorderLight,
-    paddingHorizontal: spacing3,
-    paddingVertical: spacing2,
-    gap: spacing2,
-    minHeight: 44,
-    alignItems: 'center',
-  },
-  filterChip: {
-    paddingHorizontal: spacing3,
-    paddingVertical: spacing1,
-    borderRadius: radiusSm,
-    backgroundColor: colorSurfaceMuted,
-    minHeight: 30,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  filterChipSelected: {
-    backgroundColor: colorActionPrimary,
-  },
-  filterChipText: {
-    ...textXs,
-    color: colorTextSecondary,
-  },
-  filterChipTextSelected: {
-    color: colorActionPrimaryText,
-    fontWeight: '600',
   },
   listContent: {
     paddingHorizontal: spacing4,
