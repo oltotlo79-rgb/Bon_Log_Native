@@ -20,7 +20,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { router } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { useSearchPostsQuery, useSearchUsersQuery, type SearchPostItem, type SearchUserItem } from '@/lib/queries/search';
 import type { SearchPostsFilter } from '@/lib/queries/keys';
 import { useDebounce } from '@/hooks/use-debounce';
@@ -73,6 +73,16 @@ const SEGMENT_TABS: { key: SearchSegment; label: string }[] = [
   { key: 'users', label: 'ユーザー' },
   { key: 'tags', label: 'タグ' },
 ];
+
+/**
+ * useLocalSearchParams は string | string[] | undefined を返すため、
+ * 単一値として扱う画面遷移パラメータ（q, genre）を string に絞り込む。
+ */
+function firstStringParam(value: string | string[] | undefined): string {
+  if (typeof value === 'string') return value;
+  if (Array.isArray(value)) return value[0] ?? '';
+  return '';
+}
 
 // ---------------------------------------------------------------------------
 // SearchBar サブコンポーネント
@@ -427,9 +437,18 @@ export default function SearchScreen() {
   const { data: me } = useCurrentUserQuery();
   const currentUserId = me?.id;
 
-  const [inputValue, setInputValue] = useState('');
+  // 投稿本文の #タグ タップ（routeSearchByQuery）やジャンルタグのタップ
+  // （routeSearchByGenre）からの遷移で q / genre を初期値として受け取る（Web の
+  // searchParams 扱いに準拠）。
+  const params = useLocalSearchParams<{ q?: string | string[]; genre?: string | string[] }>();
+  const initialQuery = firstStringParam(params.q);
+  const initialGenreId = firstStringParam(params.genre);
+
+  const [inputValue, setInputValue] = useState(initialQuery);
   const [activeSegment, setActiveSegment] = useState<SearchSegment>('posts');
-  const [postFilter, setPostFilter] = useState<SearchPostsFilter>({});
+  const [postFilter, setPostFilter] = useState<SearchPostsFilter>(
+    initialGenreId.length > 0 ? { genreId: initialGenreId } : {}
+  );
   const isOffline = !useOnlineStatus();
   const textInputRef = useRef<TextInput>(null);
 
@@ -454,7 +473,10 @@ export default function SearchScreen() {
     setPostFilter({});
   }, []);
 
-  const showInitialView = inputValue.length === 0 && debouncedQuery.length === 0;
+  // ジャンルフィルタが適用されている間は、クエリが空でも初期案内画面へ戻さない
+  // （ジャンルタグタップ直後に投稿タブへ着地させる — Web の GenreFilter 挙動）。
+  const hasGenreFilter = postFilter.genreId !== undefined;
+  const showInitialView = inputValue.length === 0 && debouncedQuery.length === 0 && !hasGenreFilter;
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
@@ -498,7 +520,7 @@ export default function SearchScreen() {
                 title="オフライン中"
                 description={ERR_OFFLINE_ACTION}
               />
-            ) : activeQuery.length > 0 || activeSegment === 'tags' ? (
+            ) : activeQuery.length > 0 || activeSegment === 'tags' || (activeSegment === 'posts' && hasGenreFilter) ? (
               <View style={styles.resultsContainer}>
                 {activeSegment === 'posts' ? (
                   <PostSearchResults

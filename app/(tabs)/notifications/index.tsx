@@ -73,7 +73,11 @@ function resolveNotificationRoute(notification: NotificationItemType): Href | nu
       // notifications-screen.md §6.1 PM 決定: サブスクリプション設定画面へ遷移
       return routes.settingsSubscription;
     case 'message':
+      // 通知に会話IDを保持していないため、Web と同じくメッセージ一覧で着地させる
+      return routes.messages;
     case 'system':
+      // actor=受信者本人のためプロフィール遷移は不適切。Web と同じく通知一覧に留める
+      return routes.notifications;
     default:
       return null;
   }

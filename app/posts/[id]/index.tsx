@@ -43,6 +43,7 @@ import {
   ERR_POST_NOT_FOUND,
   ERR_POST_LOAD_FAILED,
   ERR_POST_DELETE_FAILED,
+  ERR_COMMENT_CREATE_FAILED,
   ERR_COMMENT_DELETE_FAILED,
   ERR_OFFLINE_ACTION,
 } from '@/lib/constants/errors';
@@ -243,7 +244,7 @@ function PostDetailContent({ postId }: PostDetailContentProps) {
             flatListRef.current?.scrollToEnd({ animated: true });
           },
           onError: () => {
-            setCommentError(ERR_COMMENT_DELETE_FAILED);
+            setCommentError(ERR_COMMENT_CREATE_FAILED);
           },
         }
       );

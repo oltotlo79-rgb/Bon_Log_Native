@@ -9,9 +9,8 @@ import {
   colorSurfaceWashi,
   colorTextPrimary,
   colorBorderLight,
-  colorFab,
-  colorFabText,
   colorActionPrimary,
+  colorActionPrimaryText,
   spacing4,
   spacing5,
   textLg,
@@ -32,7 +31,10 @@ import { mapToPostCardProps } from '@/hooks/use-post-card-props';
 import { useCurrentUserQuery } from '@/lib/queries/auth';
 
 const TAB_BAR_HEIGHT = 60;
-const FAB_SIZE = 56;
+// Web の ComposeButton (components/feed/ComposeButton.tsx) は w-20 h-20 (80px) の
+// 円形ボタン。モバイル表示のサイズ・配色に合わせる。
+const FAB_SIZE = 80;
+const FAB_ICON_SIZE = 32;
 /** フィードアイテムの推定高さ（画像なし: 約140pt / 画像あり: 約280pt の中間値）*/
 const ESTIMATED_ITEM_HEIGHT = 200;
 
@@ -84,10 +86,12 @@ export default function FeedScreen() {
   const { data: me } = useCurrentUserQuery();
   const currentUserId = me?.id;
 
+  // Web は sticky bottom-20 (80px) で MobileNav (60px) の上に 20px の間隔を空けて
+  // 浮かせている。同じ間隔（spacing5）をボトムタブバーの上に確保する。
   const fabBottom =
     TAB_BAR_HEIGHT +
     (Platform.OS === 'android' ? insets.bottom : 0) +
-    spacing4;
+    spacing5;
 
   const handlePressFab = useCallback(() => {
     router.push(ROUTE_POST_NEW);
@@ -210,7 +214,7 @@ export default function FeedScreen() {
         accessibilityLabel="新規投稿"
         hitSlop={spacing5}
       >
-        <Ionicons name="add" size={28} color={colorFabText} />
+        <Ionicons name="pencil" size={FAB_ICON_SIZE} color={colorActionPrimaryText} />
       </Pressable>
     </SafeAreaView>
   );
@@ -248,7 +252,7 @@ const styles = StyleSheet.create({
     width: FAB_SIZE,
     height: FAB_SIZE,
     borderRadius: radiusFull,
-    backgroundColor: colorFab,
+    backgroundColor: colorActionPrimary,
     alignItems: 'center',
     justifyContent: 'center',
   },
