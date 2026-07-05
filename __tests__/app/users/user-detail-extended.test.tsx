@@ -161,13 +161,16 @@ describe('UserDetailScreen - 拡張テスト', () => {
       expect(screen.getByText('50')).toBeTruthy();
     });
 
-    it('フォローボタンが表示されない（Phase 2b 待ち）', () => {
-      const profile = makeUserProfile();
+    it('フォローボタンが未フォロー状態のラベルで表示される', () => {
+      const profile = makeUserProfile({ nickname: '盆栽太郎', following: false, requested: false });
       mockUseUserProfileQuery.mockReturnValue({ ...defaultProfileState, data: profile });
       renderWithProviders(<UserDetailScreen />);
-      // フォローボタンは現時点では非表示
-      expect(screen.queryByRole('button', { name: 'フォローする' })).toBeNull();
-      expect(screen.queryByRole('button', { name: 'フォロー中' })).toBeNull();
+      // FollowButton の accessibilityLabel は「{nickname} をフォローする」。
+      // getByRole('button', { name: 'フォロー中' }) は統計リンク（フォロー中 N人。一覧を見る）内の
+      // 子 Text と部分一致してしまうため、完全一致の getByLabelText でフォローボタン領域に限定する。
+      expect(screen.getByLabelText('盆栽太郎 をフォローする')).toBeTruthy();
+      expect(screen.queryByLabelText('盆栽太郎 のフォローを解除する')).toBeNull();
+      expect(screen.queryByLabelText('盆栽太郎 へのフォローリクエストを取り消す')).toBeNull();
     });
 
     it('ブロック・通報メニューボタンが表示される（UGC 審査要件）', () => {

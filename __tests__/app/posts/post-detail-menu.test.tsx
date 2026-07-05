@@ -75,6 +75,20 @@ jest.mock('@/lib/queries/comments', () => ({
     mutate: mockDeleteCommentMutate,
     isPending: false,
   })),
+  useCommentRepliesQuery: jest.fn(() => ({
+    data: { pages: [{ items: [], nextCursor: null }] },
+    isLoading: false,
+    isError: false,
+    error: null,
+    fetchNextPage: jest.fn(),
+    hasNextPage: false,
+    isFetchingNextPage: false,
+    refetch: jest.fn(),
+  })),
+  useToggleCommentLikeMutation: jest.fn(() => ({
+    mutate: jest.fn(),
+    isPending: false,
+  })),
 }));
 
 const makePostDetail = (overrides?: Partial<PostDetail>): PostDetail => ({

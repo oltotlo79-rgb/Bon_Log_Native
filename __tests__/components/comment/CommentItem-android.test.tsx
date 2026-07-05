@@ -6,9 +6,29 @@
 
 import React from 'react';
 import { Alert, Platform } from 'react-native';
-import { screen, fireEvent, waitFor, render, act } from '@testing-library/react-native';
+import { screen, fireEvent, waitFor, act } from '@testing-library/react-native';
 import { CommentItem } from '@/components/comment/CommentItem';
 import { makeCommentItem } from '@/__tests__/utils/data-factories';
+import { renderWithProviders as render } from '@/__tests__/utils/test-utils';
+
+// CommentItem は useCommentRepliesQuery（返信展開）と CommentLikeButton 経由の
+// useToggleCommentLikeMutation を使うため、TanStack Query フックをモックする
+jest.mock('@/lib/queries/comments', () => ({
+  useCommentRepliesQuery: jest.fn(() => ({
+    data: { pages: [{ items: [], nextCursor: null }] },
+    isLoading: false,
+    isError: false,
+    error: null,
+    fetchNextPage: jest.fn(),
+    hasNextPage: false,
+    isFetchingNextPage: false,
+    refetch: jest.fn(),
+  })),
+  useToggleCommentLikeMutation: jest.fn(() => ({
+    mutate: jest.fn(),
+    isPending: false,
+  })),
+}));
 
 jest.mock('@/components/user/UserActionMenu', () => ({
   UserActionMenu: () => {

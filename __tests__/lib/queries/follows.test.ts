@@ -16,6 +16,8 @@ import {
   useFollowRequestsQuery,
   useApproveFollowRequestMutation,
   useRejectFollowRequestMutation,
+  useUserFollowersQuery,
+  useUserFollowingQuery,
 } from '@/lib/queries/follows';
 import { queryKeys } from '@/lib/queries/keys';
 import type { components } from '@/lib/api/generated/schema.d.ts';
@@ -779,5 +781,175 @@ describe('useRejectFollowRequestMutation', () => {
     if (result.current.error instanceof ApiError) {
       expect(result.current.error.code).toBe('NOT_FOUND');
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// useUserFollowersQuery / useUserFollowingQuery
+// ---------------------------------------------------------------------------
+
+type UserConnectionItem = components['schemas']['UserConnectionItem'];
+
+function makeUserConnectionItem(overrides?: Partial<UserConnectionItem>): UserConnectionItem {
+  return {
+    id: 'user-2',
+    nickname: '盆栽花子',
+    avatarUrl: null,
+    bio: null,
+    followersCount: 50,
+    followingCount: 30,
+    following: false,
+    requested: false,
+    isPublic: true,
+    isFollowedBy: false,
+    ...overrides,
+  };
+}
+
+describe('useUserFollowersQuery', () => {
+  it('成功で items が返る', async () => {
+    mockApiClientGet.mockResolvedValue({
+      data: { items: [makeUserConnectionItem({ id: 'follower-1' })], nextCursor: null },
+      error: undefined,
+    });
+    const { Wrapper } = createWrapper();
+
+    const { result } = renderHook(() => useUserFollowersQuery('user-1'), { wrapper: Wrapper });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(result.current.data?.pages[0].items).toHaveLength(1);
+    expect(mockApiClientGet).toHaveBeenCalledWith('/api/v1/users/{id}/followers', {
+      params: {
+        path: { id: 'user-1' },
+        query: { cursor: undefined, limit: expect.any(Number) },
+      },
+    });
+  });
+
+  describe('キャッシュ分離', () => {
+    it('useUserFollowersQuery と useUserFollowingQuery は同じ userId でも別キャッシュキーを持つ', async () => {
+      mockApiClientGet
+        .mockResolvedValueOnce({
+          data: { items: [makeUserConnectionItem({ id: 'follower-a' })], nextCursor: null },
+          error: undefined,
+        })
+        .mockResolvedValueOnce({
+          data: { items: [makeUserConnectionItem({ id: 'following-a' })], nextCursor: null },
+          error: undefined,
+        });
+      const { Wrapper, queryClient } = createWrapper();
+
+      const { result: followersResult } = renderHook(() => useUserFollowersQuery('user-1'), {
+        wrapper: Wrapper,
+      });
+      const { result: followingResult } = renderHook(() => useUserFollowingQuery('user-1'), {
+        wrapper: Wrapper,
+      });
+
+      await waitFor(() => expect(followersResult.current.isSuccess).toBe(true));
+      await waitFor(() => expect(followingResult.current.isSuccess).toBe(true));
+
+      expect(followersResult.current.data?.pages[0].items[0]?.id).toBe('follower-a');
+      expect(followingResult.current.data?.pages[0].items[0]?.id).toBe('following-a');
+      expect(
+        queryClient.getQueryData(queryKeys.users.followers('user-1'))
+      ).not.toEqual(queryClient.getQueryData(queryKeys.users.following('user-1')));
+    });
+
+    it('異なる userId は独立したキャッシュキーを持つ', async () => {
+      mockApiClientGet
+        .mockResolvedValueOnce({
+          data: { items: [makeUserConnectionItem({ id: 'follower-of-a' })], nextCursor: null },
+          error: undefined,
+        })
+        .mockResolvedValueOnce({
+          data: { items: [makeUserConnectionItem({ id: 'follower-of-b' })], nextCursor: null },
+          error: undefined,
+        });
+      const { Wrapper } = createWrapper();
+
+      const { result: resultA } = renderHook(() => useUserFollowersQuery('user-a'), { wrapper: Wrapper });
+      const { result: resultB } = renderHook(() => useUserFollowersQuery('user-b'), { wrapper: Wrapper });
+
+      await waitFor(() => expect(resultA.current.isSuccess).toBe(true));
+      await waitFor(() => expect(resultB.current.isSuccess).toBe(true));
+
+      expect(resultA.current.data?.pages[0].items[0]?.id).toBe('follower-of-a');
+      expect(resultB.current.data?.pages[0].items[0]?.id).toBe('follower-of-b');
+    });
+  });
+
+  describe('404 伝播', () => {
+    it('404 NOT_FOUND で ApiError が isError/error に伝播する', async () => {
+      mockApiClientGet.mockResolvedValue({
+        data: undefined,
+        error: makeApiError('NOT_FOUND', 404),
+      });
+      const { Wrapper } = createWrapper();
+
+      const { result } = renderHook(() => useUserFollowersQuery('user-1'), { wrapper: Wrapper });
+
+      await waitFor(() => expect(result.current.isError).toBe(true));
+      expect(result.current.error).toBeInstanceOf(ApiError);
+      if (result.current.error instanceof ApiError) {
+        expect(result.current.error.code).toBe('NOT_FOUND');
+        expect(result.current.error.status).toBe(404);
+      }
+    });
+
+    it('403（非公開アカウント）で ApiError の status=403 が伝播する', async () => {
+      mockApiClientGet.mockResolvedValue({
+        data: undefined,
+        error: makeApiError('NOT_FOUND', 403),
+      });
+      const { Wrapper } = createWrapper();
+
+      const { result } = renderHook(() => useUserFollowersQuery('user-1'), { wrapper: Wrapper });
+
+      await waitFor(() => expect(result.current.isError).toBe(true));
+      if (result.current.error instanceof ApiError) {
+        expect(result.current.error.status).toBe(403);
+      }
+    });
+  });
+});
+
+describe('useUserFollowingQuery', () => {
+  it('成功で items が返る', async () => {
+    mockApiClientGet.mockResolvedValue({
+      data: { items: [makeUserConnectionItem({ id: 'following-1' })], nextCursor: null },
+      error: undefined,
+    });
+    const { Wrapper } = createWrapper();
+
+    const { result } = renderHook(() => useUserFollowingQuery('user-1'), { wrapper: Wrapper });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(result.current.data?.pages[0].items).toHaveLength(1);
+    expect(mockApiClientGet).toHaveBeenCalledWith('/api/v1/users/{id}/following', {
+      params: {
+        path: { id: 'user-1' },
+        query: { cursor: undefined, limit: expect.any(Number) },
+      },
+    });
+  });
+
+  describe('404 伝播', () => {
+    it('404 NOT_FOUND で ApiError が isError/error に伝播する', async () => {
+      mockApiClientGet.mockResolvedValue({
+        data: undefined,
+        error: makeApiError('NOT_FOUND', 404),
+      });
+      const { Wrapper } = createWrapper();
+
+      const { result } = renderHook(() => useUserFollowingQuery('user-1'), { wrapper: Wrapper });
+
+      await waitFor(() => expect(result.current.isError).toBe(true));
+      expect(result.current.error).toBeInstanceOf(ApiError);
+      if (result.current.error instanceof ApiError) {
+        expect(result.current.error.code).toBe('NOT_FOUND');
+        expect(result.current.error.status).toBe(404);
+      }
+    });
   });
 });

@@ -436,3 +436,49 @@ describe('ProfileHeader: 境界値', () => {
     expect(screen.queryByText('黒松専門の盆栽家です。')).toBeNull();
   });
 });
+
+// ---------------------------------------------------------------------------
+// 統計リンク（フォロー中・フォロワー・いいね一覧への遷移）
+// ---------------------------------------------------------------------------
+
+describe('ProfileHeader: 統計リンクのタップ遷移', () => {
+  const mockRouterPush = jest.requireMock('expo-router').router.push as jest.Mock;
+
+  beforeEach(() => {
+    mockRouterPush.mockClear();
+  });
+
+  it('「フォロー中」統計をタップすると routeUserFollowing へ遷移する', () => {
+    renderHeader({ id: 'user-abc', followingCount: 50 });
+    fireEvent.press(screen.getByLabelText('フォロー中 50人。一覧を見る'));
+    expect(mockRouterPush).toHaveBeenCalledWith({
+      pathname: '/users/[id]/following',
+      params: { id: 'user-abc' },
+    });
+  });
+
+  it('「フォロワー」統計をタップすると routeUserFollowers へ遷移する', () => {
+    renderHeader({ id: 'user-abc', followersCount: 100 });
+    fireEvent.press(screen.getByLabelText('フォロワー 100人。一覧を見る'));
+    expect(mockRouterPush).toHaveBeenCalledWith({
+      pathname: '/users/[id]/followers',
+      params: { id: 'user-abc' },
+    });
+  });
+
+  it('「いいね」統計をタップすると routeUserLikes へ遷移する', () => {
+    renderHeader({ id: 'user-abc' });
+    fireEvent.press(screen.getByLabelText('いいねした投稿一覧を見る'));
+    expect(mockRouterPush).toHaveBeenCalledWith({
+      pathname: '/users/[id]/likes',
+      params: { id: 'user-abc' },
+    });
+  });
+
+  it('いいね統計は件数を表示しない（count なし）', () => {
+    renderHeader({ id: 'user-abc' });
+    const likesLink = screen.getByLabelText('いいねした投稿一覧を見る');
+    expect(likesLink).toBeTruthy();
+    expect(screen.getByText('いいね')).toBeTruthy();
+  });
+});

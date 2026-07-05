@@ -8,7 +8,8 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { ApiError } from '@/lib/api/errors';
 import type { MobileApiErrorCode } from '@/lib/api/errors';
 import { createTestQueryClient } from '@/__tests__/utils/test-utils';
-import { useCommentsQuery } from '@/lib/queries/comments';
+import { useCommentsQuery, useCommentRepliesQuery } from '@/lib/queries/comments';
+import { queryKeys } from '@/lib/queries/keys';
 
 const mockApiClientGet = jest.fn();
 
@@ -29,7 +30,7 @@ function createWrapper() {
   function Wrapper({ children }: { children: React.ReactNode }) {
     return React.createElement(QueryClientProvider, { client: queryClient }, children);
   }
-  return { Wrapper };
+  return { Wrapper, queryClient };
 }
 
 function makeApiError(code: MobileApiErrorCode, status: number): ApiError {
@@ -157,5 +158,85 @@ describe('useCommentsQuery', () => {
     if (result.current.error instanceof ApiError) {
       expect(result.current.error.code).toBe('AUTH_REQUIRED');
     }
+  });
+});
+
+// ---------------------------------------------------------------------------
+// useCommentRepliesQuery
+// ---------------------------------------------------------------------------
+
+describe('useCommentRepliesQuery', () => {
+  it('成功で返信 items が返る', async () => {
+    const page = makeCommentsPage(['reply-1', 'reply-2'], null);
+    mockApiClientGet.mockResolvedValue({ data: page, error: undefined });
+    const { Wrapper } = createWrapper();
+
+    const { result } = renderHook(() => useCommentRepliesQuery('comment-1'), { wrapper: Wrapper });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(result.current.data?.pages[0].items).toHaveLength(2);
+    expect(mockApiClientGet).toHaveBeenCalledWith('/api/v1/comments/{id}/replies', {
+      params: {
+        path: { id: 'comment-1' },
+        query: { cursor: undefined, limit: expect.any(Number) },
+      },
+    });
+  });
+
+  it('commentId が空文字の場合はフェッチしない（enabled=false）', () => {
+    const { Wrapper } = createWrapper();
+
+    const { result } = renderHook(() => useCommentRepliesQuery(''), { wrapper: Wrapper });
+
+    expect(result.current.isPending).toBe(true);
+    expect(mockApiClientGet).not.toHaveBeenCalled();
+  });
+
+  describe('キャッシュ分離', () => {
+    it('異なる commentId は独立したキャッシュキーを持つ', async () => {
+      const pageA = makeCommentsPage(['reply-a'], null);
+      const pageB = makeCommentsPage(['reply-b'], null);
+      mockApiClientGet
+        .mockResolvedValueOnce({ data: pageA, error: undefined })
+        .mockResolvedValueOnce({ data: pageB, error: undefined });
+      const { Wrapper, queryClient } = createWrapper();
+
+      const { result: resultA } = renderHook(() => useCommentRepliesQuery('comment-a'), {
+        wrapper: Wrapper,
+      });
+      const { result: resultB } = renderHook(() => useCommentRepliesQuery('comment-b'), {
+        wrapper: Wrapper,
+      });
+
+      await waitFor(() => expect(resultA.current.isSuccess).toBe(true));
+      await waitFor(() => expect(resultB.current.isSuccess).toBe(true));
+
+      expect(resultA.current.data?.pages[0].items[0]?.id).toBe('reply-a');
+      expect(resultB.current.data?.pages[0].items[0]?.id).toBe('reply-b');
+
+      // キャッシュキーが commentId ごとに分離されていることを直接確認する
+      expect(
+        queryClient.getQueryData(queryKeys.comments.replies('comment-a'))
+      ).not.toEqual(queryClient.getQueryData(queryKeys.comments.replies('comment-b')));
+    });
+  });
+
+  describe('404 伝播', () => {
+    it('404 NOT_FOUND で ApiError が isError/error に伝播する', async () => {
+      mockApiClientGet.mockResolvedValue({
+        data: undefined,
+        error: makeApiError('NOT_FOUND', 404),
+      });
+      const { Wrapper } = createWrapper();
+
+      const { result } = renderHook(() => useCommentRepliesQuery('comment-1'), { wrapper: Wrapper });
+
+      await waitFor(() => expect(result.current.isError).toBe(true));
+      expect(result.current.error).toBeInstanceOf(ApiError);
+      if (result.current.error instanceof ApiError) {
+        expect(result.current.error.code).toBe('NOT_FOUND');
+        expect(result.current.error.status).toBe(404);
+      }
+    });
   });
 });

@@ -7,11 +7,31 @@
 
 import React from 'react';
 import { screen, fireEvent } from '@testing-library/react-native';
-import { render } from '@testing-library/react-native';
 import { CommentItem } from '@/components/comment/CommentItem';
 import { makeCommentItem } from '@/__tests__/utils/data-factories';
+import { renderWithProviders as render } from '@/__tests__/utils/test-utils';
 
 const mockRouter = jest.requireMock('expo-router').router;
+
+// CommentItem は useCommentRepliesQuery（返信展開）と CommentLikeButton 経由の
+// useToggleCommentLikeMutation を使うため、TanStack Query フックをモックする
+// （モック境界は lib/api/ だが、ここではフックレベルでモックしネットワークに出ない構成に揃える）
+jest.mock('@/lib/queries/comments', () => ({
+  useCommentRepliesQuery: jest.fn(() => ({
+    data: { pages: [{ items: [], nextCursor: null }] },
+    isLoading: false,
+    isError: false,
+    error: null,
+    fetchNextPage: jest.fn(),
+    hasNextPage: false,
+    isFetchingNextPage: false,
+    refetch: jest.fn(),
+  })),
+  useToggleCommentLikeMutation: jest.fn(() => ({
+    mutate: jest.fn(),
+    isPending: false,
+  })),
+}));
 
 describe('CommentItem', () => {
   beforeEach(() => {

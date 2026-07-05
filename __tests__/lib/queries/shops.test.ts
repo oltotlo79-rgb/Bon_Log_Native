@@ -17,6 +17,7 @@ import {
   useUpdateShopMutation,
   useCreateReviewMutation,
   useShopMapPinsQuery,
+  useGeocodeMutation,
 } from '@/lib/queries/shops';
 import { queryKeys } from '@/lib/queries/keys';
 import type { components } from '@/lib/api/generated/schema.d.ts';
@@ -599,5 +600,100 @@ describe('useShopMapPinsQuery', () => {
 
     await waitFor(() => expect(result.current.isError).toBe(true));
     expect(result.current.error).toBeInstanceOf(ApiError);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// useGeocodeMutation
+// ---------------------------------------------------------------------------
+
+describe('useGeocodeMutation', () => {
+  it('成功で GeocodeResponse が返り GET /api/v1/geocode が address 付きで呼ばれる', async () => {
+    mockApiClientGet.mockResolvedValue({
+      data: { latitude: 35.6812, longitude: 139.7671, formattedAddress: '東京都新宿区○○1-2-3' },
+      error: undefined,
+    });
+    const { Wrapper } = createWrapper();
+
+    const { result } = renderHook(() => useGeocodeMutation(), { wrapper: Wrapper });
+
+    await act(async () => {
+      await result.current.mutateAsync('新宿区○○1-2-3');
+    });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(result.current.data?.latitude).toBe(35.6812);
+    expect(result.current.data?.longitude).toBe(139.7671);
+    expect(mockApiClientGet).toHaveBeenCalledWith('/api/v1/geocode', {
+      params: { query: { address: '新宿区○○1-2-3' } },
+    });
+  });
+
+  it('404 NOT_FOUND で ApiError が throw される', async () => {
+    mockApiClientGet.mockResolvedValue({
+      data: undefined,
+      error: makeApiError('NOT_FOUND', 404),
+    });
+    const { Wrapper } = createWrapper();
+
+    const { result } = renderHook(() => useGeocodeMutation(), { wrapper: Wrapper });
+
+    await act(async () => {
+      try {
+        await result.current.mutateAsync('存在しない住所');
+      } catch {
+        // expected
+      }
+    });
+
+    await waitFor(() => expect(result.current.isError).toBe(true));
+    expect(result.current.error).toBeInstanceOf(ApiError);
+    if (result.current.error instanceof ApiError) {
+      expect(result.current.error.code).toBe('NOT_FOUND');
+      expect(result.current.error.status).toBe(404);
+    }
+  });
+
+  it('429 RATE_LIMITED で ApiError が throw される', async () => {
+    mockApiClientGet.mockResolvedValue({
+      data: undefined,
+      error: makeApiError('RATE_LIMITED', 429),
+    });
+    const { Wrapper } = createWrapper();
+
+    const { result } = renderHook(() => useGeocodeMutation(), { wrapper: Wrapper });
+
+    await act(async () => {
+      try {
+        await result.current.mutateAsync('新宿区○○1-2-3');
+      } catch {
+        // expected
+      }
+    });
+
+    await waitFor(() => expect(result.current.isError).toBe(true));
+    expect(result.current.error).toBeInstanceOf(ApiError);
+    if (result.current.error instanceof ApiError) {
+      expect(result.current.error.code).toBe('RATE_LIMITED');
+      expect(result.current.error.status).toBe(429);
+    }
+  });
+
+  it('error が undefined の場合は汎用エラーが throw される', async () => {
+    mockApiClientGet.mockResolvedValue({ data: undefined, error: undefined });
+    const { Wrapper } = createWrapper();
+
+    const { result } = renderHook(() => useGeocodeMutation(), { wrapper: Wrapper });
+
+    await act(async () => {
+      try {
+        await result.current.mutateAsync('住所');
+      } catch {
+        // expected
+      }
+    });
+
+    await waitFor(() => expect(result.current.isError).toBe(true));
+    expect(result.current.error?.message).toContain('Unexpected error geocoding address');
   });
 });
