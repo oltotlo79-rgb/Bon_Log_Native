@@ -342,13 +342,21 @@ export type AnalyticsDays = '7' | '30' | '90';
  */
 export type AnalyticsPeriod = 7 | 30 | 90;
 
-/** イベント一覧フィルタ */
+/**
+ * イベント一覧フィルタ。
+ * limit: 1 ページあたりの取得件数（省略時は EVENTS_PAGE_SIZE）。
+ * カレンダー用の全件収集ではサーバーの id ベースカーソルの並び順不整合
+ * （startDate 昇順に対し id 比較でページングしており、2 ページ目以降で
+ * 取りこぼしが起き得る）を避けるため、MAX_PAGE_LIMIT を指定して
+ * 1 ページで完結させることを優先する。
+ */
 export type EventsFilter = {
   region?: string;
   prefecture?: string;
   showPast?: boolean;
   year?: number;
   month?: number;
+  limit?: number;
 };
 
 /** 盆栽園一覧クエリパラメータ */

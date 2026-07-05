@@ -30,6 +30,7 @@ import { ScreenError } from '@/components/common/ScreenError';
 import { ScreenEmpty } from '@/components/common/ScreenEmpty';
 import { OfflineBanner } from '@/components/common/OfflineBanner';
 import type { PrefectureName } from '@/lib/constants/prefectures';
+import { MAX_PAGE_LIMIT } from '@/lib/constants/limits/pagination';
 import {
   colorBackground,
   colorSurfaceWashi,
@@ -65,20 +66,6 @@ const FAB_ICON_SIZE = 24;
 type EventListItem = EventItemDetail;
 
 // ---------------------------------------------------------------------------
-// ユーティリティ
-// ---------------------------------------------------------------------------
-
-// ISO 文字列から YYYY-MM-DD を取り出す（タイムゾーン変換を経由しない）
-function getYmd(isoStr: string): string {
-  const slice = isoStr.slice(0, 10);
-  if (slice.length === 10 && slice[4] === '-' && slice[7] === '-') {
-    return slice;
-  }
-  const d = new Date(isoStr);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-}
-
-// ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
 
@@ -103,12 +90,15 @@ export default function EventsScreen() {
   // カレンダービュー用クエリ（全件・過去含む・year/month 指定なし）
   // Web 版 EventContentSection と同じく月指定なしで全イベントを取得し、
   // カレンダーコンポーネント内の月ナビゲーションで描画月を切り替える。
+  // limit は API 上限（MAX_PAGE_LIMIT）を指定し、通常件数のデータであれば
+  // 1 ページで完結させてリクエスト数を最小化する。
   // ---------------------------------------------------------------------------
   const calendarFilter = useMemo(
     () => ({
       region: selectedRegion.length > 0 ? selectedRegion : undefined,
       prefecture: selectedPrefecture,
       showPast: true as const,
+      limit: MAX_PAGE_LIMIT,
     }),
     [selectedRegion, selectedPrefecture]
   );
@@ -149,19 +139,20 @@ export default function EventsScreen() {
     }
   }, [calendarHasNextPage, calendarIsFetchingNextPage, calendarFetchNextPage, viewMode]);
 
-  // 今後のイベント（取得済みデータから今日以降をクライアントフィルタ）
-  const todayYmd = useMemo(() => {
-    const d = new Date();
-    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-  }, []);
-
-  const upcomingEvents = useMemo(
-    () =>
-      calendarRawItems
-        .filter((ev) => getYmd(ev.startDate) >= todayYmd)
-        .sort((a, b) => a.startDate.localeCompare(b.startDate)),
-    [calendarRawItems, todayYmd]
-  );
+  // 今後のイベント（取得済みデータからクライアントフィルタ）
+  // Web 版 EventContentSection の upcomingEvents 判定に合わせ、endDate があれば
+  // それが現在以降か、なければ startDate が現在以降かで判定する
+  // （期間イベントは開始日を過ぎても終了日までは「今後」に含める）。
+  const upcomingEvents = useMemo(() => {
+    const nowMoment = new Date();
+    return calendarRawItems
+      .filter((ev) => {
+        const endDate = ev.endDate !== null ? new Date(ev.endDate) : null;
+        const startDate = new Date(ev.startDate);
+        return endDate !== null ? endDate >= nowMoment : startDate >= nowMoment;
+      })
+      .sort((a, b) => a.startDate.localeCompare(b.startDate));
+  }, [calendarRawItems]);
 
   // ---------------------------------------------------------------------------
   // リストビュー用クエリ（全期間・無限スクロール）
@@ -398,14 +389,17 @@ export default function EventsScreen() {
                 )}
               </View>
 
-              {/* 空状態 */}
-              {!calendarIsLoading && !calendarIsError && upcomingEvents.length === 0 && (
-                <View style={styles.emptyUpcoming}>
-                  <Text style={styles.emptyUpcomingText}>
-                    今後のイベントはありません
-                  </Text>
-                </View>
-              )}
+              {/* 空状態（全ページ収集完了後のみ判定。収集中の早すぎる空表示を防ぐ） */}
+              {!calendarIsLoading &&
+                !calendarIsFetchingNextPage &&
+                !calendarIsError &&
+                upcomingEvents.length === 0 && (
+                  <View style={styles.emptyUpcoming}>
+                    <Text style={styles.emptyUpcomingText}>
+                      今後のイベントはありません
+                    </Text>
+                  </View>
+                )}
             </>
           }
         />

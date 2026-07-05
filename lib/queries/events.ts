@@ -43,7 +43,7 @@ export function useEventsListQuery(filter: EventsFilter = {}) {
         params: {
           query: {
             cursor: pageParam ?? undefined,
-            limit: EVENTS_PAGE_SIZE,
+            limit: filter.limit ?? EVENTS_PAGE_SIZE,
             region: filter.region,
             prefecture: filter.prefecture,
             showPast: filter.showPast === true ? 'true' : filter.showPast === false ? 'false' : undefined,
