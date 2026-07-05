@@ -1,7 +1,7 @@
 /**
  * @module components/search/HashtagSearchResults
  * ハッシュタグ検索タブ。入力をデバウンスして候補一覧を表示し、タップで投稿一覧へ遷移する。
- * q が空の場合は初期案内を表示する。
+ * q が空の場合は Web の PopularTags 準拠で人気タグ上位 10 件を表示する。
  */
 
 import React, { useCallback, memo } from 'react';
@@ -16,10 +16,11 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { useSearchHashtagsQuery, type SearchHashtagItem } from '@/lib/queries/search';
+import { useSearchHashtagsQuery } from '@/lib/queries/search';
+import { useTrendingHashtagsQuery } from '@/lib/queries/explore';
 import { useDebounce } from '@/hooks/use-debounce';
 import { routeExplorePostsByHashtag } from '@/lib/constants/routes';
-import { ERR_SEARCH_FAILED } from '@/lib/constants/errors';
+import { ERR_SEARCH_FAILED, ERR_EXPLORE_LOAD_FAILED } from '@/lib/constants/errors';
 import { DEBOUNCE_SEARCH_MS } from '@/lib/constants/limits/ui';
 import {
   colorBackground,
@@ -30,6 +31,7 @@ import {
   colorTextTertiary,
   colorBorderLight,
   colorActionPrimary,
+  spacing2,
   spacing3,
   spacing4,
   radiusMd,
@@ -49,11 +51,17 @@ const TAG_ICON_SIZE = 18;
 const CHEVRON_SIZE = 16;
 
 // ---------------------------------------------------------------------------
-// ハッシュタグ行
+// ハッシュタグ行（検索候補・人気タグの両方で共用。両レスポンスとも { id, name, count } 形状）
 // ---------------------------------------------------------------------------
 
+type HashtagLike = {
+  id: string;
+  name: string;
+  count: number;
+};
+
 type HashtagRowProps = {
-  item: SearchHashtagItem;
+  item: HashtagLike;
 };
 
 const HashtagRow = memo(function HashtagRow({ item }: HashtagRowProps) {
@@ -108,17 +116,19 @@ export function HashtagSearchResults({ rawQuery }: HashtagSearchResultsProps) {
     HASHTAG_SEARCH_LIMIT
   );
 
+  const trendingQuery = useTrendingHashtagsQuery();
+
   const items = data?.items ?? [];
 
   const renderItem = useCallback(
-    ({ item }: ListRenderItemInfo<SearchHashtagItem>) => <HashtagRow item={item} />,
+    ({ item }: ListRenderItemInfo<HashtagLike>) => <HashtagRow item={item} />,
     []
   );
 
-  const keyExtractor = useCallback((item: SearchHashtagItem) => item.id, []);
+  const keyExtractor = useCallback((item: HashtagLike) => item.id, []);
 
   const getItemLayout = useCallback(
-    (_: ArrayLike<SearchHashtagItem> | null | undefined, index: number) => ({
+    (_: ArrayLike<HashtagLike> | null | undefined, index: number) => ({
       length: HASHTAG_ITEM_HEIGHT,
       offset: HASHTAG_ITEM_HEIGHT * index,
       index,
@@ -126,13 +136,57 @@ export function HashtagSearchResults({ rawQuery }: HashtagSearchResultsProps) {
     []
   );
 
+  // 未入力時は Web の PopularTags（getPopularTags(10)）と同じく人気タグ上位 10 件を表示する
   if (rawQuery.length === 0) {
+    const trendingItems = trendingQuery.data?.items ?? [];
+
+    if (trendingQuery.isLoading) {
+      return (
+        <View style={styles.loadingCenter}>
+          <ActivityIndicator size="small" color={colorActionPrimary} />
+        </View>
+      );
+    }
+
+    if (trendingQuery.isError) {
+      const debugMsg =
+        trendingQuery.error instanceof Error ? trendingQuery.error.message : undefined;
+      return (
+        <ScreenError
+          title="読み込めませんでした"
+          description={ERR_EXPLORE_LOAD_FAILED}
+          onRetry={() => void trendingQuery.refetch()}
+          debugMessage={debugMsg}
+        />
+      );
+    }
+
+    if (trendingItems.length === 0) {
+      return (
+        <ScreenEmpty
+          iconName="pricetag-outline"
+          title="人気のタグはまだありません"
+          description="投稿が増えるとここに人気のタグが表示されます"
+        />
+      );
+    }
+
     return (
-      <ScreenEmpty
-        iconName="pricetag-outline"
-        title="タグを検索"
-        description="ハッシュタグを入力すると候補が表示されます"
-      />
+      <View style={styles.trendingContainer}>
+        <Text style={styles.trendingTitle} accessibilityRole="header">
+          人気のタグ
+        </Text>
+        <FlatList
+          data={trendingItems}
+          keyExtractor={keyExtractor}
+          renderItem={renderItem}
+          contentContainerStyle={styles.listContent}
+          getItemLayout={getItemLayout}
+          removeClippedSubviews
+          maxToRenderPerBatch={20}
+          keyboardDismissMode="on-drag"
+        />
+      </View>
     );
   }
 
@@ -198,6 +252,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: spacing4,
+  },
+  trendingContainer: {
+    flex: 1,
+    backgroundColor: colorBackground,
+  },
+  trendingTitle: {
+    ...textMd,
+    fontWeight: '600',
+    color: colorTextPrimary,
+    paddingHorizontal: spacing4,
+    paddingTop: spacing4,
+    paddingBottom: spacing2,
   },
   listContent: {
     paddingTop: spacing3,

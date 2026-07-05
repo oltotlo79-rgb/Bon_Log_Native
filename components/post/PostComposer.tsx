@@ -151,7 +151,9 @@ export function PostComposer({
   const isPollValid =
     pollValue === null ||
     (pollValue.options.length >= 2 && pollValue.options.every((o) => o.trim().length > 0));
-  const canSubmit = hasContent && !isContentOverLimit && !isSubmitting && isPollValid;
+  // ジャンル必須は Web の PostForm 準拠で新規投稿のみ（編集は未選択でも保存できる）
+  const hasSelectedGenre = mode === 'edit' || selectedGenres.length > 0;
+  const canSubmit = hasContent && !isContentOverLimit && !isSubmitting && isPollValid && hasSelectedGenre;
 
   const handlePressCancel = useCallback(() => {
     if (!isDirty) {
@@ -355,6 +357,7 @@ export function PostComposer({
           selectedGenres={selectedGenres}
           onChange={setSelectedGenres}
           isDisabled={isSubmitting}
+          isRequired={mode === 'create'}
         />
 
         <View style={styles.divider} />

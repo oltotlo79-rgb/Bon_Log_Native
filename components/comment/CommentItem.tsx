@@ -6,10 +6,15 @@
  * 自分のコメントには「⋮」メニューから削除導線を提供する。
  * 他人のコメントには「⋮」ボタンから通報・ブロック・ミュートを提供する（ugc-safety.md §2.4）。
  * 返信ボタンで親コンポーネントに返信モードを通知する。
+ * メンションは item.mentionedUsers でニックネームに解決して表示する（Web の CommentContent 準拠）。
+ * 添付メディアはプロフィールのコメントタブ（UserCommentsList）と同じサムネイル表示に揃える。
+ * 返信件数はサーバーに子コメント取得 API が存在しないため、件数表示とタップ導線までを対応範囲とする
+ * （docs/design/comment-composer.md §12「返信コメントの取得方法」参照。子コメントの実データ表示は core 対応待ち）。
  */
 
 import React, { useMemo, useState, useCallback } from 'react';
 import { View, Text, StyleSheet, Pressable, Alert, Platform, Modal } from 'react-native';
+import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import {
@@ -19,6 +24,7 @@ import {
   colorTextPrimary,
   colorTextSecondary,
   colorTextTertiary,
+  colorTextLink,
   colorError,
   colorBackground,
   spacing2,
@@ -49,6 +55,65 @@ const COMMENT_MENU_BUTTON_SIZE = 44;
 const COMMENT_MENU_ICON_SIZE = 18;
 const ACTION_BUTTON_HEIGHT = 36;
 const DELETE_SHEET_ITEM_HEIGHT = 56;
+const MEDIA_THUMBNAIL_SIZE = 80;
+const VIDEO_ICON_SIZE = 28;
+const REPLIES_CHEVRON_SIZE = 14;
+
+// ---------------------------------------------------------------------------
+// メディアサムネイル行（UserCommentsList の CommentMediaThumbnails と同じ表示に揃える）
+// ---------------------------------------------------------------------------
+
+type CommentMediaItem = CommentItemData['media'][number];
+
+/** 生成型上 type は string のため、動画判定は文字列比較の型ガードで絞る */
+function isVideoMediaType(type: string): boolean {
+  return type === 'video';
+}
+
+type CommentMediaThumbnailsProps = {
+  media: readonly CommentMediaItem[];
+};
+
+const CommentMediaThumbnails = React.memo(function CommentMediaThumbnails({
+  media,
+}: CommentMediaThumbnailsProps) {
+  const sortedMedia = useMemo(
+    () => [...media].sort((a, b) => a.sortOrder - b.sortOrder),
+    [media]
+  );
+
+  if (sortedMedia.length === 0) return null;
+
+  return (
+    <View style={styles.mediaRow}>
+      {sortedMedia.map((m) =>
+        isVideoMediaType(m.type) ? (
+          <View
+            key={m.id}
+            style={styles.mediaCell}
+            accessibilityLabel="添付動画"
+          >
+            <Ionicons
+              name="play-circle-outline"
+              size={VIDEO_ICON_SIZE}
+              color={colorTextTertiary}
+              accessibilityElementsHidden
+              importantForAccessibility="no"
+            />
+          </View>
+        ) : (
+          <Image
+            key={m.id}
+            source={{ uri: m.url }}
+            style={styles.mediaCell}
+            contentFit="cover"
+            accessibilityLabel="添付画像"
+          />
+        )
+      )}
+    </View>
+  );
+});
 
 // ---------------------------------------------------------------------------
 // Props
@@ -97,8 +162,17 @@ function CommentItemInner({
     [item.isDeleted, item.content]
   );
 
+  const mentionNicknameById = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const u of item.mentionedUsers) {
+      map.set(u.id, u.nickname);
+    }
+    return map;
+  }, [item.mentionedUsers]);
+
   const [menuVisible, setMenuVisible] = useState(false);
   const [deleteSheetVisible, setDeleteSheetVisible] = useState(false);
+  const [repliesExpanded, setRepliesExpanded] = useState(false);
 
   const isOwnComment = currentUserId !== undefined && currentUserId === item.user.id;
   const canShowOthersMenu = currentUserId !== undefined && !isOwnComment && !item.isDeleted;
@@ -121,6 +195,10 @@ function CommentItemInner({
       onReply({ parentId: item.id, nickname: item.user.nickname });
     }
   }, [onReply, item.id, item.user.nickname]);
+
+  const handleToggleReplies = useCallback(() => {
+    setRepliesExpanded((prev) => !prev);
+  }, []);
 
   const handleConfirmDelete = useCallback(() => {
     if (Platform.OS === 'ios') {
@@ -219,15 +297,17 @@ function CommentItemInner({
             <Text style={styles.body}>
               {segments.map((segment, index) => {
                 if (segment.type === 'mention') {
+                  const nickname = mentionNicknameById.get(segment.userId);
+                  const displayText = `@${nickname ?? 'unknown'}`;
                   return (
                     <Text
                       key={index}
                       style={styles.mention}
                       onPress={() => router.push(routeUserDetail(segment.userId))}
                       accessibilityRole="link"
-                      accessibilityLabel={`@${segment.userId}のプロフィールを表示`}
+                      accessibilityLabel={`${displayText}のプロフィールを表示`}
                     >
-                      {`@${segment.userId}`}
+                      {displayText}
                     </Text>
                   );
                 }
@@ -247,6 +327,9 @@ function CommentItemInner({
             </Text>
           )}
 
+          {/* 添付メディア（UserCommentsList と同じサムネイル表示）*/}
+          {!item.isDeleted && <CommentMediaThumbnails media={item.media} />}
+
           {/* アクション行（返信ボタン）*/}
           {!item.isDeleted && onReply !== undefined && (
             <View style={styles.actionsRow}>
@@ -259,6 +342,38 @@ function CommentItemInner({
               >
                 <Text style={styles.actionButtonText}>返信する</Text>
               </Pressable>
+            </View>
+          )}
+
+          {/* 返信件数の表示・トグル（子コメントの実データ取得 API が未提供のため、
+              件数表示とトグル導線までを対応範囲とする） */}
+          {!item.isDeleted && item.replyCount > 0 && (
+            <View>
+              <Pressable
+                style={styles.repliesToggle}
+                onPress={handleToggleReplies}
+                accessibilityRole="button"
+                accessibilityLabel={
+                  repliesExpanded ? '返信を非表示にする' : `${item.replyCount}件の返信を表示する`
+                }
+                hitSlop={{ top: 4, bottom: 4, left: 4, right: 4 }}
+              >
+                <Ionicons
+                  name={repliesExpanded ? 'chevron-up' : 'chevron-down'}
+                  size={REPLIES_CHEVRON_SIZE}
+                  color={colorTextSecondary}
+                  accessibilityElementsHidden
+                  importantForAccessibility="no"
+                />
+                <Text style={styles.repliesToggleText}>
+                  {repliesExpanded ? '返信を非表示' : `${item.replyCount}件の返信を表示`}
+                </Text>
+              </Pressable>
+              {repliesExpanded && (
+                <Text style={styles.repliesPendingNotice}>
+                  返信スレッドの表示は今後のアップデートで対応予定です。
+                </Text>
+              )}
             </View>
           )}
         </View>
@@ -388,12 +503,42 @@ const styles = StyleSheet.create({
   },
   mention: {
     ...textBase,
-    color: colorTextSecondary,
+    color: colorTextLink,
     fontWeight: '600',
   },
   hashtag: {
     ...textBase,
     color: colorTextSecondary,
+  },
+  mediaRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing2,
+  },
+  mediaCell: {
+    width: MEDIA_THUMBNAIL_SIZE,
+    height: MEDIA_THUMBNAIL_SIZE,
+    borderRadius: radiusMd,
+    backgroundColor: colorSurfaceMuted,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  repliesToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing2,
+    minHeight: 32,
+  },
+  repliesToggleText: {
+    ...textSm,
+    color: colorTextSecondary,
+    fontWeight: '600',
+  },
+  repliesPendingNotice: {
+    ...textSm,
+    color: colorTextTertiary,
+    paddingVertical: spacing2,
   },
   deletedContainer: {
     borderWidth: 1,

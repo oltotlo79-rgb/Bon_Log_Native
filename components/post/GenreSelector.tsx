@@ -14,6 +14,7 @@ import {
   colorSurfaceMuted,
   colorTextTertiary,
   colorBorderLight,
+  colorError,
   spacing2,
   spacing3,
   radiusSm,
@@ -37,13 +38,23 @@ export type GenreSelectorProps = {
   selectedGenres: string[];
   onChange: (genres: string[]) => void;
   isDisabled: boolean;
+  /**
+   * true のとき未選択時に必須案内を表示する（新規投稿のみ。Web の PostForm 準拠で
+   * 編集フォームはジャンル未選択でも保存できるため false のままにする）。
+   */
+  isRequired?: boolean;
 };
 
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
 
-export function GenreSelector({ selectedGenres, onChange, isDisabled }: GenreSelectorProps) {
+export function GenreSelector({
+  selectedGenres,
+  onChange,
+  isDisabled,
+  isRequired = false,
+}: GenreSelectorProps) {
   const handlePressChip = useCallback(
     (genre: string) => {
       if (isDisabled) return;
@@ -62,8 +73,15 @@ export function GenreSelector({ selectedGenres, onChange, isDisabled }: GenreSel
   return (
     <View style={styles.container}>
       <Text style={styles.sectionLabel}>
-        ジャンル（最大{MAX_GENRES_PER_POST}つまで）
+        {isRequired
+          ? `ジャンル（必須・最大${MAX_GENRES_PER_POST}つまで）`
+          : `ジャンル（最大${MAX_GENRES_PER_POST}つまで）`}
       </Text>
+      {isRequired && selectedGenres.length === 0 && (
+        <Text style={styles.requiredHint} accessibilityLiveRegion="polite">
+          ジャンルを1つ以上選択してください
+        </Text>
+      )}
       <ScrollView
         horizontal={false}
         showsVerticalScrollIndicator={false}
@@ -123,6 +141,10 @@ const styles = StyleSheet.create({
     ...textXs,
     color: colorTextTertiary,
     letterSpacing: letterSpacingTight,
+  },
+  requiredHint: {
+    ...textXs,
+    color: colorError,
   },
   chipRow: {
     flexDirection: 'row',
