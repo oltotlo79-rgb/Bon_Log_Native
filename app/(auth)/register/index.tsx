@@ -20,6 +20,7 @@ import { AuthTermsAgreement } from '@/components/auth/AuthTermsAgreement';
 import { AuthBrandHeader } from '@/components/auth/AuthBrandHeader';
 import { AuthHeroImage } from '@/components/auth/AuthHeroImage';
 import { AuthScreenBackground } from '@/components/auth/AuthScreenBackground';
+import { AuthCardFrame } from '@/components/auth/AuthCardFrame';
 import { validateEmail, validatePassword, validateNickname } from '@/lib/utils/validate-auth';
 import { MAX_NICKNAME_LENGTH } from '@/lib/constants/limits/auth';
 import {
@@ -168,110 +169,112 @@ export default function RegisterScreen() {
 
             <AuthHeroImage />
 
-            <Text style={styles.title} accessibilityRole="header">
-              新規登録
-            </Text>
+            <AuthCardFrame>
+              <Text style={styles.title} accessibilityRole="header">
+                新規登録
+              </Text>
 
-            <View style={styles.form}>
-              <AuthTextField
-                label="ニックネーム"
-                value={nickname}
-                onChangeText={setNickname}
-                onBlur={handleNicknameBlur}
-                error={nicknameError}
-                disabled={isPending}
-                placeholder="表示名（50文字以内）"
-                autoCapitalize="none"
-                autoCorrect={false}
-                autoComplete="username"
-                textContentType="username"
-                maxLength={MAX_NICKNAME_LENGTH}
-                returnKeyType="next"
-                onSubmitEditing={() => emailRef.current?.focus()}
-              />
+              <View style={styles.form}>
+                <AuthTextField
+                  label="ニックネーム"
+                  value={nickname}
+                  onChangeText={setNickname}
+                  onBlur={handleNicknameBlur}
+                  error={nicknameError}
+                  disabled={isPending}
+                  placeholder="表示名（50文字以内）"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  autoComplete="username"
+                  textContentType="username"
+                  maxLength={MAX_NICKNAME_LENGTH}
+                  returnKeyType="next"
+                  onSubmitEditing={() => emailRef.current?.focus()}
+                />
 
-              <AuthTextField
-                ref={emailRef}
-                label="メールアドレス"
-                value={email}
-                onChangeText={setEmail}
-                onBlur={handleEmailBlur}
-                error={emailError}
-                disabled={isPending}
-                placeholder="mail@example.com"
-                keyboardType="email-address"
-                autoCapitalize="none"
-                autoCorrect={false}
-                autoComplete="email"
-                textContentType="emailAddress"
-                returnKeyType="next"
-                onSubmitEditing={() => passwordRef.current?.focus()}
-              />
+                <AuthTextField
+                  ref={emailRef}
+                  label="メールアドレス"
+                  value={email}
+                  onChangeText={setEmail}
+                  onBlur={handleEmailBlur}
+                  error={emailError}
+                  disabled={isPending}
+                  placeholder="mail@example.com"
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  autoComplete="email"
+                  textContentType="emailAddress"
+                  returnKeyType="next"
+                  onSubmitEditing={() => passwordRef.current?.focus()}
+                />
 
-              <PasswordField
-                ref={passwordRef}
-                label="パスワード"
-                value={password}
-                onChangeText={setPassword}
-                onBlur={handlePasswordBlur}
-                error={passwordError}
-                disabled={isPending}
-                placeholder="8文字以上（英字・数字を含む）"
-                autoComplete="new-password"
-                textContentType="newPassword"
-                returnKeyType="next"
-                onSubmitEditing={() => confirmRef.current?.focus()}
-              />
+                <PasswordField
+                  ref={passwordRef}
+                  label="パスワード"
+                  value={password}
+                  onChangeText={setPassword}
+                  onBlur={handlePasswordBlur}
+                  error={passwordError}
+                  disabled={isPending}
+                  placeholder="8文字以上（英字・数字を含む）"
+                  autoComplete="new-password"
+                  textContentType="newPassword"
+                  returnKeyType="next"
+                  onSubmitEditing={() => confirmRef.current?.focus()}
+                />
 
-              <PasswordField
-                ref={confirmRef}
-                label="パスワード（確認）"
-                value={confirm}
-                onChangeText={setConfirm}
-                onBlur={handleConfirmBlur}
-                error={confirmError}
-                disabled={isPending}
-                placeholder="もう一度入力"
-                autoComplete="new-password"
-                textContentType="newPassword"
-                returnKeyType="done"
-              />
+                <PasswordField
+                  ref={confirmRef}
+                  label="パスワード（確認）"
+                  value={confirm}
+                  onChangeText={setConfirm}
+                  onBlur={handleConfirmBlur}
+                  error={confirmError}
+                  disabled={isPending}
+                  placeholder="もう一度入力"
+                  autoComplete="new-password"
+                  textContentType="newPassword"
+                  returnKeyType="done"
+                />
 
-              <AuthTermsAgreement
-                checked={termsChecked}
-                onToggle={() => setTermsChecked((prev) => !prev)}
-                disabled={isPending}
-              />
+                <AuthTermsAgreement
+                  checked={termsChecked}
+                  onToggle={() => setTermsChecked((prev) => !prev)}
+                  disabled={isPending}
+                />
 
-              <FormErrorMessage message={formError} />
+                <FormErrorMessage message={formError} />
 
-              <AuthPrimaryButton
-                label="新規登録"
-                onPress={handleSubmit}
-                disabled={!allRequiredFilled}
-                isLoading={isPending}
-              />
+                <AuthPrimaryButton
+                  label="新規登録"
+                  onPress={handleSubmit}
+                  disabled={!allRequiredFilled}
+                  isLoading={isPending}
+                />
 
-              <AuthDivider />
+                <AuthDivider />
 
-              <GoogleSignInButton
-                label="Google で登録"
-                disabled={!isGoogleAvailable}
-                loading={isGoogleLoading}
-                onPress={googleSignIn}
-              />
+                <GoogleSignInButton
+                  label="Google で登録"
+                  disabled={!isGoogleAvailable}
+                  loading={isGoogleLoading}
+                  onPress={googleSignIn}
+                />
 
-              <FormErrorMessage message={googleError?.message ?? null} />
-            </View>
-
-            <View style={styles.footer}>
-              <View style={styles.footerRow}>
-                <Text style={styles.footerText}>既にアカウントをお持ちの方は</Text>
-                <Link href={routes.login} accessibilityRole="link">
-                  <Text style={styles.footerLink}>ログイン</Text>
-                </Link>
+                <FormErrorMessage message={googleError?.message ?? null} />
               </View>
-            </View>
+
+              <View style={styles.footer}>
+                <View style={styles.footerRow}>
+                  <Text style={styles.footerText}>既にアカウントをお持ちの方は</Text>
+                  <Link href={routes.login} accessibilityRole="link">
+                    <Text style={styles.footerLink}>ログイン</Text>
+                  </Link>
+                </View>
+              </View>
+            </AuthCardFrame>
           </ScrollView>
         </KeyboardAvoidingView>
       </AuthScreenBackground>

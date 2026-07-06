@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { AuthPrimaryButton } from '@/components/auth/AuthPrimaryButton';
 import { AuthHeroImage } from '@/components/auth/AuthHeroImage';
 import { AuthScreenBackground } from '@/components/auth/AuthScreenBackground';
+import { AuthCardFrame } from '@/components/auth/AuthCardFrame';
 import { ResendVerificationButton } from '@/components/auth/ResendVerificationButton';
 import { useToast } from '@/hooks/use-toast';
 import { Toast } from '@/components/common/Toast';
@@ -66,44 +67,48 @@ export default function VerifyEmailSentScreen() {
       <View style={styles.container}>
         <AuthHeroImage />
 
-        <Text style={styles.title} accessibilityRole="header">
-          メールをご確認ください
-        </Text>
-
-        <Text style={styles.description}>
-          ご登録のメールアドレスに確認メールを送信しました。メール内のリンクをクリックして登録を完了してください。
-        </Text>
-
-        <Text style={styles.hint}>
-          メールが届かない場合は、迷惑メールフォルダもご確認ください。
-        </Text>
-
-        {resendSuccess && (
-          <View
-            style={styles.successBanner}
-            accessibilityRole="alert"
-            accessibilityLiveRegion="polite"
-          >
-            <Text style={styles.successBannerText}>
-              確認メールを再送しました。しばらく経ってもメールが届かない場合は、迷惑メールフォルダもご確認ください。
+        <AuthCardFrame>
+          <View style={styles.cardBody}>
+            <Text style={styles.title} accessibilityRole="header">
+              メールをご確認ください
             </Text>
+
+            <Text style={styles.description}>
+              ご登録のメールアドレスに確認メールを送信しました。メール内のリンクをクリックして登録を完了してください。
+            </Text>
+
+            <Text style={styles.hint}>
+              メールが届かない場合は、迷惑メールフォルダもご確認ください。
+            </Text>
+
+            {resendSuccess && (
+              <View
+                style={styles.successBanner}
+                accessibilityRole="alert"
+                accessibilityLiveRegion="polite"
+              >
+                <Text style={styles.successBannerText}>
+                  確認メールを再送しました。しばらく経ってもメールが届かない場合は、迷惑メールフォルダもご確認ください。
+                </Text>
+              </View>
+            )}
+
+            {email.length > 0 && (
+              <ResendVerificationButton
+                email={email}
+                onSuccess={handleResendSuccess}
+                onError={handleResendError}
+                style={styles.resendButton}
+              />
+            )}
+
+            <AuthPrimaryButton
+              label="ログイン画面へ戻る"
+              onPress={handleBackToLogin}
+              accessibilityLabel="ログイン画面へ戻る"
+            />
           </View>
-        )}
-
-        {email.length > 0 && (
-          <ResendVerificationButton
-            email={email}
-            onSuccess={handleResendSuccess}
-            onError={handleResendError}
-            style={styles.resendButton}
-          />
-        )}
-
-        <AuthPrimaryButton
-          label="ログイン画面へ戻る"
-          onPress={handleBackToLogin}
-          accessibilityLabel="ログイン画面へ戻る"
-        />
+        </AuthCardFrame>
       </View>
       </AuthScreenBackground>
 
@@ -131,9 +136,14 @@ const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
-    alignItems: 'center',
+    // AuthCardFrame を画面幅いっぱいに広げるため、直接の中央寄せは
+    // cardBody（カード内側）側で行う。AuthHeroImage は自身の内部スタイルで中央寄せ済み。
     justifyContent: 'center',
     paddingHorizontal: spacing8,
+    gap: spacing6,
+  },
+  cardBody: {
+    alignItems: 'center',
     gap: spacing6,
   },
   title: {
