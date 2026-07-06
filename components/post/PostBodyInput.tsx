@@ -4,8 +4,9 @@
  * 仕様: docs/design/post-composer.md §6
  */
 
-import React, { useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import { View, TextInput, Text, StyleSheet } from 'react-native';
+import { BrushDivider } from '@/components/common/BrushDivider';
 import {
   colorTextPrimary,
   colorTextSecondary,
@@ -23,6 +24,9 @@ import {
 
 const TEXT_AREA_MIN_HEIGHT = 120;
 const COUNTER_WARNING_THRESHOLD = 50;
+// Web の `.brush-input`（focus で下線幅 4px→6px）を移植
+const UNDERLINE_HEIGHT = 4;
+const UNDERLINE_HEIGHT_FOCUSED = 6;
 
 // ---------------------------------------------------------------------------
 // Props
@@ -40,6 +44,8 @@ export type PostBodyInputProps = {
 // ---------------------------------------------------------------------------
 
 export function PostBodyInput({ value, onChange, maxLength, isDisabled }: PostBodyInputProps) {
+  const [isFocused, setIsFocused] = useState(false);
+
   const remaining = maxLength - value.length;
   const isOverLimit = remaining < 0;
   const isNearLimit = remaining >= 0 && remaining <= COUNTER_WARNING_THRESHOLD;
@@ -71,10 +77,13 @@ export function PostBodyInput({ value, onChange, maxLength, isDisabled }: PostBo
         autoCapitalize="sentences"
         returnKeyType="default"
         editable={!isDisabled}
+        onFocus={() => setIsFocused(true)}
+        onBlur={() => setIsFocused(false)}
         accessibilityLabel="投稿内容を入力"
         accessibilityHint={`最大${maxLength}文字で入力してください`}
         testID="post-body-input"
       />
+      <BrushDivider height={isFocused ? UNDERLINE_HEIGHT_FOCUSED : UNDERLINE_HEIGHT} />
       <View style={styles.counterRow}>
         <Text
           style={[styles.counter, { color: counterColor }]}

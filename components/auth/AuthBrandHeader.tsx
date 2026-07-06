@@ -7,9 +7,11 @@
 import React from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { Image } from 'expo-image';
+import { BrushDivider } from '@/components/common/BrushDivider';
 import {
   colorTextSecondary,
   spacing2,
+  spacing3,
   spacing8,
   textBase,
   letterSpacingWide,
@@ -19,10 +21,13 @@ const LOGO_SOURCE = require('@/assets/images/brand-mark.png');
 
 // ロゴは正方形透過 PNG。幅 140pt で中央配置する
 const LOGO_SIZE = 140;
+// Web の `.brush-divider`（ブランド見出し上下の飾り線）を移植
+const BRAND_DIVIDER_WIDTH = 96;
 
 export function AuthBrandHeader() {
   return (
     <View style={styles.container} accessibilityRole="header">
+      <BrushDivider style={styles.divider} />
       <Image
         source={LOGO_SOURCE}
         style={styles.logo}
@@ -31,6 +36,7 @@ export function AuthBrandHeader() {
         accessibilityRole="image"
       />
       <Text style={styles.catchcopy}>盆栽愛好家のためのSNS</Text>
+      <BrushDivider style={styles.divider} />
     </View>
   );
 }
@@ -39,6 +45,10 @@ const styles = StyleSheet.create({
   container: {
     alignItems: 'center',
     marginBottom: spacing8,
+  },
+  divider: {
+    width: BRAND_DIVIDER_WIDTH,
+    marginVertical: spacing3,
   },
   logo: {
     width: LOGO_SIZE,

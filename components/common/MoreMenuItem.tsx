@@ -7,11 +7,11 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { Image } from 'expo-image';
 import {
   colorTextPrimary,
   colorTextTertiary,
   colorError,
-  colorBorderLight,
   spacing2,
   spacing3,
   spacing4,
@@ -19,6 +19,12 @@ import {
   textSm,
   colorTextSecondary,
 } from '@/lib/constants/design-tokens';
+
+// Web の MobileNav InkSeparator（メニュー行区切りの波線）を移植。
+// RN にはドロップアップメニューの構造がないため、フラットな一覧画面の
+// 行区切りとして同アセットを適用する（sumi-e-theme-parity §3.5）。
+const INK_SEPARATOR_SOURCE = require('@/assets/images/brush-frames/ink-separator.svg');
+const INK_SEPARATOR_HEIGHT = 2;
 
 type RightElement = 'chevron' | 'external' | 'none';
 
@@ -96,6 +102,16 @@ export function MoreMenuItem({
           importantForAccessibility="no"
         />
       )}
+
+      {showBorder && (
+        <Image
+          source={INK_SEPARATOR_SOURCE}
+          style={styles.itemSeparator}
+          contentFit="fill"
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
+        />
+      )}
     </TouchableOpacity>
   );
 }
@@ -109,8 +125,16 @@ const styles = StyleSheet.create({
     paddingVertical: spacing2,
   },
   itemBorder: {
-    borderBottomWidth: 1,
-    borderBottomColor: colorBorderLight,
+    // 区切り線は itemSeparator（ink-separator.svg）で表現するため、ここでは
+    // 装飾の重なりを防ぐ余白確保のみ行う
+    paddingBottom: spacing2,
+  },
+  itemSeparator: {
+    position: 'absolute',
+    bottom: 0,
+    left: spacing4,
+    right: spacing4,
+    height: INK_SEPARATOR_HEIGHT,
   },
   itemDisabled: {
     opacity: 0.5,

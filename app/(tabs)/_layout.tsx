@@ -1,7 +1,10 @@
 import { Tabs } from 'expo-router';
 import { Platform, StyleSheet, Text, View, type ColorValue } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Image } from 'expo-image';
 import { TabBarIcon } from '@/components/common/TabBarIcon';
+import { NavTabIcon } from '@/components/common/NavTabIcon';
+import { NavActiveInkUnderline } from '@/components/common/NavActiveIndicator';
 import { useUnreadCountQuery } from '@/lib/queries/notifications';
 import {
   colorNavBackground,
@@ -9,7 +12,6 @@ import {
   colorNavIconInactive,
   colorNavLabel,
   colorNavLabelInactive,
-  colorBorderLight,
   colorError,
   colorTextInverse,
   textXs,
@@ -19,6 +21,37 @@ import {
 import { BADGE_OVERFLOW_THRESHOLD } from '@/lib/constants/limits/ui';
 
 const TAB_BAR_HEIGHT = 60;
+
+// ---------------------------------------------------------------------------
+// タブバー背景の墨筆装飾（Web の MobileNav InkStrokeBorder + 和紙ノイズを移植）
+// ---------------------------------------------------------------------------
+
+const INK_STROKE_TOP_SOURCE = require('@/assets/images/brush-frames/ink-stroke-top.svg');
+const WASHI_NOISE_SOURCE = require('@/assets/images/brush-frames/washi-noise.svg');
+
+const INK_STROKE_TOP_HEIGHT = 6;
+/** Web の `opacity-[0.03]`（ライトモード時）と同値 */
+const WASHI_NOISE_OPACITY = 0.03;
+
+function TabBarBackground() {
+  return (
+    <View style={styles.tabBarBackground} accessibilityElementsHidden importantForAccessibility="no-hide-descendants">
+      <View style={styles.tabBarBackgroundFill} />
+      <Image
+        source={WASHI_NOISE_SOURCE}
+        style={styles.washiNoise}
+        contentFit="cover"
+        accessible={false}
+      />
+      <Image
+        source={INK_STROKE_TOP_SOURCE}
+        style={styles.inkStrokeTop}
+        contentFit="fill"
+        accessible={false}
+      />
+    </View>
+  );
+}
 
 // ---------------------------------------------------------------------------
 // 未読バッジ（notifications-screen.md §7）
@@ -93,6 +126,7 @@ export default function TabsLayout() {
         tabBarActiveTintColor: colorNavIconActive,
         tabBarInactiveTintColor: colorNavIconInactive,
         tabBarItemStyle: styles.tabBarItem,
+        tabBarBackground: TabBarBackground,
       }}
     >
       <Tabs.Screen
@@ -103,7 +137,9 @@ export default function TabsLayout() {
             <TabLabel label="ホーム" focused={focused} />
           ),
           tabBarIcon: ({ color, focused }) => (
-            <TabBarIcon name="home" color={color} focused={focused} size={20} />
+            <NavTabIcon focused={focused}>
+              <TabBarIcon name="home" color={color} focused={focused} size={20} />
+            </NavTabIcon>
           ),
           tabBarAccessibilityLabel: 'ホーム',
         }}
@@ -116,7 +152,9 @@ export default function TabsLayout() {
             <TabLabel label="検索" focused={focused} />
           ),
           tabBarIcon: ({ color, focused }) => (
-            <TabBarIcon name="search" color={color} focused={focused} size={20} />
+            <NavTabIcon focused={focused}>
+              <TabBarIcon name="search" color={color} focused={focused} size={20} />
+            </NavTabIcon>
           ),
           tabBarAccessibilityLabel: '検索',
         }}
@@ -129,7 +167,9 @@ export default function TabsLayout() {
             <TabLabel label="通知" focused={focused} />
           ),
           tabBarIcon: ({ color, focused }) => (
-            <NotificationTabIcon color={color} focused={focused} size={20} />
+            <NavTabIcon focused={focused}>
+              <NotificationTabIcon color={color} focused={focused} size={20} />
+            </NavTabIcon>
           ),
           tabBarAccessibilityLabel: '通知',
         }}
@@ -142,7 +182,9 @@ export default function TabsLayout() {
             <TabLabel label="プロフィール" focused={focused} />
           ),
           tabBarIcon: ({ color, focused }) => (
-            <TabBarIcon name="user" color={color} focused={focused} size={20} />
+            <NavTabIcon focused={focused}>
+              <TabBarIcon name="user" color={color} focused={focused} size={20} />
+            </NavTabIcon>
           ),
           tabBarAccessibilityLabel: 'プロフィール',
         }}
@@ -155,7 +197,9 @@ export default function TabsLayout() {
             <TabLabel label="もっと見る" focused={focused} />
           ),
           tabBarIcon: ({ color, focused }) => (
-            <TabBarIcon name="more" color={color} focused={focused} size={20} />
+            <NavTabIcon focused={focused}>
+              <TabBarIcon name="more" color={color} focused={focused} size={20} />
+            </NavTabIcon>
           ),
           tabBarAccessibilityLabel: 'もっと見る',
         }}
@@ -171,29 +215,65 @@ type TabLabelProps = {
 
 function TabLabel({ label, focused }: TabLabelProps) {
   return (
-    <Text
-      style={[
-        styles.tabLabelText,
-        {
-          color: focused ? colorNavLabel : colorNavLabelInactive,
-          fontWeight: focused ? '700' : '400',
-        },
-      ]}
-    >
-      {label}
-    </Text>
+    <View style={styles.tabLabelFrame}>
+      <Text
+        style={[
+          styles.tabLabelText,
+          {
+            color: focused ? colorNavLabel : colorNavLabelInactive,
+            fontWeight: focused ? '700' : '400',
+          },
+        ]}
+      >
+        {label}
+      </Text>
+      {focused && <NavActiveInkUnderline />}
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   tabBar: {
     backgroundColor: colorNavBackground,
-    borderTopWidth: 1,
-    borderTopColor: colorBorderLight,
+  },
+  tabBarBackground: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    overflow: 'hidden',
+  },
+  tabBarBackgroundFill: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: colorNavBackground,
+  },
+  washiNoise: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    opacity: WASHI_NOISE_OPACITY,
+  },
+  inkStrokeTop: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    height: INK_STROKE_TOP_HEIGHT,
   },
   tabBarItem: {
     flex: 1,
     height: TAB_BAR_HEIGHT,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  tabLabelFrame: {
     alignItems: 'center',
     justifyContent: 'center',
   },

@@ -10,7 +10,10 @@ import {
   Pressable,
   StyleSheet,
   Text,
+  type GestureResponderEvent,
 } from 'react-native';
+import { InkRippleLayer } from '@/components/common/InkRippleLayer';
+import { useInkRipple } from '@/hooks/use-ink-ripple';
 import {
   colorActionPrimary,
   colorActionPrimaryText,
@@ -49,16 +52,24 @@ export function AuthPrimaryButton({
   accessibilityLabel,
 }: AuthPrimaryButtonProps) {
   const isDisabled = disabled || isLoading;
+  const { ripples, triggerInkRipple } = useInkRipple();
+
+  function handlePressIn(event: GestureResponderEvent) {
+    const { locationX, locationY } = event.nativeEvent;
+    triggerInkRipple(locationX, locationY);
+  }
 
   return (
     <Pressable
       style={[styles.button, isDisabled && styles.buttonDisabled]}
       onPress={onPress}
+      onPressIn={handlePressIn}
       disabled={isDisabled}
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel ?? label}
       accessibilityState={{ disabled: isDisabled, busy: isLoading }}
     >
+      <InkRippleLayer ripples={ripples} />
       {isLoading ? (
         <ActivityIndicator
           size="small"
@@ -82,6 +93,7 @@ const styles = StyleSheet.create({
     borderRadius: radiusLg,
     alignItems: 'center',
     justifyContent: 'center',
+    overflow: 'hidden',
   },
   buttonDisabled: {
     opacity: 0.4,

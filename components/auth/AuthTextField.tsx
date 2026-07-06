@@ -14,6 +14,7 @@ import {
   type TextInputProps,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { BrushDivider } from '@/components/common/BrushDivider';
 import {
   colorBackground,
   colorBorder,
@@ -47,6 +48,7 @@ export type AuthTextFieldProps = TextInputProps & {
 
 const INPUT_HEIGHT = 48;
 const ERROR_ICON_SIZE = 12;
+const FOCUS_ACCENT_HEIGHT = 3;
 
 // ---------------------------------------------------------------------------
 // Component
@@ -102,6 +104,12 @@ export const AuthTextField = forwardRef<TextInput, AuthTextFieldProps>(
           {rightElement}
         </View>
 
+        {/* Web の `.brush-input`（focus 時の墨筆下線）を近似した装飾アクセント。
+            エラー時はエラー表示を優先し重ねない */}
+        {isFocused && !hasError && (
+          <BrushDivider height={FOCUS_ACCENT_HEIGHT} style={styles.focusAccent} />
+        )}
+
         {hasError && (
           <View
             style={styles.errorRow}
@@ -140,6 +148,9 @@ const styles = StyleSheet.create({
   },
   inputContainerDisabled: {
     opacity: 0.5,
+  },
+  focusAccent: {
+    marginTop: spacing1,
   },
   input: {
     flex: 1,
