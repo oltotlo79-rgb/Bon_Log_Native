@@ -40,6 +40,7 @@ import {
   textXs,
 } from '@/lib/constants/design-tokens';
 import { ERR_LOAD_FAILED } from '@/lib/constants/errors';
+import { LEAFLET_CSS_CONTENT, LEAFLET_JS_CONTENT } from '@/components/shops/leaflet-vendor';
 
 // ---------------------------------------------------------------------------
 // 定数
@@ -54,9 +55,9 @@ const LOCATION_BUTTON_SIZE = 44;
 const LOCATION_ICON_SIZE = 22;
 const RETRY_BUTTON_MIN_WIDTH = 96;
 
-// Leaflet の CDN 読み込みが失敗（ネットワーク遮断・CDN 障害等）してもフリーズしないよう、
-// postMessage('ready') が一定時間届かなければタイムアウトとしてエラー表示へフォールバックする。
-const MAP_READY_TIMEOUT_MS = 8000;
+// Leaflet 本体は同梱済みでネットワーク非依存だが、タイル読み込み待ちや低スペック端末での
+// 初期化遅延を考慮し、postMessage('ready') が一定時間届かなければエラー表示へフォールバックする。
+const MAP_READY_TIMEOUT_MS = 20000;
 
 // ---------------------------------------------------------------------------
 // 型
@@ -103,13 +104,14 @@ function buildLeafletHtml(shops: ShopMapItem[]): string {
     }))
   );
 
-  // unpkg が遮断・障害のネットワーク環境向けに jsdelivr へのフォールバック読み込みを用意する
-  // （読み込み失敗時に無限ローディングへ陥っていた根本原因への対処）。
+  // Leaflet 本体 (JS/CSS) は CDN からではなく同梱の vendor 文字列をインライン展開する
+  // （実機で CDN 読み込みが失敗し「読み込みに失敗しました」になっていた根本原因への対処）。
   return `<!DOCTYPE html>
 <html lang="ja">
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+  <style>${LEAFLET_CSS_CONTENT}</style>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     html, body { height: 100%; width: 100%; overflow: hidden; }
@@ -154,9 +156,8 @@ function buildLeafletHtml(shops: ShopMapItem[]): string {
     }
     .leaflet-container { font-family: sans-serif; }
   </style>
+  <script>${LEAFLET_JS_CONTENT}</script>
   <script>
-    // ready / error の通知と CDN フォールバックは、外部スクリプトタグより先に定義しておく
-    // （onload/onerror ハンドラの評価時に未定義になるのを防ぐため）。
     var shops = ${markersJson};
 
     function notifyError(message) {
@@ -169,23 +170,6 @@ function buildLeafletHtml(shops: ShopMapItem[]): string {
       notifyError(message);
       return true;
     };
-
-    function loadCssFallback() {
-      var link = document.createElement('link');
-      link.rel = 'stylesheet';
-      link.href = 'https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.css';
-      document.head.appendChild(link);
-    }
-
-    function loadLeafletScriptFallback() {
-      var script = document.createElement('script');
-      script.src = 'https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.js';
-      script.onload = initMap;
-      script.onerror = function () {
-        notifyError('leaflet failed to load from all CDN sources');
-      };
-      document.body.appendChild(script);
-    }
 
     function buildStars(rating) {
       if (!rating) return '';
@@ -220,7 +204,7 @@ function buildLeafletHtml(shops: ShopMapItem[]): string {
     function initMap() {
       try {
         if (typeof L === 'undefined') {
-          notifyError('leaflet global is undefined after script load');
+          notifyError('leaflet global is undefined after inline script evaluation');
           return;
         }
 
@@ -281,15 +265,10 @@ function buildLeafletHtml(shops: ShopMapItem[]): string {
       }
     }
   </script>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
-    crossorigin="" onerror="loadCssFallback()"/>
 </head>
 <body>
 <div id="map"></div>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-  integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV/XN/WLs="
-  crossorigin="" onload="initMap()" onerror="loadLeafletScriptFallback()"></script>
+<script>initMap();</script>
 </body>
 </html>`;
 }
