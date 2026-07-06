@@ -91,4 +91,30 @@ describe('TabsLayout', () => {
       }
     });
   });
+
+  describe('タブバーの墨筆装飾（和紙ノイズ・波線ボーダー）', () => {
+    it('和紙ノイズ（washi-noise）画像が背景に描画される', () => {
+      const { toJSON } = renderWithProviders(<TabsLayout />);
+      expect(JSON.stringify(toJSON())).toContain('washi-noise.svg');
+    });
+
+    it('波線ボーダー（ink-stroke-top）画像が背景に描画される', () => {
+      const { toJSON } = renderWithProviders(<TabsLayout />);
+      expect(JSON.stringify(toJSON())).toContain('ink-stroke-top.svg');
+    });
+
+    it('装飾が描画されても5タブすべてが引き続き表示される（タブ動作が壊れない）', () => {
+      renderWithProviders(<TabsLayout />);
+      const tabScreenNames = [
+        'feed/index',
+        'search/index',
+        'notifications/index',
+        'profile/index',
+        'more/index',
+      ];
+      for (const name of tabScreenNames) {
+        expect(screen.getByTestId(`tab-screen-${name}`)).toBeTruthy();
+      }
+    });
+  });
 });

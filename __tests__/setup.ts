@@ -217,10 +217,23 @@ jest.mock('expo-router', () => ({
     return React.createElement(TouchableOpacity, { testID: `link-${href}`, accessibilityRole: 'link' }, children);
   },
   Tabs: Object.assign(
-    ({ children, screenOptions: _screenOptions }: { children: React.ReactNode; screenOptions?: unknown }) => {
+    ({
+      children,
+      screenOptions,
+    }: {
+      children: React.ReactNode;
+      screenOptions?: { tabBarBackground?: () => React.ReactNode };
+    }) => {
       const React = require('react');
       const { View } = require('react-native');
-      return React.createElement(View, { testID: 'tabs' }, children);
+      // tabBarBackground（墨筆装飾: 和紙ノイズ・波線ボーダー）を実際にレンダーし、
+      // タブ動作がその装飾によって壊れないことをテストで検証可能にする
+      // （実 Tabs コンポーネントと同様、装飾が children と共存する構造を再現する）
+      const BackgroundComponent = screenOptions?.tabBarBackground;
+      const backgroundEl = BackgroundComponent
+        ? React.createElement(BackgroundComponent)
+        : null;
+      return React.createElement(View, { testID: 'tabs' }, backgroundEl, children);
     },
     {
       Screen: ({

@@ -49,6 +49,31 @@ describe('PostCard', () => {
     });
   });
 
+  describe('墨筆枠（post-frame）', () => {
+    it('post-frame 画像が描画される', () => {
+      const { toJSON } = renderWithProviders(<PostCard {...makePostCardProps()} />);
+      expect(JSON.stringify(toJSON())).toContain('post-frame.svg');
+    });
+
+    it('post-frame 画像は装飾として accessibilityElementsHidden が設定される', () => {
+      const { toJSON } = renderWithProviders(<PostCard {...makePostCardProps()} />);
+      const json = JSON.stringify(toJSON());
+      expect(json).toContain('"accessibilityElementsHidden":true');
+    });
+
+    it('post-frame 画像は accessible={false} で読み上げ対象外になっている', () => {
+      const { toJSON } = renderWithProviders(<PostCard {...makePostCardProps()} />);
+      const json = JSON.stringify(toJSON());
+      expect(json).toContain('"accessible":false');
+    });
+
+    it('post-frame 画像は importantForAccessibility="no-hide-descendants" が設定される', () => {
+      const { toJSON } = renderWithProviders(<PostCard {...makePostCardProps()} />);
+      const json = JSON.stringify(toJSON());
+      expect(json).toContain('"importantForAccessibility":"no-hide-descendants"');
+    });
+  });
+
   describe('content=null の防衛表示', () => {
     it('content=null のとき「(内容がありません)」が表示される', () => {
       renderWithProviders(<PostCard {...makePostCardProps({ content: null })} />);

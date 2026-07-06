@@ -9,7 +9,6 @@ import { screen, fireEvent, within } from '@testing-library/react-native';
 import FeedScreen from '@/app/(tabs)/feed/index';
 import { ROUTE_POST_NEW, ROUTE_SEARCH } from '@/lib/constants/routes';
 import { renderWithProviders } from '@/__tests__/utils/test-utils';
-import { colorActionPrimary } from '@/lib/constants/design-tokens';
 
 const mockRouter = jest.requireMock('expo-router').router;
 
@@ -92,15 +91,16 @@ describe('FeedScreen', () => {
     expect(mockRouter.push).toHaveBeenCalledWith(ROUTE_POST_NEW);
   });
 
-  it('FAB は 80px 四方かつ primary 色の円形ボタンである', () => {
-    renderWithProviders(<FeedScreen />);
+  it('FAB は 80pt 四方のタップ領域を持ち、墨だまり画像（button-blob）が背景に使われている', () => {
+    const { toJSON } = renderWithProviders(<FeedScreen />);
     const fab = screen.getByRole('button', { name: '新規投稿' });
-    const flatStyle = Object.assign({}, ...(fab.props.style as object[]).filter(
-      (s): s is Record<string, unknown> => typeof s === 'object' && s !== null
-    ));
-    expect(flatStyle.width).toBe(80);
-    expect(flatStyle.height).toBe(80);
-    expect(flatStyle.backgroundColor).toBe(colorActionPrimary);
+    // ComposeFab への切り出し後、タップ領域を持つ Pressable の style は単一オブジェクト（配列でない）
+    expect(Array.isArray(fab.props.style)).toBe(false);
+    expect(fab.props.style).toMatchObject({ width: 80, height: 80 });
+
+    // 背景は button-blob.svg の expo-image（単色 backgroundColor ではない）
+    const json = JSON.stringify(toJSON());
+    expect(json).toContain('button-blob.svg');
   });
 
   it('FAB にはペンアイコン（pencil）が表示される', () => {

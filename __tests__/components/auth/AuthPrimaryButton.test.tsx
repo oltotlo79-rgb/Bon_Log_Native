@@ -69,4 +69,42 @@ describe('AuthPrimaryButton', () => {
     expect(button.props.accessibilityState.disabled).toBe(false);
     expect(button.props.accessibilityState.busy).toBe(false);
   });
+
+  describe('墨グラデーション背景（LinearGradient）', () => {
+    it('LinearGradient が背景として描画される', () => {
+      const { toJSON } = render(<AuthPrimaryButton label="ログイン" onPress={jest.fn()} />);
+      expect(JSON.stringify(toJSON())).toContain('ExpoLinearGradient');
+    });
+
+    it('disabled=true でもグラデーション自体は描画され、透過スタイルが適用される', () => {
+      const { toJSON } = render(
+        <AuthPrimaryButton label="ログイン" onPress={jest.fn()} disabled />
+      );
+      const json = JSON.stringify(toJSON());
+      expect(json).toContain('ExpoLinearGradient');
+      expect(json).toContain('"opacity":0.4');
+    });
+
+    it('disabled=true でもタップは無効化されたまま onPress が呼ばれない（グラデーション適用下でも機能を維持）', () => {
+      const onPress = jest.fn();
+      render(<AuthPrimaryButton label="ログイン" onPress={onPress} disabled />);
+      fireEvent.press(screen.getByRole('button'));
+      expect(onPress).not.toHaveBeenCalled();
+    });
+
+    it('isLoading=true でもグラデーション自体は描画され、スピナーに切り替わる', () => {
+      const { toJSON } = render(
+        <AuthPrimaryButton label="ログイン" onPress={jest.fn()} isLoading />
+      );
+      expect(JSON.stringify(toJSON())).toContain('ExpoLinearGradient');
+      expect(screen.getByRole('button').props.accessibilityState.busy).toBe(true);
+    });
+
+    it('通常状態でタップすると onPress が呼ばれる（グラデーション適用下でも機能を維持）', () => {
+      const onPress = jest.fn();
+      render(<AuthPrimaryButton label="ログイン" onPress={onPress} />);
+      fireEvent.press(screen.getByRole('button', { name: 'ログイン' }));
+      expect(onPress).toHaveBeenCalledTimes(1);
+    });
+  });
 });
