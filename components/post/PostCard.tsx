@@ -8,6 +8,7 @@
 
 import React, { useState, useCallback } from 'react';
 import { View, StyleSheet, Pressable } from 'react-native';
+import { Image } from 'expo-image';
 import { router } from 'expo-router';
 import {
   colorSurface,
@@ -15,7 +16,6 @@ import {
   spacing3,
   spacing4,
   spacing5,
-  radiusLg,
   shadowWashi,
   shadowWashiHover,
 } from '@/lib/constants/design-tokens';
@@ -34,6 +34,10 @@ import type { PostImageMedia } from './PostImageGallery';
 import type { PostGenre } from './PostGenreTags';
 import type { QuotedPostCardProps } from './QuotedPostCard';
 import type { PostPoll } from './PollDisplay';
+
+// Web の card-washi（post-frame.svg を border-image で伸縮）を忠実移植。
+// カード高さは可変のため PNG 化せず SVG を都度の実測サイズへ伸縮表示する。
+const POST_FRAME_SOURCE = require('@/assets/images/brush-frames/post-frame.svg');
 
 // ---------------------------------------------------------------------------
 // 型定義
@@ -149,92 +153,104 @@ function PostCardInner({
         accessibilityLabel={disableNavigation ? undefined : cardAccessibilityLabel}
         testID="post-card"
       >
-        {/* リポスト表示: 「{nickname} がリポスト」ヘッダー行 */}
-        {isRepost && (
-          <RepostIndicator
-            reposterUserId={user.id}
-            reposterNickname={user.nickname}
-          />
-        )}
-
-        {/* ヘッダー: アバター / ユーザー名 / 日時 / 固定バッジ */}
-        <PostCardHeader
-          user={
-            isRepost
-              ? {
-                  id: repostPost.user.id,
-                  nickname: repostPost.user.nickname,
-                  avatarUrl: repostPost.user.avatarUrl,
-                  // リポスト元著者の block/mute 状態は FeedItem では提供されないため false 固定
-                  isBlocked: false,
-                  isMuted: false,
-                }
-              : user
-          }
-          createdAt={createdAt}
-          editedAt={editedAt}
-          isPinned={isPinned}
-          onMenuPress={
-            // onMenuPress が渡されている（詳細画面の自分の投稿メニュー）か、
-            // 他人の投稿でログイン済み（UserActionMenu を開く）場合にボタンを表示する
-            onMenuPress !== undefined || (!isOwnPost && currentUserId !== undefined)
-              ? handleMenuPress
-              : undefined
-          }
+        {/* 墨筆枠（Web の card-washi）。装飾のため読み上げ対象から除外する */}
+        <Image
+          source={POST_FRAME_SOURCE}
+          style={styles.frame}
+          contentFit="fill"
+          accessible={false}
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
         />
 
-        {/* 本文（メンション・ハッシュタグ・続きを読む） */}
-        <View style={styles.contentArea}>
-          <PostCardContent
-            content={displayContent}
-            disableNavigation={disableNavigation}
-            mentionUsers={mentionUsers}
+        <View style={styles.contentInner}>
+          {/* リポスト表示: 「{nickname} がリポスト」ヘッダー行 */}
+          {isRepost && (
+            <RepostIndicator
+              reposterUserId={user.id}
+              reposterNickname={user.nickname}
+            />
+          )}
+
+          {/* ヘッダー: アバター / ユーザー名 / 日時 / 固定バッジ */}
+          <PostCardHeader
+            user={
+              isRepost
+                ? {
+                    id: repostPost.user.id,
+                    nickname: repostPost.user.nickname,
+                    avatarUrl: repostPost.user.avatarUrl,
+                    // リポスト元著者の block/mute 状態は FeedItem では提供されないため false 固定
+                    isBlocked: false,
+                    isMuted: false,
+                  }
+                : user
+            }
+            createdAt={createdAt}
+            editedAt={editedAt}
+            isPinned={isPinned}
+            onMenuPress={
+              // onMenuPress が渡されている（詳細画面の自分の投稿メニュー）か、
+              // 他人の投稿でログイン済み（UserActionMenu を開く）場合にボタンを表示する
+              onMenuPress !== undefined || (!isOwnPost && currentUserId !== undefined)
+                ? handleMenuPress
+                : undefined
+            }
           />
-        </View>
 
-        {/* アンケート付き投稿のみ表示（undefined は未アンケート投稿、null はサーバー除外済み） */}
-        {poll != null && (
-          <View style={styles.pollArea}>
-            <PollDisplay poll={poll} postId={displayPostId} />
-          </View>
-        )}
-
-        {/* 画像グリッド */}
-        {displayMedia.length > 0 && (
-          <View style={styles.galleryArea}>
-            <PostImageGallery
-              media={displayMedia}
-              authorNickname={displayUser.nickname}
+          {/* 本文（メンション・ハッシュタグ・続きを読む） */}
+          <View style={styles.contentArea}>
+            <PostCardContent
+              content={displayContent}
+              disableNavigation={disableNavigation}
+              mentionUsers={mentionUsers}
             />
           </View>
-        )}
 
-        {/* 引用投稿カード */}
-        {quotePost !== null && (
-          <View style={styles.quoteArea}>
-            <QuotedPostCard post={quotePost} />
-          </View>
-        )}
+          {/* アンケート付き投稿のみ表示（undefined は未アンケート投稿、null はサーバー除外済み） */}
+          {poll != null && (
+            <View style={styles.pollArea}>
+              <PollDisplay poll={poll} postId={displayPostId} />
+            </View>
+          )}
 
-        {/* ジャンルタグ */}
-        {genres.length > 0 && (
-          <View style={styles.genreArea}>
-            <PostGenreTags genres={genres} />
-          </View>
-        )}
+          {/* 画像グリッド */}
+          {displayMedia.length > 0 && (
+            <View style={styles.galleryArea}>
+              <PostImageGallery
+                media={displayMedia}
+                authorNickname={displayUser.nickname}
+              />
+            </View>
+          )}
 
-        {/* アクション行（いいね・コメント・リポスト数・ブックマーク）*/}
-        <PostCardActions
-          postId={displayPostId}
-          likeCount={likeCount}
-          commentCount={commentCount}
-          repostCount={repostCount}
-          isLiked={isLiked}
-          isBookmarked={isBookmarked}
-          isReposted={isReposted}
-          currentUserId={currentUserId}
-          onComment={onComment}
-        />
+          {/* 引用投稿カード */}
+          {quotePost !== null && (
+            <View style={styles.quoteArea}>
+              <QuotedPostCard post={quotePost} />
+            </View>
+          )}
+
+          {/* ジャンルタグ */}
+          {genres.length > 0 && (
+            <View style={styles.genreArea}>
+              <PostGenreTags genres={genres} />
+            </View>
+          )}
+
+          {/* アクション行（いいね・コメント・リポスト数・ブックマーク）*/}
+          <PostCardActions
+            postId={displayPostId}
+            likeCount={likeCount}
+            commentCount={commentCount}
+            repostCount={repostCount}
+            isLiked={isLiked}
+            isBookmarked={isBookmarked}
+            isReposted={isReposted}
+            currentUserId={currentUserId}
+            onComment={onComment}
+          />
+        </View>
       </Pressable>
 
       {menuVisible && (
@@ -262,14 +278,22 @@ export const PostCard = React.memo(PostCardInner);
 const styles = StyleSheet.create({
   card: {
     backgroundColor: colorSurface,
-    borderRadius: radiusLg,
-    padding: spacing5,
+    borderRadius: 0,
     marginBottom: spacing4,
     ...shadowWashi,
   },
   cardPressed: {
     ...shadowWashiHover,
     opacity: 0.97,
+  },
+  // 墨筆枠画像。カード全体に伸縮して重ねる（Web の border-image-source 相当）
+  frame: {
+    ...StyleSheet.absoluteFill,
+  },
+  // 枠線の視覚的太さ分、既存の spacing5 に spacing2 を足した内側パディングを確保する
+  // （docs/design/sumi-e-theme-parity-2026-07-06.md §3.2 手順4 / §6.3）
+  contentInner: {
+    padding: spacing5 + spacing2,
   },
   contentArea: {
     marginTop: spacing2,

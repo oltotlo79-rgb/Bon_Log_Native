@@ -187,6 +187,7 @@ Web の `--radius: 0.625rem`（= 10px ≒ 10pt）を起点に派生させる。
 | `radiusFull` | 9999pt | — | 円形ボタン（FAB・アバター） |
 
 PostCard は Web で `card-washi`（brushフレーム + `border-radius: 0`）を使うが、モバイルでは SVG 枠は再現しない。代わりに `radiusLg`（10pt）の標準カード形状を使用し、`shadow-washi` のような軽い影で品格を出す。
+（2026-07-06 ユーザー指示により方針転換。sumi-e-theme-parity 参照）
 
 ---
 

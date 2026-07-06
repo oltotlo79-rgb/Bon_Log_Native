@@ -4,6 +4,7 @@ import { Text } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
+import { Image } from 'expo-image';
 import {
   colorBackground,
   colorSurfaceWashi,
@@ -15,7 +16,6 @@ import {
   spacing5,
   textLg,
   letterSpacingWidest,
-  radiusFull,
   shadowWashiLg,
 } from '@/lib/constants/design-tokens';
 import { ROUTE_POST_NEW, ROUTE_SEARCH, routePostDetail } from '@/lib/constants/routes';
@@ -37,6 +37,10 @@ const FAB_SIZE = 80;
 const FAB_ICON_SIZE = 32;
 /** フィードアイテムの推定高さ（画像なし: 約140pt / 画像あり: 約280pt の中間値）*/
 const ESTIMATED_ITEM_HEIGHT = 200;
+
+// Web の btn-washi（button-blob.svg を background-size:100%100%で非一様伸縮）を
+// 忠実移植。80x80 固定サイズのため PNG 化せず SVG をそのまま伸縮表示する。
+const BUTTON_BLOB_SOURCE = require('@/assets/images/brush-frames/button-blob.svg');
 
 // ---------------------------------------------------------------------------
 // フィードアイテムコンポーネント（memo 化で FlatList 内の不要な再レンダリングを防ぐ）
@@ -214,6 +218,14 @@ export default function FeedScreen() {
         accessibilityLabel="新規投稿"
         hitSlop={spacing5}
       >
+        <Image
+          source={BUTTON_BLOB_SOURCE}
+          style={styles.fabBlob}
+          contentFit="fill"
+          accessible={false}
+          accessibilityElementsHidden
+          importantForAccessibility="no-hide-descendants"
+        />
         <Ionicons name="pencil" size={FAB_ICON_SIZE} color={colorActionPrimaryText} />
       </Pressable>
     </SafeAreaView>
@@ -251,10 +263,13 @@ const styles = StyleSheet.create({
     right: spacing4,
     width: FAB_SIZE,
     height: FAB_SIZE,
-    borderRadius: radiusFull,
-    backgroundColor: colorActionPrimary,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  fabBlob: {
+    position: 'absolute',
+    width: FAB_SIZE,
+    height: FAB_SIZE,
   },
   fabPressed: {
     opacity: 0.85,
