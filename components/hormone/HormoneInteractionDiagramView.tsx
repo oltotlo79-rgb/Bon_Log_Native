@@ -54,6 +54,9 @@ const DIAGRAM_READY_TIMEOUT_MS = 5000;
 
 const RETRY_BUTTON_MIN_WIDTH = 96;
 
+// WebView 診断コード表示欄に載せる JS エラーメッセージの最大文字数（長文の生ログ化を防ぐ）。
+const DIAGRAM_ERROR_DETAIL_MAX_LENGTH = 120;
+
 // ---------------------------------------------------------------------------
 // 型
 // ---------------------------------------------------------------------------
@@ -78,8 +81,29 @@ type Props = {
   onNodeSelect: (nodeId: string | null) => void;
 };
 
+/**
+ * 実機での「読み込みに失敗しました」報告の切り分け用診断コード。
+ * このダイアグラムはネットワーク非依存（CDN・タイル等のサブリソース取得なし）のため、
+ * onError/onHttpError の発火は常にメインドキュメント相当の失敗として扱ってよい
+ * （BonsaiMapView.tsx のようなサブリソース起因の onHttpError は発生し得ない）。
+ */
+type DiagramErrorKind = 'ERR_MAIN_FRAME' | 'ERR_JS' | 'ERR_TIMEOUT';
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
+}
+
+/**
+ * ホルモン名・相互作用データ等の動的値に `</script` 相当の文字列が含まれると、
+ * HTML パーサーがそこでタグを終端してしまい以降の JS が丸ごと無効になる
+ * （BonsaiMapView.tsx と同種の古典的な事故。埋め込み JSON にのみ適用する）。
+ */
+function escapeEmbeddedClosingTags(raw: string): string {
+  return raw.replace(/<\/(script|style)/gi, '<\\/$1');
+}
+
+function formatErrorDiagnostics(kind: DiagramErrorKind, detail: string | null): string {
+  return detail !== null && detail.length > 0 ? `${kind}: ${detail}` : kind;
 }
 
 // ---------------------------------------------------------------------------
@@ -92,8 +116,8 @@ function buildDiagramHtml(
   hormones: DiagramHormoneNode[],
   interactions: DiagramInteractionEdge[],
 ): string {
-  const nodesJson = JSON.stringify(hormones);
-  const edgesJson = JSON.stringify(interactions);
+  const nodesJson = escapeEmbeddedClosingTags(JSON.stringify(hormones));
+  const edgesJson = escapeEmbeddedClosingTags(JSON.stringify(interactions));
 
   return `<!DOCTYPE html>
 <html lang="ja">
@@ -321,6 +345,8 @@ export const HormoneInteractionDiagramView = React.memo(function HormoneInteract
   const webViewRef = useRef<WebView>(null);
   const [isDiagramReady, setIsDiagramReady] = useState(false);
   const [webViewLoadError, setWebViewLoadError] = useState(false);
+  const [errorKind, setErrorKind] = useState<DiagramErrorKind | null>(null);
+  const [errorDetail, setErrorDetail] = useState<string | null>(null);
   const [reloadAttempt, setReloadAttempt] = useState(0);
 
   const htmlContent = useMemo(
@@ -328,10 +354,24 @@ export const HormoneInteractionDiagramView = React.memo(function HormoneInteract
     [hormones, interactions],
   );
 
-  const handleWebViewFailure = useCallback(() => {
+  const handleWebViewFailure = useCallback((kind: DiagramErrorKind, detail?: string) => {
     setIsDiagramReady(false);
     setWebViewLoadError(true);
+    setErrorKind(kind);
+    setErrorDetail(
+      detail !== undefined ? detail.slice(0, DIAGRAM_ERROR_DETAIL_MAX_LENGTH) : null
+    );
   }, []);
+
+  // このダイアグラムはサブリソース取得がないため onError/onHttpError は常にメインドキュメント
+  // 相当の失敗として扱ってよい（BonsaiMapView.tsx のような URL 判定は不要）。
+  const handleWebViewError = useCallback(() => {
+    handleWebViewFailure('ERR_MAIN_FRAME');
+  }, [handleWebViewFailure]);
+
+  const handleWebViewHttpError = useCallback(() => {
+    handleWebViewFailure('ERR_MAIN_FRAME');
+  }, [handleWebViewFailure]);
 
   const handleMessage = useCallback(
     (event: WebViewMessageEvent) => {
@@ -349,11 +389,14 @@ export const HormoneInteractionDiagramView = React.memo(function HormoneInteract
       if (parsed.type === 'ready') {
         setIsDiagramReady(true);
         setWebViewLoadError(false);
+        setErrorKind(null);
+        setErrorDetail(null);
         return;
       }
 
       if (parsed.type === 'error') {
-        handleWebViewFailure();
+        const detail = typeof parsed.message === 'string' ? parsed.message : undefined;
+        handleWebViewFailure('ERR_JS', detail);
         return;
       }
 
@@ -370,6 +413,8 @@ export const HormoneInteractionDiagramView = React.memo(function HormoneInteract
   const handleRetry = useCallback(() => {
     setIsDiagramReady(false);
     setWebViewLoadError(false);
+    setErrorKind(null);
+    setErrorDetail(null);
     setReloadAttempt((n) => n + 1);
   }, []);
 
@@ -382,14 +427,14 @@ export const HormoneInteractionDiagramView = React.memo(function HormoneInteract
     const timer = setTimeout(() => {
       setIsDiagramReady((ready) => {
         if (!ready) {
-          setWebViewLoadError(true);
+          handleWebViewFailure('ERR_TIMEOUT');
         }
         return ready;
       });
     }, DIAGRAM_READY_TIMEOUT_MS);
 
     return () => clearTimeout(timer);
-  }, [isDiagramReady, webViewLoadError, reloadAttempt]);
+  }, [isDiagramReady, webViewLoadError, reloadAttempt, handleWebViewFailure]);
 
   // フィルタ変更（activeTypes）を WebView 内の描画状態へ同期する。
   useEffect(() => {
@@ -411,6 +456,11 @@ export const HormoneInteractionDiagramView = React.memo(function HormoneInteract
           importantForAccessibility="no"
         />
         <Text style={styles.errorText}>{ERR_LOAD_FAILED}</Text>
+        {errorKind !== null && (
+          <Text style={styles.errorDiagnosticsText}>
+            {formatErrorDiagnostics(errorKind, errorDetail)}
+          </Text>
+        )}
         <Pressable
           style={({ pressed }) => [styles.retryButton, pressed && styles.retryButtonPressed]}
           onPress={handleRetry}
@@ -432,8 +482,8 @@ export const HormoneInteractionDiagramView = React.memo(function HormoneInteract
         style={styles.webView}
         originWhitelist={['*']}
         onMessage={handleMessage}
-        onError={handleWebViewFailure}
-        onHttpError={handleWebViewFailure}
+        onError={handleWebViewError}
+        onHttpError={handleWebViewHttpError}
         javaScriptEnabled
         domStorageEnabled
         startInLoadingState
@@ -509,6 +559,12 @@ const styles = StyleSheet.create({
     ...textSm,
     color: colorTextTertiary,
     textAlign: 'center',
+  },
+  errorDiagnosticsText: {
+    ...textXs,
+    color: colorTextTertiary,
+    textAlign: 'center',
+    opacity: 0.7,
   },
   retryButton: {
     backgroundColor: colorActionPrimary,
