@@ -270,3 +270,133 @@ describe('HormoneInteractionDiagramView - activeTypes 変更時の再描画', ()
     expect(screen.getByTestId('mock-webview')).toBeTruthy();
   });
 });
+
+// ---------------------------------------------------------------------------
+// 経路B: document.title 経由の信号（postMessage 橋が機能しない端末向けフォールバック）
+// onNavigationStateChange の event.title に signal JSON を載せて送る（BonsaiMapView.tsx と同じ設計）。
+// ---------------------------------------------------------------------------
+
+function sendTitleSignal(payload: Record<string, unknown>) {
+  const webview = screen.getByTestId('mock-webview');
+  fireEvent(webview, 'navigationStateChange', { title: JSON.stringify(payload) });
+}
+
+describe('HormoneInteractionDiagramView - 経路B（title 経由の信号）', () => {
+  it('title 経由で type="ready" を受け取ると読み込み中インジケータが消える', async () => {
+    render(
+      <HormoneInteractionDiagramView
+        hormones={makeHormones()}
+        interactions={makeInteractions()}
+        activeTypes={new Set(['antagonistic'])}
+        onNodeSelect={jest.fn()}
+      />
+    );
+
+    await act(async () => {
+      sendTitleSignal({ type: 'ready', bridge: false, seq: 1 });
+    });
+
+    expect(screen.queryByText('ダイアグラムを読み込み中...')).toBeNull();
+  });
+
+  it('title 経由の nodeSelected でも onNodeSelect が呼ばれる', async () => {
+    const onNodeSelect = jest.fn();
+    render(
+      <HormoneInteractionDiagramView
+        hormones={makeHormones()}
+        interactions={makeInteractions()}
+        activeTypes={new Set(['antagonistic'])}
+        onNodeSelect={onNodeSelect}
+      />
+    );
+
+    await act(async () => {
+      sendTitleSignal({ type: 'nodeSelected', nodeId: 'h1', seq: 1 });
+    });
+
+    expect(onNodeSelect).toHaveBeenCalledWith('h1');
+  });
+
+  it('連番 seq が重複しているとき、2回目の信号は無視される', async () => {
+    const onNodeSelect = jest.fn();
+    render(
+      <HormoneInteractionDiagramView
+        hormones={makeHormones()}
+        interactions={makeInteractions()}
+        activeTypes={new Set(['antagonistic'])}
+        onNodeSelect={onNodeSelect}
+      />
+    );
+
+    await act(async () => {
+      sendTitleSignal({ type: 'nodeSelected', nodeId: 'h1', seq: 2 });
+    });
+    await act(async () => {
+      // 同一 seq=2 の再送（重複）。processSignal の seq <= lastTitleSeqRef チェックで無視される
+      sendTitleSignal({ type: 'nodeSelected', nodeId: 'h2', seq: 2 });
+    });
+
+    expect(onNodeSelect).toHaveBeenCalledTimes(1);
+    expect(onNodeSelect).toHaveBeenCalledWith('h1');
+  });
+
+  it('連番 seq が増加していれば2回目の信号も処理される', async () => {
+    const onNodeSelect = jest.fn();
+    render(
+      <HormoneInteractionDiagramView
+        hormones={makeHormones()}
+        interactions={makeInteractions()}
+        activeTypes={new Set(['antagonistic'])}
+        onNodeSelect={onNodeSelect}
+      />
+    );
+
+    await act(async () => {
+      sendTitleSignal({ type: 'nodeSelected', nodeId: 'h1', seq: 1 });
+    });
+    await act(async () => {
+      sendTitleSignal({ type: 'nodeSelected', nodeId: 'h2', seq: 2 });
+    });
+
+    expect(onNodeSelect).toHaveBeenCalledTimes(2);
+    expect(onNodeSelect).toHaveBeenNthCalledWith(2, 'h2');
+  });
+});
+
+describe('HormoneInteractionDiagramView - 経路B: ERR_TIMEOUT の診断表示', () => {
+  beforeEach(() => {
+    jest.useFakeTimers();
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  it('title 経由の status 信号で蓄積した診断が bridge=/lastStatus= として ERR_TIMEOUT の detail に表示される', () => {
+    render(
+      <HormoneInteractionDiagramView
+        hormones={makeHormones()}
+        interactions={makeInteractions()}
+        activeTypes={new Set(['antagonistic'])}
+        onNodeSelect={jest.fn()}
+      />
+    );
+
+    act(() => {
+      sendTitleSignal({
+        type: 'status',
+        stage: 'building',
+        message: null,
+        bridge: false,
+        seq: 1,
+      });
+    });
+
+    act(() => {
+      // 本番の DIAGRAM_READY_TIMEOUT_MS（5秒）と同じ猶予でタイムアウトフォールバックする
+      jest.advanceTimersByTime(5000);
+    });
+
+    expect(screen.getByText('ERR_TIMEOUT: bridge=no lastStatus=building')).toBeTruthy();
+  });
+});

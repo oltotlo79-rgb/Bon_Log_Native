@@ -361,3 +361,113 @@ describe('BonsaiMapView - 現在地ボタン（エラー）', () => {
     alertSpy.mockRestore();
   });
 });
+
+// ---------------------------------------------------------------------------
+// 経路B: document.title 経由の信号（postMessage 橋が機能しない端末向けフォールバック）
+// onNavigationStateChange の event.title に signal JSON を載せて送る。
+// ---------------------------------------------------------------------------
+
+function sendTitleSignal(payload: Record<string, unknown>) {
+  const webview = screen.getByTestId('mock-webview');
+  fireEvent(webview, 'navigationStateChange', { title: JSON.stringify(payload) });
+}
+
+describe('BonsaiMapView - 経路B（title 経由の信号）', () => {
+  it('title 経由で type="ready" を受け取ると読み込み中インジケータが消える', async () => {
+    renderWithProviders(<BonsaiMapView shops={[]} isOnline />);
+
+    await act(async () => {
+      sendTitleSignal({ type: 'ready', bridge: false, seq: 1 });
+    });
+
+    expect(screen.queryByText('地図を読み込み中...')).toBeNull();
+  });
+
+  it('title 経由の shopSelected でも router.push で店舗詳細へ遷移する', async () => {
+    renderWithProviders(
+      <BonsaiMapView shops={[makeShopMapItem({ id: 'shop-title-route' })]} isOnline />
+    );
+
+    await act(async () => {
+      sendTitleSignal({ type: 'shopSelected', shopId: 'shop-title-route', seq: 1 });
+    });
+
+    expect(mockRouterPush).toHaveBeenCalledWith({
+      pathname: '/shops/[id]',
+      params: { id: 'shop-title-route' },
+    });
+  });
+
+  it('連番 seq が重複しているとき、2回目の信号は無視される', async () => {
+    renderWithProviders(
+      <BonsaiMapView shops={[makeShopMapItem({ id: 'shop-first' })]} isOnline />
+    );
+
+    await act(async () => {
+      sendTitleSignal({ type: 'shopSelected', shopId: 'shop-first', seq: 3 });
+    });
+    await act(async () => {
+      // 同一 seq=3 の再送（重複）。processSignal の seq <= lastTitleSeqRef チェックで無視される
+      sendTitleSignal({ type: 'shopSelected', shopId: 'shop-second', seq: 3 });
+    });
+
+    expect(mockRouterPush).toHaveBeenCalledTimes(1);
+    expect(mockRouterPush).toHaveBeenCalledWith({
+      pathname: '/shops/[id]',
+      params: { id: 'shop-first' },
+    });
+  });
+
+  it('連番 seq が増加していれば2回目の信号も処理される', async () => {
+    renderWithProviders(
+      <BonsaiMapView
+        shops={[makeShopMapItem({ id: 'shop-first' }), makeShopMapItem({ id: 'shop-second' })]}
+        isOnline
+      />
+    );
+
+    await act(async () => {
+      sendTitleSignal({ type: 'shopSelected', shopId: 'shop-first', seq: 1 });
+    });
+    await act(async () => {
+      sendTitleSignal({ type: 'shopSelected', shopId: 'shop-second', seq: 2 });
+    });
+
+    expect(mockRouterPush).toHaveBeenCalledTimes(2);
+    expect(mockRouterPush).toHaveBeenNthCalledWith(2, {
+      pathname: '/shops/[id]',
+      params: { id: 'shop-second' },
+    });
+  });
+});
+
+describe('BonsaiMapView - 経路B: ERR_TIMEOUT の診断表示', () => {
+  beforeEach(() => {
+    jest.useFakeTimers();
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+  });
+
+  it('title 経由の status 信号で蓄積した診断が bridge=/lastStatus= として ERR_TIMEOUT の detail に表示される', () => {
+    renderWithProviders(<BonsaiMapView shops={[]} isOnline />);
+
+    act(() => {
+      sendTitleSignal({
+        type: 'status',
+        stage: 'initializing',
+        message: null,
+        bridge: false,
+        seq: 1,
+      });
+    });
+
+    act(() => {
+      // 本番の MAP_READY_TIMEOUT_MS（20秒）と同じ猶予でタイムアウトフォールバックする
+      jest.advanceTimersByTime(20000);
+    });
+
+    expect(screen.getByText('ERR_TIMEOUT: bridge=no lastStatus=initializing')).toBeTruthy();
+  });
+});
