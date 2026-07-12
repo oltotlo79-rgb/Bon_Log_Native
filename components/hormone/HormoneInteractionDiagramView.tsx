@@ -11,6 +11,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { View, Text, StyleSheet, Pressable, ActivityIndicator } from 'react-native';
 import WebView, { type WebViewMessageEvent } from 'react-native-webview';
+import type { WebViewNavigation } from 'react-native-webview/lib/WebViewTypes';
 import { Ionicons } from '@expo/vector-icons';
 import {
   colorSurface,
@@ -56,6 +57,11 @@ const RETRY_BUTTON_MIN_WIDTH = 96;
 
 // WebView 診断コード表示欄に載せる JS エラーメッセージの最大文字数（長文の生ログ化を防ぐ）。
 const DIAGRAM_ERROR_DETAIL_MAX_LENGTH = 120;
+
+// 実機で postMessage 橋が機能しない端末を想定し、ready/error/nodeSelected を document.title
+// 経由でも送る（BonsaiMapView.tsx と同じ経路B）。送信のたびにこのプレフィックス + 連番を
+// location.hash に載せ、onNavigationStateChange を確実に再発火させる。
+const DIAGRAM_TITLE_HASH_PREFIX = 'hormoneDiagramStatus';
 
 // ---------------------------------------------------------------------------
 // 型
@@ -106,11 +112,153 @@ function formatErrorDiagnostics(kind: DiagramErrorKind, detail: string | null): 
   return detail !== null && detail.length > 0 ? `${kind}: ${detail}` : kind;
 }
 
+/**
+ * WebView 内スクリプトから届く ready/error/status/nodeSelected の統一表現。
+ * postMessage（経路A）と document.title（経路B・Cの再送先）のどちらから来ても同じ形に正規化する
+ * （BonsaiMapView.tsx の MapSignal と同じ設計）。
+ */
+type DiagramSignal =
+  | { type: 'ready'; bridge: boolean | null }
+  | { type: 'error'; message: string | null; bridge: boolean | null }
+  | { type: 'status'; stage: string | null; message: string | null; bridge: boolean | null }
+  | { type: 'nodeSelected'; nodeId: string | null };
+
+type DiagramSignalEnvelope = {
+  signal: DiagramSignal;
+  /** title 経由の送信にのみ付与される単調増加の連番（postMessage 経由は null） */
+  seq: number | null;
+};
+
+type DiagramDiagnostics = {
+  bridge: boolean | null;
+  stage: string | null;
+  message: string | null;
+};
+
+function readStringField(record: Record<string, unknown>, key: string): string | null {
+  const value = record[key];
+  return typeof value === 'string' ? value : null;
+}
+
+function readBooleanField(record: Record<string, unknown>, key: string): boolean | null {
+  const value = record[key];
+  return typeof value === 'boolean' ? value : null;
+}
+
+function readSeqField(record: Record<string, unknown>): number | null {
+  const value = record.seq;
+  return typeof value === 'number' && Number.isFinite(value) ? value : null;
+}
+
+function readNodeIdField(record: Record<string, unknown>): { nodeId: string | null } | null {
+  const value = record.nodeId;
+  return typeof value === 'string' || value === null ? { nodeId: value } : null;
+}
+
+/**
+ * postMessage の data 文字列、または onNavigationStateChange の title 文字列のどちらからも
+ * 呼べる共通パーサー。postMessage 橋が死んでいる端末では title 経由の文字列のみが届く。
+ */
+function parseDiagramSignalEnvelope(raw: string): DiagramSignalEnvelope | null {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return null;
+  }
+
+  if (!isRecord(parsed) || typeof parsed.type !== 'string') {
+    return null;
+  }
+
+  const bridge = readBooleanField(parsed, 'bridge');
+  const seq = readSeqField(parsed);
+
+  if (parsed.type === 'ready') {
+    return { signal: { type: 'ready', bridge }, seq };
+  }
+
+  if (parsed.type === 'error') {
+    return { signal: { type: 'error', message: readStringField(parsed, 'message'), bridge }, seq };
+  }
+
+  if (parsed.type === 'status') {
+    return {
+      signal: {
+        type: 'status',
+        stage: readStringField(parsed, 'stage'),
+        message: readStringField(parsed, 'message'),
+        bridge,
+      },
+      seq,
+    };
+  }
+
+  if (parsed.type === 'nodeSelected') {
+    const nodeSelected = readNodeIdField(parsed);
+    return nodeSelected !== null ? { signal: { type: 'nodeSelected', nodeId: nodeSelected.nodeId }, seq } : null;
+  }
+
+  return null;
+}
+
+/**
+ * ERR_TIMEOUT は経路A/B/Cのどれからも ready/error が届かなかった場合に発生し、単体では
+ * 手掛かりがない。届いていた診断（bridge有無・最後の __diagramStatus）があれば detail へ含め、
+ * 次回の実機報告で原因をさらに絞れるようにする（BonsaiMapView.tsx と同じ方針）。
+ */
+function formatDiagramDiagnosticsDetail(diagnostics: DiagramDiagnostics): string | undefined {
+  if (diagnostics.bridge === null && diagnostics.stage === null && diagnostics.message === null) {
+    return undefined;
+  }
+
+  const bridgeText = diagnostics.bridge === null ? 'unknown' : diagnostics.bridge ? 'yes' : 'no';
+  const parts = [`bridge=${bridgeText}`, `lastStatus=${diagnostics.stage ?? 'none'}`];
+
+  if (diagnostics.message !== null && diagnostics.message.length > 0) {
+    parts.push(`msg=${diagnostics.message}`);
+  }
+
+  return parts.join(' ');
+}
+
 // ---------------------------------------------------------------------------
 // インライン SVG + JS を持つ HTML 文書の生成
 // ノード位置計算・ハイライト・フィルタ・選択ロジックは Web 版 calculatePositions /
 // isNodeHighlighted / isEdgeConnected を JS に移植したもの。
 // ---------------------------------------------------------------------------
+
+// injectedJavaScript は WebView のページ読み込み完了後に RN 側から自動注入される（経路C。
+// BonsaiMapView.tsx と同じ設計）。経路A/Bが機能しなかった端末でも、__diagramStatus の
+// 最終値を postMessage / title の両方で再送する。
+const DIAGRAM_INJECTED_JAVASCRIPT = `
+(function () {
+  try {
+    var status = window.__diagramStatus || { stage: 'unknown', message: null };
+    var bridge = typeof window.ReactNativeWebView !== 'undefined';
+    var payload;
+    if (status.stage === 'ready') {
+      payload = { type: 'ready', bridge: bridge };
+    } else if (status.stage === 'error') {
+      payload = { type: 'error', message: status.message, bridge: bridge };
+    } else {
+      payload = { type: 'status', stage: status.stage, message: status.message, bridge: bridge };
+    }
+    if (window.ReactNativeWebView) {
+      window.ReactNativeWebView.postMessage(JSON.stringify(payload));
+    }
+    if (typeof window.__diagramReportViaTitle === 'function') {
+      window.__diagramReportViaTitle(payload);
+    }
+  } catch (e) {}
+})();
+true;
+`;
+
+// nodeSelected を title 経由（経路B）で読み取った直後に RN から注入し、title を空へ戻す。
+// 連番と合わせて、同一タップの二重処理・title の残留を防ぐ。
+const DIAGRAM_RESET_TITLE_JAVASCRIPT =
+  "if (typeof window.__diagramResetTitle === 'function') { window.__diagramResetTitle(); } true;";
 
 function buildDiagramHtml(
   hormones: DiagramHormoneNode[],
@@ -151,10 +299,43 @@ function buildDiagramHtml(
   };
   var FALLBACK_EDGE_COLOR = '${colorBorderLight}';
 
+  var __diagramStatusSeq = 0;
+
+  function setDiagramStatus(stage, message) {
+    window.__diagramStatus = { stage: stage, message: message != null ? String(message) : null };
+  }
+
+  // document.title の変更は postMessage 橋に依存しない（経路B）。ただし title の書き換えだけでは
+  // onNavigationStateChange は再発火しないため、location.hash も同時に変えて確実に発火させる
+  // （BonsaiMapView.tsx と同じ手法）。
+  function sendViaTitle(payload) {
+    __diagramStatusSeq += 1;
+    payload.seq = __diagramStatusSeq;
+    try {
+      document.title = JSON.stringify(payload);
+    } catch (e) {}
+    try {
+      location.hash = '${DIAGRAM_TITLE_HASH_PREFIX}' + __diagramStatusSeq;
+    } catch (e) {}
+  }
+  window.__diagramReportViaTitle = sendViaTitle;
+
+  function resetSelectionTitle() {
+    try {
+      document.title = '';
+    } catch (e) {}
+  }
+  window.__diagramResetTitle = resetSelectionTitle;
+
+  setDiagramStatus('booting', null);
+
   function notifyError(message) {
+    var bridge = typeof window.ReactNativeWebView !== 'undefined';
+    setDiagramStatus('error', message);
     if (window.ReactNativeWebView) {
-      window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'error', message: String(message) }));
+      window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'error', message: String(message), bridge: bridge }));
     }
+    sendViaTitle({ type: 'error', message: String(message), bridge: bridge });
   }
 
   window.onerror = function (message) {
@@ -163,9 +344,13 @@ function buildDiagramHtml(
   };
 
   function post(payload) {
+    var bridge = typeof window.ReactNativeWebView !== 'undefined';
+    payload.bridge = bridge;
     if (window.ReactNativeWebView) {
       window.ReactNativeWebView.postMessage(JSON.stringify(payload));
     }
+    // 橋が死んでいる端末向けに title 経由（経路B）でも同じ内容を送る。
+    sendViaTitle(payload);
   }
 
   function truncateLabel(name) {
@@ -319,10 +504,12 @@ function buildDiagramHtml(
     });
 
     render();
+    setDiagramStatus('ready', null);
     post({ type: 'ready' });
   }
 
   try {
+    setDiagramStatus('building', null);
     buildDiagram();
   } catch (e) {
     notifyError(e && e.message ? e.message : String(e));
@@ -348,6 +535,12 @@ export const HormoneInteractionDiagramView = React.memo(function HormoneInteract
   const [errorKind, setErrorKind] = useState<DiagramErrorKind | null>(null);
   const [errorDetail, setErrorDetail] = useState<string | null>(null);
   const [reloadAttempt, setReloadAttempt] = useState(0);
+  // 経路A/B/Cのうち最初に届いた ready/error のみを状態に反映し、後着の重複反映を防ぐ
+  const resolvedRef = useRef<'ready' | 'error' | null>(null);
+  // title 経由（経路B・C）で処理済みの連番。同一内容の再送・重複発火を無視する
+  const lastTitleSeqRef = useRef(0);
+  // ERR_TIMEOUT の detail に出す診断値（bridge有無・最後の __diagramStatus）
+  const diagnosticsRef = useRef<DiagramDiagnostics>({ bridge: null, stage: null, message: null });
 
   const htmlContent = useMemo(
     () => buildDiagramHtml(hormones, interactions),
@@ -363,6 +556,70 @@ export const HormoneInteractionDiagramView = React.memo(function HormoneInteract
     );
   }, []);
 
+  const applyDiagnostics = useCallback(
+    (bridge: boolean | null, stage: string | null, message: string | null) => {
+      if (bridge !== null) {
+        diagnosticsRef.current.bridge = bridge;
+      }
+      if (stage !== null) {
+        diagnosticsRef.current.stage = stage;
+      }
+      if (message !== null) {
+        diagnosticsRef.current.message = message;
+      }
+    },
+    []
+  );
+
+  // postMessage（経路A）・title（経路B・Cの再送先）のどちらから届いた DiagramSignal もここで
+  // 一本化して処理する。ready/error は最初に届いた 1 件のみを状態に反映する。
+  const processSignal = useCallback(
+    (envelope: DiagramSignalEnvelope) => {
+      if (envelope.seq !== null) {
+        if (envelope.seq <= lastTitleSeqRef.current) {
+          return;
+        }
+        lastTitleSeqRef.current = envelope.seq;
+      }
+
+      const { signal } = envelope;
+
+      if (signal.type === 'nodeSelected') {
+        onNodeSelect(signal.nodeId);
+        if (envelope.seq !== null) {
+          // 連打対策: RN が読み取った直後に title を戻し、二重発火・残留を防ぐ
+          webViewRef.current?.injectJavaScript(DIAGRAM_RESET_TITLE_JAVASCRIPT);
+        }
+        return;
+      }
+
+      if (signal.type === 'status') {
+        applyDiagnostics(signal.bridge, signal.stage, signal.message);
+        return;
+      }
+
+      if (resolvedRef.current !== null) {
+        applyDiagnostics(signal.bridge, signal.type, signal.type === 'error' ? signal.message : null);
+        return;
+      }
+
+      if (signal.type === 'ready') {
+        resolvedRef.current = 'ready';
+        applyDiagnostics(signal.bridge, 'ready', null);
+        setIsDiagramReady(true);
+        setWebViewLoadError(false);
+        setErrorKind(null);
+        setErrorDetail(null);
+        return;
+      }
+
+      resolvedRef.current = 'error';
+      applyDiagnostics(signal.bridge, 'error', signal.message);
+      handleWebViewFailure('ERR_JS', signal.message ?? undefined);
+    },
+    [applyDiagnostics, handleWebViewFailure, onNodeSelect]
+  );
+
   // このダイアグラムはサブリソース取得がないため onError/onHttpError は常にメインドキュメント
   // 相当の失敗として扱ってよい（BonsaiMapView.tsx のような URL 判定は不要）。
   const handleWebViewError = useCallback(() => {
@@ -375,39 +632,25 @@ export const HormoneInteractionDiagramView = React.memo(function HormoneInteract
 
   const handleMessage = useCallback(
     (event: WebViewMessageEvent) => {
-      let parsed: unknown;
-      try {
-        parsed = JSON.parse(event.nativeEvent.data);
-      } catch {
-        return;
-      }
-
-      if (!isRecord(parsed) || typeof parsed.type !== 'string') {
-        return;
-      }
-
-      if (parsed.type === 'ready') {
-        setIsDiagramReady(true);
-        setWebViewLoadError(false);
-        setErrorKind(null);
-        setErrorDetail(null);
-        return;
-      }
-
-      if (parsed.type === 'error') {
-        const detail = typeof parsed.message === 'string' ? parsed.message : undefined;
-        handleWebViewFailure('ERR_JS', detail);
-        return;
-      }
-
-      if (parsed.type === 'nodeSelected') {
-        const nodeId = parsed.nodeId;
-        if (typeof nodeId === 'string' || nodeId === null) {
-          onNodeSelect(nodeId);
-        }
+      const envelope = parseDiagramSignalEnvelope(event.nativeEvent.data);
+      if (envelope !== null) {
+        processSignal(envelope);
       }
     },
-    [handleWebViewFailure, onNodeSelect],
+    [processSignal],
+  );
+
+  // document.title の変更は postMessage 橋に依存しない（経路B）。ready/error/nodeSelected を
+  // JSON 化して title に載せる WebView 側実装と対になる。同一 title の再通知は processSignal 側の
+  // 連番チェックで無視される。
+  const handleNavigationStateChange = useCallback(
+    (event: WebViewNavigation) => {
+      const envelope = parseDiagramSignalEnvelope(event.title);
+      if (envelope !== null) {
+        processSignal(envelope);
+      }
+    },
+    [processSignal],
   );
 
   const handleRetry = useCallback(() => {
@@ -415,10 +658,14 @@ export const HormoneInteractionDiagramView = React.memo(function HormoneInteract
     setWebViewLoadError(false);
     setErrorKind(null);
     setErrorDetail(null);
+    resolvedRef.current = null;
+    lastTitleSeqRef.current = 0;
+    diagnosticsRef.current = { bridge: null, stage: null, message: null };
     setReloadAttempt((n) => n + 1);
   }, []);
 
-  // postMessage('ready') が一定時間届かない場合（JS 実行失敗等）はエラー表示 + 再試行導線へフォールバックする。
+  // 経路A/B/C いずれからも ready/error が一定時間届かない場合（JS 実行失敗等）は
+  // エラー表示 + 再試行導線へフォールバックする。
   useEffect(() => {
     if (isDiagramReady || webViewLoadError) {
       return undefined;
@@ -427,7 +674,7 @@ export const HormoneInteractionDiagramView = React.memo(function HormoneInteract
     const timer = setTimeout(() => {
       setIsDiagramReady((ready) => {
         if (!ready) {
-          handleWebViewFailure('ERR_TIMEOUT');
+          handleWebViewFailure('ERR_TIMEOUT', formatDiagramDiagnosticsDetail(diagnosticsRef.current));
         }
         return ready;
       });
@@ -482,8 +729,10 @@ export const HormoneInteractionDiagramView = React.memo(function HormoneInteract
         style={styles.webView}
         originWhitelist={['*']}
         onMessage={handleMessage}
+        onNavigationStateChange={handleNavigationStateChange}
         onError={handleWebViewError}
         onHttpError={handleWebViewHttpError}
+        injectedJavaScript={DIAGRAM_INJECTED_JAVASCRIPT}
         javaScriptEnabled
         domStorageEnabled
         startInLoadingState

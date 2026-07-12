@@ -18,7 +18,11 @@ import {
   Linking,
 } from 'react-native';
 import WebView, { type WebViewMessageEvent } from 'react-native-webview';
-import type { WebViewErrorEvent, WebViewHttpErrorEvent } from 'react-native-webview/lib/WebViewTypes';
+import type {
+  WebViewErrorEvent,
+  WebViewHttpErrorEvent,
+  WebViewNavigation,
+} from 'react-native-webview/lib/WebViewTypes';
 import * as Location from 'expo-location';
 import { router } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
@@ -70,6 +74,11 @@ const MAP_TILE_URL_TEMPLATE = `https://{s}.${MAP_TILE_HOST}/{z}/{x}/{y}.png`;
 
 // WebView 診断コード表示欄に載せる JS エラーメッセージの最大文字数（長文の生ログ化を防ぐ）。
 const MAP_ERROR_DETAIL_MAX_LENGTH = 120;
+
+// 実機で postMessage 橋が機能しない端末があるため、ready/error/shopSelected を
+// document.title 経由でも送る（経路B）。location.hash の変更でしか onNavigationStateChange は
+// 再発火しないため、送信のたびにこのプレフィックス + 連番を hash に載せる。
+const MAP_TITLE_HASH_PREFIX = 'bonsaiMapStatus';
 
 // ---------------------------------------------------------------------------
 // 型
@@ -123,10 +132,145 @@ function formatErrorDiagnostics(kind: MapErrorKind, detail: string | null): stri
   return detail !== null && detail.length > 0 ? `${kind}: ${detail}` : kind;
 }
 
+/**
+ * WebView 内スクリプトから届く ready/error/status/shopSelected の統一表現。
+ * postMessage（経路A）と document.title（経路B・Cの再送先）のどちらから来ても同じ形に正規化する。
+ */
+type MapSignal =
+  | { type: 'ready'; bridge: boolean | null }
+  | { type: 'error'; message: string | null; bridge: boolean | null }
+  | { type: 'status'; stage: string | null; message: string | null; bridge: boolean | null }
+  | { type: 'shopSelected'; shopId: string };
+
+type MapSignalEnvelope = {
+  signal: MapSignal;
+  /** title 経由の送信にのみ付与される単調増加の連番（postMessage 経由は null） */
+  seq: number | null;
+};
+
+type MapDiagnostics = {
+  bridge: boolean | null;
+  stage: string | null;
+  message: string | null;
+};
+
+function readStringField(record: Record<string, unknown>, key: string): string | null {
+  const value = record[key];
+  return typeof value === 'string' ? value : null;
+}
+
+function readBooleanField(record: Record<string, unknown>, key: string): boolean | null {
+  const value = record[key];
+  return typeof value === 'boolean' ? value : null;
+}
+
+function readSeqField(record: Record<string, unknown>): number | null {
+  const value = record.seq;
+  return typeof value === 'number' && Number.isFinite(value) ? value : null;
+}
+
+/**
+ * postMessage の data 文字列、または onNavigationStateChange の title 文字列のどちらからも
+ * 呼べる共通パーサー。postMessage 橋が死んでいる端末では title 経由の文字列のみが届く。
+ */
+function parseMapSignalEnvelope(raw: string): MapSignalEnvelope | null {
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return null;
+  }
+
+  if (!isRecord(parsed) || typeof parsed.type !== 'string') {
+    return null;
+  }
+
+  const bridge = readBooleanField(parsed, 'bridge');
+  const seq = readSeqField(parsed);
+
+  if (parsed.type === 'ready') {
+    return { signal: { type: 'ready', bridge }, seq };
+  }
+
+  if (parsed.type === 'error') {
+    return { signal: { type: 'error', message: readStringField(parsed, 'message'), bridge }, seq };
+  }
+
+  if (parsed.type === 'status') {
+    return {
+      signal: {
+        type: 'status',
+        stage: readStringField(parsed, 'stage'),
+        message: readStringField(parsed, 'message'),
+        bridge,
+      },
+      seq,
+    };
+  }
+
+  if (parsed.type === 'shopSelected') {
+    const shopId = readStringField(parsed, 'shopId');
+    return shopId !== null ? { signal: { type: 'shopSelected', shopId }, seq } : null;
+  }
+
+  return null;
+}
+
+/**
+ * ERR_TIMEOUT は経路A/B/Cのどれからも ready/error が届かなかった場合に発生し、単体では
+ * 手掛かりがない。届いていた診断（bridge有無・最後の __mapStatus）があれば detail へ含め、
+ * 次回の実機報告で原因をさらに絞れるようにする。
+ */
+function formatDiagnosticsDetail(diagnostics: MapDiagnostics): string | undefined {
+  if (diagnostics.bridge === null && diagnostics.stage === null && diagnostics.message === null) {
+    return undefined;
+  }
+
+  const bridgeText = diagnostics.bridge === null ? 'unknown' : diagnostics.bridge ? 'yes' : 'no';
+  const parts = [`bridge=${bridgeText}`, `lastStatus=${diagnostics.stage ?? 'none'}`];
+
+  if (diagnostics.message !== null && diagnostics.message.length > 0) {
+    parts.push(`msg=${diagnostics.message}`);
+  }
+
+  return parts.join(' ');
+}
+
 // ---------------------------------------------------------------------------
 // Leaflet HTML 生成
 // マーカー SVG は Web 版 components/shop/Map.tsx の shopPinIcon と同一形状。
 // ---------------------------------------------------------------------------
+
+// injectedJavaScript は WebView のページ読み込み完了後に RN 側から自動注入される（経路C）。
+// 経路A/Bが機能しなかった端末でも、__mapStatus の最終値を postMessage / title の両方で再送する。
+const MAP_INJECTED_JAVASCRIPT = `
+(function () {
+  try {
+    var status = window.__mapStatus || { stage: 'unknown', message: null };
+    var bridge = typeof window.ReactNativeWebView !== 'undefined';
+    var payload;
+    if (status.stage === 'ready') {
+      payload = { type: 'ready', bridge: bridge };
+    } else if (status.stage === 'error') {
+      payload = { type: 'error', message: status.message, bridge: bridge };
+    } else {
+      payload = { type: 'status', stage: status.stage, message: status.message, bridge: bridge };
+    }
+    if (window.ReactNativeWebView) {
+      window.ReactNativeWebView.postMessage(JSON.stringify(payload));
+    }
+    if (typeof window.__bonsaiReportViaTitle === 'function') {
+      window.__bonsaiReportViaTitle(payload);
+    }
+  } catch (e) {}
+})();
+true;
+`;
+
+// shopSelected を title 経由（経路B）で読み取った直後に RN から注入し、title を空へ戻す。
+// 連番と合わせて、同一タップの二重処理・title の残留を防ぐ。
+const MAP_RESET_TITLE_JAVASCRIPT =
+  "if (typeof window.__bonsaiResetTitle === 'function') { window.__bonsaiResetTitle(); } true;";
 
 function buildLeafletHtml(shops: ShopMapItem[]): string {
   const markersJson = escapeEmbeddedClosingTags(
@@ -199,10 +343,51 @@ function buildLeafletHtml(shops: ShopMapItem[]): string {
   <script>
     var shops = ${markersJson};
 
+    var __mapStatusSeq = 0;
+
+    function setMapStatus(stage, message) {
+      window.__mapStatus = { stage: stage, message: message != null ? String(message) : null };
+    }
+
+    // document.title の変更は postMessage 橋に依存しない（経路B）。ただし title の書き換えだけでは
+    // onNavigationStateChange は再発火しないため、location.hash も同時に変えて確実に発火させる。
+    function sendViaTitle(payload) {
+      __mapStatusSeq += 1;
+      payload.seq = __mapStatusSeq;
+      try {
+        document.title = JSON.stringify(payload);
+      } catch (e) {}
+      try {
+        location.hash = '${MAP_TITLE_HASH_PREFIX}' + __mapStatusSeq;
+      } catch (e) {}
+    }
+    window.__bonsaiReportViaTitle = sendViaTitle;
+
+    function resetSelectionTitle() {
+      try {
+        document.title = '';
+      } catch (e) {}
+    }
+    window.__bonsaiResetTitle = resetSelectionTitle;
+
+    setMapStatus('booting', null);
+
     function notifyError(message) {
+      var bridge = typeof window.ReactNativeWebView !== 'undefined';
+      setMapStatus('error', message);
       if (window.ReactNativeWebView) {
-        window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'error', message: String(message) }));
+        window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'error', message: String(message), bridge: bridge }));
       }
+      sendViaTitle({ type: 'error', message: String(message), bridge: bridge });
+    }
+
+    function notifyReady() {
+      var bridge = typeof window.ReactNativeWebView !== 'undefined';
+      setMapStatus('ready', null);
+      if (window.ReactNativeWebView) {
+        window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'ready', bridge: bridge }));
+      }
+      sendViaTitle({ type: 'ready', bridge: bridge });
     }
 
     window.onerror = function (message) {
@@ -228,10 +413,12 @@ function buildLeafletHtml(shops: ShopMapItem[]): string {
     }
 
     function sendShopId(shopId) {
-      var msg = JSON.stringify({ type: 'shopSelected', shopId: shopId });
+      var bridge = typeof window.ReactNativeWebView !== 'undefined';
       if (window.ReactNativeWebView) {
-        window.ReactNativeWebView.postMessage(msg);
+        window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'shopSelected', shopId: shopId, bridge: bridge }));
       }
+      // 橋が死んでいる端末向けに title 経由（経路B）でも同じタップを送る。
+      sendViaTitle({ type: 'shopSelected', shopId: shopId, bridge: bridge });
     }
 
     function moveToLocation(lat, lng) {
@@ -242,6 +429,8 @@ function buildLeafletHtml(shops: ShopMapItem[]): string {
 
     function initMap() {
       try {
+        setMapStatus('initializing', null);
+
         if (typeof L === 'undefined') {
           notifyError('leaflet global is undefined after inline script evaluation');
           return;
@@ -253,6 +442,7 @@ function buildLeafletHtml(shops: ShopMapItem[]): string {
           zoomControl: true
         });
         window.__bonsaiMap = map;
+        setMapStatus('map-created', null);
 
         L.tileLayer('${MAP_TILE_URL_TEMPLATE}', {
           attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
@@ -295,10 +485,9 @@ function buildLeafletHtml(shops: ShopMapItem[]): string {
           marker.bindPopup(popupContent, { className: 'custom-popup' });
           marker.addTo(map);
         });
+        setMapStatus('markers-added', null);
 
-        if (window.ReactNativeWebView) {
-          window.ReactNativeWebView.postMessage(JSON.stringify({ type: 'ready' }));
-        }
+        notifyReady();
       } catch (e) {
         notifyError(e && e.message ? e.message : String(e));
       }
@@ -332,6 +521,12 @@ export const BonsaiMapView = React.memo(function BonsaiMapView({
   const [errorDetail, setErrorDetail] = useState<string | null>(null);
   // 再試行時に WebView を完全に再マウントし、CDN 読み込みをやり直させるためのキー
   const [reloadAttempt, setReloadAttempt] = useState(0);
+  // 経路A/B/Cのうち最初に届いた ready/error のみを状態に反映し、後着の重複反映を防ぐ
+  const resolvedRef = useRef<'ready' | 'error' | null>(null);
+  // title 経由（経路B・C）で処理済みの連番。同一内容の再送・重複発火を無視する
+  const lastTitleSeqRef = useRef(0);
+  // ERR_TIMEOUT の detail に出す診断値（bridge有無・最後の __mapStatus）
+  const diagnosticsRef = useRef<MapDiagnostics>({ bridge: null, stage: null, message: null });
 
   const htmlContent = buildLeafletHtml(shops);
 
@@ -341,6 +536,70 @@ export const BonsaiMapView = React.memo(function BonsaiMapView({
     setErrorKind(kind);
     setErrorDetail(detail !== undefined ? detail.slice(0, MAP_ERROR_DETAIL_MAX_LENGTH) : null);
   }, []);
+
+  const applyDiagnostics = useCallback(
+    (bridge: boolean | null, stage: string | null, message: string | null) => {
+      if (bridge !== null) {
+        diagnosticsRef.current.bridge = bridge;
+      }
+      if (stage !== null) {
+        diagnosticsRef.current.stage = stage;
+      }
+      if (message !== null) {
+        diagnosticsRef.current.message = message;
+      }
+    },
+    []
+  );
+
+  // postMessage（経路A）・title（経路B・Cの再送先）のどちらから届いた MapSignal もここで
+  // 一本化して処理する。ready/error は最初に届いた 1 件のみを状態に反映する。
+  const processSignal = useCallback(
+    (envelope: MapSignalEnvelope) => {
+      if (envelope.seq !== null) {
+        if (envelope.seq <= lastTitleSeqRef.current) {
+          return;
+        }
+        lastTitleSeqRef.current = envelope.seq;
+      }
+
+      const { signal } = envelope;
+
+      if (signal.type === 'shopSelected') {
+        router.push({ pathname: '/shops/[id]', params: { id: signal.shopId } });
+        if (envelope.seq !== null) {
+          // 連打対策: RN が読み取った直後に title を戻し、二重発火・残留を防ぐ
+          webViewRef.current?.injectJavaScript(MAP_RESET_TITLE_JAVASCRIPT);
+        }
+        return;
+      }
+
+      if (signal.type === 'status') {
+        applyDiagnostics(signal.bridge, signal.stage, signal.message);
+        return;
+      }
+
+      if (resolvedRef.current !== null) {
+        applyDiagnostics(signal.bridge, signal.type, signal.type === 'error' ? signal.message : null);
+        return;
+      }
+
+      if (signal.type === 'ready') {
+        resolvedRef.current = 'ready';
+        applyDiagnostics(signal.bridge, 'ready', null);
+        setIsMapReady(true);
+        setWebViewLoadError(false);
+        setErrorKind(null);
+        setErrorDetail(null);
+        return;
+      }
+
+      resolvedRef.current = 'error';
+      applyDiagnostics(signal.bridge, 'error', signal.message);
+      handleWebViewFailure('ERR_JS', signal.message ?? undefined);
+    },
+    [applyDiagnostics, handleWebViewFailure]
+  );
 
   // Android の onError/onHttpError は OSM タイル画像の 4xx/5xx でも発火し得るため、
   // 失敗した URL がタイル配信ホストのときは致命扱いしない（地図自体は動作し続ける）。
@@ -364,36 +623,25 @@ export const BonsaiMapView = React.memo(function BonsaiMapView({
 
   const handleMessage = useCallback(
     (event: WebViewMessageEvent) => {
-      let parsed: unknown;
-      try {
-        parsed = JSON.parse(event.nativeEvent.data);
-      } catch {
-        return;
-      }
-
-      if (!isRecord(parsed) || typeof parsed.type !== 'string') {
-        return;
-      }
-
-      if (parsed.type === 'ready') {
-        setIsMapReady(true);
-        setWebViewLoadError(false);
-        setErrorKind(null);
-        setErrorDetail(null);
-        return;
-      }
-
-      if (parsed.type === 'error') {
-        const detail = typeof parsed.message === 'string' ? parsed.message : undefined;
-        handleWebViewFailure('ERR_JS', detail);
-        return;
-      }
-
-      if (parsed.type === 'shopSelected' && typeof parsed.shopId === 'string') {
-        router.push({ pathname: '/shops/[id]', params: { id: parsed.shopId } });
+      const envelope = parseMapSignalEnvelope(event.nativeEvent.data);
+      if (envelope !== null) {
+        processSignal(envelope);
       }
     },
-    [handleWebViewFailure]
+    [processSignal]
+  );
+
+  // document.title の変更は postMessage 橋に依存しない（経路B）。ready/error/shopSelected を
+  // JSON 化して title に載せる WebView 側実装と対になる。同一 title の再通知（onLoadStart 等での
+  // 再発火）は processSignal 側の連番チェックで無視される。
+  const handleNavigationStateChange = useCallback(
+    (event: WebViewNavigation) => {
+      const envelope = parseMapSignalEnvelope(event.title);
+      if (envelope !== null) {
+        processSignal(envelope);
+      }
+    },
+    [processSignal]
   );
 
   const handleRetryMapLoad = useCallback(() => {
@@ -401,10 +649,13 @@ export const BonsaiMapView = React.memo(function BonsaiMapView({
     setWebViewLoadError(false);
     setErrorKind(null);
     setErrorDetail(null);
+    resolvedRef.current = null;
+    lastTitleSeqRef.current = 0;
+    diagnosticsRef.current = { bridge: null, stage: null, message: null };
     setReloadAttempt((n) => n + 1);
   }, []);
 
-  // postMessage('ready') が一定時間届かない場合（CDN 遮断・スクリプト実行失敗等）は
+  // 経路A/B/C いずれからも ready/error が一定時間届かない場合（CDN 遮断・スクリプト実行失敗等）は
   // 無限ローディングにせず、エラー表示 + 再試行導線へフォールバックする。
   useEffect(() => {
     if (!isOnline || isMapLoading || isMapError || webViewLoadError) {
@@ -414,7 +665,7 @@ export const BonsaiMapView = React.memo(function BonsaiMapView({
     const timer = setTimeout(() => {
       setIsMapReady((ready) => {
         if (!ready) {
-          handleWebViewFailure('ERR_TIMEOUT');
+          handleWebViewFailure('ERR_TIMEOUT', formatDiagnosticsDetail(diagnosticsRef.current));
         }
         return ready;
       });
@@ -545,8 +796,10 @@ export const BonsaiMapView = React.memo(function BonsaiMapView({
         style={styles.webView}
         originWhitelist={['*']}
         onMessage={handleMessage}
+        onNavigationStateChange={handleNavigationStateChange}
         onError={handleWebViewError}
         onHttpError={handleWebViewHttpError}
+        injectedJavaScript={MAP_INJECTED_JAVASCRIPT}
         javaScriptEnabled
         domStorageEnabled
         startInLoadingState
