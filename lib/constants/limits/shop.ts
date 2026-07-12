@@ -29,6 +29,24 @@ export const MAX_SHOP_CLOSED_DAYS_LENGTH = 100;
 export const MAX_SHOP_GENRES = 5;
 
 /**
+ * 盆栽園緯度の最小値。
+ * 地理座標の標準的な範囲（-90〜90）。フォームの isValidLat 検証と揃える。
+ */
+export const MIN_SHOP_LATITUDE = -90;
+
+/** 盆栽園緯度の最大値 */
+export const MAX_SHOP_LATITUDE = 90;
+
+/**
+ * 盆栽園経度の最小値。
+ * 地理座標の標準的な範囲（-180〜180）。フォームの isValidLng 検証と揃える。
+ */
+export const MIN_SHOP_LONGITUDE = -180;
+
+/** 盆栽園経度の最大値 */
+export const MAX_SHOP_LONGITUDE = 180;
+
+/**
  * レビュー本文の文字数上限。
  * サーバー (createReviewRequestSchema: POST /api/v1/shops/{id}/reviews) の content は
  * `z.string().nullable().optional()` で長さ制約なし。DB (Prisma ShopReview.content) も

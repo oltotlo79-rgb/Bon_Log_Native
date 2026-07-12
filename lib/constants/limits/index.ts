@@ -13,3 +13,4 @@ export * from './hormone-simulator';
 export * from './shop';
 export * from './event';
 export * from './bonsai';
+export * from './scheduled-post';
