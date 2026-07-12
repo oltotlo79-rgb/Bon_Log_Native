@@ -134,7 +134,9 @@ export default function SettingsProfileScreen() {
   const updateProfileMutation = useUpdateProfileMutation(profile?.id ?? '');
 
   const isSaving = updateProfileMutation.isPending || uploadImageMutation.isPending;
-  const canSave = isDirty && isValid && !isSaving && isOnline;
+  // Web の ProfileEditForm は loading 中のみ保存ボタンを disabled にする（isDirty 相当の判定は行わない）。
+  // 空ニックネームでの送信は Web でも required 属性でブロックされるため、isValid の判定は維持する。
+  const canSave = isValid && !isSaving && isOnline;
 
   const navigation = useNavigation();
 

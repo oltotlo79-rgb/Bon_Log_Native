@@ -141,8 +141,10 @@ function FormBody({ id, post, isPremium }: FormBodyProps) {
   const contentLength = content.length;
   const maxContent = MAX_POST_CONTENT_PREMIUM;
   const hasScheduledAt = scheduledAt !== null;
+  // 本文またはメディアのどちらかがあれば送信可（Web ScheduledPostForm と同一条件）
+  const hasContent = content.trim().length > 0 || images.length > 0 || videoUri !== null;
   const canSubmit =
-    content.trim().length > 0 &&
+    hasContent &&
     hasScheduledAt &&
     !isPending &&
     contentLength <= maxContent &&

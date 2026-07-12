@@ -2,9 +2,12 @@
  * @module app/bonsai/[id]/records/[recordId]/edit/index
  * 成長記録編集フォーム（モーダル表示）。
  * 仕様: docs/design/bonsai.md §5
+ *
+ * 単一記録の GET エンドポイントが存在しないため、一覧クエリ（useBonsaiRecordsQuery）の
+ * キャッシュ済みページから対象記録を探し、見つかるかページが尽きるまで次ページを取得する。
  */
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import {
   View,
   Text,
@@ -19,11 +22,17 @@ import {
 import { router, useLocalSearchParams } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useUpdateBonsaiRecordMutation } from '@/lib/queries/bonsai';
+import {
+  useBonsaiRecordsQuery,
+  useUpdateBonsaiRecordMutation,
+  type BonsaiRecordListResponse,
+} from '@/lib/queries/bonsai';
 import { uploadImage } from '@/lib/queries/upload';
 import { useOnlineStatus } from '@/hooks/use-online-status';
 import { DatePickerField } from '@/components/common/DatePickerField';
 import { FormErrorMessage } from '@/components/auth/FormErrorMessage';
+import { ScreenLoading } from '@/components/common/ScreenLoading';
+import { ScreenError } from '@/components/common/ScreenError';
 import { ImageAttachmentGrid } from '@/components/post/ImageAttachmentGrid';
 import type { AttachedImage } from '@/components/post/ImageAttachmentGrid';
 import {
@@ -50,13 +59,19 @@ import {
   ERR_OFFLINE_ACTION,
   ERR_MEDIA_UPLOAD_FAILED,
 } from '@/lib/constants/errors';
+import { MAX_BONSAI_DESCRIPTION_LENGTH } from '@/lib/constants/limits/bonsai';
 
 // ---------------------------------------------------------------------------
 // 定数
 // ---------------------------------------------------------------------------
 
-const RECORD_CONTENT_MAX = 1000;
 const RECORD_IMAGES_MAX = 4;
+
+// ---------------------------------------------------------------------------
+// 型
+// ---------------------------------------------------------------------------
+
+type RecordItem = BonsaiRecordListResponse['items'][number];
 
 // ---------------------------------------------------------------------------
 // ユーティリティ
@@ -71,31 +86,91 @@ function toApiDateTime(dateOnly: string): string {
   return new Date(dateOnly).toISOString();
 }
 
+/**
+ * ISO 8601 日時文字列から DatePickerField 用の "YYYY-MM-DD" を取り出す。
+ * toApiDateTime が UTC 深夜として保存する規約のため、単純に先頭10文字を取ればよく、
+ * ローカルタイムゾーン変換を経由しないため日付のずれが起きない。
+ */
+function toDateOnlyValue(isoDateTime: string): string {
+  return isoDateTime.slice(0, 10);
+}
+
 // ---------------------------------------------------------------------------
-// Component
+// Route shell — 一覧クエリのキャッシュから対象記録を探してから FormBody をマウントする
 // ---------------------------------------------------------------------------
 
 export default function BonsaiRecordEditScreen() {
-  const insets = useSafeAreaInsets();
-  const isOnline = useOnlineStatus();
-
   const params = useLocalSearchParams();
   const rawId = params['id'];
   const rawRecordId = params['recordId'];
   const bonsaiId = typeof rawId === 'string' ? rawId : '';
   const recordId = typeof rawRecordId === 'string' ? rawRecordId : '';
 
+  const {
+    data: recordsData,
+    isLoading,
+    isError,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+    refetch,
+  } = useBonsaiRecordsQuery(bonsaiId);
+
+  const allRecords: RecordItem[] = recordsData?.pages.flatMap((page) => page.items) ?? [];
+  const record = allRecords.find((item) => item.id === recordId);
+
+  useEffect(() => {
+    if (record === undefined && hasNextPage && !isFetchingNextPage && !isLoading && !isError) {
+      void fetchNextPage();
+    }
+  }, [record, hasNextPage, isFetchingNextPage, isLoading, isError, fetchNextPage]);
+
+  const isSearching =
+    record === undefined &&
+    !isError &&
+    (isLoading || isFetchingNextPage || hasNextPage === true);
+
+  if (isSearching) {
+    return <ScreenLoading variant="spinner" />;
+  }
+
+  if (isError || record === undefined) {
+    return (
+      <View style={styles.container}>
+        <ScreenError title="読み込めませんでした" onRetry={() => void refetch()} />
+      </View>
+    );
+  }
+
+  return <FormBody bonsaiId={bonsaiId} recordId={recordId} record={record} />;
+}
+
+// ---------------------------------------------------------------------------
+// FormBody — record が確定した後にマウントされるため useEffect 不要
+// ---------------------------------------------------------------------------
+
+type FormBodyProps = {
+  bonsaiId: string;
+  recordId: string;
+  record: RecordItem;
+};
+
+function FormBody({ bonsaiId, recordId, record }: FormBodyProps) {
+  const insets = useSafeAreaInsets();
+  const isOnline = useOnlineStatus();
+
   const { mutate: updateRecord, isPending: isSaving } = useUpdateBonsaiRecordMutation();
 
-  const [content, setContent] = useState('');
-  const [recordAt, setRecordAt] = useState<string | null>(null);
-  const [images, setImages] = useState<AttachedImage[]>([]);
-  const [existingUrls] = useState<string[]>([]);
+  const [content, setContent] = useState(record.content ?? '');
+  const [recordAt, setRecordAt] = useState<string | null>(toDateOnlyValue(record.recordAt));
+  const [images, setImages] = useState<AttachedImage[]>(
+    record.images.map((img) => ({ uri: img.url, localId: img.url }))
+  );
   const [error, setError] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
 
   const isPending = isSaving || isUploading;
-  const hasInput = content.trim().length > 0 || images.length > 0 || existingUrls.length > 0;
+  const hasInput = content.trim().length > 0 || images.length > 0;
   const canSubmit = hasInput && !isPending;
 
   const handleAddImage = useCallback(async () => {
@@ -135,11 +210,17 @@ export default function BonsaiRecordEditScreen() {
     setError(null);
     setIsUploading(true);
 
-    let newUploadedUrls: string[] = [];
+    const mediaUrls: string[] = [];
     try {
-      newUploadedUrls = await Promise.all(
-        images.map((img) => uploadImage({ localUri: img.uri }))
-      );
+      for (const img of images) {
+        // 既存画像（http(s)://）はそのまま、ローカル URI のみアップロード
+        if (img.uri.startsWith('http')) {
+          mediaUrls.push(img.uri);
+        } else {
+          const url = await uploadImage({ localUri: img.uri });
+          mediaUrls.push(url);
+        }
+      }
     } catch {
       setError(ERR_MEDIA_UPLOAD_FAILED);
       setIsUploading(false);
@@ -147,22 +228,20 @@ export default function BonsaiRecordEditScreen() {
     }
     setIsUploading(false);
 
-    const allMediaUrls = [...existingUrls, ...newUploadedUrls];
-
     updateRecord(
       {
         bonsaiId,
         recordId,
         content: content.trim().length > 0 ? content.trim() : undefined,
         recordAt: recordAt !== null ? toApiDateTime(recordAt) : undefined,
-        mediaUrls: allMediaUrls,
+        mediaUrls,
       },
       {
         onSuccess: () => router.back(),
         onError: () => setError(ERR_BONSAI_RECORD_UPDATE_FAILED),
       }
     );
-  }, [isOnline, images, existingUrls, content, recordAt, bonsaiId, recordId, updateRecord]);
+  }, [isOnline, images, content, recordAt, bonsaiId, recordId, updateRecord]);
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -220,7 +299,7 @@ export default function BonsaiRecordEditScreen() {
             <TextInput
               value={content}
               onChangeText={setContent}
-              maxLength={RECORD_CONTENT_MAX}
+              maxLength={MAX_BONSAI_DESCRIPTION_LENGTH}
               placeholder="今日は植え替えを行いました..."
               placeholderTextColor={colorTextTertiary}
               multiline
@@ -230,7 +309,7 @@ export default function BonsaiRecordEditScreen() {
               accessibilityLabel="記録内容（任意）"
               textAlignVertical="top"
             />
-            <Text style={styles.counter}>{content.length}/{RECORD_CONTENT_MAX}</Text>
+            <Text style={styles.counter}>{content.length}/{MAX_BONSAI_DESCRIPTION_LENGTH}</Text>
           </View>
 
           {/* 画像 */}

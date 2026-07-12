@@ -1,6 +1,7 @@
 /**
  * @module components/settings/NotificationTypeSettings
  * 通知の種類別トグルセクション（notification-settings.md §3.2）。
+ * Web の NotificationPreferences と同じフラットな11種の並びで表示する。
  * 既存の Push 許可カード（セクション 1）の直下に追加するセクション 2 全体を担う。
  * ローディング / エラー / オフライン / 正常の 4 状態を内包する。
  */
@@ -29,7 +30,6 @@ import { Toast } from '@/components/common/Toast';
 import {
   colorActionPrimary,
   colorBackground,
-  colorBorderLight,
   colorError,
   colorSurfaceKinoko,
   colorTextPrimary,
@@ -41,7 +41,6 @@ import {
   textBase,
   textLg,
   textSm,
-  letterSpacingWide,
 } from '@/lib/constants/design-tokens';
 import {
   ERR_NOTIFICATION_SETTINGS_LOAD_FAILED,
@@ -50,30 +49,6 @@ import {
   ERR_OFFLINE_ACTION,
 } from '@/lib/constants/errors';
 import { isApiError } from '@/lib/api/errors';
-
-// ---------------------------------------------------------------------------
-// グループ定義
-// ---------------------------------------------------------------------------
-
-type GroupDefinition = {
-  label: string;
-  keys: readonly NotificationPreferenceKey[];
-};
-
-const NOTIFICATION_GROUPS: readonly GroupDefinition[] = [
-  {
-    label: 'リアクション',
-    keys: ['like', 'comment_like', 'comment', 'reply', 'mention', 'quote', 'repost'],
-  },
-  {
-    label: 'フォロー',
-    keys: ['follow', 'follow_request', 'follow_request_approved'],
-  },
-  {
-    label: 'メッセージ',
-    keys: ['message'],
-  },
-] as const satisfies readonly GroupDefinition[];
 
 // ---------------------------------------------------------------------------
 // Props
@@ -186,28 +161,20 @@ export function NotificationTypeSettings({ isOnline }: NotificationTypeSettingsP
           </View>
         )}
 
-        {NOTIFICATION_GROUPS.map((group) => (
-          <View key={group.label} style={styles.group}>
-            <Text style={styles.groupLabel} accessibilityRole="header">
-              {group.label}
-            </Text>
-            {group.keys.map((key, index) => (
-              <NotificationToggleRow
-                key={key}
-                notificationKey={key}
-                label={NOTIFICATION_PREFERENCE_LABELS[key]}
-                value={
-                  preferences !== undefined
-                    ? resolveNotificationPreference(preferences, key)
-                    : true
-                }
-                onToggle={handleToggle}
-                isDisabled={isToggleDisabled}
-                sublabel={key === 'message' ? '近日公開予定' : undefined}
-                isLast={index === group.keys.length - 1}
-              />
-            ))}
-          </View>
+        {NOTIFICATION_PREFERENCE_KEYS.map((key, index) => (
+          <NotificationToggleRow
+            key={key}
+            notificationKey={key}
+            label={NOTIFICATION_PREFERENCE_LABELS[key]}
+            value={
+              preferences !== undefined
+                ? resolveNotificationPreference(preferences, key)
+                : true
+            }
+            onToggle={handleToggle}
+            isDisabled={isToggleDisabled}
+            isLast={index === NOTIFICATION_PREFERENCE_KEYS.length - 1}
+          />
         ))}
       </View>
 
@@ -243,18 +210,6 @@ const styles = StyleSheet.create({
     ...textSm,
     color: colorTextSecondary,
     marginBottom: spacing4,
-  },
-  group: {
-    marginBottom: spacing4,
-  },
-  groupLabel: {
-    ...textSm,
-    color: colorTextSecondary,
-    letterSpacing: letterSpacingWide,
-    paddingVertical: spacing3,
-    paddingHorizontal: spacing4,
-    borderBottomWidth: 1,
-    borderBottomColor: colorBorderLight,
   },
   offlineNotice: {
     backgroundColor: colorSurfaceKinoko,

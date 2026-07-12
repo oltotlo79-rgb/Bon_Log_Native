@@ -50,12 +50,12 @@ import {
   ERR_OFFLINE_ACTION,
   ERR_MEDIA_UPLOAD_FAILED,
 } from '@/lib/constants/errors';
+import { MAX_BONSAI_DESCRIPTION_LENGTH } from '@/lib/constants/limits/bonsai';
 
 // ---------------------------------------------------------------------------
 // 定数
 // ---------------------------------------------------------------------------
 
-const RECORD_CONTENT_MAX = 1000;
 const RECORD_IMAGES_MAX = 4;
 
 // ---------------------------------------------------------------------------
@@ -221,7 +221,7 @@ export default function BonsaiRecordNewScreen() {
             <TextInput
               value={content}
               onChangeText={setContent}
-              maxLength={RECORD_CONTENT_MAX}
+              maxLength={MAX_BONSAI_DESCRIPTION_LENGTH}
               placeholder="今日は植え替えを行いました..."
               placeholderTextColor={colorTextTertiary}
               multiline
@@ -231,7 +231,7 @@ export default function BonsaiRecordNewScreen() {
               accessibilityLabel="記録内容（任意）"
               textAlignVertical="top"
             />
-            <Text style={styles.counter}>{content.length}/{RECORD_CONTENT_MAX}</Text>
+            <Text style={styles.counter}>{content.length}/{MAX_BONSAI_DESCRIPTION_LENGTH}</Text>
           </View>
 
           {/* 画像 */}

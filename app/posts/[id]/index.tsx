@@ -224,7 +224,7 @@ function PostDetailContent({ postId }: PostDetailContentProps) {
   }, []);
 
   const handleSubmitComment = useCallback(
-    ({ content, parentId }: CommentSubmitParams) => {
+    ({ content, parentId, mediaUrls, mediaTypes }: CommentSubmitParams) => {
       if (!isOnline) {
         setCommentError(ERR_OFFLINE_ACTION);
         return;
@@ -235,8 +235,8 @@ function PostDetailContent({ postId }: PostDetailContentProps) {
           postId,
           content,
           parentId,
-          mediaUrls: [],
-          mediaTypes: [],
+          mediaUrls,
+          mediaTypes,
         },
         {
           onSuccess: () => {
@@ -251,6 +251,10 @@ function PostDetailContent({ postId }: PostDetailContentProps) {
     },
     [isOnline, postId, createCommentMutation]
   );
+
+  const handleCommentUploadError = useCallback((message: string) => {
+    setCommentError(message);
+  }, []);
 
   const handleDeleteComment = useCallback(
     (commentId: string) => {
@@ -481,6 +485,7 @@ function PostDetailContent({ postId }: PostDetailContentProps) {
           replyTarget={replyTarget}
           onCancelReply={handleCancelReply}
           onSubmit={handleSubmitComment}
+          onUploadError={handleCommentUploadError}
           isSubmitting={createCommentMutation.isPending}
           isPremium={me?.isPremium ?? false}
         />

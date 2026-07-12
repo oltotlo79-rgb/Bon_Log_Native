@@ -47,13 +47,13 @@ import {
   ERR_BONSAI_UPDATE_FAILED,
   ERR_OFFLINE_ACTION,
 } from '@/lib/constants/errors';
+import { MAX_BONSAI_DESCRIPTION_LENGTH } from '@/lib/constants/limits/bonsai';
 
 // ---------------------------------------------------------------------------
 // 定数
 // ---------------------------------------------------------------------------
 
 const BONSAI_NAME_MAX = 100;
-const BONSAI_DESCRIPTION_MAX = 500;
 const INPUT_HEIGHT = 48;
 
 // ---------------------------------------------------------------------------
@@ -243,7 +243,7 @@ function FormBody({ id, bonsai }: FormBodyProps) {
             <TextInput
               value={description}
               onChangeText={setDescription}
-              maxLength={BONSAI_DESCRIPTION_MAX}
+              maxLength={MAX_BONSAI_DESCRIPTION_LENGTH}
               placeholder="盆栽のエピソードや特徴など..."
               placeholderTextColor={colorTextTertiary}
               multiline
@@ -253,7 +253,7 @@ function FormBody({ id, bonsai }: FormBodyProps) {
               accessibilityLabel="説明（任意）"
               textAlignVertical="top"
             />
-            <Text style={styles.counter}>{description.length}/{BONSAI_DESCRIPTION_MAX}</Text>
+            <Text style={styles.counter}>{description.length}/{MAX_BONSAI_DESCRIPTION_LENGTH}</Text>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>

@@ -3,10 +3,7 @@
  * メールアドレス変更画面（確認メール経由の二段階方式・案B）。
  * アプリは request のみを呼び、confirm はメール内リンクから Web 側で完結させる
  * （lib/queries/auth の useConfirmEmailChangeMutation は今回使用しない）。
- *
- * この画面への導線は account 画面にまだ置かない。サーバー本番 DB へ
- * マイグレーション適用が完了した連絡を受けてから導線を追加する。
- * ルートとしては存在するため、直接 URL 指定や将来の導線追加時にそのまま使える。
+ * 導線は app/settings/account から公開済み（ROUTE_SETTINGS_EMAIL）。
  */
 
 import React, { useState } from 'react';
