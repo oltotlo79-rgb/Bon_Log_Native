@@ -22,7 +22,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCreateEventMutation } from '@/lib/queries/events';
 import { useOnlineStatus } from '@/hooks/use-online-status';
-import { EventDateTimeField } from '@/components/events/EventDateTimeField';
+import { DateTimeField } from '@/components/common/DateTimeField';
 import { EventPrefecturePickerModal } from '@/components/events/EventPrefecturePickerModal';
 import { FormErrorMessage } from '@/components/auth/FormErrorMessage';
 import type { PrefectureName } from '@/lib/constants/prefectures';
@@ -243,7 +243,7 @@ export default function EventNewScreen() {
 
           {/* 開始日時 */}
           <View style={styles.fieldGroup}>
-            <EventDateTimeField
+            <DateTimeField
               label="開始日時 ＊"
               value={startDate}
               onChange={setStartDate}
@@ -254,7 +254,7 @@ export default function EventNewScreen() {
 
           {/* 終了日時 */}
           <View style={styles.fieldGroup}>
-            <EventDateTimeField
+            <DateTimeField
               label="終了日時（任意）"
               value={endDate}
               onChange={setEndDate}

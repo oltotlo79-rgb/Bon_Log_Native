@@ -26,6 +26,8 @@ import { OfflineBanner } from '@/components/common/OfflineBanner';
 import { Toast } from '@/components/common/Toast';
 import { ProfileImageEditor } from '@/components/profile/ProfileImageEditor';
 import { BirthdayField } from '@/components/profile/BirthdayField';
+import { LocationField } from '@/components/profile/LocationField';
+import { BonsaiHistoryField } from '@/components/profile/BonsaiHistoryField';
 import { PublicToggleField } from '@/components/profile/PublicToggleField';
 import { DiscardConfirmDialog } from '@/components/profile/DiscardConfirmDialog';
 import { useProfileEdit } from '@/hooks/use-profile-edit';
@@ -44,7 +46,6 @@ import {
 import {
   MAX_NICKNAME_LENGTH,
   MAX_BIO_LENGTH,
-  MAX_LOCATION_LENGTH,
 } from '@/lib/constants/limits/auth';
 import {
   colorBackground,
@@ -56,7 +57,6 @@ import {
   colorError,
   colorBorder,
   colorBorderLight,
-  colorSurfaceMuted,
   spacing1,
   spacing2,
   spacing3,
@@ -111,9 +111,6 @@ export default function SettingsProfileScreen() {
     setHeaderUrl,
     handleNicknameBlur,
     handleBioBlur,
-    handleLocationBlur,
-    handleBonsaiStartYearBlur,
-    handleBonsaiStartMonthBlur,
     setNicknameError,
     setFormError,
     clearErrors,
@@ -443,78 +440,20 @@ export default function SettingsProfileScreen() {
             </View>
 
             {/* 居住地 */}
-            <AuthTextField
-              label="居住地（任意）"
+            <LocationField
               value={form.location}
-              onChangeText={setLocation}
-              onBlur={handleLocationBlur}
-              placeholder="都道府県・市区町村など"
-              maxLength={MAX_LOCATION_LENGTH}
-              autoCapitalize="none"
-              returnKeyType="next"
-              error={errors.location}
+              onChange={setLocation}
               disabled={isSaving}
             />
 
             {/* 盆栽歴 */}
-            <View>
-              <Text style={styles.fieldLabel}>盆栽を始めた時期（任意）</Text>
-              <View style={styles.bonsaiHistoryRow}>
-                <View style={styles.bonsaiYearContainer}>
-                  <TextInput
-                    value={form.bonsaiStartYear}
-                    onChangeText={setBonsaiStartYear}
-                    onBlur={handleBonsaiStartYearBlur}
-                    placeholder="西暦（例: 2020）"
-                    placeholderTextColor={colorTextSecondary}
-                    keyboardType="number-pad"
-                    maxLength={4}
-                    editable={!isSaving}
-                    style={[
-                      styles.bonsaiInput,
-                      errors.bonsaiStartYear !== null && styles.bonsaiInputError,
-                      isSaving && styles.bonsaiInputDisabled,
-                    ]}
-                    accessibilityLabel="盆栽を始めた年（任意）"
-                  />
-                </View>
-                <Text style={styles.bonsaiUnit}>年</Text>
-
-                {form.bonsaiStartYear !== '' && (
-                  <>
-                    <View style={styles.bonsaiMonthContainer}>
-                      <TextInput
-                        value={form.bonsaiStartMonth}
-                        onChangeText={setBonsaiStartMonth}
-                        onBlur={handleBonsaiStartMonthBlur}
-                        placeholder="月（1〜12）"
-                        placeholderTextColor={colorTextSecondary}
-                        keyboardType="number-pad"
-                        maxLength={2}
-                        editable={!isSaving}
-                        style={[
-                          styles.bonsaiInput,
-                          errors.bonsaiStartMonth !== null && styles.bonsaiInputError,
-                          isSaving && styles.bonsaiInputDisabled,
-                        ]}
-                        accessibilityLabel="盆栽を始めた月（任意）"
-                      />
-                    </View>
-                    <Text style={styles.bonsaiUnit}>月（任意）</Text>
-                  </>
-                )}
-              </View>
-              {errors.bonsaiStartYear !== null && (
-                <View accessibilityRole="alert">
-                  <Text style={styles.inlineError}>{errors.bonsaiStartYear}</Text>
-                </View>
-              )}
-              {errors.bonsaiStartMonth !== null && (
-                <View accessibilityRole="alert">
-                  <Text style={styles.inlineError}>{errors.bonsaiStartMonth}</Text>
-                </View>
-              )}
-            </View>
+            <BonsaiHistoryField
+              yearValue={form.bonsaiStartYear}
+              monthValue={form.bonsaiStartMonth}
+              onYearChange={setBonsaiStartYear}
+              onMonthChange={setBonsaiStartMonth}
+              disabled={isSaving}
+            />
 
             {/* 誕生日 */}
             <BirthdayField
@@ -687,41 +626,6 @@ const styles = StyleSheet.create({
     ...textSm,
     color: colorError,
     marginTop: spacing1,
-  },
-  bonsaiHistoryRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing2,
-    flexWrap: 'wrap',
-  },
-  bonsaiYearContainer: {
-    flex: 1,
-    maxWidth: 140,
-  },
-  bonsaiMonthContainer: {
-    flex: 1,
-    maxWidth: 100,
-  },
-  bonsaiInput: {
-    height: 48,
-    borderWidth: 1,
-    borderColor: colorBorder,
-    borderRadius: radiusMd,
-    paddingHorizontal: spacing3,
-    ...textBase,
-    color: colorTextPrimary,
-    backgroundColor: colorBackground,
-  },
-  bonsaiInputError: {
-    borderColor: colorError,
-  },
-  bonsaiInputDisabled: {
-    backgroundColor: colorSurfaceMuted,
-    opacity: 0.5,
-  },
-  bonsaiUnit: {
-    ...textBase,
-    color: colorTextSecondary,
   },
   bottomSpacer: {
     height: spacing12,

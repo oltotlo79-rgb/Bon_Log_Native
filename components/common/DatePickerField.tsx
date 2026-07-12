@@ -1,9 +1,10 @@
 /**
- * @module components/events/EventDateTimeField
- * イベント開始・終了日時の日付+時刻入力フィールド。
- * Android は DateTimePickerAndroid の日付→時刻ダイアログを連鎖して呼び出し、
- * iOS はインラインスピナーを開閉して選択する（1 ステップで日時を選べるため）。
- * components/bonsai/DateField（日付のみ・テキスト入力方式）とは用途が異なる別コンポーネント。
+ * @module components/common/DatePickerField
+ * 日付のみ（時刻なし）を選択する共通フィールド。Web の `<input type="date">` に対応する。
+ * Android は DateTimePickerAndroid のネイティブダイアログ（date モード単体）、
+ * iOS はインラインスピナーを開閉して選択する（components/common/DateTimeField と同じ設計）。
+ * 値は "YYYY-MM-DD" のタイムゾーンに依存しないカレンダー日付文字列として保持する
+ * （Date#toISOString() は UTC 変換で日付がずれ得るため使用しない）。
  */
 
 import React, { useCallback, useMemo, useState } from 'react';
@@ -39,30 +40,46 @@ const HIT_SLOP = { top: 8, bottom: 8, left: 8, right: 8 };
 // ユーティリティ
 // ---------------------------------------------------------------------------
 
-function formatDateTimeLabel(date: Date): string {
-  const datePart = date.toLocaleDateString('ja-JP', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  });
-  const timePart = date.toLocaleTimeString('ja-JP', {
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  });
-  return `${datePart} ${timePart}`;
+/** "YYYY-MM-DD" 文字列をローカル日付として Date に変換する（不正な形式は null）。 */
+function parseDateOnly(value: string): Date | null {
+  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(value);
+  if (match === null) return null;
+  const [, yStr, mStr, dStr] = match;
+  if (yStr === undefined || mStr === undefined || dStr === undefined) return null;
+  const y = parseInt(yStr, 10);
+  const m = parseInt(mStr, 10);
+  const d = parseInt(dStr, 10);
+  if (isNaN(y) || isNaN(m) || isNaN(d)) return null;
+  const date = new Date(y, m - 1, d);
+  // 2月31日等の繰り上がりを無効値として扱う
+  if (date.getFullYear() !== y || date.getMonth() !== m - 1 || date.getDate() !== d) return null;
+  return date;
+}
+
+/** Date のローカル年月日から "YYYY-MM-DD" を構築する（UTC 変換を経ないため日付がずれない）。 */
+function formatDateOnly(date: Date): string {
+  const y = date.getFullYear();
+  const m = date.getMonth() + 1;
+  const d = date.getDate();
+  return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+}
+
+function formatDateLabel(date: Date): string {
+  return date.toLocaleDateString('ja-JP', { year: 'numeric', month: 'long', day: 'numeric' });
 }
 
 // ---------------------------------------------------------------------------
 // Props
 // ---------------------------------------------------------------------------
 
-export type EventDateTimeFieldProps = {
+export type DatePickerFieldProps = {
+  /** フィールドラベル。空文字を渡すと内蔵ラベルを描画しない（呼び出し側で独自にラベルを描画する場合用）。 */
   label: string;
   value: string | null;
   onChange: (value: string | null) => void;
   disabled?: boolean;
   minimumDate?: Date;
+  maximumDate?: Date;
   clearAccessibilityLabel?: string;
   placeholder?: string;
 };
@@ -71,40 +88,34 @@ export type EventDateTimeFieldProps = {
 // Component
 // ---------------------------------------------------------------------------
 
-export function EventDateTimeField({
+export function DatePickerField({
   label,
   value,
   onChange,
   disabled = false,
   minimumDate,
-  clearAccessibilityLabel = '日時を削除',
-  placeholder = '日時を選択',
-}: EventDateTimeFieldProps) {
+  maximumDate,
+  clearAccessibilityLabel = '日付を削除',
+  placeholder = '日付を選択',
+}: DatePickerFieldProps) {
   const [isIosPickerOpen, setIsIosPickerOpen] = useState(false);
 
   const hasValue = value !== null;
   // value が変わらない限り同一の Date 参照を保つ（useCallback の依存を安定させるため）
-  const currentDate = useMemo(() => (value !== null ? new Date(value) : new Date()), [value]);
+  const currentDate = useMemo(() => (value !== null ? parseDateOnly(value) ?? new Date() : new Date()), [value]);
 
   const openAndroidPicker = useCallback(() => {
     DateTimePickerAndroid.open({
       value: currentDate,
       mode: 'date',
       minimumDate,
+      maximumDate,
       onChange: (dateEvent, selectedDate) => {
         if (dateEvent.type !== 'set' || selectedDate === undefined) return;
-        DateTimePickerAndroid.open({
-          value: selectedDate,
-          mode: 'time',
-          is24Hour: true,
-          onChange: (timeEvent, selectedTime) => {
-            if (timeEvent.type !== 'set' || selectedTime === undefined) return;
-            onChange(selectedTime.toISOString());
-          },
-        });
+        onChange(formatDateOnly(selectedDate));
       },
     });
-  }, [currentDate, minimumDate, onChange]);
+  }, [currentDate, minimumDate, maximumDate, onChange]);
 
   const handlePress = useCallback(() => {
     if (disabled) return;
@@ -118,7 +129,7 @@ export function EventDateTimeField({
   const handleIosChange = useCallback(
     (_event: unknown, selectedDate?: Date) => {
       if (selectedDate !== undefined) {
-        onChange(selectedDate.toISOString());
+        onChange(formatDateOnly(selectedDate));
       }
     },
     [onChange]
@@ -134,12 +145,12 @@ export function EventDateTimeField({
   }, [onChange]);
 
   const accessibilityLabel = hasValue
-    ? `${label}：${formatDateTimeLabel(currentDate)}`
-    : `${label}：${placeholder}`;
+    ? `${label.length > 0 ? label : placeholder}：${formatDateLabel(currentDate)}`
+    : `${label.length > 0 ? label : placeholder}：${placeholder}`;
 
   return (
     <View style={styles.wrapper}>
-      <Text style={styles.label}>{label}</Text>
+      {label.length > 0 && <Text style={styles.label}>{label}</Text>}
 
       <View style={styles.row}>
         <Pressable
@@ -154,7 +165,7 @@ export function EventDateTimeField({
             style={[styles.fieldText, !hasValue && styles.placeholderText]}
             numberOfLines={1}
           >
-            {hasValue ? formatDateTimeLabel(currentDate) : placeholder}
+            {hasValue ? formatDateLabel(currentDate) : placeholder}
           </Text>
           <Ionicons
             name="calendar-outline"
@@ -179,21 +190,22 @@ export function EventDateTimeField({
         )}
       </View>
 
-      {/* iOS はインラインスピナーで日時を選択する。Android はネイティブダイアログのため不要 */}
+      {/* iOS はインラインスピナーで日付を選択する。Android はネイティブダイアログのため不要 */}
       {Platform.OS === 'ios' && isIosPickerOpen && (
         <View style={styles.iosPickerWrapper}>
           <RNDateTimePicker
             value={currentDate}
-            mode="datetime"
+            mode="date"
             display="spinner"
             minimumDate={minimumDate}
+            maximumDate={maximumDate}
             onChange={handleIosChange}
           />
           <Pressable
             style={styles.iosDoneButton}
             onPress={handleIosDone}
             accessibilityRole="button"
-            accessibilityLabel={`${label}の選択を完了`}
+            accessibilityLabel={`${label.length > 0 ? label : placeholder}の選択を完了`}
             hitSlop={HIT_SLOP}
           >
             <Text style={styles.iosDoneButtonText}>完了</Text>

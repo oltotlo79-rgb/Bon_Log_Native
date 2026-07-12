@@ -22,7 +22,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCreateBonsaiRecordMutation } from '@/lib/queries/bonsai';
 import { uploadImage } from '@/lib/queries/upload';
 import { useOnlineStatus } from '@/hooks/use-online-status';
-import { DateField } from '@/components/bonsai/DateField';
+import { DatePickerField } from '@/components/common/DatePickerField';
 import { FormErrorMessage } from '@/components/auth/FormErrorMessage';
 import { ImageAttachmentGrid } from '@/components/post/ImageAttachmentGrid';
 import type { AttachedImage } from '@/components/post/ImageAttachmentGrid';
@@ -57,6 +57,19 @@ import {
 
 const RECORD_CONTENT_MAX = 1000;
 const RECORD_IMAGES_MAX = 4;
+
+// ---------------------------------------------------------------------------
+// ユーティリティ
+// ---------------------------------------------------------------------------
+
+/**
+ * DatePickerField の "YYYY-MM-DD" 値をサーバー API が要求する ISO 8601 日時文字列に変換する。
+ * Web の `new Date(dateOnly)`（date-only 文字列は UTC 深夜として解釈される仕様）と
+ * 同じ変換結果になる。
+ */
+function toApiDateTime(dateOnly: string): string {
+  return new Date(dateOnly).toISOString();
+}
 
 // ---------------------------------------------------------------------------
 // Component
@@ -137,12 +150,11 @@ export default function BonsaiRecordNewScreen() {
     }
     setIsUploading(false);
 
-    const nowISO = new Date().toISOString().split('T')[0] ?? new Date().toISOString();
     createRecord(
       {
         bonsaiId,
         content: content.trim().length > 0 ? content.trim() : undefined,
-        recordAt: recordAt ?? nowISO,
+        recordAt: recordAt !== null ? toApiDateTime(recordAt) : new Date().toISOString(),
         mediaUrls,
       },
       {
@@ -193,7 +205,7 @@ export default function BonsaiRecordNewScreen() {
 
           {/* 記録日 */}
           <View style={styles.fieldGroup}>
-            <DateField
+            <DatePickerField
               label="記録日（任意）"
               value={recordAt}
               onChange={setRecordAt}

@@ -20,7 +20,8 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useBonsaiDetailQuery, useUpdateBonsaiMutation } from '@/lib/queries/bonsai';
 import { useOnlineStatus } from '@/hooks/use-online-status';
-import { DateField } from '@/components/bonsai/DateField';
+import { DatePickerField } from '@/components/common/DatePickerField';
+import { TreeSpeciesField } from '@/components/bonsai/TreeSpeciesField';
 import { FormErrorMessage } from '@/components/auth/FormErrorMessage';
 import { ScreenLoading } from '@/components/common/ScreenLoading';
 import {
@@ -54,6 +55,19 @@ import {
 const BONSAI_NAME_MAX = 100;
 const BONSAI_DESCRIPTION_MAX = 500;
 const INPUT_HEIGHT = 48;
+
+// ---------------------------------------------------------------------------
+// ユーティリティ
+// ---------------------------------------------------------------------------
+
+/**
+ * DatePickerField の "YYYY-MM-DD" 値をサーバー API が要求する ISO 8601 日時文字列に変換する。
+ * Web の `new Date(acquiredAtRaw)`（date-only 文字列は UTC 深夜として解釈される仕様）と
+ * 同じ変換結果になるため、Web と同一のサーバー保存値になる。
+ */
+function toApiDateTime(dateOnly: string): string {
+  return new Date(dateOnly).toISOString();
+}
 
 // ---------------------------------------------------------------------------
 // 型
@@ -142,7 +156,7 @@ function FormBody({ id, bonsai }: FormBodyProps) {
         id,
         name: name.trim(),
         species: species.trim().length > 0 ? species.trim() : undefined,
-        acquiredAt: acquiredAt ?? null,
+        acquiredAt: acquiredAt !== null ? toApiDateTime(acquiredAt) : null,
         description: description.trim().length > 0 ? description.trim() : undefined,
       },
       {
@@ -207,21 +221,15 @@ function FormBody({ id, bonsai }: FormBodyProps) {
           </View>
 
           <View style={styles.fieldGroup}>
-            <Text style={styles.fieldLabel}>樹種（任意）</Text>
-            <TextInput
+            <TreeSpeciesField
               value={species}
-              onChangeText={setSpecies}
-              maxLength={BONSAI_NAME_MAX}
-              placeholder="例: 五葉松・黒松..."
-              placeholderTextColor={colorTextTertiary}
-              editable={!isPending}
-              style={[styles.textInput, isPending && styles.inputDisabled]}
-              accessibilityLabel="樹種（任意）"
+              onChange={setSpecies}
+              disabled={isPending}
             />
           </View>
 
           <View style={styles.fieldGroup}>
-            <DateField
+            <DatePickerField
               label="取得日（任意）"
               value={acquiredAt}
               onChange={setAcquiredAt}

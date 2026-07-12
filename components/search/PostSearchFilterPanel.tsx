@@ -19,6 +19,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useGenresQuery } from '@/lib/queries/shops';
+import { DatePickerField } from '@/components/common/DatePickerField';
 import type { SearchPostsFilter } from '@/lib/queries/keys';
 import {
   colorBackground,
@@ -203,37 +204,27 @@ export function PostSearchFilterPanel({
             </ScrollView>
           </View>
 
-          {/* 期間（開始日 / 終了日 — iOS/Android クロスプラットフォームは TextInput で受け付ける） */}
+          {/* 期間（開始日 / 終了日 — DatePickerField による日付のみピッカー） */}
           <View style={styles.section}>
             <Text style={styles.sectionLabel}>期間</Text>
             <View style={styles.dateRow}>
               <View style={styles.dateField}>
-                <Text style={styles.dateFieldLabel}>開始日</Text>
-                <TextInput
-                  style={styles.dateInput}
-                  value={localDateFrom}
-                  onChangeText={setLocalDateFrom}
-                  placeholder="YYYY-MM-DD"
-                  placeholderTextColor={colorTextTertiary}
-                  keyboardType="numbers-and-punctuation"
-                  maxLength={10}
-                  accessibilityLabel="開始日 YYYY-MM-DD 形式で入力"
-                  underlineColorAndroid="transparent"
+                <DatePickerField
+                  label=""
+                  value={localDateFrom.length > 0 ? localDateFrom : null}
+                  onChange={(v) => setLocalDateFrom(v ?? '')}
+                  placeholder="開始日"
+                  clearAccessibilityLabel="開始日を削除"
                 />
               </View>
               <Text style={styles.dateSeparator}>〜</Text>
               <View style={styles.dateField}>
-                <Text style={styles.dateFieldLabel}>終了日</Text>
-                <TextInput
-                  style={styles.dateInput}
-                  value={localDateTo}
-                  onChangeText={setLocalDateTo}
-                  placeholder="YYYY-MM-DD"
-                  placeholderTextColor={colorTextTertiary}
-                  keyboardType="numbers-and-punctuation"
-                  maxLength={10}
-                  accessibilityLabel="終了日 YYYY-MM-DD 形式で入力"
-                  underlineColorAndroid="transparent"
+                <DatePickerField
+                  label=""
+                  value={localDateTo.length > 0 ? localDateTo : null}
+                  onChange={(v) => setLocalDateTo(v ?? '')}
+                  placeholder="終了日"
+                  clearAccessibilityLabel="終了日を削除"
                 />
               </View>
             </View>
@@ -401,27 +392,10 @@ const styles = StyleSheet.create({
   },
   dateField: {
     flex: 1,
-    gap: spacing2,
-  },
-  dateFieldLabel: {
-    ...textXs,
-    color: colorTextTertiary,
-  },
-  dateInput: {
-    height: 40,
-    paddingHorizontal: spacing3,
-    backgroundColor: colorSurface,
-    borderWidth: 1,
-    borderColor: colorBorder,
-    borderRadius: radiusSm,
-    ...textSm,
-    color: colorTextPrimary,
-    paddingVertical: 0,
   },
   dateSeparator: {
     ...textSm,
     color: colorTextSecondary,
-    marginTop: spacing4,
   },
   minLikesInput: {
     height: 40,

@@ -35,6 +35,7 @@ import {
 } from '@/lib/queries/bonsai-care-logs';
 import { useOnlineStatus } from '@/hooks/use-online-status';
 import { useToast } from '@/hooks/use-toast';
+import { DateTimeField } from '@/components/common/DateTimeField';
 import { ScreenLoading } from '@/components/common/ScreenLoading';
 import { ScreenError } from '@/components/common/ScreenError';
 import { ScreenEmpty } from '@/components/common/ScreenEmpty';
@@ -128,51 +129,14 @@ function formatPerformedAt(isoStr: string): string {
 }
 
 /**
- * 入力値（年・月・日の数字文字列）から ISO 8601 日付文字列を構築する。
- * 無効な値の場合は null を返す。
- * 未来日は翌日（+1日）まで許容する。
+ * 実施日時ピッカーに渡す上限（翌日 23:59:59.999）を返す。
+ * サーバーの performedAt バリデーション（未来日 +1 日トレランス）と一致させる。
  */
-function buildPerformedAt(year: string, month: string, day: string): string | null {
-  const y = parseInt(year, 10);
-  const m = parseInt(month, 10);
-  const d = parseInt(day, 10);
-  if (isNaN(y) || isNaN(m) || isNaN(d)) return null;
-  if (m < 1 || m > 12) return null;
-  if (d < 1 || d > 31) return null;
-  const date = new Date(y, m - 1, d);
-  if (
-    date.getFullYear() !== y ||
-    date.getMonth() + 1 !== m ||
-    date.getDate() !== d
-  ) {
-    return null;
-  }
-  // 未来日 +1 日まで許容（サーバー検証と同じトレランス）
+function buildPerformedAtMaximum(): Date {
   const tomorrow = new Date();
   tomorrow.setDate(tomorrow.getDate() + 1);
   tomorrow.setHours(23, 59, 59, 999);
-  if (date > tomorrow) return null;
-  return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
-}
-
-/** ISO 8601 日付文字列を年・月・日に分解する */
-function parseISODate(isoStr: string): { year: string; month: string; day: string } {
-  const match = /^(\d{4})-(\d{2})-(\d{2})/.exec(isoStr);
-  if (match === null) return { year: '', month: '', day: '' };
-  return {
-    year: match[1] ?? '',
-    month: String(parseInt(match[2] ?? '0', 10)),
-    day: String(parseInt(match[3] ?? '0', 10)),
-  };
-}
-
-/** 今日の日付を ISO 8601 形式で返す */
-function todayISO(): string {
-  const now = new Date();
-  const y = now.getFullYear();
-  const m = now.getMonth() + 1;
-  const d = now.getDate();
-  return `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+  return tomorrow;
 }
 
 // ---------------------------------------------------------------------------
@@ -181,30 +145,22 @@ function todayISO(): string {
 
 type CareLogFormState = {
   type: BonsaiCareType;
-  year: string;
-  month: string;
-  day: string;
+  performedAt: string | null;
   note: string;
 };
 
 function buildInitialForm(): CareLogFormState {
-  const today = parseISODate(todayISO());
   return {
-    type: BONSAI_CARE_TYPE.OTHER,
-    year: today.year,
-    month: today.month,
-    day: today.day,
+    type: BONSAI_CARE_TYPE.PESTICIDE,
+    performedAt: new Date().toISOString(),
     note: '',
   };
 }
 
 function buildFormFromItem(item: CareLogItem): CareLogFormState {
-  const parsed = parseISODate(item.performedAt);
   return {
     type: item.type as BonsaiCareType,
-    year: parsed.year,
-    month: parsed.month,
-    day: parsed.day,
+    performedAt: item.performedAt,
     note: item.note ?? '',
   };
 }
@@ -293,131 +249,6 @@ const selectorStyles = StyleSheet.create({
 });
 
 // ---------------------------------------------------------------------------
-// 日付入力フィールド
-// ---------------------------------------------------------------------------
-
-type DateInputProps = {
-  year: string;
-  month: string;
-  day: string;
-  onYearChange: (v: string) => void;
-  onMonthChange: (v: string) => void;
-  onDayChange: (v: string) => void;
-  hasError: boolean;
-};
-
-function DateInput({
-  year,
-  month,
-  day,
-  onYearChange,
-  onMonthChange,
-  onDayChange,
-  hasError,
-}: DateInputProps) {
-  return (
-    <View style={dateInputStyles.wrapper}>
-      <Text style={dateInputStyles.label}>実施日</Text>
-      <View style={dateInputStyles.row}>
-        <View style={dateInputStyles.yearContainer}>
-          <TextInput
-            value={year}
-            onChangeText={(t) => onYearChange(t.replace(/[^0-9]/g, ''))}
-            placeholder="年"
-            placeholderTextColor={colorTextTertiary}
-            keyboardType="number-pad"
-            maxLength={4}
-            style={[dateInputStyles.input, hasError && dateInputStyles.inputError]}
-            accessibilityLabel="実施年"
-          />
-        </View>
-        <Text style={dateInputStyles.unit}>年</Text>
-        <View style={dateInputStyles.shortContainer}>
-          <TextInput
-            value={month}
-            onChangeText={(t) => onMonthChange(t.replace(/[^0-9]/g, ''))}
-            placeholder="月"
-            placeholderTextColor={colorTextTertiary}
-            keyboardType="number-pad"
-            maxLength={2}
-            style={[dateInputStyles.input, hasError && dateInputStyles.inputError]}
-            accessibilityLabel="実施月"
-          />
-        </View>
-        <Text style={dateInputStyles.unit}>月</Text>
-        <View style={dateInputStyles.shortContainer}>
-          <TextInput
-            value={day}
-            onChangeText={(t) => onDayChange(t.replace(/[^0-9]/g, ''))}
-            placeholder="日"
-            placeholderTextColor={colorTextTertiary}
-            keyboardType="number-pad"
-            maxLength={2}
-            style={[dateInputStyles.input, hasError && dateInputStyles.inputError]}
-            accessibilityLabel="実施日（日）"
-          />
-        </View>
-        <Text style={dateInputStyles.unit}>日</Text>
-      </View>
-      {hasError && (
-        <View accessibilityRole="alert">
-          <Text style={dateInputStyles.errorText}>
-            有効な日付を入力してください（未来日は翌日まで）
-          </Text>
-        </View>
-      )}
-    </View>
-  );
-}
-
-const dateInputStyles = StyleSheet.create({
-  wrapper: {
-    gap: spacing2,
-  },
-  label: {
-    ...textBase,
-    color: colorTextPrimary,
-    fontWeight: '600',
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing2,
-  },
-  yearContainer: {
-    width: 80,
-    height: 48,
-  },
-  shortContainer: {
-    width: 56,
-    height: 48,
-  },
-  input: {
-    height: '100%',
-    borderWidth: 1,
-    borderColor: colorBorder,
-    borderRadius: radiusMd,
-    paddingHorizontal: spacing2,
-    ...textBase,
-    color: colorTextPrimary,
-    backgroundColor: colorBackground,
-    textAlign: 'center',
-  },
-  inputError: {
-    borderColor: colorError,
-  },
-  unit: {
-    ...textBase,
-    color: colorTextSecondary,
-  },
-  errorText: {
-    ...textSm,
-    color: colorError,
-    marginTop: spacing1,
-  },
-});
-
-// ---------------------------------------------------------------------------
 // 作成/編集フォームモーダル
 // ---------------------------------------------------------------------------
 
@@ -446,19 +277,16 @@ function CareLogFormModal({
     setForm(isEditing && editingItem !== null ? buildFormFromItem(editingItem) : buildInitialForm());
   }, [isEditing, editingItem]);
 
-  const performedAt = buildPerformedAt(form.year, form.month, form.day);
-  const hasDateError =
-    (form.year !== '' || form.month !== '' || form.day !== '') &&
-    performedAt === null;
   const isNoteOverflow = form.note.length > MAX_CARE_LOG_NOTE_LENGTH;
-  const isSubmittable =
-    performedAt !== null && !isNoteOverflow;
+  const isSubmittable = form.performedAt !== null && !isNoteOverflow;
+  const performedAtMaximum = buildPerformedAtMaximum();
 
   const createMutation = useCreateCareLogMutation();
   const updateMutation = useUpdateCareLogMutation();
   const isSubmitting = createMutation.isPending || updateMutation.isPending;
 
   const handleSubmit = useCallback(() => {
+    const performedAt = form.performedAt;
     if (performedAt === null || isNoteOverflow) return;
     if (isEditing && editingItem !== null) {
       updateMutation.mutate(
@@ -497,7 +325,6 @@ function CareLogFormModal({
       );
     }
   }, [
-    performedAt,
     isNoteOverflow,
     isEditing,
     editingItem,
@@ -566,14 +393,12 @@ function CareLogFormModal({
           <View style={modalStyles.divider} />
 
           {/* 実施日 */}
-          <DateInput
-            year={form.year}
-            month={form.month}
-            day={form.day}
-            onYearChange={(v) => setForm((prev) => ({ ...prev, year: v }))}
-            onMonthChange={(v) => setForm((prev) => ({ ...prev, month: v }))}
-            onDayChange={(v) => setForm((prev) => ({ ...prev, day: v }))}
-            hasError={hasDateError}
+          <DateTimeField
+            label="実施日 ＊"
+            value={form.performedAt}
+            onChange={(v) => setForm((prev) => ({ ...prev, performedAt: v }))}
+            maximumDate={performedAtMaximum}
+            clearAccessibilityLabel="実施日を削除"
           />
 
           <View style={modalStyles.divider} />

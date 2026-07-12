@@ -1,6 +1,7 @@
 /**
  * @module app/scheduled-posts/[id]/edit/index
  * 予約投稿の編集フォーム（pending のみ・モーダル表示・プレミアム限定）。
+ * 日時は components/common/DateTimeField（EventDateTimeField と同方式の日時ピッカー）で受け付ける。
  * 仕様: docs/design/scheduled-posts.md §6
  */
 
@@ -14,7 +15,6 @@ import {
   Platform,
   Pressable,
   Alert,
-  TextInput,
   ActivityIndicator,
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
@@ -28,6 +28,7 @@ import { useCurrentUserQuery } from '@/lib/queries/auth';
 import { uploadImage, uploadVideo } from '@/lib/queries/upload';
 import { useOnlineStatus } from '@/hooks/use-online-status';
 import { usePostComposer } from '@/hooks/use-post-composer';
+import { DateTimeField } from '@/components/common/DateTimeField';
 import { PostBodyInput } from '@/components/post/PostBodyInput';
 import { GenreSelector } from '@/components/post/GenreSelector';
 import { ImageAttachmentGrid } from '@/components/post/ImageAttachmentGrid';
@@ -39,18 +40,14 @@ import { isApiError } from '@/lib/api/errors';
 import {
   colorBackground,
   colorSurfaceWashi,
-  colorSurfaceMuted,
   colorTextPrimary,
   colorTextSecondary,
   colorTextTertiary,
-  colorBorder,
   colorBorderLight,
   colorActionPrimary,
-  spacing1,
   spacing2,
   spacing4,
   spacing8,
-  radiusMd,
   textBase,
   textSm,
   textLg,
@@ -67,147 +64,7 @@ import { MAX_POST_CONTENT_PREMIUM } from '@/lib/constants/limits/post';
 // ---------------------------------------------------------------------------
 
 const SCHEDULED_AT_DAYS_LIMIT = 30;
-
-// ---------------------------------------------------------------------------
-// ユーティリティ
-// ---------------------------------------------------------------------------
-
-type DateTimeParts = { year: string; month: string; day: string; hour: string; minute: string };
-
-function parseScheduledAt(dateStr: string): DateTimeParts {
-  const d = new Date(dateStr);
-  if (isNaN(d.getTime())) {
-    return { year: '', month: '', day: '', hour: '', minute: '' };
-  }
-  return {
-    year: String(d.getFullYear()),
-    month: String(d.getMonth() + 1),
-    day: String(d.getDate()),
-    hour: String(d.getHours()),
-    minute: String(d.getMinutes()),
-  };
-}
-
-// ---------------------------------------------------------------------------
-// ScheduledAtSection
-// ---------------------------------------------------------------------------
-
-type ScheduledAtSectionProps = DateTimeParts & {
-  onYearChange: (v: string) => void;
-  onMonthChange: (v: string) => void;
-  onDayChange: (v: string) => void;
-  onHourChange: (v: string) => void;
-  onMinuteChange: (v: string) => void;
-  disabled: boolean;
-};
-
-function ScheduledAtSection({
-  year, month, day, hour, minute,
-  onYearChange, onMonthChange, onDayChange, onHourChange, onMinuteChange,
-  disabled,
-}: ScheduledAtSectionProps) {
-  return (
-    <View style={satStyles.container}>
-      <Text style={satStyles.label}>公開予定日時 ＊</Text>
-      <View style={satStyles.row}>
-        <TextInput
-          value={year}
-          onChangeText={onYearChange}
-          keyboardType="number-pad"
-          maxLength={4}
-          placeholder="年"
-          placeholderTextColor={colorTextTertiary}
-          editable={!disabled}
-          style={[satStyles.yearInput, disabled && satStyles.disabled]}
-          accessibilityLabel="公開予定年"
-        />
-        <Text style={satStyles.sep}>年</Text>
-        <TextInput
-          value={month}
-          onChangeText={onMonthChange}
-          keyboardType="number-pad"
-          maxLength={2}
-          placeholder="月"
-          placeholderTextColor={colorTextTertiary}
-          editable={!disabled}
-          style={[satStyles.smInput, disabled && satStyles.disabled]}
-          accessibilityLabel="公開予定月"
-        />
-        <Text style={satStyles.sep}>月</Text>
-        <TextInput
-          value={day}
-          onChangeText={onDayChange}
-          keyboardType="number-pad"
-          maxLength={2}
-          placeholder="日"
-          placeholderTextColor={colorTextTertiary}
-          editable={!disabled}
-          style={[satStyles.smInput, disabled && satStyles.disabled]}
-          accessibilityLabel="公開予定日"
-        />
-        <Text style={satStyles.sep}>日</Text>
-      </View>
-      <View style={satStyles.row}>
-        <TextInput
-          value={hour}
-          onChangeText={onHourChange}
-          keyboardType="number-pad"
-          maxLength={2}
-          placeholder="時"
-          placeholderTextColor={colorTextTertiary}
-          editable={!disabled}
-          style={[satStyles.smInput, disabled && satStyles.disabled]}
-          accessibilityLabel="公開予定時"
-        />
-        <Text style={satStyles.sep}>時</Text>
-        <TextInput
-          value={minute}
-          onChangeText={onMinuteChange}
-          keyboardType="number-pad"
-          maxLength={2}
-          placeholder="分"
-          placeholderTextColor={colorTextTertiary}
-          editable={!disabled}
-          style={[satStyles.smInput, disabled && satStyles.disabled]}
-          accessibilityLabel="公開予定分"
-        />
-        <Text style={satStyles.sep}>分</Text>
-      </View>
-    </View>
-  );
-}
-
-const satStyles = StyleSheet.create({
-  container: { gap: spacing2 },
-  label: { ...textSm, color: colorTextPrimary, fontWeight: '600' },
-  row: { flexDirection: 'row', alignItems: 'center', gap: spacing2 },
-  yearInput: {
-    width: 72,
-    height: 40,
-    borderWidth: 1,
-    borderColor: colorBorder,
-    borderRadius: radiusMd,
-    paddingHorizontal: spacing2,
-    ...textBase,
-    color: colorTextPrimary,
-    backgroundColor: colorBackground,
-    textAlign: 'center',
-  },
-  smInput: {
-    width: 48,
-    height: 40,
-    borderWidth: 1,
-    borderColor: colorBorder,
-    borderRadius: radiusMd,
-    paddingHorizontal: spacing1,
-    ...textBase,
-    color: colorTextPrimary,
-    backgroundColor: colorBackground,
-    textAlign: 'center',
-  },
-  sep: { ...textBase, color: colorTextSecondary },
-  disabled: { backgroundColor: colorSurfaceMuted, opacity: 0.7 },
-});
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
 // ---------------------------------------------------------------------------
 // Route shell — post データが確定してから FormBody をマウントする
@@ -250,8 +107,6 @@ function FormBody({ id, post, isPremium }: FormBodyProps) {
 
   const { mutate: updatePost, isPending: isSaving } = useUpdateScheduledPostMutation();
 
-  const initialDateTime = parseScheduledAt(post.scheduledAt);
-
   const {
     content,
     setContent,
@@ -276,11 +131,8 @@ function FormBody({ id, post, isPremium }: FormBodyProps) {
     },
   });
 
-  const [year, setYear] = useState(initialDateTime.year);
-  const [month, setMonth] = useState(initialDateTime.month);
-  const [day, setDay] = useState(initialDateTime.day);
-  const [hour, setHour] = useState(initialDateTime.hour);
-  const [minute, setMinute] = useState(initialDateTime.minute);
+  const initialScheduledAt = post.scheduledAt;
+  const [scheduledAt, setScheduledAt] = useState<string | null>(initialScheduledAt);
 
   const [formError, setFormError] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -288,27 +140,19 @@ function FormBody({ id, post, isPremium }: FormBodyProps) {
   const isPending = isSaving || isUploading;
   const contentLength = content.length;
   const maxContent = MAX_POST_CONTENT_PREMIUM;
-  const hasDateInput = year.trim().length > 0 && month.trim().length > 0 && day.trim().length > 0;
-  const hasTimeInput = hour.trim().length >= 1 && minute.trim().length >= 1;
-  const canSubmit = content.trim().length > 0 && hasDateInput && hasTimeInput && !isPending && contentLength <= maxContent;
+  const hasScheduledAt = scheduledAt !== null;
+  const canSubmit =
+    content.trim().length > 0 &&
+    hasScheduledAt &&
+    !isPending &&
+    contentLength <= maxContent &&
+    (isDirty || scheduledAt !== initialScheduledAt);
 
-  const buildScheduledAtISO = useCallback((): string | null => {
-    const y = parseInt(year, 10);
-    const m = parseInt(month, 10);
-    const d = parseInt(day, 10);
-    const h = parseInt(hour, 10);
-    const min = parseInt(minute, 10);
-    if (
-      isNaN(y) || isNaN(m) || isNaN(d) || isNaN(h) || isNaN(min) ||
-      m < 1 || m > 12 || d < 1 || d > 31 || h < 0 || h > 23 || min < 0 || min > 59
-    ) {
-      return null;
-    }
-    return `${String(y).padStart(4, '0')}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}T${String(h).padStart(2, '0')}:${String(min).padStart(2, '0')}:00`;
-  }, [year, month, day, hour, minute]);
+  const now = new Date();
+  const maximumScheduledDate = new Date(now.getTime() + SCHEDULED_AT_DAYS_LIMIT * MS_PER_DAY);
 
   const handleCancel = useCallback(() => {
-    if (isDirty) {
+    if (isDirty || scheduledAt !== initialScheduledAt) {
       Alert.alert(
         '変更を破棄しますか？',
         '保存されていない変更は失われます。',
@@ -320,23 +164,21 @@ function FormBody({ id, post, isPremium }: FormBodyProps) {
     } else {
       router.back();
     }
-  }, [isDirty]);
+  }, [isDirty, scheduledAt, initialScheduledAt]);
 
   const handleSave = useCallback(async () => {
     if (!isOnline) {
       setFormError(ERR_OFFLINE_ACTION);
       return;
     }
-
-    const scheduledAt = buildScheduledAtISO();
     if (scheduledAt === null) {
-      setFormError('公開予定日時を正しく入力してください（月1〜12、日1〜31、時0〜23、分0〜59）。');
+      setFormError('公開予定日時を選択してください。');
       return;
     }
 
     const scheduledDate = new Date(scheduledAt);
     const nowMs = Date.now();
-    const limitMs = nowMs + SCHEDULED_AT_DAYS_LIMIT * 24 * 60 * 60 * 1000;
+    const limitMs = nowMs + SCHEDULED_AT_DAYS_LIMIT * MS_PER_DAY;
     if (scheduledDate.getTime() <= nowMs) {
       setFormError('公開予定日時は現在より未来に設定してください。');
       return;
@@ -395,7 +237,7 @@ function FormBody({ id, post, isPremium }: FormBodyProps) {
       }
     );
   }, [
-    isOnline, buildScheduledAtISO, images, videoUri, videoFileSize,
+    isOnline, scheduledAt, images, videoUri, videoFileSize,
     content, selectedGenres, id, updatePost,
   ]);
 
@@ -445,19 +287,18 @@ function FormBody({ id, post, isPremium }: FormBodyProps) {
           <ComposerFormError message={formError} />
 
           {/* 公開予定日時 */}
-          <ScheduledAtSection
-            year={year}
-            month={month}
-            day={day}
-            hour={hour}
-            minute={minute}
-            onYearChange={setYear}
-            onMonthChange={setMonth}
-            onDayChange={setDay}
-            onHourChange={setHour}
-            onMinuteChange={setMinute}
-            disabled={isPending}
-          />
+          <View style={styles.fieldGroup}>
+            <DateTimeField
+              label="公開予定日時 ＊"
+              value={scheduledAt}
+              onChange={setScheduledAt}
+              disabled={isPending}
+              minimumDate={now}
+              maximumDate={maximumScheduledDate}
+              clearAccessibilityLabel="公開予定日時を削除"
+            />
+            <Text style={styles.hint}>現在から{SCHEDULED_AT_DAYS_LIMIT}日以内の日時を選択してください。</Text>
+          </View>
 
           {/* 投稿本文 */}
           <View style={styles.fieldGroup}>
@@ -561,6 +402,10 @@ const styles = StyleSheet.create({
   },
   fieldGroup: {
     gap: spacing2,
+  },
+  hint: {
+    ...textSm,
+    color: colorTextTertiary,
   },
   counter: {
     ...textSm,
