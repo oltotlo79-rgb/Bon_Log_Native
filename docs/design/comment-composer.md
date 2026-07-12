@@ -1,6 +1,7 @@
 # コメント投稿・返信・削除 UI/UX 仕様 — Bon_Log Native
 
 作成日: 2026-06-19
+最終改訂: 2026-07-13（実装 `components/comment/CommentInput.tsx` / `hooks/use-comment-media.ts` / `lib/queries/comments.ts` の確認結果に基づき §2・§4・§5.2・§6 を全面改訂。旧仕様は画像添付を「MVP はボタン配置のみ・タップ時の実装は基本仕様として含める」という将来対応扱いにしていたが、**画像添付（最大2枚）・動画添付（プレミアムのみ最大1本）は既に実装済み**である。送信条件も「本文またはメディアのいずれかがあれば送信可」に是正した）
 対象画面:
 - `posts/[id]` — 投稿詳細画面（コメント投稿 UI はこの画面に内包）
 
@@ -9,6 +10,7 @@
 - `navigation-structure.md` §4.3（投稿詳細画面）・§5.2（戻る挙動）に準拠
 - `common-states.md` の 4 状態（ローディング / 空 / エラー / オフライン）を適用する
 - `post-card.md`（PostCard コンポーネント）・`ugc-safety.md`（通報・ブロック）と連携する
+- `post-composer.md` §8（ImageAttachmentGrid）・§9（VideoAttachmentArea）をメディア添付に流用する（§6.6 参照）
 - 通報・ブロックの UI は `ugc-safety.md` §2.4（コメント通報導線）に委ねる。本仕様では投稿・削除に集中する
 
 ---
@@ -23,12 +25,15 @@
 - モバイルでのコメント投稿 UX を、入力バーが常に見える形で実現する（Web と異なるモバイル固有の固定配置）
 - 返信（parentId 指定）時の宛先表示を分かりやすくする
 - 自分のコメントを安全に削除できる導線を提供する
+- 画像・動画（プレミアムのみ）をコメントに添付できるようにする
 
 ---
 
 ## 2. 画面構成（ワイヤーフレーム）
 
 ### 2.1 投稿詳細画面の全体構成
+
+> **改訂注記（2026-07-13）:** 入力バーの構成を実装 `components/comment/CommentInput.tsx` に合わせて更新した。画像添付ボタン（常時表示）・動画添付ボタン（プレミアムのみ表示）・選択済みメディアのプレビュー行を追加した。
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -65,15 +70,19 @@
 │ [コメント入力バー（固定）]                                   │
 │ ┌─────────────────────────────────────────────────────────┐ │
 │ │ [宛先表示（返信時のみ）: ↩ @{nickname} への返信  [✕]] │ │
-│ │ ┌─────────────────────────────────────┐  [送信ボタン] │ │
-│ │ │ コメントを入力...                   │               │ │
-│ │ └─────────────────────────────────────┘               │ │
+│ │ [選択済み画像サムネイル行（画像添付時のみ）]              │ │
+│ │ [選択済み動画プレビュー（プレミアムかつ動画添付時のみ）]  │ │
+│ │ [🖼][🎥*] ┌─────────────────────────────┐  [送信ボタン] │ │
+│ │           │ コメントを入力...           │               │ │
+│ │           └─────────────────────────────┘               │ │
 │ └─────────────────────────────────────────────────────────┘ │
 │ ← [セーフエリア下端]                                         │
 └─────────────────────────────────────────────────────────────┘
+
+`*` 動画添付ボタンはプレミアムユーザーのみ表示。
 ```
 
-### 2.2 コメント入力バー（キーボード表示時）
+### 2.2 コメント入力バー（キーボード表示時・文字数カウンタ）
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -82,13 +91,16 @@
 │ [コメント入力バー（キーボード直上に追従）]                   │
 │ ┌─────────────────────────────────────────────────────────┐ │
 │ │ [宛先表示（返信時のみ）]         [✕ 返信キャンセル]     │ │
-│ │ ┌──────────────────────────────┐ ┌──────────┐          │ │
-│ │ │ コメントを入力...（多行対応）│ │  送信する │          │ │
-│ │ └──────────────────────────────┘ └──────────┘          │ │
-│ │ 右下: {N} / 500  [画像アイコン]                          │ │
+│ │ [🖼][🎥] ┌──────────────────────────────┐ ┌──────────┐  │ │
+│ │          │ コメントを入力...（多行対応）│ │  送信する │  │ │
+│ │          └──────────────────────────────┘ └──────────┘  │ │
+│ │            右下: {N} / 500                                │ │
+│ │            （フォーカス中または入力ありのときのみ表示）    │ │
 │ └─────────────────────────────────────────────────────────┘ │
 └─────────────────────────────────────────────────────────────┘
 ```
+
+文字数カウンタはテキストフィールドの**内側**（`inputWrapper` の下部）に表示され、常時表示ではなく「フォーカス中、または 1 文字以上入力済み」のときのみ表示される。
 
 ---
 
@@ -121,11 +133,14 @@ PostDetailScreen               ← 画面全体
 │       ├── CommentAvatar      ← アバター（36pt）+ タップで users/[id] へ遷移
 │       ├── CommentBody        ← ニックネーム / 日時 / 本文 / アクション行
 │       └── CommentActions     ← いいね・返信ボタン
-├── CommentInput               ← 入力バーコンテナ（キーボード追従 / 宛先表示 / テキスト入力 / 送信）
-│   ├── ReplyTargetBanner      ← 返信先表示行（返信モード時のみ）
-│   ├── CommentTextInput       ← テキスト入力フィールド + 文字数カウンタ
-│   ├── ImageAttachButton      ← 画像添付ボタン（将来対応 / MVP は配置のみ）
-│   └── CommentSubmitButton    ← 送信ボタン（活性 / 非活性 / 送信中）
+├── CommentInput                ← 入力バーコンテナ（キーボード追従 / 宛先表示 / メディア添付 / テキスト入力 / 送信）
+│   ├── ReplyTargetBanner       ← 返信先表示行（返信モード時のみ）
+│   ├── ImageAttachmentGrid     ← post-composer.md §8 流用（選択済み画像が1枚以上のときのみ表示。最大2枚）
+│   ├── VideoAttachmentArea     ← post-composer.md §9 流用（プレミアムかつ動画添付時のみ表示。最大1本）
+│   ├── 画像添付ボタン           ← 常時表示（44×44pt）
+│   ├── 動画添付ボタン           ← プレミアムユーザーのみ表示（44×44pt）
+│   ├── CommentTextInput        ← テキスト入力フィールド + 文字数カウンタ
+│   └── CommentSubmitButton     ← 送信ボタン（活性 / 非活性 / 送信中）
 └── CommentDeleteDialog        ← 削除確認ダイアログ（Alert / カスタム Modal）
 ```
 
@@ -141,15 +156,16 @@ PostDetailScreen               ← 画面全体
 | `onReply` | 「返信する」タップコールバック（`parentId`・`nickname` を渡す）|
 | `onDelete` | 削除コールバック（`commentId` を渡す）|
 
-**CommentInput**
+**CommentInput**（実装 `components/comment/CommentInput.tsx` の実際の props）
 
-| prop 名 | 意味 |
-|---------|------|
-| `replyTarget` | 返信先情報（`{ parentId: string; nickname: string } | null`）|
-| `onCancelReply` | 返信キャンセルコールバック |
-| `onSubmit` | 送信コールバック（`{ content: string; parentId?: string; images?: string[] }` を渡す）|
-| `isSubmitting` | 送信中フラグ（ボタン disabled 化・連打防止）|
-| `isPremium` | プレミアムユーザーか（画像制限の判定に使用）|
+| prop 名 | 型 | 意味 |
+|---------|-----|------|
+| `replyTarget` | `{ parentId: string; nickname: string } \| null` | 返信先情報 |
+| `onCancelReply` | `() => void` | 返信キャンセルコールバック |
+| `onSubmit` | `(params: CommentSubmitParams) => void` | 送信コールバック。`CommentSubmitParams = { content: string; parentId?: string; mediaUrls: string[]; mediaTypes: ('image' \| 'video')[] }` |
+| `onUploadError` | `(message: string) => void` | メディアアップロード失敗時のコールバック（送信自体はまだ行われていない状態で呼ばれる）|
+| `isSubmitting` | `boolean` | 送信中フラグ（ボタン disabled 化・連打防止）|
+| `isPremium` | `boolean` | プレミアムユーザーか（動画添付ボタンの表示・画像/動画の枚数上限判定に使用）|
 
 ---
 
@@ -162,19 +178,27 @@ PostDetailScreen               ← 画面全体
 - `queryKeys.comments.byPost(postId)` でキャッシュ管理
 - 表示順: 古い順（先頭が最古、末尾が最新）
 
-### 5.2 コメント送信
+### 5.2 コメント送信（本文またはメディアのいずれかがあれば送信可）
 
-1. テキスト入力 + 任意で画像選択（画像は presigned URL → R2 アップロード）
-2. `POST /api/v1/posts/{id}/comments`（想定エンドポイント）
-   - リクエスト body（想定）: `{ content: string; parentId?: string; mediaUrls?: string[] }`
-3. 成功後: `queryKeys.comments.byPost(postId)` および `queryKeys.posts.detail(postId)` を invalidate（コメント数が増えるため）
+> **改訂注記（2026-07-13）:** 送信条件を実装に合わせて是正した。`canSubmit = (text.trim().length > 0 || hasMedia) && !isOverLimit && !isBusy`（`hasMedia = images.length > 0 || videoUri !== null`）。本文が空でも画像または動画のみで送信できる（Web `CommentForm` と同一条件）。
+
+1. テキスト入力 + 任意で画像（最大2枚）・動画（プレミアムのみ最大1本）を選択する
+2. 送信タップ時、選択済みメディアがあれば `uploadImage()` / `uploadVideo()` で presigned URL 取得 → R2 アップロード（`hooks/use-post-composer.ts` と同じ画像選択フロー。§6.6 参照）。**この間は入力・添付操作をすべて disabled にする**（`isUploading` 状態）
+3. アップロード成功後、`POST /api/v1/posts/{id}/comments`（実装確認済み）
+   - リクエストボディ: `{ content: string; parentId?: string; mediaUrls: string[]; mediaTypes: ('image' | 'video')[] }`
+4. 成功後: `queryKeys.comments.byPost(postId)` および `queryKeys.posts.detail(postId)` を invalidate（コメント数が増えるため）
+5. アップロード失敗時: `onUploadError` 経由でエラーメッセージ（`ERR_MEDIA_UPLOAD_FAILED`）を呼び出し元（`PostDetailScreen`）へ伝え、送信自体は行わない（テキスト・選択済みメディアは保持される）
 
 ### 5.3 コメント削除
 
 - `DELETE /api/v1/comments/{commentId}`（想定エンドポイント。正本は OpenAPI）
 - 成功後: `queryKeys.comments.byPost(postId)` および `queryKeys.posts.detail(postId)` を invalidate
 
-### 5.4 必要なデータ項目（コメント 1 件）
+### 5.4 コメントのいいね
+
+- `POST /api/v1/comments/{id}/like`（実装確認済み。`lib/queries/comments.ts`）
+
+### 5.5 必要なデータ項目（コメント 1 件）
 
 | 項目 | 意味 |
 |------|------|
@@ -192,15 +216,14 @@ PostDetailScreen               ← 画面全体
 
 ### 6.1 固定配置とキーボード追従
 
-- `position: absolute` + `bottom: 0` で画面下部に固定する
-- `KeyboardAvoidingView`（iOS: `behavior="padding"` / Android: `behavior="height"`）でキーボード表示時に入力バーが押し上げられるようにする
+- 画面下部に固定する（`KeyboardAvoidingView` の配下に置き、`paddingBottom: Math.max(insets.bottom, spacing3)` でセーフエリアを確保する）
 - セーフエリア下端（ホームインジケータ / ナビゲーションバー）の余白は `useSafeAreaInsets().bottom` で確保する
 - 入力バーが表示される分だけ、`CommentList` の `contentContainerStyle` に下端の `paddingBottom` を加算して最後のコメントが入力バーに隠れないようにする
 
 ### 6.2 テキスト入力フィールド
 
 - `TextInput` の `multiline: true`
-- 最小高さ: 40pt（1 行）/ 最大高さ: 120pt（約 5 行）→ それ以上は内部スクロール
+- 最小高さ: 40pt（`TEXT_INPUT_MIN_HEIGHT`）/ 最大高さ: 120pt（`TEXT_INPUT_MAX_HEIGHT`）→ それ以上は内部スクロール
 - 背景: `colorSurface`（`#fcfcfc`）/ 角丸 `radiusLg`（10pt）/ ボーダー 1pt `colorBorder`
 - フォーカス時ボーダー: 2pt `colorBorderFocus`（`#2e2e2e`）
 - 内側パディング: `paddingHorizontal: spacing3`（12pt）/ `paddingVertical: spacing2`（8pt）
@@ -208,13 +231,16 @@ PostDetailScreen               ← 画面全体
 - `textBase`（14pt / lineHeight 22pt）/ `colorTextPrimary`
 - `returnKeyType: "default"`（改行を許容）
 - `keyboardType: "default"` / `autoCapitalize: "sentences"`
+- `testID="comment-input"`（E2E 用）
 
 ### 6.3 文字数カウンタ
 
-- テキスト入力フィールド右下（フィールド外・入力バー内）
-- `{N} / 500`（`textSm` / `colorTextSecondary`）
-- 残り 50 文字以下: `colorWarning` に変化
-- 500 字超過: `colorError` に変化・送信ボタンを disabled
+- 位置: テキスト入力フィールドの内側下部（`inputWrapper` 内。フィールドの外ではない）
+- 表示条件: **フォーカス中、または 1 文字以上入力済みのときのみ**表示する（未フォーカス・空文字のときは非表示）
+- `{N} / 500`（`textSm`）
+- 通常色: `colorTextTertiary`
+- 残り 50 文字以下（`isNearLimit`）: `colorWarning` に変化
+- 500 字超過（`isOverLimit`）: `colorError` に変化・送信ボタンを disabled
 
 ### 6.4 返信先表示（ReplyTargetBanner）
 
@@ -226,31 +252,48 @@ PostDetailScreen               ← 画面全体
 └─────────────────────────────────────────────────────────────┘
 ```
 
-- 高さ: 36pt
+- 高さ: 36pt（`REPLY_BANNER_HEIGHT`）/ 角丸 `radiusMd`
 - 背景: `colorSurfaceMuted`（`#f0f0f0`）
-- 左端: `spacing3` パディング / ↩ アイコン（12pt / `colorTextSecondary`）+ テキスト `textSm` / `colorTextSecondary`
-- `@{nickname}` 部分は `colorTextLink`（`#2e2e2e`）/ `fontWeight: 600`
+- 左端: `spacing3` パディング / `return-down-forward-outline` アイコン（Ionicons・12pt / `colorTextSecondary`）+ テキスト `textSm` / `colorTextSecondary`
+- `@{nickname}` 部分は `colorTextLink` / `fontWeight: 600`
 - 右端: ✕ アイコンボタン（44pt タップターゲット）で返信をキャンセル
-- `accessibilityLabel`: 「@{nickname} への返信モード。キャンセルするには ✕ を押してください」
+- `accessibilityLiveRegion="polite"` / `accessibilityLabel`: 「@{nickname} への返信モード。キャンセルするには ✕ を押してください」
 
 ### 6.5 送信ボタン（CommentSubmitButton）
 
-- サイズ: 高さ 44pt / 幅 72pt（最小）
+- サイズ: 高さ 44pt（`SUBMIT_BUTTON_HEIGHT`）/ 幅 72pt（最小・`SUBMIT_BUTTON_MIN_WIDTH`）
 - テキスト: 「送信する」/ `textSm`（12pt）/ `fontWeight: 600`
 - 角丸: `radiusMd`（8pt）
 
 | 状態 | 背景 | テキスト |
 |------|------|---------|
 | 活性 | `colorActionPrimary`（`#2e2e2e`）| `colorActionPrimaryText`（`#ffffff`）|
-| 非活性（未入力 / 超過）| `colorSurfaceMuted` | `colorTextTertiary` |
-| 送信中 | `colorActionPrimary` | テキスト非表示 + スピナー（白）|
+| 非活性（未入力・メディアなし / 超過 / 送信中orアップロード中）| `colorSurfaceMuted` | `colorTextTertiary` |
+| 送信中・アップロード中 | `colorActionPrimary`（背景は活性時と同じ）| テキスト非表示 + `ActivityIndicator`（白）|
 
-### 6.6 画像添付ボタン
+`accessibilityLabel="コメントを送信する"` / `accessibilityState: { disabled: !canSubmit }`
 
-- 入力フィールド左下またはツールバーエリアにカメラアイコンボタン（44pt × 44pt）
+### 6.6 メディア添付（画像・動画）
+
+> **改訂注記（2026-07-13）:** 旧仕様は「MVP では `ImageAttachButton` の配置のみ定義し、実装は基本仕様として含める」という将来対応の位置づけだったが、**画像添付・動画添付は既に実装済み**である（`hooks/use-comment-media.ts`）。
+
+**画像添付ボタン:**
+- 常時表示。44 × 44pt（`MEDIA_BUTTON_SIZE`）/ `image-outline` アイコン（Ionicons・20pt / `colorTextTertiary`）
+- 上限（`MAX_COMMENT_IMAGES` = **2枚**）に達している、または送信中・アップロード中のときは disabled（`opacity: 0.4`）
+- タップ → `expo-image-picker` を起動（複数選択可・残り枚数分まで）。権限がない場合は `Alert.alert()` で設定アプリへの誘導を表示（`post-composer.md` の画像選択エラーフローと同一）
 - `accessibilityLabel`: 「画像を添付」
-- MVP では `ImageAttachButton` の配置のみ定義し、タップ時の実装（`expo-image-picker` 起動）は基本仕様として含める
-- 画像添付後はサムネイル行を入力バー上部に横スクロールで表示する（仕様詳細は `post-composer.md` §8 の ImageAttachmentGrid に準拠する）
+
+**動画添付ボタン（プレミアムユーザーのみ表示）:**
+- `isPremium === true` のときのみ表示。44 × 44pt / `videocam-outline` アイコン（20pt / `colorTextTertiary`）
+- 動画が 1 本（`MAX_COMMENT_VIDEOS_PREMIUM` = **1本**）既に選択されている、または送信中・アップロード中のときは disabled
+- 無料ユーザーは動画添付ボタン自体が表示されない（`MAX_COMMENT_VIDEOS_FREE` = **0本**。post-composer のようなロックメッセージ表示は行わず、ボタンごと非表示にする点が `VideoAttachmentArea`（post-composer.md §9.1）と異なる）
+- `accessibilityLabel`: 「動画を添付」
+
+**選択済みメディアのプレビュー:**
+- 画像が 1 枚以上選択されている場合、入力行の上に `post-composer.md` §8 の `ImageAttachmentGrid` をそのまま表示する（追加・削除・上限 2 枚の挙動も同一）
+- 動画が選択されている場合（プレミアムのみ）、`post-composer.md` §9.2 の `VideoAttachmentArea` をそのまま表示する
+
+**アップロード失敗時:** `ERR_MEDIA_UPLOAD_FAILED` を `onUploadError` 経由で呼び出し元へ伝える（§5.2 参照）。
 
 ---
 
@@ -306,6 +349,7 @@ PostDetailScreen               ← 画面全体
 - `textBase`（14pt / lineHeight 22pt）/ `colorTextPrimary`
 - コメントは折り返し全文表示（投稿本文のような「続きを読む」は設けない）
 - 最大文字数: 500 文字（サーバー制約。クライアントは送信時にチェック）
+- コメントに添付された画像・動画がある場合、本文の下にメディアグリッドを表示する（`post-card.md` の `PostImageGallery` に準ずるサムネイル表示。詳細仕様は投稿カードの画像表示を踏襲）
 
 ### 7.5 アクション行（CommentActions）
 
@@ -388,7 +432,7 @@ PostDetailScreen               ← 画面全体
 
 - `invalidateQueries` でリスト全体を再フェッチする（自動的に最新コメントが末尾に追加される）
 - 楽観更新は行わない（コメント ID がサーバー採番のため、ローカルで代替 ID を使うより invalidate で正確なデータを表示する方が安全）
-- 送信成功後: キーボードを閉じる / テキスト入力をクリアする / 返信モードを解除する
+- 送信成功後: テキスト入力をクリアする（`setText('')`）/ 選択済みメディアをクリアする（`resetMedia()`）/ 返信モードの解除はコールバック側（`PostDetailScreen`）の責務
 
 ---
 
@@ -418,13 +462,14 @@ ScreenEmpty（common-states.md 準拠）
 | 投稿が存在しない (404) | `ScreenError`（title: 「投稿が見つかりません」/ `ERR_POST_NOT_FOUND` / subLink: 「フィードに戻る」）|
 | コメント取得失敗 | 投稿本文は表示したまま、コメントリスト部分に `ScreenError`（インライン表示）|
 | コメント送信失敗 | 入力バー上部に `ComposerFormError`（背景 `colorErrorBg` / 左端ボーダー `colorError`）|
+| メディアアップロード失敗 | `onUploadError` 経由で `ERR_MEDIA_UPLOAD_FAILED` を表示（§5.2・§6.6 参照）|
 | コメント削除失敗 | エラートースト（`ERR_COMMENT_DELETE_FAILED` 相当）|
 
 ### 10.4 オフライン
 
 - `OfflineBanner` を画面上部に表示する
 - 既存コメントはキャッシュから表示する
-- コメント入力バーのテキスト入力は可能だが、送信ボタンタップ時にオフライン検知 → `ComposerFormError` に `ERR_OFFLINE_ACTION` を表示する
+- コメント入力バーのテキスト入力・メディア選択は可能だが、送信ボタンタップ時にオフライン検知 → `ComposerFormError` に `ERR_OFFLINE_ACTION` を表示する
 - 返信モード中にオフラインになった場合も同じ挙動
 
 ### 10.5 権限なし（未認証ユーザー）
@@ -454,6 +499,8 @@ ScreenEmpty（common-states.md 準拠）
 | コメント入力 placeholder | 「コメントを入力...」|
 | 送信ボタン（通常）| 「送信する」|
 | 送信ボタン（送信中）| （スピナーのみ）|
+| 画像添付ボタン（accessibilityLabel）| 「画像を添付」|
+| 動画添付ボタン（accessibilityLabel）| 「動画を添付」（プレミアムのみ表示）|
 | 返信バナー | 「↩ @{nickname} への返信」|
 | 返信キャンセルボタン（accessibilityLabel）| 「返信をキャンセル」|
 | 「返信する」ボタン | 「返信する」|
@@ -468,6 +515,7 @@ ScreenEmpty（common-states.md 準拠）
 | 文字数超過エラー | 「500文字以内で入力してください」|
 | コメント上限エラー | 「このスレッドのコメント上限に達しています。」|
 | 投稿読み込みエラー | 「投稿を読み込めませんでした」|
+| メディアアップロード失敗 | `ERR_MEDIA_UPLOAD_FAILED` の文言（`post-composer.md` と共通の定数）|
 | コメント削除エラートースト | 「削除できませんでした。もう一度お試しください。」|
 | 未認証誘導文言 | 「コメントするにはログインが必要です。」|
 
@@ -482,6 +530,8 @@ ScreenEmpty（common-states.md 準拠）
 | 「↩ 返信する」| `accessibilityRole="button"` / `accessibilityLabel="{nickname}のコメントに返信する"` |
 | いいねボタン | `accessibilityRole="button"` / `accessibilityLabel="いいねする。現在 {N} 件"` または `"いいねを取り消す"` |
 | コメント入力フィールド | `accessibilityLabel="コメントを入力"` / `accessibilityHint="最大500文字"` |
+| 画像添付ボタン | `accessibilityRole="button"` / `accessibilityLabel="画像を添付"` / `accessibilityState: { disabled }` |
+| 動画添付ボタン | `accessibilityRole="button"` / `accessibilityLabel="動画を添付"` / `accessibilityState: { disabled }` |
 | 送信ボタン | `accessibilityRole="button"` / `accessibilityState: { disabled }` / `accessibilityLabel="コメントを送信する"` |
 | 返信バナー | `accessibilityLiveRegion="polite"` で返信モード突入を読み上げる |
 | フォームエラー | `accessibilityRole="alert"` / `accessibilityLiveRegion="assertive"` |
@@ -496,21 +546,24 @@ ScreenEmpty（common-states.md 準拠）
 |---------|-------------|
 | `post-card.md`（PostCard）| PostDetail 画面の先頭コンポーネントとして `disableNavigation=true` で流用する |
 | `post-card.md` §10（PostCardActions のいいね仕様）| コメントのいいね（CommentActions）も同じ楽観更新 + アニメーション仕様を適用する |
+| `post-composer.md` §8（ImageAttachmentGrid）| コメント入力バーの画像添付（最大2枚）にそのまま流用する（§6.6）|
+| `post-composer.md` §9（VideoAttachmentArea）| コメント入力バーの動画添付（プレミアムのみ最大1本）に流用する。ただし無料ユーザー向けの「ロックメッセージ表示」は行わず、ボタン自体を非表示にする点が異なる（§6.6）|
+| `hooks/use-post-composer.ts` の画像選択フロー | `hooks/use-comment-media.ts` がコメント用の上限値（`MAX_COMMENT_IMAGES` 等）で同じ選択・権限確認フローを提供する |
 | `ugc-safety.md` §2.4（コメントの通報導線）| ⋮ メニューの「通報」「ブロック」「ミュート」項目の設計は ugc-safety.md に委ねる。本仕様では削除のみを扱う |
 | `auth-forms.md` §0.3（FormErrorMessage）| `ComposerFormError` は同仕様（`colorErrorBg` / 左端ボーダー）で実装する |
 | `auth-forms.md` §0.7（KeyboardAvoidingView）| iOS: `behavior="padding"` / Android: `behavior="height"` の設定を踏襲する |
 | `common-states.md`（ScreenLoading / ScreenEmpty / ScreenError / OfflineBanner）| 既存 4 コンポーネントをすべて再利用する |
-| `navigation-structure.md` §4.3（投稿詳細画面）| `navigation-structure.md` が定義したコメント入力バー仕様（「コメント入力バー（画面下部 / キーボード上に追従）」「アバター（小）/ テキスト入力 / 送信ボタン」）をより詳細に具体化したのが本仕様 |
+| `navigation-structure.md` §4.3（投稿詳細画面）| `navigation-structure.md` が定義したコメント入力バー仕様をより詳細に具体化したのが本仕様 |
 
 ---
 
 ## 14. 未確定事項・要判断
 
-| 項目 | 内容 | 判断者 |
-|------|------|--------|
-| コメントのいいね API | `POST /api/v1/comments/{id}/like` が存在するか。または投稿いいねと共通のエンドポイントか | core（要確認）|
-| 返信コメントの取得方法 | `parentId` ありのコメントが同一リストに含まれるか（フラット取得）、別途取得（ネスト取得）か | core（要確認）|
-| 画像添付の MVP 対応 | コメントへの画像添付（最大 2 枚）は MVP に含めるか後続フェーズか。入力バーの画像ボタン配置の有無に影響する | PM（要判断）|
-| 削除の楽観更新 | MVP で楽観的セル削除 vs グレーアウト + invalidate のどちらを採用するか | frontend（要判断）|
-| スクロール位置の管理 | 返信タップ後に入力バーのフォーカスのみ行うか、返信先コメントの位置を表示するスクロールも行うか | frontend（要判断）|
-| コメントの絵文字リアクション | Web 版に存在するか確認。モバイル MVP スコープに含めるか | PM（要判断）|
+| 項目 | 内容 | 判断者 | 状態 |
+|------|------|--------|------|
+| コメントのいいね API | `POST /api/v1/comments/{id}/like` が存在するか | core | **解決済み（2026-07-13）**: `lib/queries/comments.ts` で実装確認済み |
+| 返信コメントの取得方法 | `parentId` ありのコメントが同一リストに含まれるか（フラット取得）、別途取得（ネスト取得）か | core | 未解決 |
+| 画像・動画添付の MVP 対応 | コメントへの画像添付（最大2枚）・動画添付（プレミアムのみ最大1本）は MVP に含めるか | PM | **解決済み（2026-07-13）**: 実装済み。§6.6 参照 |
+| 削除の楽観更新 | MVP で楽観的セル削除 vs グレーアウト + invalidate のどちらを採用するか | frontend | 未解決 |
+| スクロール位置の管理 | 返信タップ後に入力バーのフォーカスのみ行うか、返信先コメントの位置を表示するスクロールも行うか | frontend | 未解決 |
+| コメントの絵文字リアクション | Web 版に存在するか確認。モバイル MVP スコープに含めるか | PM | 未解決 |

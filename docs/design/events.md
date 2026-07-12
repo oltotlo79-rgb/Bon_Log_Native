@@ -1,6 +1,7 @@
 # イベント画面 UI/UX 仕様 — Bon_Log Native
 
 作成日: 2026-06-22
+最終改訂: 2026-07-13（実装 `app/events/new/index.tsx` / `app/events/[id]/edit/index.tsx` / `components/events/EventPrefecturePickerModal.tsx` の確認結果に基づき §4 を全面改訂。都道府県をトリガー→モーダル選択の**必須**フィールドへ変更し、フリーテキストの「地域（region）」フィールドはフォームから削除、代わりに「市区町村（city）」「主催者（organizer）」を追加、「即売あり（hasSales）」スイッチを新設、開催日・終了日は `DateTimeField`（日付+時刻）へ変更した。あわせて各フィールドの文字数上限を実装値に是正した）
 対象画面:
 - `events/index` — イベント一覧
 - `events/new` — イベント作成フォーム
@@ -12,7 +13,8 @@
 - `navigation-structure.md`（スタック・ナビゲーション構造）に準拠
 - `common-states.md` の 4 状態（ローディング / 空 / エラー / オフライン）を適用する
 - `auth-forms.md`（AuthTextField・FormErrorMessage）を入力フィールドに流用する
-- `profile-edit.md` §7.5 の BirthdayField（テキスト方式）を日付入力に流用する
+- 開催日・終了日は `components/common/DateTimeField.tsx`（日付+時刻のネイティブピッカー）を使う（§4.3 参照）
+- 都道府県は `components/events/EventPrefecturePickerModal.tsx`（47都道府県・単一選択・**必須**）を使う（§4.4 参照）
 - 作成者のみ編集・削除を実行できる（`isCreator` フラグで判定）
 - `store-compliance.md`（通報・ブロック要件）を確認済み
 
@@ -63,6 +65,8 @@
 │                                                             │
 └─────────────────────────────────────────────────────────────┘
 ```
+
+> **本改訂の対象外の注記:** 一覧画面のフィルタ（`components/events/EventsRegionFilterBar.tsx` 等）は今回の調査対象外。§4（イベントフォーム）の変更にともない、作成フォームの「地域」自由入力フィールドは削除されたが、一覧の地域フィルタ UI 自体は本改訂で変更していない。
 
 ### 2.2 FilterBar チップ仕様
 
@@ -128,8 +132,10 @@
 │   ─────────────────────────────────────────────── (spacing3)│
 │   [CalendarアイコンRow] [開催日時]                           │
 │   [MapPinアイコンRow]   [会場名]                            │
-│   [MapPinアイコンRow]   [都道府県 / 地域]                   │
+│   [MapPinアイコンRow]   [都道府県 / 市区町村]                │
 │   [TicketアイコンRow]   [入場料（「無料」or 金額）]          │
+│   [PeopleアイコンRow]   [主催者]（設定時のみ）                │
+│   [TagアイコンRow]      [即売あり]（`hasSales=true` の場合のみ）│
 │   [UserアイコンRow]     [主催者 {nickname}（タップで users/[id]）]│
 │   ─────────────────────────────────────────────── (spacing3)│
 │                                                             │
@@ -142,6 +148,8 @@
 │                                                             │
 └─────────────────────────────────────────────────────────────┘
 ```
+
+> **本改訂の対象外の注記:** 詳細画面のレイアウトは 2026-06-22 版のワイヤーフレームを保持しつつ、§4 のフォームで追加された「主催者」「即売あり」の 2 項目の表示行を暫定的に追記した（実装ファイル `app/events/[id]/index.tsx` 自体は今回未検証）。「主催者（organizer・作成者が入力した文字列）」と「主催者 {nickname}（投稿したユーザー・`creator`）」は別概念であるため、詳細画面での見出し文言の重複がないか frontend 実装時に確認すること。
 
 ### 3.2 アイコン行の共通スタイル
 
@@ -181,6 +189,14 @@ gap: spacing3
 
 ### 4.1 全体レイアウト
 
+> **改訂注記（2026-07-13）:** 実装 `app/events/new/index.tsx` に基づき全面改訂した。旧仕様との主な差分:
+> 1. 都道府県（prefecture）が**フリーテキストから必須の単一選択ピッカー**（`EventPrefecturePickerModal`）に変わった
+> 2. 旧仕様の「地域（region）」フリーテキストフィールドは**フォームから削除**された（一覧の地域フィルタとは独立。§2.1 の注記参照）
+> 3. 「市区町村（city）」フィールドが新設された（都道府県より詳細な所在地）
+> 4. 「主催者（organizer）」フィールドが新設された
+> 5. 「即売あり（hasSales）」スイッチが新設された（「無料」チェックとは別のスイッチ）
+> 6. 開催日・終了日は日付+時刻を**単一の `DateTimeField`** で選択する方式に変わった（テキスト入力方式ではない）
+
 ```
 ┌─────────────────────────────────────────────────────────────┐
 │ [モーダルヘッダー]                                           │
@@ -190,19 +206,39 @@ gap: spacing3
 │                                                             │
 │ [ScrollView（KeyboardAvoidingView）]                         │
 │   paddingHorizontal: spacing4                               │
-│   paddingBottom: spacing8                                   │
+│   paddingBottom: spacing6                                   │
 │                                                             │
 │   [FormErrorMessage（エラー時のみ）]                         │
 │                                                             │
-│   [タイトル（必須）]                                         │
-│   [開催日（必須）]                    ← テキスト入力方式     │
-│   [終了日（任意）]                    ← テキスト入力方式     │
+│   [イベント名（必須）]                          0/100      │
+│                                                             │
+│   [開始日時 ＊ — DateTimeField（日付+時刻）]                 │
+│   ┌─────────────────────────────────────────────────────┐   │
+│   │ 日時を選択                              [カレンダー] │   │
+│   └─────────────────────────────────────────────────────┘   │
+│                                                             │
+│   [終了日時（任意）— DateTimeField]                          │
+│   ┌─────────────────────────────────────────────────────┐   │
+│   │ 日時を選択                              [カレンダー] │   │
+│   └─────────────────────────────────────────────────────┘   │
+│   ※ 開始日時より前は選択不可（minimumDate=開始日時）         │
+│                                                             │
+│   [都道府県 ＊ — トリガー→モーダル単一選択]                  │
+│   ┌─────────────────────────────────────────────────────┐  ▼│
+│   │ 都道府県を選択してください                            │   │
+│   └─────────────────────────────────────────────────────┘   │
+│                                                             │
+│   [市区町村（任意）]                                         │
 │   [会場名（任意）]                                           │
-│   [都道府県（任意）]                  ← テキスト入力（フリー）│
-│   [地域（任意）]                      ← テキスト入力（フリー）│
-│   [入場料（任意）]                    ← 数値入力 or 「無料」チェック│
-│   [説明（任意）]                      ← 複数行テキスト       │
-│   [外部 URL（任意）]                  ← URL 入力            │
+│   [主催者（任意）]                                           │
+│                                                             │
+│   [入場料（任意）]                                           │
+│   [無料 スイッチ] → OFF 時のみ [金額テキスト入力]            │
+│                                                             │
+│   [即売あり スイッチ]                                        │
+│                                                             │
+│   [説明（任意）]                                  0/5000   │
+│   [詳細ページ URL（任意）]                                   │
 │                                                             │
 └─────────────────────────────────────────────────────────────┘
 ```
@@ -211,38 +247,52 @@ gap: spacing3
 
 | フィールド | 種類 | 必須 | 上限 | 備考 |
 |-----------|------|------|------|------|
-| タイトル（title）| 1行テキスト | 必須 | 200文字 | `AuthTextField` 流用 / 文字数カウンタ |
-| 開催日（startDate）| 日付入力 | 必須 | — | テキスト方式（BirthdayField 流用） |
-| 終了日（endDate）| 日付入力 | 任意 | — | テキスト方式。開催日以降のみ有効 |
-| 会場名（venue）| 1行テキスト | 任意 | 200文字 | `AuthTextField` 流用 |
-| 都道府県（prefecture）| 1行テキスト | 任意 | 50文字 | フリーテキスト |
-| 地域（region）| 1行テキスト | 任意 | 50文字 | フリーテキスト |
-| 入場料（admission）| 数値 + 無料チェック | 任意 | — | 「無料」チェック ON のとき 0 を送信。OFF は数値入力（`keyboardType: "number-pad"`）|
-| 説明（description）| 複数行テキスト | 任意 | 2000文字 | 文字数カウンタ |
-| 外部 URL（url）| URL テキスト | 任意 | — | `keyboardType: "url"` / 形式チェック（https:// から始まるか）|
+| イベント名（title）| 1行テキスト | 必須 | **100文字**（`MAX_EVENT_TITLE_LENGTH`）| 独自 `TextInput` / 文字数カウンタ |
+| 開始日時（startDate）| `DateTimeField`（日付+時刻）| 必須 | — | §4.3 参照。範囲制限なし |
+| 終了日時（endDate）| `DateTimeField`（日付+時刻）| 任意 | — | `minimumDate` = 開始日時。開始日時以降のみ選択可 |
+| 都道府県（prefecture）| `EventPrefecturePickerModal`（トリガー→47都道府県の単一選択）| **必須** | — | 自由入力不可。§4.4 参照 |
+| 市区町村（city）| 1行テキスト | 任意 | 100文字（`MAX_EVENT_CITY_LENGTH`）| フリーテキスト（新設フィールド） |
+| 会場名（venue）| 1行テキスト | 任意 | 200文字（`MAX_EVENT_VENUE_LENGTH`）| フリーテキスト |
+| 主催者（organizer）| 1行テキスト | 任意 | 200文字（`MAX_EVENT_ORGANIZER_LENGTH`）| フリーテキスト（新設フィールド）|
+| 入場料（admissionFee）| 「無料」スイッチ + 条件付きテキスト入力 | 任意 | 100文字（`MAX_EVENT_ADMISSION_FEE_LENGTH`）| 「無料」ON のとき文字列 `"無料"` を送信。OFF は自由記述（数値専用ではない。例:「500円」）|
+| 即売あり（hasSales）| Switch | — | — | 新設フィールド。既定値 `false` |
+| 説明（description）| 複数行テキスト | 任意 | **5000文字**（`MAX_EVENT_DESCRIPTION_LENGTH`）| 文字数カウンタ |
+| 外部 URL（externalUrl）| URL テキスト | 任意 | 2000文字（`MAX_EVENT_EXTERNAL_URL_LENGTH`）| `keyboardType: "url"` / 形式チェック（`https://` または `http://` から始まるか）|
 
-**core に要確認:** 各フィールドの文字数上限・型の正本はサーバー側の Zod バリデーションで確認する。
+**（2026-07-13 是正）:** 旧仕様の文字数上限（タイトル200・説明2000・都道府県50・地域50・電話等）は実装値と異なっていたため全面的に実装値へ差し替えた。「地域（region）」フィールドは削除済み（§4.1 参照）。
 
-### 4.3 入場料フィールドの詳細
+### 4.3 日時入力方式（DateTimeField・開始/終了）
 
-```
-[無料チェックボックス（Switch + ラベル「無料」）]
-  ↓ ON
-  → 数値入力フィールドを非表示
-  ↓ OFF（デフォルト）
-  → [数値入力フィールド] 円
-```
+- 共通コンポーネント `components/common/DateTimeField.tsx`（`bonsai.md` §6.7・`scheduled-posts.md` §5.3 と同一）を使用する
+- **Android:** フィールドタップ → 日付ダイアログ → 確定すると時刻ダイアログ（24時間表記）が連鎖して開く
+- **iOS:** フィールドタップ → フィールド直下にインラインスピナー（`display="spinner"` / `mode="datetime"`）が展開し、日付と時刻を 1 ステップで選べる
+- 開始日時: ラベル「開始日時 ＊」/ 範囲制限なし（`minimumDate`/`maximumDate` とも指定なし）
+- 終了日時: ラベル「終了日時（任意）」/ `minimumDate` = 開始日時が設定されていればその値（未設定時は制限なし）。開始日時より前の終了日時を選ぶと、送信前チェックで「終了日時は開始日時以降にしてください。」のインラインエラーを表示する
+- 削除ボタン（選択済みの場合のみ）: `accessibilityLabel="開始日時を削除"` / 「終了日時を削除」
 
-### 4.4 保存ボタンの活性条件
+### 4.4 都道府県選択（EventPrefecturePickerModal・必須）
 
-- タイトルが 1文字以上
-- 開催日が入力されている
-- 終了日がある場合は開催日以降の日付である
-- 外部 URL がある場合は URL 形式が正しい
+- トリガーボタン: 高さ 48pt / ボーダー `colorBorder` 1pt / 角丸 `radiusMd`
+- 未選択時のトリガーテキスト: 「都道府県を選択してください」（`colorTextTertiary`）/ `accessibilityLabel="都道府県（必須）"`
+- 選択済み時: `accessibilityLabel="都道府県（必須）：{都道府県名}"`
+- タップ → 画面下からスライドアップするモーダル（`FlatList`。タイトル「都道府県を選択」+ 閉じるボタン）。47都道府県をグループ分けせずフラットに一覧表示する（`components/profile/LocationField.tsx` の「都道府県」グループと同じ `PREFECTURES` 定数を使うが、こちらは「すべて」選択肢を持たないフォーム専用コンポーネント）
+- 各行: `accessibilityRole="radio"` / タップで即選択してモーダルを閉じる
+- **未選択のままでは送信できない**（`isPrefectureValid = prefecture !== null` が送信条件に含まれる。§4.5 参照）
+
+### 4.5 保存ボタンの活性条件
+
+> **改訂注記（2026-07-13）:** 都道府県必須化にともない `isPrefectureValid` を条件に追加した。
+
+- タイトルが 1文字以上 100文字以内
+- 開始日時が有効な値である
+- 終了日時がある場合は開始日時以降の日時である
+- **都道府県が選択されている**（`isPrefectureValid`）
+- 外部 URL がある場合は `https://` または `http://` から始まる形式である
 - 保存処理中でない
-- 編集時: 初期値からいずれかのフィールドが変更されている
 
-### 4.5 ナビゲーション
+編集時に「初期値からの変更が必要か」は本改訂で未検証（旧仕様の記述をそのまま保持する）。
+
+### 4.6 ナビゲーション
 
 | 項目 | 内容 |
 |------|------|
@@ -278,23 +328,27 @@ EventsScreen (index)
 ├── EventList                   ← FlatList ラッパー
 │   └── EventCard               ← 各イベントカード
 ├── EventsFAB                   ← 新規作成 FAB（認証済みのみ）
-├── ScreenLoading               ← common-states.md 流用
-├── ScreenEmpty                 ← common-states.md 流用
-├── ScreenError                 ← common-states.md 流用
-└── OfflineBanner               ← common-states.md 流用
+├── ScreenLoading                ← common-states.md 流用
+├── ScreenEmpty                  ← common-states.md 流用
+├── ScreenError                  ← common-states.md 流用
+└── OfflineBanner                ← common-states.md 流用
 
 EventDetailScreen ([id])
 ├── EventDetailHeader           ← イベント名
-├── EventDetailInfoSection      ← 日時・会場・主催者等の情報行
+├── EventDetailInfoSection      ← 日時・会場・都道府県/市区町村・入場料・主催者・即売あり等の情報行
 ├── EventExternalLink           ← 外部 URL ボタン（URL があるときのみ）
 └── DeleteConfirmDialog         ← 削除確認（作成者のみ）
 
 EventFormScreen (new / edit)
 ├── EventFormHeader             ← モーダルヘッダー（キャンセル / タイトル / 保存）
-├── FormErrorMessage            ← auth-forms.md 流用
-└── EventFormFields             ← 各フォームフィールド群
-    ├── EventDateField          ← 日付入力（BirthdayField 流用）
-    └── EventAdmissionField     ← 入場料（Switch + 数値入力）
+├── TextInput（イベント名）
+├── DateTimeField × 2           ← 開始日時・終了日時（§4.3）
+├── EventPrefecturePickerModal  ← 都道府県（トリガー + モーダル。§4.4。必須）
+├── TextInput（市区町村・会場名・主催者）
+├── Switch（無料）+ TextInput（入場料金額）
+├── Switch（即売あり）
+├── TextInput（説明・外部URL）
+└── FormErrorMessage            ← auth-forms.md 流用
 ```
 
 ---
@@ -317,6 +371,8 @@ EventFormScreen (new / edit)
 | 作成 | `POST /api/v1/events` | 認証済みユーザー | `events.list` |
 | 更新 | `PATCH /api/v1/events/{id}` | 作成者のみ | `events.detail(id)` / `events.list` |
 | 削除 | `DELETE /api/v1/events/{id}` | 作成者のみ | `events.list` → 一覧に戻る |
+
+**作成リクエストボディ（実装確認済み）:** `{ title, startDate, endDate, prefecture, city, venue, organizer, admissionFee, hasSales, description, externalUrl }`。**`region` フィールドは送信しない**（§4.1 参照。一覧側のフィルタパラメータ `region` とは別物）。
 
 ---
 
@@ -384,15 +440,21 @@ EventFormScreen (new / edit)
 | フォーム「投稿する」（新規）| 「投稿する」|
 | フォーム「保存する」（編集）| 「保存する」|
 | フォーム「タイトル」ラベル | 「イベント名 ＊」|
-| フォーム「開催日」ラベル | 「開催日 ＊」|
-| フォーム「終了日」ラベル | 「終了日（任意）」|
+| フォーム「開始日時」ラベル | 「開始日時 ＊」|
+| フォーム「終了日時」ラベル | 「終了日時（任意）」|
+| 終了日時エラー | 「終了日時は開始日時以降にしてください。」|
+| フォーム「都道府県」ラベル | 「都道府県 ＊」|
+| 都道府県トリガー（未選択）| 「都道府県を選択してください」|
+| 都道府県モーダルタイトル | 「都道府県を選択」|
+| フォーム「市区町村」ラベル | 「市区町村（任意）」|
 | フォーム「会場名」ラベル | 「会場名（任意）」|
-| フォーム「都道府県」ラベル | 「都道府県（任意）」|
-| フォーム「地域」ラベル | 「地域（任意）」|
+| フォーム「主催者」ラベル | 「主催者（任意）」|
 | フォーム「入場料」ラベル | 「入場料（任意）」|
 | 入場料「無料」ラベル | 「無料」|
+| 「即売あり」ラベル | 「即売あり」|
 | フォーム「説明」ラベル | 「説明（任意）」|
 | フォーム「外部 URL」ラベル | 「詳細ページ URL（任意）」|
+| 外部 URL 形式エラー | 「URLは https:// または http:// から始めてください。」|
 | 外部リンク行テキスト | 「詳細ページを見る」|
 | FAB accessibilityLabel | 「イベントを作成する」|
 | 一覧 空（全国）見出し | 「イベントがありません」|
@@ -422,7 +484,11 @@ EventFormScreen (new / edit)
 | フィルタチップ | `accessibilityRole="radio"` / `accessibilityState: { selected }` |
 | 外部リンク行 | `accessibilityRole="link"` / `accessibilityLabel="詳細ページを開く（外部リンク）"` |
 | 3点メニュー | `accessibilityLabel="イベントのメニューを開く"` |
+| 開始/終了日時 DateTimeField | `accessibilityRole="button"` / `accessibilityLabel="{ラベル}：{選択値 または プレースホルダー}"` |
+| 都道府県トリガー | `accessibilityRole="button"` / `accessibilityLabel="都道府県（必須）"` または `"都道府県（必須）：{値}"` |
+| 都道府県モーダル各行 | `accessibilityRole="radio"` / `accessibilityState: { selected }` |
 | 入場料 Switch | `accessibilityRole="switch"` / `accessibilityLabel="無料イベント"` |
+| 即売あり Switch | `accessibilityRole="switch"` / `accessibilityLabel="即売あり"` |
 | フォーム必須フィールド | `accessibilityLabel` に「（必須）」を含める |
 | 削除ボタン | `accessibilityLabel="削除する（取り消せません）"` |
 
@@ -433,7 +499,8 @@ EventFormScreen (new / edit)
 | 既存要素 | 本仕様での扱い |
 |---------|-------------|
 | `auth-forms.md`（AuthTextField / FormErrorMessage）| イベントフォームの入力フィールドに流用する |
-| `profile-edit.md` §7.5（BirthdayField）| 開催日・終了日のテキスト入力方式を流用する |
+| `components/common/DateTimeField.tsx` | 開始・終了日時に使用する（§4.3）。`scheduled-posts.md` §5.3・`bonsai.md` §6.7 と同一コンポーネント |
+| `components/profile/LocationField.tsx` / `components/bonsai/TreeSpeciesField.tsx` | 都道府県選択（`EventPrefecturePickerModal`）はこれらと同じ「トリガー→モーダル単一選択」パターンを踏襲する（グループ分けはせず 47 都道府県をフラット表示する点のみ異なる）|
 | `post-composer.md` §7（GenreSelector チップ）| FilterBar チップのスタイルを踏襲する |
 | `navigation-structure.md` §5.1（モーダルヘッダー）| イベントフォームのモーダルヘッダーを踏襲する |
 | `navigation-structure.md` §5.2（破棄確認）| 変更がある場合の破棄確認を踏襲する |
@@ -445,10 +512,11 @@ EventFormScreen (new / edit)
 
 ## 12. 未確定事項・要判断
 
-| 項目 | 内容 | 判断者 |
-|------|------|--------|
-| フォームの各フィールドの文字数上限 | サーバー側の Zod バリデーションで確認する | core に要確認 |
-| `region` / `prefecture` の値の定義 | 文字列の固定値か ID か、使用できる値の一覧を確認する | core に要確認 |
-| `isCreator` フィールドの API への含み方 | 詳細取得 API のレスポンスに `isCreator` フラグが含まれるか確認する | core に要確認 |
-| イベント画像の有無 | イベントにサムネイル / カバー画像フィールドが存在するか確認する（本仕様では画像なしとして設計）| core に要確認 |
-| 入場料の型 | 数値（円）か文字列か。「無料」フラグの実装方針を確認する | core に要確認 |
+| 項目 | 内容 | 判断者 | 状態 |
+|------|------|--------|------|
+| フォームの各フィールドの文字数上限 | サーバー側の Zod バリデーションで確認する | core | **解決済み（2026-07-13）**: `lib/constants/limits/event.ts` で確認済み（§4.2）|
+| `region` / `prefecture` の値の定義 | 一覧フィルタの `region` の値一覧・型を確認する | core | 未解決（フォーム側の `prefecture` は `PREFECTURES` 定数で解決済み）|
+| `isCreator` フィールドの API への含み方 | 詳細取得 API のレスポンスに `isCreator` フラグが含まれるか確認する | core | 未解決 |
+| イベント画像の有無 | イベントにサムネイル / カバー画像フィールドが存在するか確認する | core | 未解決 |
+| 入場料の型 | 実装は文字列（`admissionFee: string \| null`）。「無料」チェック ON で文字列 `"無料"` を送信し、OFF 時は自由記述文字列（数値専用ではない）| core | **解決済み（2026-07-13）**|
+| 詳細画面の「主催者」表示 | フォームの `organizer`（主催者名の自由記述）と、投稿した `creator`（ユーザーアカウント）の表示上の書き分けを frontend 実装時に確認する（§3.1 の注記参照）| frontend | 未解決（新規発見） |

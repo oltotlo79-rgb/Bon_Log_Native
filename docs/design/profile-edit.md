@@ -1,6 +1,7 @@
 # プロフィール編集画面 UI/UX 仕様 — Bon_Log Native
 
 作成日: 2026-06-19
+最終改訂: 2026-07-13（実装 `app/settings/profile/index.tsx` / `components/profile/LocationField.tsx` / `components/profile/BonsaiHistoryField.tsx` / `components/profile/BirthdayField.tsx` / `hooks/use-profile-edit.ts` の確認結果に基づき §2・§7・§8.2 を全面改訂。居住地・盆栽歴・誕生日はいずれも自由入力のテキストフィールドではなく、トリガー→モーダルのグループ選択 / 日付ピッカーであることが判明したため是正した。誕生日の年齢制限（最小13歳）は Web に対応する制約がなく実装にも存在しないため撤回。保存ボタンの活性条件も `isDirty` を要求しない実装に合わせて修正した）
 対象画面:
 - `settings/profile` — プロフィール編集
 
@@ -10,6 +11,7 @@
 - `common-states.md` の 4 状態（ローディング / 空 / エラー / オフライン）を適用する
 - `auth-forms.md` §0.2 / §0.3 の入力フィールド基本仕様（AuthTextField・FormErrorMessage）を流用する
 - `post-composer.md` §8 の ImageAttachmentGrid に準じた画像選択仕様を適用する
+- 居住地・誕生日はグループ付き / 日付のみのモーダル選択（`components/profile/LocationField.tsx` / `components/profile/BirthdayField.tsx`。§7.3・§7.5 参照）。盆栽歴は年・月それぞれの数値ピッカー（`components/profile/BonsaiHistoryField.tsx`。§7.4 参照）
 
 ---
 
@@ -21,13 +23,15 @@
 
 - プロフィール情報を手軽に更新できるモバイル向け UI を提供する
 - アバター（円形）とヘッダー（横長）という 2 種類の画像の選択・プレビューを直感的に提示する
-- サーバーサイドの検証エラー（予約済みニックネーム・外部 URL 拒否等）を分かりやすく表示する
+- 居住地・盆栽歴・誕生日は自由入力ではなく統制されたピッカー UI にすることで、入力ミス・表記ゆれ（都道府県名の誤字等）を防ぐ
 
 ---
 
 ## 2. 画面構成（ワイヤーフレーム）
 
 ### 2.1 全体レイアウト
+
+> **改訂注記（2026-07-13）:** 居住地・盆栽歴・誕生日のワイヤーフレームを実装（トリガーボタン→モーダル選択）に合わせて修正した。旧仕様はこれらを自由入力のテキストフィールドとして描いていたが誤りだった。
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -64,23 +68,24 @@
 │   ┌─────────────────────────────────────────────────────┐   │
 │   │ 松柏が好きで...（初期値）                           │   │
 │   │                                                     │   │
-│   │                                           0/300     │   │
+│   │                                           0/200     │   │
 │   └─────────────────────────────────────────────────────┘   │
 │                                                             │
-│   [居住地（任意）]                                           │
+│   [居住地（任意）— LocationField（トリガー→グループ付きモーダル）]│
+│   ┌─────────────────────────────────────────────────────┐  ▼│
+│   │ 居住地を選択                                         │   │
+│   └─────────────────────────────────────────────────────┘   │
+│                                                             │
+│   [盆栽を始めた時期（任意）— BonsaiHistoryField]              │
+│   ┌──────────────────────┐  ┌──────────────────┐            │
+│   │ 年を選択            ▼│  │ 月を選択        ▼│（開始年選択後のみ表示）│
+│   └──────────────────────┘  └──────────────────┘            │
+│                                                             │
+│   [誕生日（任意）— BirthdayField（DatePickerField ラップ）]  │
 │   ┌─────────────────────────────────────────────────────┐   │
-│   │ 東京都（初期値）                                     │   │
+│   │ 誕生日を選択                             [カレンダー]│   │
 │   └─────────────────────────────────────────────────────┘   │
-│                                                             │
-│   [盆栽歴（任意）]                                           │
-│   ┌──────────────────────┐                                  │
-│   │ 2020年（開始年）      │  ── [月（任意）] ──              │
-│   └──────────────────────┘                                  │
-│                                                             │
-│   [誕生日（任意）]                                           │
-│   ┌─────────────────────────────────────────────────────┐   │
-│   │ 1990/01/01（初期値）                                 │   │
-│   └─────────────────────────────────────────────────────┘   │
+│   ※ 選択済みの場合のみ右に [✕ 削除] ボタン                  │
 │                                                             │
 │   [アカウントの公開 / 非公開]                                │
 │   ┌─────────────────────────────────────────────────────┐   │
@@ -99,16 +104,13 @@
 | フィールド | 種類 | 必須 | 文字数上限 | 備考 |
 |-----------|------|------|-----------|------|
 | ニックネーム | 1 行テキスト | 必須 | 50 文字（`MAX_NICKNAME_LENGTH`）| 文字数カウンタを表示 |
-| 自己紹介（bio）| 複数行テキスト | 任意 | 300 文字 | 文字数カウンタを表示 |
-| 居住地（location）| 1 行テキスト | 任意 | 100 文字 | フリーテキスト |
-| 盆栽歴（開始年）| 数値入力（年）| 任意 | — | `keyboardType: "number-pad"` |
-| 盆栽歴（開始月）| ピッカーまたは数値 | 任意 | — | 1〜12の整数。開始年が未入力なら非表示 |
-| 誕生日 | 日付ピッカー | 任意 | — | `DatePickerModal` または プラットフォームピッカー |
+| 自己紹介（bio）| 複数行テキスト | 任意 | **200 文字**（`MAX_BIO_LENGTH`）| 文字数カウンタを表示。旧仕様は 300 文字だったが実装は 200 文字 |
+| 居住地（location）| `LocationField`（トリガー→グループ付きモーダルの単一選択）| 任意 | 100 文字（`MAX_LOCATION_LENGTH`。ただし選択肢はすべて上限を大きく下回る短い文字列のため実質到達しない）| 自由入力不可。§7.3 参照 |
+| 盆栽歴（開始年・開始月）| `BonsaiHistoryField`（年・月それぞれ数値ピッカーのトリガー→モーダル）| 任意 | — | 自由入力不可。§7.4 参照 |
+| 誕生日 | `BirthdayField`（`DatePickerField` ラップ・日付のみピッカー）| 任意 | — | 最大値=本日。最小値の制限なし（年齢制限なし）。§7.5 参照 |
 | 公開設定（isPublic）| トグルスイッチ | — | — | true: 公開 / false: 非公開 |
 | アバター画像 | 画像選択 | 任意 | — | 円形プレビュー |
 | ヘッダー画像 | 画像選択 | 任意 | — | 横長（4:1）プレビュー |
-
-**core に要確認:** 各フィールドの最大文字数の正本はサーバー側の DB スキーマおよび Zod バリデーション。上記は Web 版の実装から参照した推定値。
 
 ---
 
@@ -123,8 +125,8 @@
 | ディープリンク | 不要 |
 
 **iOS / Android 差異:**
-- iOS: スワイプバックによるスタックポップが可能。変更がある場合は `usePreventRemove` または同等の手段で阻止し、破棄確認を表示する
-- Android: ハードウェアバックボタンで戻る際も破棄確認を表示する
+- iOS: スワイプバックによるスタックポップが可能。変更がある場合は Expo Router の `navigation.addListener('beforeRemove', ...)` で阻止し、破棄確認を表示する（実装確認済み）
+- Android: ハードウェアバックボタンで戻る際も同じ `beforeRemove` リスナーが働き、破棄確認を表示する
 
 ---
 
@@ -132,18 +134,15 @@
 
 ```
 ProfileEditScreen                  ← 画面全体のコンテナ
-├── ProfileEditHeader              ← スタックヘッダー（戻る / タイトル / 保存する）
+├── ProfileEditHeader              ← スタックヘッダー（戻る / タイトル / 保存する。独自実装）
 ├── ProfileImageEditor             ← ヘッダー画像 + アバター画像の編集エリア
-│   ├── HeaderImagePicker          ← ヘッダー画像（横長プレビュー + タップ編集）
-│   └── AvatarImagePicker          ← アバター画像（円形プレビュー + タップ編集）
-├── ProfileEditForm                ← フォームコンテナ（ScrollView）
-│   ├── FormErrorMessage           ← フォーム全体エラーバナー（auth-forms.md §0.3 流用）
-│   ├── NicknameField              ← ニックネーム入力（AuthTextField 流用 + 文字数カウンタ）
-│   ├── BioField                   ← 自己紹介（多行テキスト + 文字数カウンタ）
-│   ├── LocationField              ← 居住地（AuthTextField 流用）
-│   ├── BonsaiHistoryField         ← 盆栽歴（開始年・月の組み合わせ入力）
-│   ├── BirthdayField              ← 誕生日（日付ピッカー）
-│   └── PublicToggleField          ← 公開設定トグル
+├── FormErrorMessage               ← フォーム全体エラーバナー（auth-forms.md §0.3 流用）
+├── AuthTextField（ニックネーム）  ← auth-forms.md 流用 + 文字数カウンタ
+├── TextInput（自己紹介）          ← 多行テキスト + 文字数カウンタ（画面ローカル実装）
+├── LocationField                  ← 居住地（トリガー→グループ付きモーダル。§7.3）
+├── BonsaiHistoryField             ← 盆栽歴（開始年・月それぞれの数値ピッカー。§7.4）
+├── BirthdayField                  ← 誕生日（`DatePickerField` ラップ。§7.5）
+├── PublicToggleField              ← 公開設定トグル
 └── DiscardConfirmDialog           ← 破棄確認ダイアログ
 ```
 
@@ -153,17 +152,19 @@ ProfileEditScreen                  ← 画面全体のコンテナ
 
 | prop 名 | 意味 |
 |---------|------|
-| 特になし | 自分のプロフィールデータは `useMyProfileQuery()` などの TanStack Query フックから取得する |
+| 特になし | 自分のプロフィールデータは `useCurrentUserProfileQuery()` から取得する |
 
 **ProfileImageEditor**
 
 | prop 名 | 意味 |
 |---------|------|
-| `avatarUrl` | 現在のアバター URL（null なら未設定）|
-| `headerUrl` | 現在のヘッダー URL（null なら未設定）|
-| `onAvatarChange` | アバター変更後の URI コールバック |
-| `onHeaderChange` | ヘッダー変更後の URI コールバック |
+| `avatarUrl` / `headerUrl` | 現在の画像 URL（サーバー保存済み値。null なら未設定）|
+| `avatarLocalUri` / `headerLocalUri` | 選択直後のローカル URI（保存前プレビュー用）|
+| `onAvatarChange` / `onHeaderChange` | 画像変更後のローカル URI コールバック |
+| `onAvatarRemove` / `onHeaderRemove` | 画像削除コールバック |
 | `isDisabled` | 保存中など外部から無効化するフラグ |
+
+> §6 の画像編集エリアの詳細仕様は今回の改訂では再検証していない（2026-06-19 版のまま）。§7 のテキスト・ピッカー系フィールドのみが本改訂の対象。
 
 ---
 
@@ -171,18 +172,15 @@ ProfileEditScreen                  ← 画面全体のコンテナ
 
 ### 5.1 初期値の取得
 
-- `GET /api/v1/users/me`（想定エンドポイント。正本は OpenAPI）で自分のプロフィール取得
-- TanStack Query のキャッシュ（`queryKeys.users.me` 相当）から取得する
-- フォームの初期値として展開する（`useState` または フォームライブラリに委ねる）
+- `useCurrentUserProfileQuery()`（TanStack Query）で自分のプロフィールを取得する
+- `hooks/use-profile-edit.ts` の `useProfileEdit(profile)` がフォーム状態の初期値として展開する
 
 ### 5.2 プロフィール更新
 
-1. フォーム送信時、変更があった項目を収集する
-2. 画像変更がある場合: presigned URL 取得 → R2 に直接 PUT → 返ってきた URL をリクエストに含める
-3. `PATCH /api/v1/users/me`（想定エンドポイント。正本は OpenAPI）
-4. 成功後: `queryKeys.users.me` / `queryKeys.users.detail(myUserId)` を `invalidateQueries`
-
-**core に要確認:** PATCH エンドポイントが部分更新か全件置き換えかを確認する。
+1. フォーム送信時、`buildUpdateRequest()` が初期値と現在値を比較し、**変更があったフィールドのみ**を含むリクエストを構築する（部分更新。`nickname` / `bio` / `location` / `bonsaiStartYear` / `bonsaiStartMonth` / `birthDate` / `isPublic` / `avatarUrl` / `headerUrl`）
+2. 画像変更がある場合: `useUploadImageMutation()` で presigned URL 取得 → R2 に直接 PUT → 返ってきた URL をリクエストに含める（アバター・ヘッダーそれぞれ個別にアップロード）
+3. `useUpdateProfileMutation(profile.id)` で `PATCH`（部分更新であることは実装で確認済み。エンドポイントの正本は OpenAPI）
+4. 成功後: プロフィールクエリを invalidate し、`router.back()` で前の画面に戻る
 
 ### 5.3 必要なデータ項目（初期値として展開するもの）
 
@@ -190,10 +188,10 @@ ProfileEditScreen                  ← 画面全体のコンテナ
 |------------|------|
 | `nickname` | ニックネーム |
 | `bio` | 自己紹介 |
-| `location` | 居住地 |
+| `location` | 居住地（`LocationField` の選択肢のいずれかの文字列、または空文字）|
 | `bonsaiStartYear` | 盆栽歴の開始年（整数 or null）|
 | `bonsaiStartMonth` | 盆栽歴の開始月（1〜12 or null）|
-| `birthday` | 誕生日（ISO 8601 日付文字列 or null）|
+| `birthDate` | 誕生日（ISO 8601 日付文字列 or null）|
 | `isPublic` | 公開設定（boolean）|
 | `avatarUrl` | アバター画像 URL（null 許容）|
 | `headerUrl` | ヘッダー画像 URL（null 許容）|
@@ -201,6 +199,8 @@ ProfileEditScreen                  ← 画面全体のコンテナ
 ---
 
 ## 6. 画像編集エリア（ProfileImageEditor）の詳細仕様
+
+> 本セクションは 2026-06-19 版のまま。今回の改訂（§7 のフィールド是正）では実装ファイル `components/profile/ProfileImageEditor.tsx` を再検証していないため、記述と実装に差異がある場合は今後の改訂で確認すること。
 
 ### 6.1 ヘッダー画像（HeaderImagePicker）
 
@@ -272,11 +272,13 @@ ProfileEditScreen                  ← 画面全体のコンテナ
 - `keyboardType: "default"` / `returnKeyType: "next"`
 
 **バリデーション（blur 時）:**
-- 空チェック → 「ニックネームを入力してください」
-- 50 文字超 → 「ニックネームは50文字以内で入力してください」
+- 空チェック → `ERR_NICKNAME_REQUIRED`「ニックネームを入力してください。」
+- 50 文字超 → `ERR_NICKNAME_TOO_LONG(50)`「ニックネームは50文字以内で入力してください。」
 
 **API エラー:**
-- ニックネームが予約済み（409 または 400 の特定エラーコード）→ フィールド下にインラインエラー「このニックネームはすでに使用されています。別のニックネームをお試しください。」（`ERR_NICKNAME_RESERVED` 相当）
+- ニックネームが予約済み（400 VALIDATION_ERROR）→ フィールド下にインラインエラー `ERR_NICKNAME_RESERVED`「このユーザー名は利用できません。別のユーザー名をご利用ください。」
+
+**（2026-07-13 修正）:** 重複エラー文言を実装済みの `ERR_NICKNAME_RESERVED` の実際の文言に合わせて修正した（旧仕様の想定文言とは異なる）。
 
 ### 7.2 自己紹介 bio（BioField）
 
@@ -284,67 +286,71 @@ ProfileEditScreen                  ← 画面全体のコンテナ
 - ラベル: 「自己紹介（任意）」
 - `placeholder`: 「盆栽への想いや、育てている樹種など...」
 - 最小高さ: 80pt（3 行分）/ 最大高さ: 160pt（内部スクロール）
-- 文字数カウンタ: テキストエリア右下 `{N}/300`（`textSm` / `colorTextSecondary`）
-- 残り 30 文字以下: `colorWarning`（`#b8860b`）
-- 超過: `colorError` + 保存ボタン disabled
-- ボーダー仕様: `auth-forms.md` §0.2 と同一（通常: `colorBorder` 1pt / フォーカス: `colorBorderFocus` 2pt）
+- 文字数カウンタ: テキストエリア右下 `{N}/200`（`textSm` / `colorTextSecondary`）
+- ボーダー仕様: `auth-forms.md` §0.2 と同一（通常: `colorBorder` 1pt / エラー時: `colorError` 1pt）
+
+**（2026-07-13 修正）:** 文字数上限を旧仕様の 300 文字から **200 文字**（`MAX_BIO_LENGTH`）へ修正した。
+
+**（2026-07-13 発見・実装上の注記）:** 実装のカウンタ配色は「残り 30 文字以下で警告色に変化」という設計意図（`bioNearLimit` フラグ）を持つが、対応するスタイル `bioCounterWarning` の実際の色指定は `colorTextSecondary`（通常色と同じ）になっており、見た目上は警告時も変化しない。超過時（`bioCounterError`）のみ `colorError` へ確実に変化する。本書は実装のこの状態をそのまま記録する（意図と実装の差異は frontend への申し送り事項として §14 に残す）。
 
 **バリデーション（blur 時）:**
-- 300 文字超 → 「自己紹介は300文字以内で入力してください」
+- 200 文字超 → `ERR_BIO_TOO_LONG(200)`「自己紹介は200文字以内で入力してください。」
 
 ### 7.3 居住地（LocationField）
 
-- `AuthTextField` を流用する
-- ラベル: 「居住地（任意）」
-- `placeholder`: 「都道府県・市区町村など」
-- `maxLength: 100`
-- `autoCapitalize: "none"` / `keyboardType: "default"` / `returnKeyType: "next"`
+> **改訂注記（2026-07-13）:** 旧仕様は「`AuthTextField` を流用した自由入力（100文字以内）」だったが、実装 `components/profile/LocationField.tsx` は Web の `<select>`（`components/user/ProfileEditForm.tsx` の optgroup 構成）に合わせたグループ付きモーダルの単一選択であり、自由入力は提供しない。
 
-**バリデーション:**
-- 100 文字超 → 「居住地は100文字以内で入力してください」
-- **外部 URL の入力は不可（サーバー側で拒否）:** サーバー返却の 400 エラーをフィールド下にインラインエラーとして表示する（`ERR_INVALID_LOCATION_URL` 相当）
+- トリガーボタン: 高さ 48pt / ボーダー `colorBorder` 1pt / 角丸 `radiusMd`。ラベル「居住地（任意）」はトリガーの上に常時表示
+- 未選択時のトリガーテキスト: 「居住地を選択」（`colorTextTertiary`）。選択済みは選択した値をそのまま表示
+- タップ → 画面下からスライドアップするモーダル（`SectionList`。タイトル「居住地を選択」+ 閉じるボタン）
+- グループ構成（`LOCATION_GROUPS`。`lib/constants/locations.ts`）: 「日本の地方」（北海道〜沖縄の 11 地方）「都道府県」（47 都道府県）「国・地域」「大陸・地域」「その他」（海外）の 5 グループ（`stickySectionHeadersEnabled`）
+- 各行: `accessibilityRole="radio"` / タップで即選択してモーダルを閉じる。選択中の行にチェックマーク（`colorActionPrimary`）
+- 選択済みの場合、トリガー右に `close-circle` の削除ボタン（`accessibilityLabel="居住地を削除"`。タップで空文字に戻す）
+- 閉じる手段: 背景スクリムタップ / ヘッダーの `×` ボタン / Android バック・iOS スワイプダウン
+
+**バリデーション:** 選択肢は `LOCATION_GROUPS` に含まれる短い固定文字列のみのため、100 文字（`MAX_LOCATION_LENGTH`）超過は実質発生しない。`hooks/use-profile-edit.ts` の `validateLocation` は依然として存在するが、`LocationField` は `onBlur` を呼び出さないため、実運用でこのバリデーションが発火することはない。
 
 ### 7.4 盆栽歴（BonsaiHistoryField）
 
+> **改訂注記（2026-07-13）:** 旧仕様は「開始年・開始月をテキスト入力（`number-pad`）で受け付ける」としていたが、実装 `components/profile/BonsaiHistoryField.tsx` は Web の `<select name="bonsaiStartYear">` / `<select name="bonsaiStartMonth">` に合わせた、年・月それぞれ独立したトリガー→数値選択モーダルである。
+
 ```
 「盆栽を始めた時期（任意）」
-┌─────────────────┐    ┌─────────────┐
-│  2020           │ 年 │ 4           │ 月（任意）
-└─────────────────┘    └─────────────┘
+┌──────────────────────┐  ┌──────────────────┐
+│ 年を選択            ▼│  │ 月を選択        ▼│
+└──────────────────────┘  └──────────────────┘
 ```
 
-- 開始年フィールド:
-  - `keyboardType: "number-pad"` / `placeholder`: 「西暦4桁」
-  - 4 桁の整数のみ受け付ける（`lib/constants/limits/` の年の下限・上限を参照）
-  - フォーカス外れ時: 有効な年かをチェック（1900〜現在年の範囲）
-- 開始月フィールド:
-  - 開始年が入力済みの場合のみ表示（開始年が空ならフィールド自体を非表示にする）
-  - `keyboardType: "number-pad"` / `placeholder`: 「1〜12」
-  - 1〜12 の整数のみ受け付ける
-- **iOS での日付ピッカー代替について:** iOS 専用の `DatePicker` で年・月を選ばせることも可能。ただし盆栽歴は年・月単位（日付不要）のため、シンプルな 2 フィールドのテキスト入力とする（**frontend への申し送り: iOS の UX を改善する場合は `@react-native-community/datetimepicker` の採用を検討**）
+- 開始年トリガー: 未選択時「年を選択」、選択済みは「{年}年」。タップでモーダル（タイトル「開始年を選択」）を開き、`USER_BONSAI_START_MIN_YEAR`（1900年）〜現在年までを**新しい年が先頭に来る降順**で一覧表示する単一選択リスト
+- 開始月トリガー: **開始年が未選択の間は非表示**（Web にはこの制約はないが、Native の既存 UX として踏襲）。開始年選択後に表示され、未選択時「月を選択」、選択済みは「{月}月」。タップでモーダル（タイトル「開始月を選択」）を開き、1〜12 を一覧表示する単一選択リスト
+- 開始年をクリアすると開始月も連動してクリアされる（`setBonsaiStartYear` の実装）
+- 両トリガーとも明示的な「クリア（✕）」ボタンは持たない。値を変えるには再度モーダルを開いて選び直す
+- 各行: `accessibilityRole="radio"` / タップで即選択してモーダルを閉じる
 
-**バリデーション（blur 時）:**
-- 開始年が 4 桁でない・範囲外 → 「有効な年を入力してください（例: 2020）」
-- 開始月が 1〜12 の範囲外 → 「月は1から12の数字を入力してください」
+**バリデーション:** ピッカーが提示する値は常に範囲内（1900〜現在年 / 1〜12）のため、`validateBonsaiStartYear` / `validateBonsaiStartMonth` が実際にエラーを返すことは通常の操作では発生しない（`LocationField` 同様、`onBlur` は呼ばれない）。
 
 ### 7.5 誕生日（BirthdayField）
+
+> **改訂注記（2026-07-13）:** 旧仕様は「iOS: BottomSheet 内の DateTimePicker / Android: ネイティブの DatePickerAndroid」という記述自体は概ね正しかったが、実装は共通コンポーネント `components/common/DatePickerField.tsx`（`bonsai.md` §4.3 の取得日・記録日と同一コンポーネント）を「誕生日（任意）」ラベル・`maximumDate=本日` でラップした `components/profile/BirthdayField.tsx` である。**年齢範囲による下限制限（最小13歳等）は設けない**（Web の `<input type="date" max={今日}>` に対応する下限制約が存在しないため）。
 
 ```
 「誕生日（任意）」
 ┌─────────────────────────────────────────────────────────────┐
-│ 1990年1月1日                                              [✕] │
+│ 誕生日を選択                                              [カレンダー]│
 └─────────────────────────────────────────────────────────────┘
 ```
 
 - 表示形式: 選択済みは「{YYYY}年{M}月{D}日」（`textBase` / `colorTextPrimary`）
 - 未設定: `placeholder` 「誕生日を選択」（`colorTextTertiary`）
 - フィールドをタップ → 日付ピッカーを表示する
-  - iOS: BottomSheet 内の `DateTimePicker`（`mode="date"` / `display="spinner"`）
-  - Android: ネイティブの `DatePickerAndroid`（`@react-native-community/datetimepicker`）
+  - **Android:** `DateTimePickerAndroid.open({ mode: 'date' })` のネイティブダイアログが単体で開く
+  - **iOS:** フィールド直下に `RNDateTimePicker`（`display="spinner"`）が**インライン展開**し、「完了」ボタンで閉じる
 - 右端の [✕] ボタン: 設定済みの場合のみ表示。タップで誕生日を削除（null に設定）
-  - `accessibilityLabel`: 「誕生日を削除」/ タップターゲット 44pt
-- 最大年齢: 現在日から 120 年前まで / 最小年齢: 13 歳以上（利用規約に準じる）
-  - **core に要確認:** 最小年齢制限の有無はサーバー側のポリシーを確認する
+  - `accessibilityLabel`: 「誕生日を削除」/ タップターゲット 44pt（`hitSlop` で確保）
+- **最大値:** 本日（`maximumDate={new Date()}`）。未来日は選択不可
+- **最小値:** 制限なし（**旧仕様にあった「最大120年前まで／最小13歳以上」の年齢制限は撤回**。Web に対応する制約が存在しないため、Native も設けない）
+
+**（2026-07-13 解決）:** 旧 §14 未確定事項「最小年齢制限の有無」はこの撤回で解決済み。
 
 ### 7.6 公開設定トグル（PublicToggleField）
 
@@ -371,27 +377,32 @@ ProfileEditScreen                  ← 画面全体のコンテナ
 ### 8.1 仕様
 
 - 位置: スタックヘッダーの右端
-- スタイル: テキストボタン / `textMd`（15pt）/ `fontWeight: 600`
+- スタイル: テキストボタン / `textBase`（14pt）/ `fontWeight: 600`
 
 | 状態 | 表示 | 条件 |
 |------|------|------|
-| 活性 | `colorActionPrimary` テキスト | 入力が有効 + 変更あり |
-| 無効（変更なし）| `colorTextTertiary` テキスト（不透明度 0.4）| 初期値から変更がない |
-| 無効（バリデーションエラー）| `colorTextTertiary` テキスト | 必須フィールドが空または超過エラー |
-| 保存中 | テキスト非表示 + スピナー（`colorActionPrimary` / 18pt）| API 呼び出し中 |
+| 活性 | `colorActionPrimary` テキスト | §8.2 の条件をすべて満たす |
+| 無効 | `colorTextTertiary` テキスト（不透明度 0.4）| §8.2 の条件を満たさない |
+| 保存中 | テキスト非表示 + `ActivityIndicator`（`colorActionPrimary`）| API 呼び出し中 |
 
 - `accessibilityLabel`: 「プロフィールを保存する」
 - `accessibilityState: { disabled }`
 
 ### 8.2 保存ボタンの活性条件
 
-以下を**すべて**満たす場合のみ活性化:
-1. ニックネームが 1 文字以上 50 文字以内
-2. 自己紹介（入力がある場合）が 300 文字以内
-3. 居住地（入力がある場合）が 100 文字以内
-4. 盆栽歴の年・月が範囲内（入力がある場合）
-5. 保存処理中でない
-6. 初期値からいずれかのフィールドが変更されている（**未変更の場合は disabled にして無駄な API 呼び出しを防ぐ**）
+> **改訂注記（2026-07-13）:** 旧仕様は「初期値からいずれかのフィールドが変更されている（`isDirty`）」を活性条件に含めていたが、実装 `app/settings/profile/index.tsx` はこの条件を含まない。画面のコメントには「Web の ProfileEditForm は loading 中のみ保存ボタンを disabled にする（`isDirty` 相当の判定は行わない）」と明記されている。
+
+`canSave = isValid && !isSaving && isOnline`
+
+以下を**すべて**満たす場合のみ活性化する:
+1. ニックネームが 1 文字以上 50 文字以内（`validateNickname`）
+2. 自己紹介が 200 文字以内（`validateBio`）
+3. 居住地が 100 文字以内（`validateLocation`。§7.3 の通り実質常に満たす）
+4. 盆栽歴の開始年・開始月が範囲内（`validateBonsaiStartYear` / `validateBonsaiStartMonth`。§7.4 の通り実質常に満たす）
+5. 保存処理中でない（`!isSaving`）
+6. **オンラインである（`isOnline`）** — 旧仕様にはこの条件はなかったが、実装は `useOnlineStatus()` の結果を活性条件に含めている
+
+**変更の有無（`isDirty`）は活性条件に含まれない。** 変更していなくても上記条件を満たせば「保存する」は押せる（＝未変更のまま送信すると、`buildUpdateRequest()` が空のリクエストボディを送る可能性がある）。`isDirty` は §3 の破棄確認（戻る操作時に確認ダイアログを出すか）にのみ使われる。
 
 ---
 
@@ -399,28 +410,27 @@ ProfileEditScreen                  ← 画面全体のコンテナ
 
 ### 9.1 ローディング（初期値取得中）
 
-- `GET /api/v1/users/me` の取得中: `ScreenLoading`（`variant="spinner"`）を画面中央に表示する
+- 取得中: `ScreenLoading`（`variant="spinner"`）を画面中央に表示する
 - ヘッダーの「保存する」は disabled
-- スケルトン UI の代わりに spinner を使う（フォームのスケルトンはレイアウトの複雑さに対してメリットが小さいため）
+- スケルトン UI の代わりに spinner を使う
 
 ### 9.2 保存中
 
 - ヘッダーの「保存する」ボタンをスピナーに切り替える
 - 「← 戻る」ボタンを disabled にする（保存中の離脱を防ぐ）
 - フォームの全フィールドを disabled にする
-- iOS ではスワイプバックを無効化する
 
 ### 9.3 保存成功
 
 - `router.back()` で前の画面に戻る
 - 成功トースト: 「プロフィールを保存しました」を表示する
-- `queryKeys.users.me` / `queryKeys.users.detail(myUserId)` を invalidate する
+- プロフィールクエリを invalidate する
 
 ### 9.4 保存失敗
 
 - フォームの全フィールドを re-enable する
 - `FormErrorMessage` にエラーを表示する（`auth-forms.md` §0.3 の仕様に準拠）
-- フィールド固有のエラー（ニックネーム重複等）はそのフィールド直下にインライン表示する
+- ニックネーム重複（400 VALIDATION_ERROR）はニックネームフィールド直下にインライン表示する（§7.1 参照）
 
 ---
 
@@ -440,21 +450,18 @@ ProfileEditScreen                  ← 画面全体のコンテナ
 | エラー種別 | 表示箇所 | エラー定数カテゴリ |
 |-----------|---------|-----------------|
 | 初期値取得失敗 | `ScreenError`（onRetry: 再フェッチ）| `ERR_PROFILE_LOAD_FAILED` |
-| ニックネーム重複 (409/400) | ニックネームフィールド直下インライン | `ERR_NICKNAME_RESERVED` 相当 |
-| 外部 URL を含む値 (400) | 該当フィールド直下インライン | `ERR_INVALID_FIELD_URL` 相当 |
-| バリデーションエラー (400) | `FormErrorMessage` または対象フィールド直下 | エラーレスポンスのフィールド名に応じて振り分け |
+| ニックネーム重複 (400 VALIDATION_ERROR) | ニックネームフィールド直下インライン | `ERR_NICKNAME_RESERVED` |
+| バリデーションエラー (400・その他) | `FormErrorMessage` | `messageForApiError(err.code)` |
 | ネットワークエラー | `FormErrorMessage` | `ERR_NETWORK` |
 | サーバーエラー (5xx) | `FormErrorMessage` | `ERR_SERVER` |
-| 画像アップロード失敗 | `FormErrorMessage` | `ERR_IMAGE_UPLOAD_FAILED` 相当 |
-
-**サーバー側バリデーションエラーの表示方針:**
-サーバーが返す 400 エラーレスポンスにフィールド名が含まれる場合、該当フィールドのエラーとして表示する。フィールドが特定できない場合は `FormErrorMessage` に表示する。
+| 画像アップロード失敗 | `FormErrorMessage` | `ERR_MEDIA_UPLOAD_FAILED` |
 
 ### 10.4 オフライン
 
 - `OfflineBanner` を画面上部に表示する
 - フォームの入力は継続可能（保存だけブロック）
-- 「保存する」ボタンタップ時にオフライン検知 → `FormErrorMessage` に `ERR_OFFLINE_ACTION` を表示する
+- **「保存する」ボタン自体がオフライン時は disabled になる**（§8.2 の `canSave` にオンライン条件を含むため。旧仕様の「タップ時にオフライン検知」よりも一段階早いタイミングでブロックされる）
+- ボタンが仮に押された場合の防御として、`handleSave` 内でも `!isOnline` を再チェックし `ERR_OFFLINE_ACTION` を `FormErrorMessage` に表示する
 
 ### 10.5 破棄確認（未保存の変更がある場合に戻る）
 
@@ -470,6 +477,8 @@ ProfileEditScreen                  ← 画面全体のコンテナ
 
 変更がない場合（フィールドが初期値のまま）は確認なしで即戻る。
 
+実装は 2 経路で `isDirty` をチェックする: ①「← 戻る」ボタンの `onPress` 内で直接判定、② `navigation.addListener('beforeRemove', ...)` でスワイプバック・ハードウェアバックなど画面遷移全般をガードする。
+
 ---
 
 ## 11. コピー案（文言一覧）
@@ -477,7 +486,7 @@ ProfileEditScreen                  ← 画面全体のコンテナ
 | 箇所 | 文言 |
 |------|------|
 | ヘッダータイトル | 「プロフィールを編集」|
-| 「← 戻る」ボタン | （OS デフォルトの戻るボタン文言）|
+| 「← 戻る」ボタン | 「← 戻る」|
 | 「保存する」ボタン | 「保存する」|
 | 「保存する」（送信中）| （スピナーのみ）|
 | ニックネームラベル | 「ニックネーム ＊」（＊ は必須マーク）|
@@ -485,12 +494,17 @@ ProfileEditScreen                  ← 画面全体のコンテナ
 | 自己紹介ラベル | 「自己紹介（任意）」|
 | 自己紹介 placeholder | 「盆栽への想いや、育てている樹種など...」|
 | 居住地ラベル | 「居住地（任意）」|
-| 居住地 placeholder | 「都道府県・市区町村など」|
+| 居住地トリガー（未選択）| 「居住地を選択」|
+| 居住地モーダルタイトル | 「居住地を選択」|
+| 居住地削除ボタン | `accessibilityLabel="居住地を削除"` |
 | 盆栽歴ラベル | 「盆栽を始めた時期（任意）」|
-| 盆栽歴 placeholder（年）| 「西暦（例: 2020）」|
-| 盆栽歴 placeholder（月）| 「月（1〜12）」|
+| 盆栽歴 年トリガー（未選択）| 「年を選択」|
+| 盆栽歴 月トリガー（未選択）| 「月を選択」|
+| 盆栽歴 年モーダルタイトル | 「開始年を選択」|
+| 盆栽歴 月モーダルタイトル | 「開始月を選択」|
 | 誕生日ラベル | 「誕生日（任意）」|
 | 誕生日 placeholder | 「誕生日を選択」|
+| 誕生日削除ボタン | `accessibilityLabel="誕生日を削除"` |
 | 公開設定ラベル | 「プロフィールを公開する」|
 | 公開設定ヒント | 「非公開にすると、フォロワー以外のユーザーからあなたの投稿やプロフィールが見えなくなります。」|
 | アバター変更ボタン（accessibilityLabel）| 「プロフィール写真を変更」|
@@ -503,13 +517,13 @@ ProfileEditScreen                  ← 画面全体のコンテナ
 | 破棄確認本文 | 「保存されていない変更は失われます。」|
 | 破棄確認（続ける）| 「編集を続ける」|
 | 破棄確認（破棄）| 「破棄する」|
-| ニックネーム空エラー | 「ニックネームを入力してください」|
-| ニックネーム超過エラー | 「ニックネームは50文字以内で入力してください」|
-| ニックネーム重複エラー | 「このニックネームはすでに使用されています。別のニックネームをお試しください。」|
-| bio 超過エラー | 「自己紹介は300文字以内で入力してください」|
-| 居住地超過エラー | 「居住地は100文字以内で入力してください」|
-| 年範囲エラー | 「有効な年を入力してください（例: 2020）」|
-| 月範囲エラー | 「月は1から12の数字を入力してください」|
+| ニックネーム空エラー | 「ニックネームを入力してください。」|
+| ニックネーム超過エラー | 「ニックネームは50文字以内で入力してください。」|
+| ニックネーム重複エラー | 「このユーザー名は利用できません。別のユーザー名をご利用ください。」|
+| bio 超過エラー | 「自己紹介は200文字以内で入力してください。」|
+| 居住地超過エラー | 「居住地域は100文字以内で入力してください。」（実質発生しない。§7.3 参照）|
+
+**（2026-07-13 修正）:** ニックネーム重複エラー・bio 超過エラーの文言、および居住地エラーの定数名（`ERR_LOCATION_TOO_LONG`。旧仕様は「居住地は100文字以内で入力してください」という異なる文言を想定していた）を実装済みの実際の値に合わせて修正した。旧仕様にあった「年範囲エラー」「月範囲エラー」の行は、盆栽歴が自由入力でなくなったことで実質到達しなくなったため削除した（`hooks/use-profile-edit.ts` にバリデーション関数自体は残っているが、UI から `onBlur` が発火しない。§7.4 参照）。
 
 ---
 
@@ -521,11 +535,15 @@ ProfileEditScreen                  ← 画面全体のコンテナ
 | 文字数カウンタ | `accessibilityLabel="{N}文字 / {上限}文字入力済み"` |
 | アバター画像ピッカー | `accessibilityRole="imagebutton"` / `accessibilityLabel="プロフィール写真を変更。現在{設定状態}"` |
 | ヘッダー画像ピッカー | `accessibilityRole="imagebutton"` / `accessibilityLabel="ヘッダー画像を変更。現在{設定状態}"` |
+| 居住地トリガー | `accessibilityRole="button"` / `accessibilityLabel="居住地（任意）：{選択値 または 「居住地を選択」}"` |
+| 居住地モーダル各行 | `accessibilityRole="radio"` / `accessibilityState: { selected }` |
+| 盆栽歴 年/月トリガー | `accessibilityRole="button"` / `accessibilityLabel="開始年（任意）：{値}年" または "開始年（任意）：年を選択"`（月も同型）|
+| 誕生日フィールド | `accessibilityRole="button"` / `accessibilityLabel="誕生日（任意）：{選択済み日付 または 「誕生日を選択」}"` |
+| 誕生日削除ボタン | `accessibilityLabel="誕生日を削除"` / タップターゲット 44pt |
 | 公開設定トグル | `accessibilityRole="switch"` / `accessibilityState: { checked }` |
 | フォームエラーバナー | `accessibilityRole="alert"` / `accessibilityLiveRegion="assertive"` |
 | インラインエラー（フィールド直下）| `accessibilityRole="alert"` |
 | 「保存する」ボタン | `accessibilityState: { disabled }` |
-| 誕生日削除ボタン | `accessibilityLabel="誕生日を削除"` / タップターゲット 44pt |
 
 ---
 
@@ -533,12 +551,13 @@ ProfileEditScreen                  ← 画面全体のコンテナ
 
 | 既存要素 | 本仕様での扱い |
 |---------|-------------|
-| `auth-forms.md` §0.2（AuthTextField）| NicknameField / LocationField に流用する（ラベル + フィールド + エラーの構造）|
+| `auth-forms.md` §0.2（AuthTextField）| NicknameField に流用する（ラベル + フィールド + エラーの構造）|
 | `auth-forms.md` §0.3（FormErrorMessage）| フォーム全体エラーバナーとして同仕様を流用する |
 | `auth-forms.md` §0.7（KeyboardAvoidingView）| 入力フォームの KeyboardAvoidingView 設定を踏襲する |
-| `auth-forms.md` §0.4（AuthPrimaryButton の状態）| ヘッダーの「保存する」ボタンの 3 状態（通常 / 無効 / 送信中）は同概念を適用する |
 | `post-card.md` §5.1（Avatar）| アバター画像の円形表示・フォールバック仕様（イニシャル表示）を踏襲する |
 | `post-composer.md` §8（画像選択）| 画像添付の ActionSheet / 写真権限エラーの処理フローを踏襲する |
+| `bonsai.md` §4.3（`DatePickerField`）| 誕生日（`BirthdayField`）はこの共通コンポーネントを内部でラップして使う。取得日・記録日と実装が同一 |
+| `bonsai.md` §4.4（`TreeSpeciesField`）/ `events.md`（`EventPrefecturePickerModal`）| 居住地（`LocationField`）は「トリガー→モーダルの単一選択（グループ付き）」という同じ UI パターンを踏襲する |
 | `ugc-safety.md` §3.4（ブロック後プロフィール）| プロフィール画面（`navigation-structure.md` §4.2）の編集ボタンが本画面への入口となる |
 | `common-states.md`（ScreenLoading / ScreenError / OfflineBanner）| 初期値取得失敗 / ローディング / オフライン時に既存コンポーネントを再利用する |
 
@@ -546,13 +565,14 @@ ProfileEditScreen                  ← 画面全体のコンテナ
 
 ## 14. 未確定事項・要判断
 
-| 項目 | 内容 | 判断者 |
-|------|------|--------|
-| PATCH エンドポイントの差分更新方式 | 部分更新か全件置き換えかを確認する | core（要確認）|
-| 各フィールドの最大文字数の正本 | bio 300字・location 100字 etc. がサーバー実装と一致しているか確認する | core（要確認）|
-| 最小年齢制限 | 誕生日選択可能な最小年齢（13歳相当）の有無はポリシーを確認する | core / PM（要確認）|
-| bonsaiStartMonth フィールドの存在 | サーバーの DB スキーマに `bonsaiStartMonth`（月）が存在するか確認する | core（要確認）|
-| 誕生日の公開設定 | 誕生日を他ユーザーに公開するか非公開か、プロフィール表示での扱いはサーバー側ポリシーを確認する | core / PM（要確認）|
-| 画像のクロップ UI | アバター・ヘッダー選択後に手動クロップ（ピンチズーム等）を挟むか否か。現仕様では `expo-image-manipulator` の自動クロップのみ。クロップ UI の採用は PM が判断 | PM（要判断）|
-| 盆栽歴フィールドの iOS UX | 年・月テキスト入力 vs ピッカー UI のどちらが iOS でより自然か | frontend（要判断）|
-| ユーザー識別子（@handle）の編集 | 変更可能か否か。変更可能な場合は別フィールドとして追加が必要 | core / PM（要確認）|
+| 項目 | 内容 | 判断者 | 状態 |
+|------|------|--------|------|
+| PATCH エンドポイントの差分更新方式 | 部分更新か全件置き換えかを確認する | core | **解決済み（2026-07-13）**: 部分更新（`buildUpdateRequest` が差分のみ送信）|
+| 各フィールドの最大文字数の正本 | bio・location 等がサーバー実装と一致しているか確認する | core | **解決済み（2026-07-13）**: bio=200 / location=100（`lib/constants/limits/auth.ts` で確認済み）|
+| 最小年齢制限 | 誕生日選択可能な最小年齢（13歳相当）の有無 | core / PM | **解決済み（2026-07-13）**: なし。§7.5 参照 |
+| bonsaiStartMonth フィールドの存在 | サーバーの DB スキーマに `bonsaiStartMonth`（月）が存在するか確認する | core | **解決済み（2026-07-13）**: 存在する（`BonsaiHistoryField` で使用）|
+| 誕生日の公開設定 | 誕生日を他ユーザーに公開するか非公開か、プロフィール表示での扱いはサーバー側ポリシーを確認する | core / PM | 未解決 |
+| 画像のクロップ UI | アバター・ヘッダー選択後に手動クロップ（ピンチズーム等）を挟むか否か | PM | 未解決（§6 は本改訂の対象外）|
+| 盆栽歴フィールドの iOS UX | 年・月それぞれのモーダル選択という現在の実装で iOS 上も統一されているため、旧仕様が懸念していた「テキスト入力 vs ピッカー」の論点は解消済み | frontend | **解決済み（2026-07-13）** |
+| ユーザー識別子（@handle）の編集 | 変更可能か否か。変更可能な場合は別フィールドとして追加が必要 | core / PM | 未解決 |
+| bio 文字数警告色の実装不備 | 「残り30文字以下で警告色」という設計意図が `colorTextSecondary`（通常色と同一）に実装されており、視覚的な警告が機能していない（§7.2 参照） | frontend（要修正判断）| 未解決（新規発見。2026-07-13 調査で判明）|
