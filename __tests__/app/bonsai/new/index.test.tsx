@@ -22,16 +22,6 @@ jest.mock('@/lib/queries/bonsai', () => ({
   useCreateBonsaiMutation: () => mockUseCreateBonsaiMutation(),
 }));
 
-// DateField は複雑な UI を持つため、シンプルなモックで代替する
-jest.mock('@/components/bonsai/DateField', () => {
-  const React = require('react');
-  const { Text } = require('react-native');
-  return {
-    DateField: ({ label }: { label: string }) =>
-      React.createElement(Text, null, label),
-  };
-});
-
 beforeEach(() => {
   jest.clearAllMocks();
   const { useOnlineStatus } = jest.requireMock('@/hooks/use-online-status') as {
@@ -188,27 +178,80 @@ describe('BonsaiNewScreen', () => {
     });
   });
 
-  describe('フォームフィールド追加', () => {
-    it('樹種フィールドが存在し入力できる', () => {
+  describe('樹種フィールド（TreeSpeciesField）', () => {
+    it('樹種フィールドが未選択状態で表示される', () => {
       renderWithProviders(<BonsaiNewScreen />);
-      const speciesInput = screen.queryByLabelText('樹種（任意）');
-      if (speciesInput) {
-        fireEvent.changeText(speciesInput, '五葉松');
-        expect(speciesInput.props.value).toBe('五葉松');
-      } else {
-        expect(screen.getByText('盆栽を登録')).toBeTruthy();
-      }
+      expect(screen.getByRole('button', { name: '樹種（任意）：樹種を選択' })).toBeTruthy();
     });
 
+    it('タップすると「樹種を選択」モーダルが開く', () => {
+      renderWithProviders(<BonsaiNewScreen />);
+      fireEvent.press(screen.getByRole('button', { name: '樹種（任意）：樹種を選択' }));
+      expect(screen.getByText('樹種を選択')).toBeTruthy();
+      expect(screen.getByRole('radio', { name: '黒松' })).toBeTruthy();
+    });
+
+    it('樹種を選択するとフィールドの表示が更新される', () => {
+      renderWithProviders(<BonsaiNewScreen />);
+      fireEvent.press(screen.getByRole('button', { name: '樹種（任意）：樹種を選択' }));
+      fireEvent.press(screen.getByRole('radio', { name: '黒松' }));
+      expect(screen.getByRole('button', { name: '樹種（任意）：黒松' })).toBeTruthy();
+    });
+
+    it('樹種を選択して保存すると species として渡される', () => {
+      renderWithProviders(<BonsaiNewScreen />);
+      fireEvent.changeText(screen.getByLabelText('盆栽名（必須）'), '五葉松の盆栽');
+      fireEvent.press(screen.getByRole('button', { name: '樹種（任意）：樹種を選択' }));
+      fireEvent.press(screen.getByRole('radio', { name: '黒松' }));
+      fireEvent.press(screen.getByRole('button', { name: '保存する' }));
+      expect(mockCreateBonsai).toHaveBeenCalledWith(
+        expect.objectContaining({ species: '黒松' }),
+        expect.anything()
+      );
+    });
+  });
+
+  describe('取得日フィールド（DatePickerField）', () => {
+    it('取得日フィールドが未選択状態で表示される', () => {
+      renderWithProviders(<BonsaiNewScreen />);
+      expect(screen.getByLabelText('取得日（任意）：日付を選択')).toBeTruthy();
+    });
+
+    it('タップすると日時ピッカー（iOS スピナー）が開く', () => {
+      renderWithProviders(<BonsaiNewScreen />);
+      fireEvent.press(screen.getByLabelText('取得日（任意）：日付を選択'));
+      expect(screen.getByTestId('mock-datetimepicker')).toBeTruthy();
+    });
+
+    it('日付を選択すると ISO 8601 日時に変換されて保存される', () => {
+      renderWithProviders(<BonsaiNewScreen />);
+      fireEvent.changeText(screen.getByLabelText('盆栽名（必須）'), '黒松');
+      fireEvent.press(screen.getByLabelText('取得日（任意）：日付を選択'));
+      const picker = screen.getByTestId('mock-datetimepicker');
+      fireEvent(picker, 'change', {}, new Date(2024, 3, 15));
+      fireEvent.press(screen.getByRole('button', { name: '保存する' }));
+      expect(mockCreateBonsai).toHaveBeenCalledWith(
+        expect.objectContaining({ acquiredAt: new Date('2024-04-15').toISOString() }),
+        expect.anything()
+      );
+    });
+
+    it('クリアボタンで取得日を削除できる', () => {
+      renderWithProviders(<BonsaiNewScreen />);
+      fireEvent.press(screen.getByLabelText('取得日（任意）：日付を選択'));
+      const picker = screen.getByTestId('mock-datetimepicker');
+      fireEvent(picker, 'change', {}, new Date(2024, 3, 15));
+      fireEvent.press(screen.getByRole('button', { name: '取得日を削除' }));
+      expect(screen.getByLabelText('取得日（任意）：日付を選択')).toBeTruthy();
+    });
+  });
+
+  describe('説明フィールド', () => {
     it('説明フィールドが存在し入力できる', () => {
       renderWithProviders(<BonsaiNewScreen />);
-      const descInput = screen.queryByLabelText('説明（任意）');
-      if (descInput) {
-        fireEvent.changeText(descInput, '説明テキスト');
-        expect(descInput.props.value).toBe('説明テキスト');
-      } else {
-        expect(screen.getByText('盆栽を登録')).toBeTruthy();
-      }
+      const descInput = screen.getByLabelText('説明（任意）');
+      fireEvent.changeText(descInput, '説明テキスト');
+      expect(descInput.props.value).toBe('説明テキスト');
     });
   });
 });

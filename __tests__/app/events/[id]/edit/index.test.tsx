@@ -24,14 +24,6 @@ jest.mock('@/lib/queries/events', () => ({
   useUpdateEventMutation: () => mockUseUpdateEventMutation(),
 }));
 
-jest.mock('@/components/bonsai/DateField', () => {
-  const React = require('react');
-  const { Text } = require('react-native');
-  return {
-    DateField: ({ label }: { label: string }) => React.createElement(Text, null, label),
-  };
-});
-
 function makeEvent(overrides = {}) {
   return {
     id: 'event-1',
@@ -167,20 +159,27 @@ describe('EventEditScreen', () => {
       expect(venueInput.props.value).toBe('新しい会場');
     });
 
-    it('都道府県を変更できる', () => {
-      mockUseEventDetailQuery.mockReturnValue({ data: makeEvent(), isLoading: false });
+    it('都道府県は必須項目としてボタン形式で表示され、初期値が反映される', () => {
+      mockUseEventDetailQuery.mockReturnValue({ data: makeEvent({ prefecture: '東京都' }), isLoading: false });
       renderWithProviders(<EventEditScreen />);
-      const prefInput = screen.getByLabelText('都道府県（任意）');
-      fireEvent.changeText(prefInput, '大阪府');
-      expect(prefInput.props.value).toBe('大阪府');
+      expect(screen.getByRole('button', { name: '都道府県（必須）：東京都' })).toBeTruthy();
     });
 
-    it('地域を変更できる', () => {
-      mockUseEventDetailQuery.mockReturnValue({ data: makeEvent(), isLoading: false });
+    it('都道府県をピッカーで変更できる', () => {
+      mockUseEventDetailQuery.mockReturnValue({ data: makeEvent({ prefecture: '東京都' }), isLoading: false });
       renderWithProviders(<EventEditScreen />);
-      const regionInput = screen.getByLabelText('地域（任意）');
-      fireEvent.changeText(regionInput, '大阪市');
-      expect(regionInput.props.value).toBe('大阪市');
+      fireEvent.press(screen.getByRole('button', { name: '都道府県（必須）：東京都' }));
+      fireEvent.press(screen.getByRole('radio', { name: '北海道' }));
+      expect(screen.getByRole('button', { name: '都道府県（必須）：北海道' })).toBeTruthy();
+    });
+
+    it('市区町村を変更できる', () => {
+      mockUseEventDetailQuery.mockReturnValue({ data: makeEvent({ city: '台東区' }), isLoading: false });
+      renderWithProviders(<EventEditScreen />);
+      const cityInput = screen.getByLabelText('市区町村（任意）');
+      expect(cityInput.props.value).toBe('台東区');
+      fireEvent.changeText(cityInput, '大阪市');
+      expect(cityInput.props.value).toBe('大阪市');
     });
 
     it('説明を変更できる', () => {

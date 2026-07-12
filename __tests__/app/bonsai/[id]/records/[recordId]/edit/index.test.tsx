@@ -18,23 +18,17 @@ jest.mock('@/hooks/use-online-status', () => ({
 
 const mockUpdateRecord = jest.fn();
 const mockUseUpdateBonsaiRecordMutation = jest.fn();
+const mockUseBonsaiRecordsQuery = jest.fn();
 
 jest.mock('@/lib/queries/bonsai', () => ({
   useUpdateBonsaiRecordMutation: () => mockUseUpdateBonsaiRecordMutation(),
+  useBonsaiRecordsQuery: (...args: unknown[]) => mockUseBonsaiRecordsQuery(...args),
 }));
 
 const mockUploadImage = jest.fn();
 jest.mock('@/lib/queries/upload', () => ({
   uploadImage: (...args: unknown[]) => mockUploadImage(...args),
 }));
-
-jest.mock('@/components/bonsai/DateField', () => {
-  const React = require('react');
-  const { Text } = require('react-native');
-  return {
-    DateField: ({ label }: { label: string }) => React.createElement(Text, null, label),
-  };
-});
 
 let capturedOnAdd: (() => void) | null = null;
 let capturedOnRemove: ((id: string) => void) | null = null;
@@ -90,6 +84,39 @@ jest.mock('expo-image-picker', () => ({
   MediaTypeOptions: { Images: 'Images' },
 }));
 
+// useBonsaiRecordsQuery（一覧クエリのキャッシュから対象記録を探す実装）用のレコードファクトリ。
+// 本番コードは record.recordAt を "YYYY-MM-DD" に変換するため必ず非 null の ISO 文字列を持たせる。
+function makeRecord(overrides: Partial<{
+  id: string;
+  content: string | null;
+  recordAt: string;
+  images: { url: string; sortOrder: number }[];
+}> = {}) {
+  return {
+    id: 'record-1',
+    content: null,
+    recordAt: '2025-06-01T00:00:00Z',
+    images: [],
+    ...overrides,
+  };
+}
+
+function makeRecordsQueryResult(
+  items: ReturnType<typeof makeRecord>[],
+  overrides: Record<string, unknown> = {}
+) {
+  return {
+    data: { pages: [{ items, nextCursor: null }] },
+    isLoading: false,
+    isError: false,
+    fetchNextPage: jest.fn(),
+    hasNextPage: false,
+    isFetchingNextPage: false,
+    refetch: jest.fn(),
+    ...overrides,
+  };
+}
+
 beforeEach(() => {
   jest.clearAllMocks();
   capturedOnAdd = null;
@@ -100,6 +127,7 @@ beforeEach(() => {
   };
   useOnlineStatus.mockReturnValue(true);
   mockUseLocalSearchParams.mockReturnValue({ id: 'bonsai-1', recordId: 'record-1' });
+  mockUseBonsaiRecordsQuery.mockReturnValue(makeRecordsQueryResult([makeRecord()]));
   mockUseUpdateBonsaiRecordMutation.mockReturnValue({
     mutate: mockUpdateRecord,
     isPending: false,

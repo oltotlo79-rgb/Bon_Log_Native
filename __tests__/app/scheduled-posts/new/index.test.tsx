@@ -1,6 +1,7 @@
 /**
  * app/scheduled-posts/new/index の予約投稿新規作成フォームテスト。
- * ヘッダー・フィールド・バリデーション・非プレミアムガード・キャンセルを検証する。
+ * ヘッダー・DateTimeField による日時選択・バリデーション・非プレミアムガード・
+ * 送信条件（本文またはメディア）・キャンセルを検証する。
  */
 
 import React from 'react';
@@ -10,6 +11,7 @@ import ScheduledPostNewScreen from '@/app/scheduled-posts/new/index';
 import { renderWithProviders } from '@/__tests__/utils/test-utils';
 
 const mockRouter = jest.requireMock('expo-router').router;
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
 jest.mock('@/hooks/use-online-status', () => ({
   useOnlineStatus: jest.fn(() => true),
@@ -31,23 +33,41 @@ jest.mock('@/lib/queries/upload', () => ({
   uploadVideo: jest.fn(),
 }));
 
+type MockComposerState = {
+  content: string;
+  setContent: jest.Mock;
+  selectedGenres: string[];
+  setSelectedGenres: jest.Mock;
+  images: { uri: string; localId: string }[];
+  videoUri: string | null;
+  videoFileSize: number | null;
+  isDirty: boolean;
+  maxImages: number;
+  handleAddImage: jest.Mock;
+  handleRemoveImage: jest.Mock;
+  handleAddVideo: jest.Mock;
+  handleRemoveVideo: jest.Mock;
+};
+
+const mockDefaultComposer: MockComposerState = {
+  content: '',
+  setContent: jest.fn(),
+  selectedGenres: [],
+  setSelectedGenres: jest.fn(),
+  images: [],
+  videoUri: null,
+  videoFileSize: null,
+  isDirty: false,
+  maxImages: 4,
+  handleAddImage: jest.fn(),
+  handleRemoveImage: jest.fn(),
+  handleAddVideo: jest.fn(),
+  handleRemoveVideo: jest.fn(),
+};
+
 // PostComposer 系コンポーネントのモック
 jest.mock('@/hooks/use-post-composer', () => ({
-  usePostComposer: jest.fn(() => ({
-    content: '',
-    setContent: jest.fn(),
-    selectedGenres: [],
-    setSelectedGenres: jest.fn(),
-    images: [],
-    videoUri: null,
-    videoFileSize: null,
-    isDirty: false,
-    maxImages: 4,
-    handleAddImage: jest.fn(),
-    handleRemoveImage: jest.fn(),
-    handleAddVideo: jest.fn(),
-    handleRemoveVideo: jest.fn(),
-  })),
+  usePostComposer: jest.fn(() => ({ ...mockDefaultComposer })),
 }));
 
 jest.mock('@/components/post/PostBodyInput', () => {
@@ -106,16 +126,30 @@ jest.mock('@/lib/api/errors', () => ({
   isApiError: jest.fn(() => false),
 }));
 
-// 予約日時テスト用: 現在から7日後の日時コンポーネント（30日以内の未来）
-function getValidFutureDate() {
-  const d = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
-  return {
-    year: String(d.getFullYear()),
-    month: String(d.getMonth() + 1),
-    day: String(d.getDate()),
-    hour: '10',
-    minute: '0',
+// ---------------------------------------------------------------------------
+// ヘルパー
+// ---------------------------------------------------------------------------
+
+function mockComposer(overrides: Partial<typeof mockDefaultComposer>) {
+  const { usePostComposer } = jest.requireMock('@/hooks/use-post-composer') as {
+    usePostComposer: jest.Mock;
   };
+  usePostComposer.mockReturnValue({ ...mockDefaultComposer, ...overrides });
+}
+
+/** 現在時刻から daysAhead 日後（時刻固定）の Date を返す。境界値テストでの再現性のため分単位まで固定する。 */
+function futureDate(daysAhead: number, hour = 10, minute = 0): Date {
+  const d = new Date(Date.now() + daysAhead * MS_PER_DAY);
+  d.setHours(hour, minute, 0, 0);
+  return d;
+}
+
+/** 公開予定日時フィールドを開き、iOS スピナーモックへ date を渡して確定する。 */
+function selectScheduledAt(date: Date) {
+  fireEvent.press(screen.getByLabelText(/^公開予定日時 ＊/));
+  const picker = screen.getByTestId('mock-datetimepicker');
+  fireEvent(picker, 'change', {}, date);
+  fireEvent.press(screen.getByLabelText('公開予定日時 ＊の選択を完了'));
 }
 
 beforeEach(() => {
@@ -131,6 +165,7 @@ beforeEach(() => {
   mockUseCurrentUserQuery.mockReturnValue({
     data: { id: 'user-1', isPremium: true },
   });
+  mockComposer({});
 });
 
 describe('ScheduledPostNewScreen', () => {
@@ -159,24 +194,7 @@ describe('ScheduledPostNewScreen', () => {
     });
 
     it('コンテンツ入力後にキャンセルすると Alert が表示される', () => {
-      const { usePostComposer } = jest.requireMock('@/hooks/use-post-composer') as {
-        usePostComposer: jest.Mock;
-      };
-      usePostComposer.mockReturnValue({
-        content: '入力中のコンテンツ',
-        setContent: jest.fn(),
-        selectedGenres: [],
-        setSelectedGenres: jest.fn(),
-        images: [],
-        videoUri: null,
-        videoFileSize: null,
-        isDirty: true,
-        maxImages: 4,
-        handleAddImage: jest.fn(),
-        handleRemoveImage: jest.fn(),
-        handleAddVideo: jest.fn(),
-        handleRemoveVideo: jest.fn(),
-      });
+      mockComposer({ content: '入力中のコンテンツ', isDirty: true });
       const alertSpy = jest.spyOn(Alert, 'alert');
       renderWithProviders(<ScheduledPostNewScreen />);
       fireEvent.press(screen.getByRole('button', { name: 'キャンセル' }));
@@ -188,10 +206,10 @@ describe('ScheduledPostNewScreen', () => {
       jest.restoreAllMocks();
     });
 
-    it('日時を入力後にキャンセルすると Alert が表示される（hasDateInput=true）', () => {
+    it('日時を選択後にキャンセルすると Alert が表示される（hasScheduledAt=true）', () => {
       const alertSpy = jest.spyOn(Alert, 'alert');
       renderWithProviders(<ScheduledPostNewScreen />);
-      fireEvent.changeText(screen.getByLabelText('公開予定月'), '6');
+      selectScheduledAt(futureDate(7));
       fireEvent.press(screen.getByRole('button', { name: 'キャンセル' }));
       expect(alertSpy).toHaveBeenCalled();
       jest.restoreAllMocks();
@@ -204,17 +222,64 @@ describe('ScheduledPostNewScreen', () => {
       const saveButton = screen.getByRole('button', { name: '予約する' });
       expect(saveButton.props.accessibilityState?.disabled).toBe(true);
     });
+
+    it('本文があっても日時未選択のときは予約するボタンが disabled になる', () => {
+      mockComposer({ content: '予約したい内容' });
+      renderWithProviders(<ScheduledPostNewScreen />);
+      const saveButton = screen.getByRole('button', { name: '予約する' });
+      expect(saveButton.props.accessibilityState?.disabled).toBe(true);
+    });
+
+    it('本文と日時の両方があると予約するボタンが有効になる', () => {
+      mockComposer({ content: '予約したい内容' });
+      renderWithProviders(<ScheduledPostNewScreen />);
+      selectScheduledAt(futureDate(7));
+      const saveButton = screen.getByRole('button', { name: '予約する' });
+      expect(saveButton.props.accessibilityState?.disabled).toBe(false);
+    });
+
+    it('本文が空でも画像があれば予約するボタンが有効になる（送信条件は本文またはメディア）', () => {
+      mockComposer({ images: [{ uri: 'file://test.jpg', localId: 'img-1' }] });
+      renderWithProviders(<ScheduledPostNewScreen />);
+      selectScheduledAt(futureDate(7));
+      const saveButton = screen.getByRole('button', { name: '予約する' });
+      expect(saveButton.props.accessibilityState?.disabled).toBe(false);
+    });
+
+    it('本文が空でも動画があれば予約するボタンが有効になる（送信条件は本文またはメディア）', () => {
+      mockComposer({ videoUri: 'file://test.mp4', videoFileSize: 1024 });
+      renderWithProviders(<ScheduledPostNewScreen />);
+      selectScheduledAt(futureDate(7));
+      const saveButton = screen.getByRole('button', { name: '予約する' });
+      expect(saveButton.props.accessibilityState?.disabled).toBe(false);
+    });
   });
 
   describe('公開予定日時フィールド', () => {
-    it('「公開予定年」フィールドが存在する', () => {
+    it('「公開予定日時 ＊」フィールドが存在する', () => {
       renderWithProviders(<ScheduledPostNewScreen />);
-      expect(screen.getByLabelText('公開予定年')).toBeTruthy();
+      expect(screen.getByLabelText(/^公開予定日時 ＊：日時を選択/)).toBeTruthy();
     });
 
-    it('「公開予定月」フィールドが存在する', () => {
+    it('タップすると日時ピッカー（iOS スピナー）が開く', () => {
       renderWithProviders(<ScheduledPostNewScreen />);
-      expect(screen.getByLabelText('公開予定月')).toBeTruthy();
+      fireEvent.press(screen.getByLabelText(/^公開予定日時 ＊/));
+      expect(screen.getByTestId('mock-datetimepicker')).toBeTruthy();
+    });
+
+    it('日時を選択するとフィールドの表示が更新される', () => {
+      renderWithProviders(<ScheduledPostNewScreen />);
+      selectScheduledAt(new Date(2030, 5, 1, 10, 0));
+      expect(screen.getByLabelText(/^公開予定日時 ＊：2030年6月1日/)).toBeTruthy();
+    });
+
+    it('クリアボタンで日時を削除すると予約するボタンが再び disabled になる', () => {
+      mockComposer({ content: '予約したい内容' });
+      renderWithProviders(<ScheduledPostNewScreen />);
+      selectScheduledAt(futureDate(7));
+      expect(screen.getByRole('button', { name: '予約する' }).props.accessibilityState?.disabled).toBe(false);
+      fireEvent.press(screen.getByLabelText('公開予定日時を削除'));
+      expect(screen.getByRole('button', { name: '予約する' }).props.accessibilityState?.disabled).toBe(true);
     });
   });
 
@@ -230,59 +295,32 @@ describe('ScheduledPostNewScreen', () => {
     });
   });
 
-  describe('公開予定日時フィールド入力', () => {
-    it('年フィールドに入力できる', () => {
-      renderWithProviders(<ScheduledPostNewScreen />);
-      const yearField = screen.getByLabelText('公開予定年');
-      fireEvent.changeText(yearField, '2026');
-      // フィールドに入力されていることを確認（エラーは出ない）
-      expect(yearField).toBeTruthy();
-    });
-
-    it('月フィールドに入力できる', () => {
-      renderWithProviders(<ScheduledPostNewScreen />);
-      fireEvent.changeText(screen.getByLabelText('公開予定月'), '12');
-      expect(screen.getByLabelText('公開予定月')).toBeTruthy();
-    });
-
-    it('日フィールドに入力できる', () => {
-      renderWithProviders(<ScheduledPostNewScreen />);
-      fireEvent.changeText(screen.getByLabelText('公開予定日'), '31');
-      expect(screen.getByLabelText('公開予定日')).toBeTruthy();
-    });
-
-    it('時フィールドに入力できる', () => {
-      renderWithProviders(<ScheduledPostNewScreen />);
-      fireEvent.changeText(screen.getByLabelText('公開予定時'), '14');
-      expect(screen.getByLabelText('公開予定時')).toBeTruthy();
-    });
-
-    it('分フィールドに入力できる', () => {
-      renderWithProviders(<ScheduledPostNewScreen />);
-      fireEvent.changeText(screen.getByLabelText('公開予定分'), '30');
-      expect(screen.getByLabelText('公開予定分')).toBeTruthy();
-    });
-  });
-
   describe('オフライン', () => {
-    it('オフラインのとき予約するボタンが disabled になる（可能であれば）', () => {
+    it('オフラインのときも画面自体は表示される', () => {
       const { useOnlineStatus } = jest.requireMock('@/hooks/use-online-status') as {
         useOnlineStatus: jest.Mock;
       };
       useOnlineStatus.mockReturnValue(false);
       renderWithProviders(<ScheduledPostNewScreen />);
-      // オフラインバナーが表示されることを確認
       expect(screen.getByText('予約投稿を作成')).toBeTruthy();
     });
   });
 
   describe('非プレミアム', () => {
-    it('isPremium=false のときロックアウト画面が表示される', () => {
+    it('isPremium=false のときも画面自体は表示される', () => {
       mockUseCurrentUserQuery.mockReturnValue({
         data: { id: 'user-1', isPremium: false },
       });
       renderWithProviders(<ScheduledPostNewScreen />);
       expect(screen.getByText('予約投稿を作成')).toBeTruthy();
+    });
+
+    it('isPremium=false のとき動画添付エリアが表示されない', () => {
+      mockUseCurrentUserQuery.mockReturnValue({
+        data: { id: 'user-1', isPremium: false },
+      });
+      renderWithProviders(<ScheduledPostNewScreen />);
+      expect(screen.queryByText('動画添付')).toBeNull();
     });
   });
 
@@ -292,32 +330,10 @@ describe('ScheduledPostNewScreen', () => {
         useOnlineStatus: jest.Mock;
       };
       useOnlineStatus.mockReturnValue(false);
-      const { usePostComposer } = jest.requireMock('@/hooks/use-post-composer') as {
-        usePostComposer: jest.Mock;
-      };
-      usePostComposer.mockReturnValue({
-        content: '予約テスト投稿',
-        setContent: jest.fn(),
-        selectedGenres: [],
-        setSelectedGenres: jest.fn(),
-        images: [],
-        videoUri: null,
-        videoFileSize: null,
-        isDirty: true,
-        maxImages: 4,
-        handleAddImage: jest.fn(),
-        handleRemoveImage: jest.fn(),
-        handleAddVideo: jest.fn(),
-        handleRemoveVideo: jest.fn(),
-      });
+      mockComposer({ content: '予約テスト投稿', isDirty: true });
       renderWithProviders(<ScheduledPostNewScreen />);
-      fireEvent.changeText(screen.getByLabelText('公開予定年'), '2030');
-      fireEvent.changeText(screen.getByLabelText('公開予定月'), '6');
-      fireEvent.changeText(screen.getByLabelText('公開予定日'), '1');
-      fireEvent.changeText(screen.getByLabelText('公開予定時'), '10');
-      fireEvent.changeText(screen.getByLabelText('公開予定分'), '0');
-      const saveButton = screen.getByRole('button', { name: '予約する' });
-      fireEvent.press(saveButton);
+      selectScheduledAt(futureDate(7));
+      fireEvent.press(screen.getByRole('button', { name: '予約する' }));
       await waitFor(() => {
         expect(screen.getByText('現在オフライン中のため、この操作はできません。接続を確認してください。')).toBeTruthy();
       });
@@ -329,132 +345,29 @@ describe('ScheduledPostNewScreen', () => {
       mockUseCurrentUserQuery.mockReturnValue({
         data: { id: 'user-1', isPremium: false },
       });
-      const { usePostComposer } = jest.requireMock('@/hooks/use-post-composer') as {
-        usePostComposer: jest.Mock;
-      };
-      usePostComposer.mockReturnValue({
-        content: '予約テスト投稿',
-        setContent: jest.fn(),
-        selectedGenres: [],
-        setSelectedGenres: jest.fn(),
-        images: [],
-        videoUri: null,
-        videoFileSize: null,
-        isDirty: true,
-        maxImages: 4,
-        handleAddImage: jest.fn(),
-        handleRemoveImage: jest.fn(),
-        handleAddVideo: jest.fn(),
-        handleRemoveVideo: jest.fn(),
-      });
+      mockComposer({ content: '予約テスト投稿', isDirty: true });
       renderWithProviders(<ScheduledPostNewScreen />);
-      fireEvent.changeText(screen.getByLabelText('公開予定年'), '2030');
-      fireEvent.changeText(screen.getByLabelText('公開予定月'), '6');
-      fireEvent.changeText(screen.getByLabelText('公開予定日'), '1');
-      fireEvent.changeText(screen.getByLabelText('公開予定時'), '10');
-      fireEvent.changeText(screen.getByLabelText('公開予定分'), '0');
-      const saveButton = screen.getByRole('button', { name: '予約する' });
-      fireEvent.press(saveButton);
+      selectScheduledAt(futureDate(7));
+      fireEvent.press(screen.getByRole('button', { name: '予約する' }));
       await waitFor(() => {
         expect(screen.getByText(/プレミアム|有料/)).toBeTruthy();
       });
     });
   });
 
-  describe('handleSave — buildScheduledAtISO null（無効な日時）', () => {
-    it('無効な月を入力した場合 ISO が null でエラーが表示される', async () => {
-      const { usePostComposer } = jest.requireMock('@/hooks/use-post-composer') as {
-        usePostComposer: jest.Mock;
-      };
-      usePostComposer.mockReturnValue({
-        content: '予約テスト投稿',
-        setContent: jest.fn(),
-        selectedGenres: [],
-        setSelectedGenres: jest.fn(),
-        images: [],
-        videoUri: null,
-        videoFileSize: null,
-        isDirty: true,
-        maxImages: 4,
-        handleAddImage: jest.fn(),
-        handleRemoveImage: jest.fn(),
-        handleAddVideo: jest.fn(),
-        handleRemoveVideo: jest.fn(),
-      });
-      renderWithProviders(<ScheduledPostNewScreen />);
-      fireEvent.changeText(screen.getByLabelText('公開予定年'), '2030');
-      fireEvent.changeText(screen.getByLabelText('公開予定月'), '13'); // 無効な月
-      fireEvent.changeText(screen.getByLabelText('公開予定日'), '1');
-      fireEvent.changeText(screen.getByLabelText('公開予定時'), '10');
-      fireEvent.changeText(screen.getByLabelText('公開予定分'), '0');
-      fireEvent.press(screen.getByRole('button', { name: '予約する' }));
-      await waitFor(() => {
-        expect(screen.getByText(/正しく入力/)).toBeTruthy();
-      });
-    });
-  });
-
   describe('handleSave — 無効な日時', () => {
-    it('コンテンツと日時を入力して予約する場合、validationエラーが表示される（過去日時）', () => {
-      const { usePostComposer } = jest.requireMock('@/hooks/use-post-composer') as {
-        usePostComposer: jest.Mock;
-      };
-      usePostComposer.mockReturnValue({
-        content: '予約テスト投稿',
-        setContent: jest.fn(),
-        selectedGenres: [],
-        setSelectedGenres: jest.fn(),
-        images: [],
-        videoUri: null,
-        videoFileSize: null,
-        isDirty: false,
-        maxImages: 4,
-        handleAddImage: jest.fn(),
-        handleRemoveImage: jest.fn(),
-        handleAddVideo: jest.fn(),
-        handleRemoveVideo: jest.fn(),
-      });
+    it('過去の日時を選択すると「未来に設定してください」エラーが表示される', () => {
+      mockComposer({ content: '予約テスト投稿' });
       renderWithProviders(<ScheduledPostNewScreen />);
-      // 過去の日時を設定 → バリデーションエラーになる
-      fireEvent.changeText(screen.getByLabelText('公開予定月'), '1');
-      fireEvent.changeText(screen.getByLabelText('公開予定日'), '1');
-      fireEvent.changeText(screen.getByLabelText('公開予定時'), '0');
-      fireEvent.changeText(screen.getByLabelText('公開予定分'), '0');
-      // canSubmit = true になるはずなので予約するを押せる
-      const saveButton = screen.getByRole('button', { name: '予約する' });
-      fireEvent.press(saveButton);
-      // 過去日時なのでエラーメッセージが表示される
+      selectScheduledAt(futureDate(-1));
+      fireEvent.press(screen.getByRole('button', { name: '予約する' }));
       expect(screen.getByText('公開予定日時は現在より未来に設定してください。')).toBeTruthy();
     });
-  });
 
-  describe('handleSave — 上限超過日時', () => {
-    it('SCHEDULED_AT_DAYS_LIMIT日より遠い日時を入力するとエラーが表示される', async () => {
-      const { usePostComposer } = jest.requireMock('@/hooks/use-post-composer') as {
-        usePostComposer: jest.Mock;
-      };
-      usePostComposer.mockReturnValue({
-        content: '予約テスト投稿',
-        setContent: jest.fn(),
-        selectedGenres: [],
-        setSelectedGenres: jest.fn(),
-        images: [],
-        videoUri: null,
-        videoFileSize: null,
-        isDirty: true,
-        maxImages: 4,
-        handleAddImage: jest.fn(),
-        handleRemoveImage: jest.fn(),
-        handleAddVideo: jest.fn(),
-        handleRemoveVideo: jest.fn(),
-      });
+    it('SCHEDULED_AT_DAYS_LIMIT（30日）を超える日時を選択すると上限エラーが表示される', async () => {
+      mockComposer({ content: '予約テスト投稿', isDirty: true });
       renderWithProviders(<ScheduledPostNewScreen />);
-      // 9999年など極端に遠い日時 → SCHEDULED_AT_DAYS_LIMIT超過
-      fireEvent.changeText(screen.getByLabelText('公開予定年'), '9999');
-      fireEvent.changeText(screen.getByLabelText('公開予定月'), '12');
-      fireEvent.changeText(screen.getByLabelText('公開予定日'), '31');
-      fireEvent.changeText(screen.getByLabelText('公開予定時'), '23');
-      fireEvent.changeText(screen.getByLabelText('公開予定分'), '59');
+      selectScheduledAt(futureDate(40));
       fireEvent.press(screen.getByRole('button', { name: '予約する' }));
       await waitFor(() => {
         expect(screen.getByText(/日以内に設定してください/)).toBeTruthy();
@@ -463,44 +376,24 @@ describe('ScheduledPostNewScreen', () => {
   });
 
   describe('handleSave — アップロードエラー', () => {
-    it('画像アップロード失敗時にuploadImageが呼ばれる', async () => {
-      const { usePostComposer } = jest.requireMock('@/hooks/use-post-composer') as {
-        usePostComposer: jest.Mock;
-      };
-      usePostComposer.mockReturnValue({
+    it('画像がある場合、送信時に uploadImage が呼ばれる', async () => {
+      mockComposer({
         content: '予約テスト投稿',
-        setContent: jest.fn(),
-        selectedGenres: [],
-        setSelectedGenres: jest.fn(),
-        images: [{ uri: 'file://test.jpg' }],
-        videoUri: null,
-        videoFileSize: null,
+        images: [{ uri: 'file://test.jpg', localId: 'img-1' }],
         isDirty: true,
-        maxImages: 4,
-        handleAddImage: jest.fn(),
-        handleRemoveImage: jest.fn(),
-        handleAddVideo: jest.fn(),
-        handleRemoveVideo: jest.fn(),
       });
       const { uploadImage } = jest.requireMock('@/lib/queries/upload') as {
         uploadImage: jest.Mock;
         uploadVideo: jest.Mock;
       };
-      // uploadImageが呼ばれた後にエラーメッセージが設定されることを確認
-      // 成功時はmutateを呼ばないようにする
       uploadImage.mockResolvedValueOnce('https://cdn.example.com/image.jpg');
       const mockMutate = jest.fn();
       mockUseCreateScheduledPostMutation.mockReturnValue({
         mutate: mockMutate,
         isPending: false,
       });
-      const fd1 = getValidFutureDate();
       renderWithProviders(<ScheduledPostNewScreen />);
-      fireEvent.changeText(screen.getByLabelText('公開予定年'), fd1.year);
-      fireEvent.changeText(screen.getByLabelText('公開予定月'), fd1.month);
-      fireEvent.changeText(screen.getByLabelText('公開予定日'), fd1.day);
-      fireEvent.changeText(screen.getByLabelText('公開予定時'), fd1.hour);
-      fireEvent.changeText(screen.getByLabelText('公開予定分'), fd1.minute);
+      selectScheduledAt(futureDate(7));
       await act(async () => {
         fireEvent.press(screen.getByRole('button', { name: '予約する' }));
       });
@@ -512,23 +405,11 @@ describe('ScheduledPostNewScreen', () => {
 
   describe('handleSave — 動画アップロード', () => {
     it('動画がある場合uploadVideoが呼ばれる', async () => {
-      const { usePostComposer } = jest.requireMock('@/hooks/use-post-composer') as {
-        usePostComposer: jest.Mock;
-      };
-      usePostComposer.mockReturnValue({
+      mockComposer({
         content: '予約テスト投稿',
-        setContent: jest.fn(),
-        selectedGenres: [],
-        setSelectedGenres: jest.fn(),
-        images: [],
         videoUri: 'file://test.mp4',
         videoFileSize: 1024,
         isDirty: true,
-        maxImages: 4,
-        handleAddImage: jest.fn(),
-        handleRemoveImage: jest.fn(),
-        handleAddVideo: jest.fn(),
-        handleRemoveVideo: jest.fn(),
       });
       const { uploadVideo } = jest.requireMock('@/lib/queries/upload') as {
         uploadImage: jest.Mock;
@@ -540,13 +421,8 @@ describe('ScheduledPostNewScreen', () => {
         mutate: mockMutate,
         isPending: false,
       });
-      const fd2 = getValidFutureDate();
       renderWithProviders(<ScheduledPostNewScreen />);
-      fireEvent.changeText(screen.getByLabelText('公開予定年'), fd2.year);
-      fireEvent.changeText(screen.getByLabelText('公開予定月'), fd2.month);
-      fireEvent.changeText(screen.getByLabelText('公開予定日'), fd2.day);
-      fireEvent.changeText(screen.getByLabelText('公開予定時'), fd2.hour);
-      fireEvent.changeText(screen.getByLabelText('公開予定分'), fd2.minute);
+      selectScheduledAt(futureDate(7));
       await act(async () => {
         fireEvent.press(screen.getByRole('button', { name: '予約する' }));
       });
@@ -561,24 +437,7 @@ describe('ScheduledPostNewScreen', () => {
 
   describe('handleSave — ミューテーション成功', () => {
     it('createScheduledPostが成功するとrouter.replaceが呼ばれる', async () => {
-      const { usePostComposer } = jest.requireMock('@/hooks/use-post-composer') as {
-        usePostComposer: jest.Mock;
-      };
-      usePostComposer.mockReturnValue({
-        content: '予約テスト投稿',
-        setContent: jest.fn(),
-        selectedGenres: [],
-        setSelectedGenres: jest.fn(),
-        images: [],
-        videoUri: null,
-        videoFileSize: null,
-        isDirty: true,
-        maxImages: 4,
-        handleAddImage: jest.fn(),
-        handleRemoveImage: jest.fn(),
-        handleAddVideo: jest.fn(),
-        handleRemoveVideo: jest.fn(),
-      });
+      mockComposer({ content: '予約テスト投稿', isDirty: true });
       const mockMutate = jest.fn((_params, options: { onSuccess?: () => void }) => {
         options.onSuccess?.();
       });
@@ -586,13 +445,8 @@ describe('ScheduledPostNewScreen', () => {
         mutate: mockMutate,
         isPending: false,
       });
-      const fd3 = getValidFutureDate();
       renderWithProviders(<ScheduledPostNewScreen />);
-      fireEvent.changeText(screen.getByLabelText('公開予定年'), fd3.year);
-      fireEvent.changeText(screen.getByLabelText('公開予定月'), fd3.month);
-      fireEvent.changeText(screen.getByLabelText('公開予定日'), fd3.day);
-      fireEvent.changeText(screen.getByLabelText('公開予定時'), fd3.hour);
-      fireEvent.changeText(screen.getByLabelText('公開予定分'), fd3.minute);
+      selectScheduledAt(futureDate(7));
       await act(async () => {
         fireEvent.press(screen.getByRole('button', { name: '予約する' }));
       });
@@ -600,28 +454,36 @@ describe('ScheduledPostNewScreen', () => {
         expect(mockRouter.replace).toHaveBeenCalledWith('/scheduled-posts');
       });
     });
+
+    it('createScheduledPostに content・genreIds・mediaUrls・mediaTypes・scheduledAt が渡される', async () => {
+      mockComposer({ content: '予約テスト投稿', selectedGenres: ['genre-1'], isDirty: true });
+      const mockMutate = jest.fn();
+      mockUseCreateScheduledPostMutation.mockReturnValue({
+        mutate: mockMutate,
+        isPending: false,
+      });
+      renderWithProviders(<ScheduledPostNewScreen />);
+      selectScheduledAt(futureDate(7));
+      await act(async () => {
+        fireEvent.press(screen.getByRole('button', { name: '予約する' }));
+      });
+      await waitFor(() => {
+        expect(mockMutate).toHaveBeenCalledWith(
+          expect.objectContaining({
+            content: '予約テスト投稿',
+            genreIds: ['genre-1'],
+            mediaUrls: [],
+            mediaTypes: [],
+          }),
+          expect.anything()
+        );
+      });
+    });
   });
 
   describe('handleSave — ミューテーションエラー VALIDATION_ERROR', () => {
     it('VALIDATION_ERRORが返ると上限エラーメッセージが表示される', async () => {
-      const { usePostComposer } = jest.requireMock('@/hooks/use-post-composer') as {
-        usePostComposer: jest.Mock;
-      };
-      usePostComposer.mockReturnValue({
-        content: '予約テスト投稿',
-        setContent: jest.fn(),
-        selectedGenres: [],
-        setSelectedGenres: jest.fn(),
-        images: [],
-        videoUri: null,
-        videoFileSize: null,
-        isDirty: true,
-        maxImages: 4,
-        handleAddImage: jest.fn(),
-        handleRemoveImage: jest.fn(),
-        handleAddVideo: jest.fn(),
-        handleRemoveVideo: jest.fn(),
-      });
+      mockComposer({ content: '予約テスト投稿', isDirty: true });
       const { isApiError } = jest.requireMock('@/lib/api/errors') as {
         isApiError: jest.Mock;
       };
@@ -634,13 +496,8 @@ describe('ScheduledPostNewScreen', () => {
         mutate: mockMutate,
         isPending: false,
       });
-      const fd4 = getValidFutureDate();
       renderWithProviders(<ScheduledPostNewScreen />);
-      fireEvent.changeText(screen.getByLabelText('公開予定年'), fd4.year);
-      fireEvent.changeText(screen.getByLabelText('公開予定月'), fd4.month);
-      fireEvent.changeText(screen.getByLabelText('公開予定日'), fd4.day);
-      fireEvent.changeText(screen.getByLabelText('公開予定時'), fd4.hour);
-      fireEvent.changeText(screen.getByLabelText('公開予定分'), fd4.minute);
+      selectScheduledAt(futureDate(7));
       await act(async () => {
         fireEvent.press(screen.getByRole('button', { name: '予約する' }));
       });
@@ -652,24 +509,7 @@ describe('ScheduledPostNewScreen', () => {
 
   describe('handleSave — ミューテーションエラー 汎用', () => {
     it('汎用エラーが返るとフォールバックエラーメッセージが表示される', async () => {
-      const { usePostComposer } = jest.requireMock('@/hooks/use-post-composer') as {
-        usePostComposer: jest.Mock;
-      };
-      usePostComposer.mockReturnValue({
-        content: '予約テスト投稿',
-        setContent: jest.fn(),
-        selectedGenres: [],
-        setSelectedGenres: jest.fn(),
-        images: [],
-        videoUri: null,
-        videoFileSize: null,
-        isDirty: true,
-        maxImages: 4,
-        handleAddImage: jest.fn(),
-        handleRemoveImage: jest.fn(),
-        handleAddVideo: jest.fn(),
-        handleRemoveVideo: jest.fn(),
-      });
+      mockComposer({ content: '予約テスト投稿', isDirty: true });
       const { isApiError } = jest.requireMock('@/lib/api/errors') as {
         isApiError: jest.Mock;
       };
@@ -681,13 +521,8 @@ describe('ScheduledPostNewScreen', () => {
         mutate: mockMutate,
         isPending: false,
       });
-      const fd5 = getValidFutureDate();
       renderWithProviders(<ScheduledPostNewScreen />);
-      fireEvent.changeText(screen.getByLabelText('公開予定年'), fd5.year);
-      fireEvent.changeText(screen.getByLabelText('公開予定月'), fd5.month);
-      fireEvent.changeText(screen.getByLabelText('公開予定日'), fd5.day);
-      fireEvent.changeText(screen.getByLabelText('公開予定時'), fd5.hour);
-      fireEvent.changeText(screen.getByLabelText('公開予定分'), fd5.minute);
+      selectScheduledAt(futureDate(7));
       await act(async () => {
         fireEvent.press(screen.getByRole('button', { name: '予約する' }));
       });
@@ -699,24 +534,7 @@ describe('ScheduledPostNewScreen', () => {
 
   describe('handleCancel — 破棄する', () => {
     it('Alert の「破棄する」を押すと router.back が呼ばれる', () => {
-      const { usePostComposer } = jest.requireMock('@/hooks/use-post-composer') as {
-        usePostComposer: jest.Mock;
-      };
-      usePostComposer.mockReturnValue({
-        content: '入力中のコンテンツ',
-        setContent: jest.fn(),
-        selectedGenres: [],
-        setSelectedGenres: jest.fn(),
-        images: [],
-        videoUri: null,
-        videoFileSize: null,
-        isDirty: true,
-        maxImages: 4,
-        handleAddImage: jest.fn(),
-        handleRemoveImage: jest.fn(),
-        handleAddVideo: jest.fn(),
-        handleRemoveVideo: jest.fn(),
-      });
+      mockComposer({ content: '入力中のコンテンツ', isDirty: true });
       const alertCalls: Parameters<typeof Alert.alert>[] = [];
       jest.spyOn(Alert, 'alert').mockImplementation((...args) => {
         alertCalls.push(args as Parameters<typeof Alert.alert>);

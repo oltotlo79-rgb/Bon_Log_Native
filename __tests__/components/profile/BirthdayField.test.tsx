@@ -1,133 +1,98 @@
 /**
  * @module __tests__/components/profile/BirthdayField
  * BirthdayField コンポーネントのテスト。
- * 年・月・日の入力と onChange、クリア、エラー表示を検証する。
+ * components/common/DatePickerField の薄いラッパーとして、
+ * ラベル・表示・日時ピッカーでの選択・クリア・disabled・上限日（今日）を検証する。
  */
 
 import React from 'react';
-import { render, fireEvent } from '@testing-library/react-native';
+import { screen, fireEvent } from '@testing-library/react-native';
+import RNDateTimePicker from '@react-native-community/datetimepicker';
 import { BirthdayField } from '@/components/profile/BirthdayField';
+import { renderWithProviders } from '@/__tests__/utils/test-utils';
 
 describe('BirthdayField', () => {
-  it('value が null のときに入力フィールドが空で描画される', () => {
-    const onChange = jest.fn();
-    const { getByLabelText } = render(
-      <BirthdayField value={null} onChange={onChange} />
-    );
+  describe('表示', () => {
+    it('value が null のとき「誕生日を選択」がプレースホルダー表示される', () => {
+      renderWithProviders(<BirthdayField value={null} onChange={jest.fn()} />);
+      expect(screen.getByRole('button', { name: '誕生日（任意）：誕生日を選択' })).toBeTruthy();
+      expect(screen.getByText('誕生日を選択')).toBeTruthy();
+    });
 
-    expect(getByLabelText('誕生年').props.value).toBe('');
-    expect(getByLabelText('誕生月').props.value).toBe('');
-    expect(getByLabelText('誕生日（日）').props.value).toBe('');
+    it('ISO 日付文字列が渡されると日本語の日付表示になる', () => {
+      renderWithProviders(<BirthdayField value="2000-03-15" onChange={jest.fn()} />);
+      expect(screen.getByRole('button', { name: '誕生日（任意）：2000年3月15日' })).toBeTruthy();
+      expect(screen.getByText('2000年3月15日')).toBeTruthy();
+    });
+
+    it('value が null のとき「誕生日を削除」ボタンは表示されない', () => {
+      renderWithProviders(<BirthdayField value={null} onChange={jest.fn()} />);
+      expect(screen.queryByLabelText('誕生日を削除')).toBeNull();
+    });
+
+    it('value があるとき「誕生日を削除」ボタンが表示される', () => {
+      renderWithProviders(<BirthdayField value="2000-01-01" onChange={jest.fn()} />);
+      expect(screen.getByLabelText('誕生日を削除')).toBeTruthy();
+    });
   });
 
-  it('ISO 日付文字列が渡されると年・月・日が分解されて表示される', () => {
-    const onChange = jest.fn();
-    const { getByLabelText } = render(
-      <BirthdayField value="2000-03-15" onChange={onChange} />
-    );
+  describe('日時ピッカーでの選択', () => {
+    it('フィールドをタップすると日時ピッカー（iOS スピナー）が開く', () => {
+      renderWithProviders(<BirthdayField value={null} onChange={jest.fn()} />);
+      fireEvent.press(screen.getByRole('button', { name: '誕生日（任意）：誕生日を選択' }));
+      expect(screen.getByTestId('mock-datetimepicker')).toBeTruthy();
+    });
 
-    expect(getByLabelText('誕生年').props.value).toBe('2000');
-    expect(getByLabelText('誕生月').props.value).toBe('3');
-    expect(getByLabelText('誕生日（日）').props.value).toBe('15');
+    it('日付を選択すると onChange が "YYYY-MM-DD" 形式で呼ばれる', () => {
+      const onChange = jest.fn();
+      renderWithProviders(<BirthdayField value={null} onChange={onChange} />);
+      fireEvent.press(screen.getByRole('button', { name: '誕生日（任意）：誕生日を選択' }));
+      const picker = screen.getByTestId('mock-datetimepicker');
+      fireEvent(picker, 'change', {}, new Date(2000, 2, 15));
+      expect(onChange).toHaveBeenCalledWith('2000-03-15');
+    });
+
+    it('disabled=true のときタップしてもピッカーが開かない', () => {
+      renderWithProviders(<BirthdayField value={null} onChange={jest.fn()} disabled />);
+      fireEvent.press(screen.getByRole('button', { name: '誕生日（任意）：誕生日を選択' }));
+      expect(screen.queryByTestId('mock-datetimepicker')).toBeNull();
+    });
   });
 
-  it('年を入力すると onChange が ISO 形式で呼ばれる', () => {
-    const onChange = jest.fn();
-    // 月・日も存在するケース
-    const { getByLabelText } = render(
-      <BirthdayField value="2000-01-01" onChange={onChange} />
-    );
-
-    fireEvent.changeText(getByLabelText('誕生年'), '2001');
-    expect(onChange).toHaveBeenCalledWith('2001-01-01');
+  describe('クリア', () => {
+    it('「誕生日を削除」を押すと onChange(null) が呼ばれる', () => {
+      const onChange = jest.fn();
+      renderWithProviders(<BirthdayField value="2000-01-01" onChange={onChange} />);
+      fireEvent.press(screen.getByLabelText('誕生日を削除'));
+      expect(onChange).toHaveBeenCalledWith(null);
+    });
   });
 
-  it('年を空にすると onChange(null) が呼ばれる', () => {
-    const onChange = jest.fn();
-    const { getByLabelText } = render(
-      <BirthdayField value={null} onChange={onChange} />
-    );
+  describe('disabled', () => {
+    it('disabled=true のときフィールドの accessibilityState.disabled が true になる', () => {
+      renderWithProviders(<BirthdayField value="2000-06-15" onChange={jest.fn()} disabled />);
+      const field = screen.getByRole('button', { name: '誕生日（任意）：2000年6月15日' });
+      expect(field.props.accessibilityState?.disabled).toBe(true);
+    });
 
-    fireEvent.changeText(getByLabelText('誕生年'), '');
-    expect(onChange).toHaveBeenCalledWith(null);
+    it('disabled=true のとき「誕生日を削除」ボタンも disabled になる', () => {
+      renderWithProviders(<BirthdayField value="2000-06-15" onChange={jest.fn()} disabled />);
+      const clearButton = screen.getByLabelText('誕生日を削除');
+      expect(clearButton.props.accessibilityState?.disabled).toBe(true);
+    });
   });
 
-  it('年が空のとき月・日は editable=false になる', () => {
-    const onChange = jest.fn();
-    const { getByLabelText } = render(
-      <BirthdayField value={null} onChange={onChange} />
-    );
-
-    expect(getByLabelText('誕生月').props.editable).toBe(false);
-    expect(getByLabelText('誕生日（日）').props.editable).toBe(false);
-  });
-
-  it('value が有効なとき「誕生日を削除」ボタンが表示される', () => {
-    const onChange = jest.fn();
-    const { getByLabelText } = render(
-      <BirthdayField value="2000-01-01" onChange={onChange} />
-    );
-
-    expect(getByLabelText('誕生日を削除')).toBeTruthy();
-  });
-
-  it('「誕生日を削除」を押すと onChange(null) が呼ばれる', () => {
-    const onChange = jest.fn();
-    const { getByLabelText } = render(
-      <BirthdayField value="2000-01-01" onChange={onChange} />
-    );
-
-    fireEvent.press(getByLabelText('誕生日を削除'));
-    expect(onChange).toHaveBeenCalledWith(null);
-  });
-
-  it('value が null のとき「誕生日を削除」ボタンは非表示', () => {
-    const onChange = jest.fn();
-    const { queryByLabelText } = render(
-      <BirthdayField value={null} onChange={onChange} />
-    );
-
-    expect(queryByLabelText('誕生日を削除')).toBeNull();
-  });
-
-  it('disabled=true のとき全フィールドが editable=false になる', () => {
-    const onChange = jest.fn();
-    const { getByLabelText } = render(
-      <BirthdayField value="2000-06-15" onChange={onChange} disabled />
-    );
-
-    expect(getByLabelText('誕生年').props.editable).toBe(false);
-    expect(getByLabelText('誕生月').props.editable).toBe(false);
-    expect(getByLabelText('誕生日（日）').props.editable).toBe(false);
-  });
-
-  it('年が範囲外のとき（例: 9999）エラーメッセージが表示される', () => {
-    const onChange = jest.fn();
-    // value prop に将来の年（年齢制限 13 歳以上のため現在年−12より大きい年は無効）を渡す
-    const { getByText } = render(
-      <BirthdayField value="9999-01-01" onChange={onChange} />
-    );
-
-    expect(getByText(/有効な年を入力してください/)).toBeTruthy();
-  });
-
-  it('月を変更すると onChange が呼ばれる', () => {
-    const onChange = jest.fn();
-    const { getByLabelText } = render(
-      <BirthdayField value="2000-01-15" onChange={onChange} />
-    );
-
-    fireEvent.changeText(getByLabelText('誕生月'), '6');
-    expect(onChange).toHaveBeenCalledWith('2000-06-15');
-  });
-
-  it('日を変更すると onChange が呼ばれる', () => {
-    const onChange = jest.fn();
-    const { getByLabelText } = render(
-      <BirthdayField value="2000-01-01" onChange={onChange} />
-    );
-
-    fireEvent.changeText(getByLabelText('誕生日（日）'), '20');
-    expect(onChange).toHaveBeenCalledWith('2000-01-20');
+  describe('上限日（今日）', () => {
+    it('maximumDate として今日の日付が DatePickerField に渡される（未来日を選べない）', () => {
+      renderWithProviders(<BirthdayField value={null} onChange={jest.fn()} />);
+      fireEvent.press(screen.getByRole('button', { name: '誕生日（任意）：誕生日を選択' }));
+      const picker = screen.UNSAFE_getByType(RNDateTimePicker);
+      const maximumDate = picker.props.maximumDate as Date;
+      expect(maximumDate).toBeInstanceOf(Date);
+      const now = new Date();
+      expect(maximumDate.getFullYear()).toBe(now.getFullYear());
+      expect(maximumDate.getMonth()).toBe(now.getMonth());
+      expect(maximumDate.getDate()).toBe(now.getDate());
+    });
   });
 });

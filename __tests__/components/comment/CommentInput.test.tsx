@@ -1,27 +1,60 @@
 /**
  * @module __tests__/components/comment/CommentInput
  * CommentInput コンポーネントのテスト。
- * canSubmit ロジック・送信後テキストクリア・返信モード・文字数カウンタを検証する。
+ * canSubmit ロジック・送信後テキストクリア・返信モード・文字数カウンタ・
+ * 画像/動画添付・アップロード失敗ハンドリングを検証する。
+ * モック境界: expo-image-picker（選択ダイアログ）と lib/queries/upload（アップロード）。
  */
 
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react-native';
+import { render, screen, fireEvent, waitFor, act } from '@testing-library/react-native';
 import { CommentInput } from '@/components/comment/CommentInput';
 import { MAX_COMMENT_LENGTH } from '@/lib/constants/limits/post';
+import { MAX_COMMENT_IMAGES } from '@/lib/constants/limits/media';
+import { ERR_MEDIA_UPLOAD_FAILED } from '@/lib/constants/errors';
 
 const onSubmit = jest.fn();
 const onCancelReply = jest.fn();
+const onUploadError = jest.fn();
 
 const DEFAULT_PROPS = {
   replyTarget: null,
   onCancelReply,
   onSubmit,
+  onUploadError,
   isSubmitting: false,
   isPremium: false,
 };
 
+const mockUploadImage = jest.fn();
+const mockUploadVideo = jest.fn();
+jest.mock('@/lib/queries/upload', () => ({
+  uploadImage: (...args: unknown[]) => mockUploadImage(...args),
+  uploadVideo: (...args: unknown[]) => mockUploadVideo(...args),
+}));
+
+jest.mock('expo-image-picker', () => ({
+  requestMediaLibraryPermissionsAsync: jest.fn(async () => ({ granted: true, status: 'granted' })),
+  launchImageLibraryAsync: jest.fn(async () => ({
+    canceled: false,
+    assets: [{ uri: 'file:///comment-image.jpg' }],
+  })),
+  MediaTypeOptions: { Images: 'Images', Videos: 'Videos' },
+}));
+
 beforeEach(() => {
   jest.clearAllMocks();
+  mockUploadImage.mockResolvedValue('https://cdn.bon-log.com/comment-image.jpg');
+  mockUploadVideo.mockResolvedValue('https://cdn.bon-log.com/comment-video.mp4');
+  const { launchImageLibraryAsync, requestMediaLibraryPermissionsAsync } = jest.requireMock('expo-image-picker') as {
+    launchImageLibraryAsync: jest.Mock;
+    requestMediaLibraryPermissionsAsync: jest.Mock;
+  };
+  requestMediaLibraryPermissionsAsync.mockResolvedValue({ granted: true, status: 'granted' });
+  launchImageLibraryAsync.mockResolvedValue({
+    canceled: false,
+    assets: [{ uri: 'file:///comment-image.jpg' }],
+  });
 });
 
 describe('CommentInput', () => {
@@ -100,6 +133,8 @@ describe('CommentInput', () => {
       expect(onSubmit).toHaveBeenCalledWith({
         content: '素敵な盆栽ですね',
         parentId: undefined,
+        mediaUrls: [],
+        mediaTypes: [],
       });
     });
 
@@ -155,6 +190,8 @@ describe('CommentInput', () => {
       expect(onSubmit).toHaveBeenCalledWith({
         content: '返信コメント',
         parentId: 'comment-1',
+        mediaUrls: [],
+        mediaTypes: [],
       });
     });
 
@@ -208,6 +245,197 @@ describe('CommentInput', () => {
 
       const input = screen.getByTestId('comment-input');
       expect(input.props.editable).toBe(false);
+    });
+  });
+
+  describe('画像添付', () => {
+    it('画像添付ボタンを押すとサムネイルが表示される', async () => {
+      render(<CommentInput {...DEFAULT_PROPS} />);
+
+      await act(async () => {
+        fireEvent.press(screen.getByLabelText('画像を添付'));
+      });
+
+      await waitFor(() => {
+        expect(screen.getByLabelText('添付画像1')).toBeTruthy();
+      });
+    });
+
+    it('画像のみ（本文なし）でも送信ボタンが有効になる', async () => {
+      render(<CommentInput {...DEFAULT_PROPS} />);
+
+      await act(async () => {
+        fireEvent.press(screen.getByLabelText('画像を添付'));
+      });
+      await waitFor(() => {
+        expect(screen.getByLabelText('添付画像1')).toBeTruthy();
+      });
+
+      const submitButton = screen.getByLabelText('コメントを送信する');
+      expect(submitButton.props.accessibilityState.disabled).toBe(false);
+    });
+
+    it('送信すると uploadImage が呼ばれ、mediaUrls/mediaTypes が onSubmit に渡される', async () => {
+      render(<CommentInput {...DEFAULT_PROPS} />);
+
+      fireEvent.changeText(screen.getByTestId('comment-input'), '画像付きコメント');
+      await act(async () => {
+        fireEvent.press(screen.getByLabelText('画像を添付'));
+      });
+      await waitFor(() => {
+        expect(screen.getByLabelText('添付画像1')).toBeTruthy();
+      });
+
+      await act(async () => {
+        fireEvent.press(screen.getByLabelText('コメントを送信する'));
+      });
+
+      await waitFor(() => {
+        expect(mockUploadImage).toHaveBeenCalledWith({ localUri: 'file:///comment-image.jpg' });
+      });
+      expect(onSubmit).toHaveBeenCalledWith({
+        content: '画像付きコメント',
+        parentId: undefined,
+        mediaUrls: ['https://cdn.bon-log.com/comment-image.jpg'],
+        mediaTypes: ['image'],
+      });
+    });
+
+    it(`画像は最大${MAX_COMMENT_IMAGES}枚まで添付すると追加ボタンが disabled になる`, async () => {
+      const { launchImageLibraryAsync } = jest.requireMock('expo-image-picker') as {
+        launchImageLibraryAsync: jest.Mock;
+      };
+      launchImageLibraryAsync
+        .mockResolvedValueOnce({ canceled: false, assets: [{ uri: 'file:///img1.jpg' }] })
+        .mockResolvedValueOnce({ canceled: false, assets: [{ uri: 'file:///img2.jpg' }] });
+
+      render(<CommentInput {...DEFAULT_PROPS} />);
+
+      await act(async () => {
+        fireEvent.press(screen.getByLabelText('画像を添付'));
+      });
+      await waitFor(() => expect(screen.getByLabelText('添付画像1')).toBeTruthy());
+
+      await act(async () => {
+        fireEvent.press(screen.getByLabelText('画像を添付'));
+      });
+      await waitFor(() => expect(screen.getByLabelText('添付画像2')).toBeTruthy());
+
+      const addButton = screen.getByLabelText('画像を添付');
+      expect(addButton.props.accessibilityState.disabled).toBe(true);
+      // 上限到達後は ImageAttachmentGrid 側の「画像を追加」ボタンも非表示になる
+      expect(screen.queryByLabelText('画像を追加')).toBeNull();
+    });
+  });
+
+  describe('動画添付（プレミアム限定）', () => {
+    const videoAsset = {
+      canceled: false,
+      assets: [{ uri: 'file:///comment-video.mp4', fileSize: 2048 }],
+    };
+
+    it('非プレミアムのときは動画添付ボタンが表示されない', () => {
+      render(<CommentInput {...DEFAULT_PROPS} isPremium={false} />);
+      expect(screen.queryByLabelText('動画を添付')).toBeNull();
+    });
+
+    it('プレミアムのとき動画添付ボタンが表示される', () => {
+      render(<CommentInput {...DEFAULT_PROPS} isPremium={true} />);
+      expect(screen.getByLabelText('動画を添付')).toBeTruthy();
+    });
+
+    it('動画を添付するとプレビュー（削除ボタン）が表示される', async () => {
+      const { launchImageLibraryAsync } = jest.requireMock('expo-image-picker') as {
+        launchImageLibraryAsync: jest.Mock;
+      };
+      launchImageLibraryAsync.mockResolvedValueOnce(videoAsset);
+
+      render(<CommentInput {...DEFAULT_PROPS} isPremium={true} />);
+
+      await act(async () => {
+        fireEvent.press(screen.getByLabelText('動画を添付'));
+      });
+
+      await waitFor(() => {
+        expect(screen.getByLabelText('動画を削除')).toBeTruthy();
+      });
+    });
+
+    it('動画のみ（本文なし）でも送信可能になり、uploadVideo が fileSize 付きで呼ばれる', async () => {
+      const { launchImageLibraryAsync } = jest.requireMock('expo-image-picker') as {
+        launchImageLibraryAsync: jest.Mock;
+      };
+      launchImageLibraryAsync.mockResolvedValueOnce(videoAsset);
+
+      render(<CommentInput {...DEFAULT_PROPS} isPremium={true} />);
+
+      await act(async () => {
+        fireEvent.press(screen.getByLabelText('動画を添付'));
+      });
+      await waitFor(() => {
+        expect(screen.getByLabelText('動画を削除')).toBeTruthy();
+      });
+
+      const submitButton = screen.getByLabelText('コメントを送信する');
+      expect(submitButton.props.accessibilityState.disabled).toBe(false);
+
+      await act(async () => {
+        fireEvent.press(submitButton);
+      });
+
+      await waitFor(() => {
+        expect(mockUploadVideo).toHaveBeenCalledWith({
+          localUri: 'file:///comment-video.mp4',
+          fileSize: 2048,
+        });
+      });
+      expect(onSubmit).toHaveBeenCalledWith(
+        expect.objectContaining({
+          mediaUrls: ['https://cdn.bon-log.com/comment-video.mp4'],
+          mediaTypes: ['video'],
+        })
+      );
+    });
+  });
+
+  describe('アップロード失敗', () => {
+    it('画像アップロードが失敗すると onUploadError が呼ばれ、onSubmit は呼ばれない', async () => {
+      mockUploadImage.mockRejectedValueOnce(new Error('upload failed'));
+
+      render(<CommentInput {...DEFAULT_PROPS} />);
+
+      await act(async () => {
+        fireEvent.press(screen.getByLabelText('画像を添付'));
+      });
+      await waitFor(() => expect(screen.getByLabelText('添付画像1')).toBeTruthy());
+
+      await act(async () => {
+        fireEvent.press(screen.getByLabelText('コメントを送信する'));
+      });
+
+      await waitFor(() => {
+        expect(onUploadError).toHaveBeenCalledWith(ERR_MEDIA_UPLOAD_FAILED);
+      });
+      expect(onSubmit).not.toHaveBeenCalled();
+    });
+
+    it('アップロード失敗時は入力テキストがクリアされずに保持される', async () => {
+      mockUploadImage.mockRejectedValueOnce(new Error('upload failed'));
+
+      render(<CommentInput {...DEFAULT_PROPS} />);
+
+      fireEvent.changeText(screen.getByTestId('comment-input'), '失敗するはずのコメント');
+      await act(async () => {
+        fireEvent.press(screen.getByLabelText('画像を添付'));
+      });
+      await waitFor(() => expect(screen.getByLabelText('添付画像1')).toBeTruthy());
+
+      await act(async () => {
+        fireEvent.press(screen.getByLabelText('コメントを送信する'));
+      });
+
+      await waitFor(() => expect(onUploadError).toHaveBeenCalledTimes(1));
+      expect(screen.getByTestId('comment-input').props.value).toBe('失敗するはずのコメント');
     });
   });
 });

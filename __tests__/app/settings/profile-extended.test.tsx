@@ -90,18 +90,19 @@ describe('SettingsProfileScreen - フォーム表示', () => {
     });
   });
 
-  it('初期状態では保存ボタンが無効（isDirty=false）', async () => {
+  it('初期状態でも isValid なら保存ボタンが有効（isDirty は不問）', async () => {
     renderWithProviders(<SettingsProfileScreen />);
 
     await waitFor(() => {
       expect(screen.getByLabelText('ニックネーム（必須）')).toBeTruthy();
     });
 
+    // Web の ProfileEditForm は isDirty を判定条件に含めない（isValid かつオンラインなら有効）
     const saveBtn = screen.getByLabelText('プロフィールを保存する');
     const isDisabled =
       saveBtn.props.disabled === true ||
       saveBtn.props.accessibilityState?.disabled === true;
-    expect(isDisabled).toBe(true);
+    expect(isDisabled).toBe(false);
   });
 
   it('ニックネームを変更すると保存ボタンが有効になる', async () => {
@@ -177,11 +178,12 @@ describe('SettingsProfileScreen - 保存ボタン制御', () => {
     });
   });
 
-  it('居住地フィールドが表示される', async () => {
+  it('居住地フィールドが表示される（LocationField はボタン形式で現在値を表示する）', async () => {
     renderWithProviders(<SettingsProfileScreen />);
 
     await waitFor(() => {
-      expect(screen.getByLabelText('居住地（任意）')).toBeTruthy();
+      // PROFILE_DETAIL.location = '東京' のため「居住地（任意）：東京」というラベルになる
+      expect(screen.getByRole('button', { name: '居住地（任意）：東京' })).toBeTruthy();
     });
   });
 });

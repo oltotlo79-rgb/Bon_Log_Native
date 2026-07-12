@@ -197,39 +197,44 @@ describe('PostSearchFilterPanel — 期間入力', () => {
     mockUseGenresQuery.mockReturnValue(defaultGenreQueryResult);
   });
 
+  // DatePickerField は label="" のため、プレースホルダー（開始日/終了日）自体が
+  // アクセシビリティラベルのプレフィックスとして使われる（"開始日：開始日" 等）。
+  function pickDate(fieldLabel: RegExp, doneLabel: string, date: Date) {
+    fireEvent.press(screen.getByLabelText(fieldLabel));
+    const picker = screen.getByTestId('mock-datetimepicker');
+    fireEvent(picker, 'change', {}, date);
+    fireEvent.press(screen.getByLabelText(doneLabel));
+  }
+
   it('開始日と終了日の入力フィールドが表示される', () => {
     renderPanel({});
     fireEvent.press(screen.getByRole('button', { name: '詳細フィルターを開く' }));
-    expect(screen.getByLabelText('開始日 YYYY-MM-DD 形式で入力')).toBeTruthy();
-    expect(screen.getByLabelText('終了日 YYYY-MM-DD 形式で入力')).toBeTruthy();
+    expect(screen.getByLabelText('開始日：開始日')).toBeTruthy();
+    expect(screen.getByLabelText('終了日：終了日')).toBeTruthy();
   });
 
-  it('開始日を入力できる', () => {
+  it('開始日を選択できる', () => {
     renderPanel({});
     fireEvent.press(screen.getByRole('button', { name: '詳細フィルターを開く' }));
-    const dateFromInput = screen.getByLabelText('開始日 YYYY-MM-DD 形式で入力');
-    fireEvent.changeText(dateFromInput, '2025-01-01');
-    expect(dateFromInput.props.value).toBe('2025-01-01');
+    pickDate(/^開始日/, '開始日の選択を完了', new Date(2025, 0, 1));
+    expect(screen.getByLabelText(/^開始日：2025年1月1日/)).toBeTruthy();
   });
 
-  it('終了日を入力できる', () => {
+  it('終了日を選択できる', () => {
     renderPanel({});
     fireEvent.press(screen.getByRole('button', { name: '詳細フィルターを開く' }));
-    const dateToInput = screen.getByLabelText('終了日 YYYY-MM-DD 形式で入力');
-    fireEvent.changeText(dateToInput, '2025-12-31');
-    expect(dateToInput.props.value).toBe('2025-12-31');
+    pickDate(/^終了日/, '終了日の選択を完了', new Date(2025, 11, 31));
+    expect(screen.getByLabelText(/^終了日：2025年12月31日/)).toBeTruthy();
   });
 
   it('currentFilter に dateFrom がある場合、初期値として反映される', () => {
     renderPanel({ dateFrom: '2025-06-01' });
-    const dateFromInput = screen.getByLabelText('開始日 YYYY-MM-DD 形式で入力');
-    expect(dateFromInput.props.value).toBe('2025-06-01');
+    expect(screen.getByLabelText(/^開始日：2025年6月1日/)).toBeTruthy();
   });
 
   it('currentFilter に dateTo がある場合、初期値として反映される', () => {
     renderPanel({ dateTo: '2025-06-30' });
-    const dateToInput = screen.getByLabelText('終了日 YYYY-MM-DD 形式で入力');
-    expect(dateToInput.props.value).toBe('2025-06-30');
+    expect(screen.getByLabelText(/^終了日：2025年6月30日/)).toBeTruthy();
   });
 });
 
@@ -326,12 +331,16 @@ describe('PostSearchFilterPanel — 適用（onApply）', () => {
     expect(onApply).toHaveBeenCalledWith({ genreId: 'genre-1' });
   });
 
-  it('期間を入力して適用すると dateFrom と dateTo が渡される', () => {
+  it('期間を選択して適用すると dateFrom と dateTo が渡される', () => {
     const onApply = jest.fn();
     renderPanel({}, { onApply });
     fireEvent.press(screen.getByRole('button', { name: '詳細フィルターを開く' }));
-    fireEvent.changeText(screen.getByLabelText('開始日 YYYY-MM-DD 形式で入力'), '2025-01-01');
-    fireEvent.changeText(screen.getByLabelText('終了日 YYYY-MM-DD 形式で入力'), '2025-12-31');
+    fireEvent.press(screen.getByLabelText(/^開始日/));
+    fireEvent(screen.getByTestId('mock-datetimepicker'), 'change', {}, new Date(2025, 0, 1));
+    fireEvent.press(screen.getByLabelText('開始日の選択を完了'));
+    fireEvent.press(screen.getByLabelText(/^終了日/));
+    fireEvent(screen.getByTestId('mock-datetimepicker'), 'change', {}, new Date(2025, 11, 31));
+    fireEvent.press(screen.getByLabelText('終了日の選択を完了'));
     fireEvent.press(screen.getByRole('button', { name: 'フィルターを適用する' }));
     expect(onApply).toHaveBeenCalledWith({ dateFrom: '2025-01-01', dateTo: '2025-12-31' });
   });
@@ -395,8 +404,12 @@ describe('PostSearchFilterPanel — 適用（onApply）', () => {
     renderPanel({}, { onApply });
     fireEvent.press(screen.getByRole('button', { name: '詳細フィルターを開く' }));
     fireEvent.press(screen.getByRole('checkbox', { name: 'ジャンル 雑木類' }));
-    fireEvent.changeText(screen.getByLabelText('開始日 YYYY-MM-DD 形式で入力'), '2025-01-01');
-    fireEvent.changeText(screen.getByLabelText('終了日 YYYY-MM-DD 形式で入力'), '2025-06-30');
+    fireEvent.press(screen.getByLabelText(/^開始日/));
+    fireEvent(screen.getByTestId('mock-datetimepicker'), 'change', {}, new Date(2025, 0, 1));
+    fireEvent.press(screen.getByLabelText('開始日の選択を完了'));
+    fireEvent.press(screen.getByLabelText(/^終了日/));
+    fireEvent(screen.getByTestId('mock-datetimepicker'), 'change', {}, new Date(2025, 5, 30));
+    fireEvent.press(screen.getByLabelText('終了日の選択を完了'));
     fireEvent.changeText(screen.getByLabelText('最小いいね数を入力'), '5');
     fireEvent.press(screen.getByRole('radio', { name: 'メディア種別 画像あり' }));
     fireEvent.press(screen.getByRole('button', { name: 'フィルターを適用する' }));

@@ -94,6 +94,10 @@ function makeCareLogsData(items: ReturnType<typeof makeCareLogItem>[]) {
 
 beforeEach(() => {
   jest.clearAllMocks();
+  const { useOnlineStatus } = jest.requireMock('@/hooks/use-online-status') as {
+    useOnlineStatus: jest.Mock;
+  };
+  useOnlineStatus.mockReturnValue(true);
   mockUseCareLogsQuery.mockReturnValue({ ...defaultQuery });
 });
 
@@ -311,16 +315,28 @@ describe('CareLogsScreen 種別セレクタ', () => {
     expect(screen.getAllByLabelText('農薬')[0]).toBeTruthy();
   });
 
-  it('種別チップをタップすると選択が変わる', () => {
+  it('新規作成時は既定種別「農薬」が選択済みになっている', () => {
     renderWithProviders(<CareLogsScreen />);
     act(() => {
       fireEvent.press(screen.getByLabelText('手入れを記録する'));
     });
     const pesticideChips = screen.getAllByLabelText('農薬');
+    expect(pesticideChips[0]?.props.accessibilityState?.selected).toBe(true);
+  });
+
+  it('種別チップをタップすると選択が変わる', () => {
+    renderWithProviders(<CareLogsScreen />);
     act(() => {
-      fireEvent.press(pesticideChips[0]);
+      fireEvent.press(screen.getByLabelText('手入れを記録する'));
     });
-    expect(pesticideChips[0].props.accessibilityState?.selected).toBe(true);
+    const solidFertilizerChip = screen.getByLabelText('固形肥料');
+    expect(solidFertilizerChip.props.accessibilityState?.selected).toBe(false);
+    act(() => {
+      fireEvent.press(solidFertilizerChip);
+    });
+    expect(solidFertilizerChip.props.accessibilityState?.selected).toBe(true);
+    // 農薬（既定値）は選択解除される
+    expect(screen.getAllByLabelText('農薬')[0]?.props.accessibilityState?.selected).toBe(false);
   });
 });
 
@@ -383,40 +399,70 @@ describe('CareLogsScreen フォーム送信', () => {
     expect(mockCreateMutate).toHaveBeenCalled();
   });
 
-  it('日付フィールドに入力するとフォームが更新される', () => {
+  it('実施日フィールドは新規作成時、現在日時が既定値として設定されている', () => {
+    mockUseCareLogsQuery.mockReturnValue({
+      ...defaultQuery,
+      data: makeCareLogsData([makeCareLogItem('log-1', 'other')]),
+    });
     renderWithProviders(<CareLogsScreen />);
     act(() => {
       fireEvent.press(screen.getByLabelText('手入れを記録する'));
     });
-    const yearInput = screen.getByLabelText('実施年');
-    act(() => {
-      fireEvent.changeText(yearInput, '2025');
-    });
-    expect(yearInput.props.value).toBe('2025');
+    // buildInitialForm() が performedAt を現在時刻で埋めるため、プレースホルダーは表示されない
+    expect(screen.queryByLabelText(/実施日 ＊：日時を選択/)).toBeNull();
+    expect(screen.getByLabelText(/^実施日 ＊：/)).toBeTruthy();
   });
 
-  it('月フィールドに入力するとフォームが更新される', () => {
+  it('実施日フィールドをタップすると日時ピッカー（iOS スピナー）が開く', () => {
+    mockUseCareLogsQuery.mockReturnValue({
+      ...defaultQuery,
+      data: makeCareLogsData([makeCareLogItem('log-1', 'other')]),
+    });
     renderWithProviders(<CareLogsScreen />);
     act(() => {
       fireEvent.press(screen.getByLabelText('手入れを記録する'));
     });
-    const monthInput = screen.getByLabelText('実施月');
     act(() => {
-      fireEvent.changeText(monthInput, '6');
+      fireEvent.press(screen.getByLabelText(/^実施日 ＊：/));
     });
-    expect(monthInput.props.value).toBe('6');
+    expect(screen.getByTestId('mock-datetimepicker')).toBeTruthy();
   });
 
-  it('日フィールドに入力するとフォームが更新される', () => {
+  it('日時ピッカーで日時を選択するとフィールドの表示が更新される', () => {
+    mockUseCareLogsQuery.mockReturnValue({
+      ...defaultQuery,
+      data: makeCareLogsData([makeCareLogItem('log-1', 'other')]),
+    });
     renderWithProviders(<CareLogsScreen />);
     act(() => {
       fireEvent.press(screen.getByLabelText('手入れを記録する'));
     });
-    const dayInput = screen.getByLabelText('実施日（日）');
     act(() => {
-      fireEvent.changeText(dayInput, '1');
+      fireEvent.press(screen.getByLabelText(/^実施日 ＊：/));
     });
-    expect(dayInput.props.value).toBe('1');
+    const picker = screen.getByTestId('mock-datetimepicker');
+    act(() => {
+      fireEvent(picker, 'change', {}, new Date(2025, 5, 1, 9, 30));
+    });
+    expect(screen.getByLabelText(/^実施日 ＊：2025年6月1日/)).toBeTruthy();
+  });
+
+  it('実施日を削除すると「記録する」ボタンが disabled になる（実施日は必須）', () => {
+    // ScreenEmpty の actionLabel も「記録する」のため、一覧が空だとラベル重複で
+    // getByLabelText が曖昧になる。非空データにしてモーダル内の送信ボタンのみに絞る。
+    mockUseCareLogsQuery.mockReturnValue({
+      ...defaultQuery,
+      data: makeCareLogsData([makeCareLogItem('log-1', 'other')]),
+    });
+    renderWithProviders(<CareLogsScreen />);
+    act(() => {
+      fireEvent.press(screen.getByLabelText('手入れを記録する'));
+    });
+    act(() => {
+      fireEvent.press(screen.getByLabelText('実施日を削除'));
+    });
+    const submitButton = screen.getByLabelText('記録する');
+    expect(submitButton.props.accessibilityState?.disabled).toBe(true);
   });
 });
 

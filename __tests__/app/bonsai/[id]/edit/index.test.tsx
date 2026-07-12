@@ -24,14 +24,6 @@ jest.mock('@/lib/queries/bonsai', () => ({
   useUpdateBonsaiMutation: () => mockUseUpdateBonsaiMutation(),
 }));
 
-jest.mock('@/components/bonsai/DateField', () => {
-  const React = require('react');
-  const { Text } = require('react-native');
-  return {
-    DateField: ({ label }: { label: string }) => React.createElement(Text, null, label),
-  };
-});
-
 function makeBonsai(overrides = {}) {
   return {
     id: 'bonsai-1',

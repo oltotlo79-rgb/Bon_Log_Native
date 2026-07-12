@@ -739,6 +739,35 @@ jest.mock('expo-location', () => ({
   },
 }));
 
+// @react-native-community/datetimepicker のモック
+// ネイティブの日付/時刻ピッカー（Android ダイアログ・iOS インラインスピナー）は
+// テスト環境で実際に開けないため、呼び出し検証可能な jest.fn() と
+// testID 付きダミーコンポーネントで代替する。
+// デフォルト export（RNDateTimePicker）は 'mock-webview'（react-native-webview モック）と
+// 同じ「testID フォールバック」パターンにする: 呼び出し元は testID を渡さないため、
+// テストは screen.getByTestId('mock-datetimepicker') で参照し、
+// fireEvent(picker, 'change', event, date) で onChange を呼び出す
+// （fireEvent は element.parent を辿って onChange prop を見つけるため、
+// value/mode/onChange 等を host View に転送する必要はない）。
+// DateTimePickerAndroid.open はデフォルトで no-op。Android 経路をテストする場合は
+// テストごとに jest.mocked(DateTimePickerAndroid.open).mockImplementation(...) で上書きする。
+jest.mock('@react-native-community/datetimepicker', () => {
+  const React = require('react');
+  const { View } = require('react-native');
+
+  const MockDateTimePicker = ({ testID }: { testID?: string }) =>
+    React.createElement(View, { testID: testID ?? 'mock-datetimepicker' });
+
+  return {
+    __esModule: true,
+    default: MockDateTimePicker,
+    DateTimePickerAndroid: {
+      open: jest.fn(),
+      dismiss: jest.fn(),
+    },
+  };
+});
+
 // expo-image のモック
 jest.mock('expo-image', () => {
   const React = require('react');

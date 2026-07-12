@@ -28,14 +28,6 @@ jest.mock('@/lib/queries/upload', () => ({
   uploadImage: (...args: unknown[]) => mockUploadImage(...args),
 }));
 
-jest.mock('@/components/bonsai/DateField', () => {
-  const React = require('react');
-  const { Text } = require('react-native');
-  return {
-    DateField: ({ label }: { label: string }) => React.createElement(Text, null, label),
-  };
-});
-
 let capturedOnAdd: (() => void) | null = null;
 let capturedOnRemove: ((id: string) => void) | null = null;
 let capturedImages: { localId: string; uri: string }[] = [];
