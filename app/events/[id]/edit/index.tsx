@@ -1,7 +1,7 @@
 /**
  * @module app/events/[id]/edit/index
  * イベント編集フォーム（モーダル表示）。作成者のみアクセス可。
- * 仕様: docs/design/events.md §4
+ * 仕様: docs/design/events.md §4（都道府県必須化・主催者・即売あり・日時ピッカーは Web 準拠の追加差分）
  */
 
 import React, { useReducer, useState, useCallback, useEffect } from 'react';
@@ -18,12 +18,24 @@ import {
   Switch,
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useEventDetailQuery, useUpdateEventMutation } from '@/lib/queries/events';
 import { useOnlineStatus } from '@/hooks/use-online-status';
-import { DateField } from '@/components/bonsai/DateField';
+import { EventDateTimeField } from '@/components/events/EventDateTimeField';
+import { EventPrefecturePickerModal } from '@/components/events/EventPrefecturePickerModal';
 import { FormErrorMessage } from '@/components/auth/FormErrorMessage';
 import { ScreenLoading } from '@/components/common/ScreenLoading';
+import { PREFECTURES, type PrefectureName } from '@/lib/constants/prefectures';
+import {
+  MAX_EVENT_TITLE_LENGTH,
+  MAX_EVENT_DESCRIPTION_LENGTH,
+  MAX_EVENT_CITY_LENGTH,
+  MAX_EVENT_VENUE_LENGTH,
+  MAX_EVENT_ORGANIZER_LENGTH,
+  MAX_EVENT_ADMISSION_FEE_LENGTH,
+  MAX_EVENT_EXTERNAL_URL_LENGTH,
+} from '@/lib/constants/limits/event';
 import {
   colorBackground,
   colorSurfaceWashi,
@@ -52,11 +64,6 @@ import {
 // 定数
 // ---------------------------------------------------------------------------
 
-const TITLE_MAX = 200;
-const VENUE_MAX = 200;
-const PREFECTURE_MAX = 50;
-const REGION_MAX = 50;
-const DESCRIPTION_MAX = 2000;
 const INPUT_HEIGHT = 48;
 
 // ---------------------------------------------------------------------------
@@ -67,6 +74,10 @@ function getIdParam(params: Record<string, string | string[] | undefined>): stri
   const id = params['id'];
   if (typeof id === 'string' && id.length > 0) return id;
   return '';
+}
+
+function isPrefectureName(value: string): value is PrefectureName {
+  return PREFECTURES.some((p) => p === value);
 }
 
 // ---------------------------------------------------------------------------
@@ -99,10 +110,12 @@ type FormState = {
   startDate: string | null;
   endDate: string | null;
   venue: string;
-  prefecture: string;
-  region: string;
+  prefecture: PrefectureName | null;
+  city: string;
+  organizer: string;
   isFree: boolean;
   admissionFee: string;
+  hasSales: boolean;
   description: string;
   externalUrl: string;
   initialized: boolean;
@@ -114,10 +127,12 @@ type FormAction =
   | { type: 'SET_START_DATE'; value: string | null }
   | { type: 'SET_END_DATE'; value: string | null }
   | { type: 'SET_VENUE'; value: string }
-  | { type: 'SET_PREFECTURE'; value: string }
-  | { type: 'SET_REGION'; value: string }
+  | { type: 'SET_PREFECTURE'; value: PrefectureName }
+  | { type: 'SET_CITY'; value: string }
+  | { type: 'SET_ORGANIZER'; value: string }
   | { type: 'SET_IS_FREE'; value: boolean }
   | { type: 'SET_ADMISSION_FEE'; value: string }
+  | { type: 'SET_HAS_SALES'; value: boolean }
   | { type: 'SET_DESCRIPTION'; value: string }
   | { type: 'SET_EXTERNAL_URL'; value: string };
 
@@ -126,10 +141,12 @@ const INITIAL_FORM_STATE: FormState = {
   startDate: null,
   endDate: null,
   venue: '',
-  prefecture: '',
-  region: '',
+  prefecture: null,
+  city: '',
+  organizer: '',
   isFree: false,
   admissionFee: '',
+  hasSales: false,
   description: '',
   externalUrl: '',
   initialized: false,
@@ -139,15 +156,21 @@ function formReducer(state: FormState, action: FormAction): FormState {
   switch (action.type) {
     case 'INIT': {
       const fee = action.payload.admissionFee ?? '';
+      const initialPrefecture =
+        action.payload.prefecture !== null && isPrefectureName(action.payload.prefecture)
+          ? action.payload.prefecture
+          : null;
       return {
         title: action.payload.title,
         startDate: action.payload.startDate,
         endDate: action.payload.endDate ?? null,
         venue: action.payload.venue ?? '',
-        prefecture: action.payload.prefecture ?? '',
-        region: action.payload.city ?? '',
+        prefecture: initialPrefecture,
+        city: action.payload.city ?? '',
+        organizer: action.payload.organizer ?? '',
         isFree: fee === '無料' || fee.length === 0,
         admissionFee: fee === '無料' ? '' : fee,
+        hasSales: action.payload.hasSales,
         description: action.payload.description ?? '',
         externalUrl: action.payload.externalUrl ?? '',
         initialized: true,
@@ -158,9 +181,11 @@ function formReducer(state: FormState, action: FormAction): FormState {
     case 'SET_END_DATE': return { ...state, endDate: action.value };
     case 'SET_VENUE': return { ...state, venue: action.value };
     case 'SET_PREFECTURE': return { ...state, prefecture: action.value };
-    case 'SET_REGION': return { ...state, region: action.value };
+    case 'SET_CITY': return { ...state, city: action.value };
+    case 'SET_ORGANIZER': return { ...state, organizer: action.value };
     case 'SET_IS_FREE': return { ...state, isFree: action.value };
     case 'SET_ADMISSION_FEE': return { ...state, admissionFee: action.value };
+    case 'SET_HAS_SALES': return { ...state, hasSales: action.value };
     case 'SET_DESCRIPTION': return { ...state, description: action.value };
     case 'SET_EXTERNAL_URL': return { ...state, externalUrl: action.value };
     default: return state;
@@ -182,6 +207,7 @@ export default function EventEditScreen() {
 
   const [form, dispatch] = useReducer(formReducer, INITIAL_FORM_STATE);
   const [error, setError] = useState<string | null>(null);
+  const [isPrefModalVisible, setIsPrefModalVisible] = useState(false);
 
   useEffect(() => {
     if (event !== undefined && !form.initialized) {
@@ -189,17 +215,22 @@ export default function EventEditScreen() {
     }
   }, [event, form.initialized]);
 
-  const { title, startDate, endDate, venue, prefecture, region, isFree, admissionFee, description, externalUrl, initialized } = form;
+  const {
+    title, startDate, endDate, venue, prefecture, city, organizer,
+    isFree, admissionFee, hasSales, description, externalUrl, initialized,
+  } = form;
 
-  const isTitleValid = title.trim().length > 0 && title.length <= TITLE_MAX;
+  const isTitleValid = title.trim().length > 0 && title.length <= MAX_EVENT_TITLE_LENGTH;
   const isStartDateValid = isValidDate(startDate);
   const isEndDateValid = isEndDateAfterStart(startDate, endDate);
+  const isPrefectureValid = prefecture !== null;
   const isUrlValid = isValidUrl(externalUrl.trim());
 
   const canSubmit =
     isTitleValid &&
     isStartDateValid &&
     isEndDateValid &&
+    isPrefectureValid &&
     isUrlValid &&
     !isPending;
 
@@ -207,12 +238,27 @@ export default function EventEditScreen() {
     title !== event.title ||
     startDate !== event.startDate ||
     endDate !== (event.endDate ?? null) ||
+    prefecture !== (event.prefecture !== null && isPrefectureName(event.prefecture) ? event.prefecture : null) ||
+    city !== (event.city ?? '') ||
     venue !== (event.venue ?? '') ||
-    prefecture !== (event.prefecture ?? '') ||
-    region !== (event.city ?? '') ||
+    organizer !== (event.organizer ?? '') ||
+    hasSales !== event.hasSales ||
     description !== (event.description ?? '') ||
     externalUrl !== (event.externalUrl ?? '')
   );
+
+  const handleOpenPrefModal = useCallback(() => {
+    if (isPending) return;
+    setIsPrefModalVisible(true);
+  }, [isPending]);
+
+  const handleClosePrefModal = useCallback(() => {
+    setIsPrefModalVisible(false);
+  }, []);
+
+  const handleSelectPrefecture = useCallback((value: PrefectureName) => {
+    dispatch({ type: 'SET_PREFECTURE', value });
+  }, []);
 
   const handleCancel = useCallback(() => {
     if (hasChanges) {
@@ -234,7 +280,7 @@ export default function EventEditScreen() {
       setError(ERR_OFFLINE_ACTION);
       return;
     }
-    if (!canSubmit || startDate === null) return;
+    if (!canSubmit || startDate === null || prefecture === null) return;
 
     setError(null);
     updateEvent(
@@ -243,10 +289,12 @@ export default function EventEditScreen() {
         title: title.trim(),
         startDate,
         endDate: endDate ?? null,
+        prefecture,
+        city: city.trim().length > 0 ? city.trim() : null,
         venue: venue.trim().length > 0 ? venue.trim() : null,
-        prefecture: prefecture.trim().length > 0 ? prefecture.trim() : null,
-        city: region.trim().length > 0 ? region.trim() : null,
+        organizer: organizer.trim().length > 0 ? organizer.trim() : null,
         admissionFee: isFree ? '無料' : admissionFee.trim().length > 0 ? admissionFee.trim() : null,
+        hasSales,
         description: description.trim().length > 0 ? description.trim() : null,
         externalUrl: externalUrl.trim().length > 0 ? externalUrl.trim() : null,
       },
@@ -260,8 +308,8 @@ export default function EventEditScreen() {
       }
     );
   }, [
-    isOnline, canSubmit, eventId, startDate, title, endDate, venue, prefecture, region,
-    isFree, admissionFee, description, externalUrl, updateEvent,
+    isOnline, canSubmit, eventId, startDate, prefecture, title, endDate, city, venue,
+    organizer, isFree, admissionFee, hasSales, description, externalUrl, updateEvent,
   ]);
 
   if (isLoading || !initialized) {
@@ -324,37 +372,80 @@ export default function EventEditScreen() {
             <TextInput
               value={title}
               onChangeText={(v) => dispatch({ type: 'SET_TITLE', value: v })}
-              maxLength={TITLE_MAX}
+              maxLength={MAX_EVENT_TITLE_LENGTH}
               editable={!isPending}
               style={[styles.textInput, isPending && styles.inputDisabled]}
               accessibilityLabel="イベント名（必須）"
             />
-            <Text style={styles.counter}>{title.length}/{TITLE_MAX}</Text>
+            <Text style={styles.counter}>{title.length}/{MAX_EVENT_TITLE_LENGTH}</Text>
           </View>
 
-          {/* 開催日 */}
+          {/* 開始日時 */}
           <View style={styles.fieldGroup}>
-            <DateField
-              label="開催日 ＊"
+            <EventDateTimeField
+              label="開始日時 ＊"
               value={startDate}
               onChange={(v) => dispatch({ type: 'SET_START_DATE', value: v })}
               disabled={isPending}
-              clearAccessibilityLabel="開催日を削除"
+              clearAccessibilityLabel="開始日時を削除"
             />
           </View>
 
-          {/* 終了日 */}
+          {/* 終了日時 */}
           <View style={styles.fieldGroup}>
-            <DateField
-              label="終了日（任意）"
+            <EventDateTimeField
+              label="終了日時（任意）"
               value={endDate}
               onChange={(v) => dispatch({ type: 'SET_END_DATE', value: v })}
               disabled={isPending}
-              clearAccessibilityLabel="終了日を削除"
+              minimumDate={startDate !== null ? new Date(startDate) : undefined}
+              clearAccessibilityLabel="終了日時を削除"
             />
             {endDate !== null && !isEndDateValid && (
-              <Text style={styles.fieldError}>終了日は開催日以降の日付を入力してください。</Text>
+              <Text style={styles.fieldError}>終了日時は開始日時以降にしてください。</Text>
             )}
+          </View>
+
+          {/* 都道府県 */}
+          <View style={styles.fieldGroup}>
+            <Text style={styles.fieldLabel}>都道府県 ＊</Text>
+            <Pressable
+              style={[styles.selectField, isPending && styles.inputDisabled]}
+              onPress={handleOpenPrefModal}
+              disabled={isPending}
+              accessibilityRole="button"
+              accessibilityLabel={
+                prefecture !== null ? `都道府県（必須）：${prefecture}` : '都道府県（必須）'
+              }
+              accessibilityState={{ disabled: isPending }}
+            >
+              <Text
+                style={[styles.selectFieldText, prefecture === null && styles.placeholderText]}
+                numberOfLines={1}
+              >
+                {prefecture ?? '都道府県を選択してください'}
+              </Text>
+              <Ionicons
+                name="chevron-down"
+                size={18}
+                color={colorTextSecondary}
+                accessibilityElementsHidden
+                importantForAccessibility="no"
+              />
+            </Pressable>
+          </View>
+
+          {/* 市区町村 */}
+          <View style={styles.fieldGroup}>
+            <Text style={styles.fieldLabel}>市区町村（任意）</Text>
+            <TextInput
+              value={city}
+              onChangeText={(v) => dispatch({ type: 'SET_CITY', value: v })}
+              maxLength={MAX_EVENT_CITY_LENGTH}
+              editable={!isPending}
+              style={[styles.textInput, isPending && styles.inputDisabled]}
+              accessibilityLabel="市区町村（任意）"
+            />
           </View>
 
           {/* 会場名 */}
@@ -363,36 +454,23 @@ export default function EventEditScreen() {
             <TextInput
               value={venue}
               onChangeText={(v) => dispatch({ type: 'SET_VENUE', value: v })}
-              maxLength={VENUE_MAX}
+              maxLength={MAX_EVENT_VENUE_LENGTH}
               editable={!isPending}
               style={[styles.textInput, isPending && styles.inputDisabled]}
               accessibilityLabel="会場名（任意）"
             />
           </View>
 
-          {/* 都道府県 */}
+          {/* 主催者 */}
           <View style={styles.fieldGroup}>
-            <Text style={styles.fieldLabel}>都道府県（任意）</Text>
+            <Text style={styles.fieldLabel}>主催者（任意）</Text>
             <TextInput
-              value={prefecture}
-              onChangeText={(v) => dispatch({ type: 'SET_PREFECTURE', value: v })}
-              maxLength={PREFECTURE_MAX}
+              value={organizer}
+              onChangeText={(v) => dispatch({ type: 'SET_ORGANIZER', value: v })}
+              maxLength={MAX_EVENT_ORGANIZER_LENGTH}
               editable={!isPending}
               style={[styles.textInput, isPending && styles.inputDisabled]}
-              accessibilityLabel="都道府県（任意）"
-            />
-          </View>
-
-          {/* 地域 */}
-          <View style={styles.fieldGroup}>
-            <Text style={styles.fieldLabel}>地域（任意）</Text>
-            <TextInput
-              value={region}
-              onChangeText={(v) => dispatch({ type: 'SET_REGION', value: v })}
-              maxLength={REGION_MAX}
-              editable={!isPending}
-              style={[styles.textInput, isPending && styles.inputDisabled]}
-              accessibilityLabel="地域（任意）"
+              accessibilityLabel="主催者（任意）"
             />
           </View>
 
@@ -414,6 +492,7 @@ export default function EventEditScreen() {
               <TextInput
                 value={admissionFee}
                 onChangeText={(v) => dispatch({ type: 'SET_ADMISSION_FEE', value: v })}
+                maxLength={MAX_EVENT_ADMISSION_FEE_LENGTH}
                 placeholder="例: 500円"
                 placeholderTextColor={colorTextTertiary}
                 editable={!isPending}
@@ -423,13 +502,28 @@ export default function EventEditScreen() {
             )}
           </View>
 
+          {/* 即売あり */}
+          <View style={styles.fieldGroup}>
+            <View style={styles.switchRow}>
+              <Switch
+                value={hasSales}
+                onValueChange={(v) => dispatch({ type: 'SET_HAS_SALES', value: v })}
+                disabled={isPending}
+                accessibilityRole="switch"
+                accessibilityLabel="即売あり"
+                accessibilityState={{ checked: hasSales }}
+              />
+              <Text style={styles.switchLabel}>即売あり</Text>
+            </View>
+          </View>
+
           {/* 説明 */}
           <View style={styles.fieldGroup}>
             <Text style={styles.fieldLabel}>説明（任意）</Text>
             <TextInput
               value={description}
               onChangeText={(v) => dispatch({ type: 'SET_DESCRIPTION', value: v })}
-              maxLength={DESCRIPTION_MAX}
+              maxLength={MAX_EVENT_DESCRIPTION_LENGTH}
               multiline
               numberOfLines={4}
               editable={!isPending}
@@ -437,7 +531,7 @@ export default function EventEditScreen() {
               accessibilityLabel="説明（任意）"
               textAlignVertical="top"
             />
-            <Text style={styles.counter}>{description.length}/{DESCRIPTION_MAX}</Text>
+            <Text style={styles.counter}>{description.length}/{MAX_EVENT_DESCRIPTION_LENGTH}</Text>
           </View>
 
           {/* 外部URL */}
@@ -446,6 +540,7 @@ export default function EventEditScreen() {
             <TextInput
               value={externalUrl}
               onChangeText={(v) => dispatch({ type: 'SET_EXTERNAL_URL', value: v })}
+              maxLength={MAX_EVENT_EXTERNAL_URL_LENGTH}
               placeholder="https://example.com"
               placeholderTextColor={colorTextTertiary}
               keyboardType="url"
@@ -460,6 +555,13 @@ export default function EventEditScreen() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      <EventPrefecturePickerModal
+        visible={isPrefModalVisible}
+        selectedPrefecture={prefecture}
+        onSelect={handleSelectPrefecture}
+        onClose={handleClosePrefModal}
+      />
     </View>
   );
 }
@@ -550,6 +652,25 @@ const styles = StyleSheet.create({
   inputDisabled: {
     backgroundColor: colorSurfaceMuted,
     opacity: 0.7,
+  },
+  selectField: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    height: INPUT_HEIGHT,
+    borderWidth: 1,
+    borderColor: colorBorder,
+    borderRadius: radiusMd,
+    paddingHorizontal: spacing3,
+    backgroundColor: colorBackground,
+  },
+  selectFieldText: {
+    ...textBase,
+    color: colorTextPrimary,
+    flex: 1,
+  },
+  placeholderText: {
+    color: colorTextTertiary,
   },
   switchRow: {
     flexDirection: 'row',

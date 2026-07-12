@@ -27,6 +27,7 @@ import {
   colorSurfaceWashi,
   colorTextPrimary,
   colorTextSecondary,
+  colorTextTertiary,
   colorBorder,
   colorBorderLight,
   colorActionPrimary,
@@ -49,16 +50,20 @@ import {
   ERR_SHOP_UPDATE_FAILED,
   ERR_OFFLINE_ACTION,
 } from '@/lib/constants/errors';
+import {
+  MAX_SHOP_NAME_LENGTH,
+  MAX_SHOP_ADDRESS_LENGTH,
+  MAX_SHOP_PHONE_LENGTH,
+  MAX_SHOP_URL_LENGTH,
+  MAX_SHOP_BUSINESS_HOURS_LENGTH,
+  MAX_SHOP_CLOSED_DAYS_LENGTH,
+  MAX_SHOP_GENRES,
+} from '@/lib/constants/limits/shop';
 
 // ---------------------------------------------------------------------------
 // 定数
 // ---------------------------------------------------------------------------
 
-const NAME_MAX = 200;
-const ADDRESS_MAX = 300;
-const PHONE_MAX = 20;
-const HOURS_MAX = 300;
-const CLOSED_DAYS_MAX = 200;
 const INPUT_HEIGHT = 48;
 const CHIP_HEIGHT = 36;
 const CHIP_HIT_SLOP = { top: 4, bottom: 4, left: 4, right: 4 };
@@ -153,13 +158,19 @@ function shopFormReducer(state: ShopFormState, action: ShopFormAction): ShopForm
       };
     case 'SET_NAME': return { ...state, name: action.value };
     case 'SET_ADDRESS': return { ...state, address: action.value };
-    case 'TOGGLE_GENRE':
-      return {
-        ...state,
-        selectedGenreIds: state.selectedGenreIds.includes(action.genreId)
-          ? state.selectedGenreIds.filter((id) => id !== action.genreId)
-          : [...state.selectedGenreIds, action.genreId],
-      };
+    case 'TOGGLE_GENRE': {
+      const isSelected = state.selectedGenreIds.includes(action.genreId);
+      if (isSelected) {
+        return {
+          ...state,
+          selectedGenreIds: state.selectedGenreIds.filter((id) => id !== action.genreId),
+        };
+      }
+      if (state.selectedGenreIds.length >= MAX_SHOP_GENRES) {
+        return state;
+      }
+      return { ...state, selectedGenreIds: [...state.selectedGenreIds, action.genreId] };
+    }
     case 'SET_LAT': return { ...state, lat: action.value };
     case 'SET_LNG': return { ...state, lng: action.value };
     case 'SET_PHONE': return { ...state, phone: action.value };
@@ -197,9 +208,8 @@ export default function ShopEditScreen() {
 
   const { name, address, selectedGenreIds, lat, lng, phone, website, businessHours, closedDays, initialized } = form;
 
-  const isNameValid = name.trim().length > 0 && name.length <= NAME_MAX;
-  const isAddressValid = address.trim().length > 0 && address.length <= ADDRESS_MAX;
-  const isGenresValid = selectedGenreIds.length > 0;
+  const isNameValid = name.trim().length > 0 && name.length <= MAX_SHOP_NAME_LENGTH;
+  const isAddressValid = address.trim().length > 0 && address.length <= MAX_SHOP_ADDRESS_LENGTH;
   const isWebsiteValid = isValidUrl(website.trim());
   const isLatValid = isValidLat(lat.trim());
   const isLngValid = isValidLng(lng.trim());
@@ -207,7 +217,6 @@ export default function ShopEditScreen() {
   const canSubmit =
     isNameValid &&
     isAddressValid &&
-    isGenresValid &&
     isWebsiteValid &&
     isLatValid &&
     isLngValid &&
@@ -336,7 +345,7 @@ export default function ShopEditScreen() {
             <TextInput
               value={name}
               onChangeText={(v) => dispatch({ type: 'SET_NAME', value: v })}
-              maxLength={NAME_MAX}
+              maxLength={MAX_SHOP_NAME_LENGTH}
               editable={!isPending}
               style={[styles.textInput, isPending && styles.inputDisabled]}
               accessibilityLabel="店舗名（必須）"
@@ -348,7 +357,7 @@ export default function ShopEditScreen() {
             <TextInput
               value={address}
               onChangeText={(v) => dispatch({ type: 'SET_ADDRESS', value: v })}
-              maxLength={ADDRESS_MAX}
+              maxLength={MAX_SHOP_ADDRESS_LENGTH}
               multiline
               numberOfLines={2}
               editable={!isPending}
@@ -359,28 +368,38 @@ export default function ShopEditScreen() {
           </View>
 
           <View style={styles.fieldGroup}>
-            <Text style={styles.fieldLabel}>ジャンル ＊</Text>
+            <Text style={styles.fieldLabel}>ジャンル（任意）</Text>
             <View style={styles.chipRow}>
               {genres.map((genre) => {
                 const isSelected = selectedGenreIds.includes(genre.id);
+                const isExhausted = !isSelected && selectedGenreIds.length >= MAX_SHOP_GENRES;
                 return (
                   <Pressable
                     key={genre.id}
-                    style={[styles.chip, isSelected && styles.chipSelected]}
+                    style={[styles.chip, isSelected && styles.chipSelected, isExhausted && styles.chipDisabled]}
                     onPress={() => dispatch({ type: 'TOGGLE_GENRE', genreId: genre.id })}
                     hitSlop={CHIP_HIT_SLOP}
-                    disabled={isPending}
+                    disabled={isPending || isExhausted}
                     accessibilityRole="checkbox"
-                    accessibilityState={{ checked: isSelected }}
+                    accessibilityState={{ checked: isSelected, disabled: isExhausted }}
                     accessibilityLabel={isSelected ? `${genre.name}の選択を解除` : `${genre.name}を選択`}
                   >
-                    <Text style={[styles.chipText, isSelected && styles.chipTextSelected]}>
+                    <Text
+                      style={[
+                        styles.chipText,
+                        isSelected && styles.chipTextSelected,
+                        isExhausted && styles.chipTextDisabled,
+                      ]}
+                    >
                       {genre.name}
                     </Text>
                   </Pressable>
                 );
               })}
             </View>
+            {selectedGenreIds.length > 0 && (
+              <Text style={styles.counter}>{selectedGenreIds.length}/{MAX_SHOP_GENRES} 選択中</Text>
+            )}
           </View>
 
           <View style={styles.fieldGroup}>
@@ -418,7 +437,7 @@ export default function ShopEditScreen() {
             <TextInput
               value={phone}
               onChangeText={(v) => dispatch({ type: 'SET_PHONE', value: v })}
-              maxLength={PHONE_MAX}
+              maxLength={MAX_SHOP_PHONE_LENGTH}
               keyboardType="phone-pad"
               editable={!isPending}
               style={[styles.textInput, isPending && styles.inputDisabled]}
@@ -431,6 +450,7 @@ export default function ShopEditScreen() {
             <TextInput
               value={website}
               onChangeText={(v) => dispatch({ type: 'SET_WEBSITE', value: v })}
+              maxLength={MAX_SHOP_URL_LENGTH}
               keyboardType="url"
               autoCapitalize="none"
               editable={!isPending}
@@ -447,7 +467,7 @@ export default function ShopEditScreen() {
             <TextInput
               value={businessHours}
               onChangeText={(v) => dispatch({ type: 'SET_BUSINESS_HOURS', value: v })}
-              maxLength={HOURS_MAX}
+              maxLength={MAX_SHOP_BUSINESS_HOURS_LENGTH}
               multiline
               numberOfLines={2}
               editable={!isPending}
@@ -462,7 +482,7 @@ export default function ShopEditScreen() {
             <TextInput
               value={closedDays}
               onChangeText={(v) => dispatch({ type: 'SET_CLOSED_DAYS', value: v })}
-              maxLength={CLOSED_DAYS_MAX}
+              maxLength={MAX_SHOP_CLOSED_DAYS_LENGTH}
               multiline
               numberOfLines={2}
               editable={!isPending}
@@ -534,6 +554,9 @@ const styles = StyleSheet.create({
     borderRadius: radiusSm,
   },
   chipSelected: { backgroundColor: colorActionPrimary },
+  chipDisabled: { backgroundColor: colorSurfaceMuted },
   chipText: { ...textXs, color: colorActionSecondaryText },
   chipTextSelected: { color: colorActionPrimaryText },
+  chipTextDisabled: { color: colorTextTertiary },
+  counter: { ...textSm, color: colorTextTertiary, textAlign: 'right' },
 });

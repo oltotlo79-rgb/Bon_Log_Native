@@ -58,16 +58,20 @@ import {
   ERR_GEOCODE_ADDRESS_NOT_FOUND,
   messageForApiError,
 } from '@/lib/constants/errors';
+import {
+  MAX_SHOP_NAME_LENGTH,
+  MAX_SHOP_ADDRESS_LENGTH,
+  MAX_SHOP_PHONE_LENGTH,
+  MAX_SHOP_URL_LENGTH,
+  MAX_SHOP_BUSINESS_HOURS_LENGTH,
+  MAX_SHOP_CLOSED_DAYS_LENGTH,
+  MAX_SHOP_GENRES,
+} from '@/lib/constants/limits/shop';
 
 // ---------------------------------------------------------------------------
 // 定数
 // ---------------------------------------------------------------------------
 
-const NAME_MAX = 200;
-const ADDRESS_MAX = 300;
-const PHONE_MAX = 20;
-const HOURS_MAX = 300;
-const CLOSED_DAYS_MAX = 200;
 const INPUT_HEIGHT = 48;
 const CHIP_HEIGHT = 36;
 const CHIP_HIT_SLOP = { top: 4, bottom: 4, left: 4, right: 4 };
@@ -125,9 +129,8 @@ export default function ShopNewScreen() {
   const genres = genresData?.items ?? [];
   const hasInput = name.trim().length > 0 || address.trim().length > 0;
 
-  const isNameValid = name.trim().length > 0 && name.length <= NAME_MAX;
-  const isAddressValid = address.trim().length > 0 && address.length <= ADDRESS_MAX;
-  const isGenresValid = selectedGenreIds.length > 0;
+  const isNameValid = name.trim().length > 0 && name.length <= MAX_SHOP_NAME_LENGTH;
+  const isAddressValid = address.trim().length > 0 && address.length <= MAX_SHOP_ADDRESS_LENGTH;
   const isWebsiteValid = isValidUrl(website.trim());
   const isLatValid = isValidLat(lat.trim());
   const isLngValid = isValidLng(lng.trim());
@@ -135,7 +138,6 @@ export default function ShopNewScreen() {
   const canSubmit =
     isNameValid &&
     isAddressValid &&
-    isGenresValid &&
     isWebsiteValid &&
     isLatValid &&
     isLngValid &&
@@ -145,6 +147,9 @@ export default function ShopNewScreen() {
     setSelectedGenreIds((prev) => {
       if (prev.includes(genreId)) {
         return prev.filter((id) => id !== genreId);
+      }
+      if (prev.length >= MAX_SHOP_GENRES) {
+        return prev;
       }
       return [...prev, genreId];
     });
@@ -274,14 +279,14 @@ export default function ShopNewScreen() {
             <TextInput
               value={name}
               onChangeText={setName}
-              maxLength={NAME_MAX}
+              maxLength={MAX_SHOP_NAME_LENGTH}
               placeholder="例: ○○盆栽園"
               placeholderTextColor={colorTextTertiary}
               editable={!isPending}
               style={[styles.textInput, isPending && styles.inputDisabled]}
               accessibilityLabel="店舗名（必須）"
             />
-            <Text style={styles.counter}>{name.length}/{NAME_MAX}</Text>
+            <Text style={styles.counter}>{name.length}/{MAX_SHOP_NAME_LENGTH}</Text>
           </View>
 
           {/* 住所 */}
@@ -290,7 +295,7 @@ export default function ShopNewScreen() {
             <TextInput
               value={address}
               onChangeText={setAddress}
-              maxLength={ADDRESS_MAX}
+              maxLength={MAX_SHOP_ADDRESS_LENGTH}
               placeholder="例: 東京都新宿区○○1-2-3"
               placeholderTextColor={colorTextTertiary}
               multiline
@@ -300,7 +305,7 @@ export default function ShopNewScreen() {
               accessibilityLabel="住所（必須）"
               textAlignVertical="top"
             />
-            <Text style={styles.counter}>{address.length}/{ADDRESS_MAX}</Text>
+            <Text style={styles.counter}>{address.length}/{MAX_SHOP_ADDRESS_LENGTH}</Text>
 
             <Pressable
               onPress={() => void handleGeocode()}
@@ -334,28 +339,38 @@ export default function ShopNewScreen() {
 
           {/* ジャンル */}
           <View style={styles.fieldGroup}>
-            <Text style={styles.fieldLabel}>ジャンル ＊</Text>
+            <Text style={styles.fieldLabel}>ジャンル（任意）</Text>
             <View style={styles.chipRow}>
               {genres.map((genre) => {
                 const isSelected = selectedGenreIds.includes(genre.id);
+                const isExhausted = !isSelected && selectedGenreIds.length >= MAX_SHOP_GENRES;
                 return (
                   <Pressable
                     key={genre.id}
-                    style={[styles.chip, isSelected && styles.chipSelected]}
+                    style={[styles.chip, isSelected && styles.chipSelected, isExhausted && styles.chipDisabled]}
                     onPress={() => handleToggleGenre(genre.id)}
                     hitSlop={CHIP_HIT_SLOP}
-                    disabled={isPending}
+                    disabled={isPending || isExhausted}
                     accessibilityRole="checkbox"
-                    accessibilityState={{ checked: isSelected }}
+                    accessibilityState={{ checked: isSelected, disabled: isExhausted }}
                     accessibilityLabel={isSelected ? `${genre.name}の選択を解除` : `${genre.name}を選択`}
                   >
-                    <Text style={[styles.chipText, isSelected && styles.chipTextSelected]}>
+                    <Text
+                      style={[
+                        styles.chipText,
+                        isSelected && styles.chipTextSelected,
+                        isExhausted && styles.chipTextDisabled,
+                      ]}
+                    >
                       {genre.name}
                     </Text>
                   </Pressable>
                 );
               })}
             </View>
+            {selectedGenreIds.length > 0 && (
+              <Text style={styles.counter}>{selectedGenreIds.length}/{MAX_SHOP_GENRES} 選択中</Text>
+            )}
           </View>
 
           {/* 緯度・経度（詳細設定・手動修正用） */}
@@ -424,7 +439,7 @@ export default function ShopNewScreen() {
             <TextInput
               value={phone}
               onChangeText={setPhone}
-              maxLength={PHONE_MAX}
+              maxLength={MAX_SHOP_PHONE_LENGTH}
               placeholder="例: 03-1234-5678"
               placeholderTextColor={colorTextTertiary}
               keyboardType="phone-pad"
@@ -440,6 +455,7 @@ export default function ShopNewScreen() {
             <TextInput
               value={website}
               onChangeText={setWebsite}
+              maxLength={MAX_SHOP_URL_LENGTH}
               placeholder="https://example.com"
               placeholderTextColor={colorTextTertiary}
               keyboardType="url"
@@ -459,7 +475,7 @@ export default function ShopNewScreen() {
             <TextInput
               value={businessHours}
               onChangeText={setBusinessHours}
-              maxLength={HOURS_MAX}
+              maxLength={MAX_SHOP_BUSINESS_HOURS_LENGTH}
               placeholder="例: 月〜土 10:00〜18:00"
               placeholderTextColor={colorTextTertiary}
               multiline
@@ -477,7 +493,7 @@ export default function ShopNewScreen() {
             <TextInput
               value={closedDays}
               onChangeText={setClosedDays}
-              maxLength={CLOSED_DAYS_MAX}
+              maxLength={MAX_SHOP_CLOSED_DAYS_LENGTH}
               placeholder="例: 日曜・祝日"
               placeholderTextColor={colorTextTertiary}
               multiline
@@ -601,12 +617,18 @@ const styles = StyleSheet.create({
   chipSelected: {
     backgroundColor: colorActionPrimary,
   },
+  chipDisabled: {
+    backgroundColor: colorSurfaceMuted,
+  },
   chipText: {
     ...textXs,
     color: colorActionSecondaryText,
   },
   chipTextSelected: {
     color: colorActionPrimaryText,
+  },
+  chipTextDisabled: {
+    color: colorTextTertiary,
   },
   counter: {
     ...textSm,

@@ -1,7 +1,7 @@
 /**
  * @module app/events/new/index
  * イベント新規作成フォーム（モーダル表示）。
- * 仕様: docs/design/events.md §4
+ * 仕様: docs/design/events.md §4（都道府県必須化・主催者・即売あり・日時ピッカーは Web 準拠の追加差分）
  */
 
 import React, { useState, useCallback } from 'react';
@@ -18,11 +18,23 @@ import {
   Switch,
 } from 'react-native';
 import { router } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useCreateEventMutation } from '@/lib/queries/events';
 import { useOnlineStatus } from '@/hooks/use-online-status';
-import { DateField } from '@/components/bonsai/DateField';
+import { EventDateTimeField } from '@/components/events/EventDateTimeField';
+import { EventPrefecturePickerModal } from '@/components/events/EventPrefecturePickerModal';
 import { FormErrorMessage } from '@/components/auth/FormErrorMessage';
+import type { PrefectureName } from '@/lib/constants/prefectures';
+import {
+  MAX_EVENT_TITLE_LENGTH,
+  MAX_EVENT_DESCRIPTION_LENGTH,
+  MAX_EVENT_CITY_LENGTH,
+  MAX_EVENT_VENUE_LENGTH,
+  MAX_EVENT_ORGANIZER_LENGTH,
+  MAX_EVENT_ADMISSION_FEE_LENGTH,
+  MAX_EVENT_EXTERNAL_URL_LENGTH,
+} from '@/lib/constants/limits/event';
 import {
   colorBackground,
   colorSurfaceWashi,
@@ -51,11 +63,6 @@ import {
 // 定数
 // ---------------------------------------------------------------------------
 
-const TITLE_MAX = 200;
-const VENUE_MAX = 200;
-const PREFECTURE_MAX = 50;
-const REGION_MAX = 50;
-const DESCRIPTION_MAX = 2000;
 const INPUT_HEIGHT = 48;
 
 // ---------------------------------------------------------------------------
@@ -92,27 +99,41 @@ export default function EventNewScreen() {
   const [startDate, setStartDate] = useState<string | null>(null);
   const [endDate, setEndDate] = useState<string | null>(null);
   const [venue, setVenue] = useState('');
-  const [prefecture, setPrefecture] = useState('');
-  const [region, setRegion] = useState('');
+  const [prefecture, setPrefecture] = useState<PrefectureName | null>(null);
+  const [isPrefModalVisible, setIsPrefModalVisible] = useState(false);
+  const [city, setCity] = useState('');
+  const [organizer, setOrganizer] = useState('');
   const [isFree, setIsFree] = useState(false);
   const [admissionFee, setAdmissionFee] = useState('');
+  const [hasSales, setHasSales] = useState(false);
   const [description, setDescription] = useState('');
   const [externalUrl, setExternalUrl] = useState('');
   const [error, setError] = useState<string | null>(null);
 
-  const hasInput = title.trim().length > 0 || startDate !== null;
+  const hasInput = title.trim().length > 0 || startDate !== null || prefecture !== null;
 
-  const isTitleValid = title.trim().length > 0 && title.length <= TITLE_MAX;
+  const isTitleValid = title.trim().length > 0 && title.length <= MAX_EVENT_TITLE_LENGTH;
   const isStartDateValid = isValidDate(startDate);
   const isEndDateValid = isEndDateAfterStart(startDate, endDate);
+  const isPrefectureValid = prefecture !== null;
   const isUrlValid = isValidUrl(externalUrl.trim());
 
   const canSubmit =
     isTitleValid &&
     isStartDateValid &&
     isEndDateValid &&
+    isPrefectureValid &&
     isUrlValid &&
     !isPending;
+
+  const handleOpenPrefModal = useCallback(() => {
+    if (isPending) return;
+    setIsPrefModalVisible(true);
+  }, [isPending]);
+
+  const handleClosePrefModal = useCallback(() => {
+    setIsPrefModalVisible(false);
+  }, []);
 
   const handleCancel = useCallback(() => {
     if (hasInput) {
@@ -134,7 +155,7 @@ export default function EventNewScreen() {
       setError(ERR_OFFLINE_ACTION);
       return;
     }
-    if (!canSubmit || startDate === null) return;
+    if (!canSubmit || startDate === null || prefecture === null) return;
 
     setError(null);
     createEvent(
@@ -142,11 +163,12 @@ export default function EventNewScreen() {
         title: title.trim(),
         startDate,
         endDate: endDate ?? null,
+        prefecture,
+        city: city.trim().length > 0 ? city.trim() : null,
         venue: venue.trim().length > 0 ? venue.trim() : null,
-        prefecture: prefecture.trim().length > 0 ? prefecture.trim() : null,
-        city: region.trim().length > 0 ? region.trim() : null,
+        organizer: organizer.trim().length > 0 ? organizer.trim() : null,
         admissionFee: isFree ? '無料' : admissionFee.trim().length > 0 ? admissionFee.trim() : null,
-        hasSales: false,
+        hasSales,
         description: description.trim().length > 0 ? description.trim() : null,
         externalUrl: externalUrl.trim().length > 0 ? externalUrl.trim() : null,
       },
@@ -160,8 +182,8 @@ export default function EventNewScreen() {
       }
     );
   }, [
-    isOnline, canSubmit, startDate, title, endDate, venue, prefecture, region,
-    isFree, admissionFee, description, externalUrl, createEvent,
+    isOnline, canSubmit, startDate, prefecture, title, endDate, city, venue, organizer,
+    isFree, admissionFee, hasSales, description, externalUrl, createEvent,
   ]);
 
   return (
@@ -209,39 +231,84 @@ export default function EventNewScreen() {
             <TextInput
               value={title}
               onChangeText={setTitle}
-              maxLength={TITLE_MAX}
+              maxLength={MAX_EVENT_TITLE_LENGTH}
               placeholder="例: 盆栽展示会"
               placeholderTextColor={colorTextTertiary}
               editable={!isPending}
               style={[styles.textInput, isPending && styles.inputDisabled]}
               accessibilityLabel="イベント名（必須）"
             />
-            <Text style={styles.counter}>{title.length}/{TITLE_MAX}</Text>
+            <Text style={styles.counter}>{title.length}/{MAX_EVENT_TITLE_LENGTH}</Text>
           </View>
 
-          {/* 開催日 */}
+          {/* 開始日時 */}
           <View style={styles.fieldGroup}>
-            <DateField
-              label="開催日 ＊"
+            <EventDateTimeField
+              label="開始日時 ＊"
               value={startDate}
               onChange={setStartDate}
               disabled={isPending}
-              clearAccessibilityLabel="開催日を削除"
+              clearAccessibilityLabel="開始日時を削除"
             />
           </View>
 
-          {/* 終了日 */}
+          {/* 終了日時 */}
           <View style={styles.fieldGroup}>
-            <DateField
-              label="終了日（任意）"
+            <EventDateTimeField
+              label="終了日時（任意）"
               value={endDate}
               onChange={setEndDate}
               disabled={isPending}
-              clearAccessibilityLabel="終了日を削除"
+              minimumDate={startDate !== null ? new Date(startDate) : undefined}
+              clearAccessibilityLabel="終了日時を削除"
             />
             {endDate !== null && !isEndDateValid && (
-              <Text style={styles.fieldError}>終了日は開催日以降の日付を入力してください。</Text>
+              <Text style={styles.fieldError}>終了日時は開始日時以降にしてください。</Text>
             )}
+          </View>
+
+          {/* 都道府県 */}
+          <View style={styles.fieldGroup}>
+            <Text style={styles.fieldLabel}>都道府県 ＊</Text>
+            <Pressable
+              style={[styles.selectField, isPending && styles.inputDisabled]}
+              onPress={handleOpenPrefModal}
+              disabled={isPending}
+              accessibilityRole="button"
+              accessibilityLabel={
+                prefecture !== null ? `都道府県（必須）：${prefecture}` : '都道府県（必須）'
+              }
+              accessibilityState={{ disabled: isPending }}
+            >
+              <Text
+                style={[styles.selectFieldText, prefecture === null && styles.placeholderText]}
+                numberOfLines={1}
+              >
+                {prefecture ?? '都道府県を選択してください'}
+              </Text>
+              <Ionicons
+                name="chevron-down"
+                size={18}
+                color={colorTextSecondary}
+                accessibilityElementsHidden
+                importantForAccessibility="no"
+              />
+            </Pressable>
+          </View>
+
+          {/* 市区町村 */}
+          <View style={styles.fieldGroup}>
+            <Text style={styles.fieldLabel}>市区町村（任意）</Text>
+            <TextInput
+              value={city}
+              onChangeText={setCity}
+              maxLength={MAX_EVENT_CITY_LENGTH}
+              placeholder="例: さいたま市大宮区"
+              placeholderTextColor={colorTextTertiary}
+              editable={!isPending}
+              style={[styles.textInput, isPending && styles.inputDisabled]}
+              accessibilityLabel="市区町村（任意）"
+            />
           </View>
 
           {/* 会場名 */}
@@ -250,7 +317,7 @@ export default function EventNewScreen() {
             <TextInput
               value={venue}
               onChangeText={setVenue}
-              maxLength={VENUE_MAX}
+              maxLength={MAX_EVENT_VENUE_LENGTH}
               placeholder="例: ○○文化センター"
               placeholderTextColor={colorTextTertiary}
               editable={!isPending}
@@ -259,33 +326,18 @@ export default function EventNewScreen() {
             />
           </View>
 
-          {/* 都道府県 */}
+          {/* 主催者 */}
           <View style={styles.fieldGroup}>
-            <Text style={styles.fieldLabel}>都道府県（任意）</Text>
+            <Text style={styles.fieldLabel}>主催者（任意）</Text>
             <TextInput
-              value={prefecture}
-              onChangeText={setPrefecture}
-              maxLength={PREFECTURE_MAX}
-              placeholder="例: 東京都"
+              value={organizer}
+              onChangeText={setOrganizer}
+              maxLength={MAX_EVENT_ORGANIZER_LENGTH}
+              placeholder="例: 全日本盆栽協会"
               placeholderTextColor={colorTextTertiary}
               editable={!isPending}
               style={[styles.textInput, isPending && styles.inputDisabled]}
-              accessibilityLabel="都道府県（任意）"
-            />
-          </View>
-
-          {/* 地域 */}
-          <View style={styles.fieldGroup}>
-            <Text style={styles.fieldLabel}>地域（任意）</Text>
-            <TextInput
-              value={region}
-              onChangeText={setRegion}
-              maxLength={REGION_MAX}
-              placeholder="例: 関東"
-              placeholderTextColor={colorTextTertiary}
-              editable={!isPending}
-              style={[styles.textInput, isPending && styles.inputDisabled]}
-              accessibilityLabel="地域（任意）"
+              accessibilityLabel="主催者（任意）"
             />
           </View>
 
@@ -307,6 +359,7 @@ export default function EventNewScreen() {
               <TextInput
                 value={admissionFee}
                 onChangeText={setAdmissionFee}
+                maxLength={MAX_EVENT_ADMISSION_FEE_LENGTH}
                 placeholder="例: 500円"
                 placeholderTextColor={colorTextTertiary}
                 editable={!isPending}
@@ -316,13 +369,28 @@ export default function EventNewScreen() {
             )}
           </View>
 
+          {/* 即売あり */}
+          <View style={styles.fieldGroup}>
+            <View style={styles.switchRow}>
+              <Switch
+                value={hasSales}
+                onValueChange={setHasSales}
+                disabled={isPending}
+                accessibilityRole="switch"
+                accessibilityLabel="即売あり"
+                accessibilityState={{ checked: hasSales }}
+              />
+              <Text style={styles.switchLabel}>即売あり</Text>
+            </View>
+          </View>
+
           {/* 説明 */}
           <View style={styles.fieldGroup}>
             <Text style={styles.fieldLabel}>説明（任意）</Text>
             <TextInput
               value={description}
               onChangeText={setDescription}
-              maxLength={DESCRIPTION_MAX}
+              maxLength={MAX_EVENT_DESCRIPTION_LENGTH}
               placeholder="イベントの詳細や参加方法など..."
               placeholderTextColor={colorTextTertiary}
               multiline
@@ -332,7 +400,7 @@ export default function EventNewScreen() {
               accessibilityLabel="説明（任意）"
               textAlignVertical="top"
             />
-            <Text style={styles.counter}>{description.length}/{DESCRIPTION_MAX}</Text>
+            <Text style={styles.counter}>{description.length}/{MAX_EVENT_DESCRIPTION_LENGTH}</Text>
           </View>
 
           {/* 外部URL */}
@@ -341,6 +409,7 @@ export default function EventNewScreen() {
             <TextInput
               value={externalUrl}
               onChangeText={setExternalUrl}
+              maxLength={MAX_EVENT_EXTERNAL_URL_LENGTH}
               placeholder="https://example.com"
               placeholderTextColor={colorTextTertiary}
               keyboardType="url"
@@ -355,6 +424,13 @@ export default function EventNewScreen() {
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      <EventPrefecturePickerModal
+        visible={isPrefModalVisible}
+        selectedPrefecture={prefecture}
+        onSelect={setPrefecture}
+        onClose={handleClosePrefModal}
+      />
     </View>
   );
 }
@@ -445,6 +521,25 @@ const styles = StyleSheet.create({
   inputDisabled: {
     backgroundColor: colorSurfaceMuted,
     opacity: 0.7,
+  },
+  selectField: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    height: INPUT_HEIGHT,
+    borderWidth: 1,
+    borderColor: colorBorder,
+    borderRadius: radiusMd,
+    paddingHorizontal: spacing3,
+    backgroundColor: colorBackground,
+  },
+  selectFieldText: {
+    ...textBase,
+    color: colorTextPrimary,
+    flex: 1,
+  },
+  placeholderText: {
+    color: colorTextTertiary,
   },
   switchRow: {
     flexDirection: 'row',

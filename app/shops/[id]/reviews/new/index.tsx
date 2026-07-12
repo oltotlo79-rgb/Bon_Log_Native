@@ -57,6 +57,7 @@ import {
   textLg,
 } from '@/lib/constants/design-tokens';
 import { MAX_REVIEW_IMAGES } from '@/lib/constants/limits/media';
+import { MAX_REVIEW_CONTENT_LENGTH } from '@/lib/constants/limits/shop';
 import { ImageAttachmentGrid } from '@/components/post/ImageAttachmentGrid';
 import type { AttachedImage } from '@/components/post/ImageAttachmentGrid';
 
@@ -64,7 +65,6 @@ import type { AttachedImage } from '@/components/post/ImageAttachmentGrid';
 // 定数
 // ---------------------------------------------------------------------------
 
-const REVIEW_CONTENT_MAX = 1000;
 const STAR_SIZE = 36;
 const STAR_HIT_SLOP = { top: 4, bottom: 4, left: 4, right: 4 };
 
@@ -313,12 +313,12 @@ export default function NewReviewScreen() {
                 placeholder="店舗の雰囲気や品揃えなど..."
                 placeholderTextColor={colorTextTertiary}
                 multiline
-                maxLength={REVIEW_CONTENT_MAX}
+                maxLength={MAX_REVIEW_CONTENT_LENGTH}
                 textAlignVertical="top"
                 accessibilityLabel="レビュー本文"
               />
               <Text style={styles.charCounter}>
-                {content.length}/{REVIEW_CONTENT_MAX}
+                {content.length}/{MAX_REVIEW_CONTENT_LENGTH}
               </Text>
             </View>
           </View>
