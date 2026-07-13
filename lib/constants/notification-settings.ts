@@ -1,6 +1,6 @@
 /**
  * @module lib/constants/notification-settings
- * ユーザーが切替可能な通知設定キー 11 種と日本語ラベルの定数。
+ * ユーザーが切替可能な通知設定キー 11 種と日本語ラベル・説明文の定数。
  * system / subscription_expiring は切替不可のため含まない（PATCH で送ると 400 VALIDATION_ERROR）。
  */
 
@@ -44,4 +44,23 @@ export const NOTIFICATION_PREFERENCE_LABELS: Record<NotificationPreferenceKey, s
   mention: 'メンション',
   message: 'メッセージ',
   repost: 'リポスト',
+};
+
+/**
+ * 各通知キーの一行説明文。
+ * Web (`components/settings/NotificationPreferences.tsx` の `NOTIFICATION_TYPES[].description`) から一字一句転記。
+ * frontend は `NotificationToggleRow` の `sublabel` prop にこの値を渡すことで Web と同じ説明文を表示できる。
+ */
+export const NOTIFICATION_PREFERENCE_DESCRIPTIONS: Record<NotificationPreferenceKey, string> = {
+  like: '投稿にいいねされた時',
+  comment: '投稿にコメントされた時',
+  reply: 'コメントに返信された時',
+  comment_like: 'コメントにいいねされた時',
+  follow: 'フォローされた時',
+  quote: '投稿が引用された時',
+  follow_request: 'フォローリクエストを受けた時',
+  follow_request_approved: 'フォローリクエストが承認された時',
+  mention: '投稿やコメントでメンションされた時',
+  message: 'DM を受信した時',
+  repost: '投稿がリポストされた時',
 };
