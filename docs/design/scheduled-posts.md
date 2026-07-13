@@ -2,6 +2,7 @@
 
 作成日: 2026-06-22
 最終改訂: 2026-07-13（実装 `app/scheduled-posts/new/index.tsx` / `app/scheduled-posts/[id]/edit/index.tsx` の確認結果に基づき §5.1・§5.3・§5.5 を全面改訂。旧仕様の「日付・時刻の 2 フィールドをテキスト入力方式で受け付ける（`datetimepicker` 未導入のため）」は誤りで、実装は単一の `components/common/DateTimeField.tsx`（ネイティブ日時ピッカー）で公開予定日時を受け付ける。送信条件も「本文またはメディア（画像・動画）のいずれかがあれば送信可」に是正した）
+同日追記（2026-07-13 第2回改訂・エラー色トークンの是正）: §3.3 StatusBadge の `colorError` 記載値を `#c0392b` から `#c21721` へ修正した。根拠は `design-tokens.md` §11 を参照
 対象画面:
 - `scheduled-posts/index` — 予約投稿一覧（プレミアム限定）
 - `scheduled-posts/new` — 予約投稿作成フォーム
@@ -139,8 +140,10 @@
 |--------|------|---------|--------|
 | `pending` | `colorSurfaceMuted`（`#f0f0f0`）| `colorTextPrimary` | 「予約中」|
 | `published` | `colorSuccessBg`（`#e8f5e9` 相当）| `colorSuccess` | 「公開済み」|
-| `failed` | `colorErrorBg`（`#fdf0ef`）| `colorError`（`#c0392b`）| 「失敗」|
+| `failed` | `colorErrorBg`（`#fdf0ef`）| `colorError`（`#c21721`）| 「失敗」|
 | `cancelled` | `colorSurfaceMuted` | `colorTextSecondary` | 「キャンセル済み」|
+
+**（2026-07-13 第2回改訂）:** `failed` 行の `colorError` 値表記を `#c0392b` から `#c21721` に修正した（`design-tokens.md` §11 参照。実装 `lib/constants/design-tokens.ts` の実際の値に合わせた）。
 
 - バッジ: `borderRadius: radiusSm`（6pt）/ `paddingHorizontal: spacing2`（8pt）/ `paddingVertical: 2pt`
 - テキスト: `textXs`（10pt）/ `fontWeight: 600`

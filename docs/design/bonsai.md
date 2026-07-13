@@ -2,6 +2,7 @@
 
 作成日: 2026-06-22
 最終改訂: 2026-07-13（実装 `app/bonsai/**` および `components/common/DatePickerField.tsx` / `components/common/DateTimeField.tsx` / `components/bonsai/TreeSpeciesField.tsx` の確認結果に基づき §4・§5 を全面改訂し、§6 に手入れログ画面（`bonsai/care-logs`）を新規追加した。旧仕様の「日付・樹種はテキスト入力方式（`datetimepicker` 未導入のため）」という前提は誤りで、両コンポーネントは既に実装・導入済みである。あわせて盆栽フォームに「アイキャッチ画像選択」フィールドは実装上存在しない（一覧のサムネイルは最新の成長記録画像を使う）ことが判明したため該当記述を削除した。旧 §6〜§12 は §7〜§13 へ繰り下げた）
+同日追記（2026-07-13 第2回改訂・Web 準拠監査）: 手入れログ画面（§6）の作成・更新・削除がオフライン時にブロックされず、§4・§5 の盆栽フォーム・成長記録フォームと挙動が一致していない乖離を追加調査で確認した。Web 側にはオフライン検知の仕組み自体が存在しないため、この是正は「Web 準拠」ではなく「Native 内の他フォームとの一貫性」を根拠とする。§6.9・§6.11・§6.13・§7・§9.4・§12・§13 を本追記で更新した
 対象画面:
 - `bonsai/index` — 盆栽一覧
 - `bonsai/new` — 盆栽登録フォーム
@@ -426,7 +427,7 @@ Web 版 `/bonsai` に相当するモバイル版。
 - カード背景: `colorSurface` / 角丸 `radiusLg` / `shadowWashi`
 - 種別バッジ: `colorSurfaceMuted` 背景 / `radiusMd` / 最小幅 72pt / 中央揃え
 - 行全体タップ → 編集モーダルを開く（`accessibilityLabel`: 「{種別} {日付}を編集」）
-- 削除ボタン（ゴミ箱アイコン）→ 確認ダイアログ（`accessibilityLabel`: 「{種別} {日付}を削除」）
+- 削除ボタン（ゴミ箱アイコン）→ 確認ダイアログ（`accessibilityLabel`: 「{種別} {日付}を削除」）。**オフライン時の扱いは §6.9 参照（2026-07-13 第2回改訂で追加）**
 
 ### 6.5 作成・編集モーダル（CareLogFormModal）
 
@@ -486,7 +487,7 @@ Web 版 `/bonsai` に相当するモバイル版。
 - ソフト上限: `MAX_CARE_LOG_NOTE_LENGTH`（500文字）。ただし `TextInput` の `maxLength` 自体は `550`（500 + 50 のバッファ）に設定されており、500 文字を超えてから 550 文字までは入力を継続できるが、超過分がある間は赤色のカウンタ・ボーダー・インラインエラー「500文字以内で入力してください。」を表示して送信をブロックする（`isSubmittable` に反映）
 - 文字数カウンタ: ラベル行の右側に「{N} / 500」
 
-### 6.9 保存（記録・更新）ボタンの活性条件
+### 6.9 保存（記録・更新）ボタンの活性条件とオフライン制御
 
 `isSubmittable = form.performedAt !== null && !isNoteOverflow`
 
@@ -495,6 +496,38 @@ Web 版 `/bonsai` に相当するモバイル版。
 - 種別（`type`）は常にいずれかが選択された状態のため、活性条件としては明示的にチェックしない
 
 送信中は `ActivityIndicator` に置き換わる。ボタンラベルは新規「記録」/ 編集「更新」。
+
+**`isSubmittable` に `isOnline` は含めない。** §4.5・§5.2 の盆栽フォーム・成長記録フォームの活性条件（`canSubmit` / `hasInput`）も同様に `isOnline` を含んでおらず、送信ボタン自体は常に活性のまま、送信操作の瞬間にオフラインを検知してブロックする方式で統一する（`bonsai/new/index.tsx` の `handleSave` の実装パターンを踏襲）。
+
+**オフライン時の送信ブロック（2026-07-13 第2回改訂で追加。§6.13 の旧未確定事項を解決）:**
+
+> **乖離の判定:** 実装調査の結果、手入れログの作成・更新・削除は `useOnlineStatus()` の値を一切参照しておらず、オフライン時でも送信ボタン・削除ボタンがそのまま押せてしまうことを確認した（一覧画面が `OfflineBanner` を表示する点のみは実装済み）。一方 §4（盆栽フォーム）・§5（成長記録フォーム）は送信直前に `if (!isOnline) { setError(ERR_OFFLINE_ACTION); return; }` を実行しており、`bonsai/[id]/index.tsx` の盆栽削除・記録削除（`handleDelete` / `handleDeleteRecord`）も同じパターンで `if (!isOnline) { showToast(ERR_OFFLINE_ACTION, 'error'); return; }` を実行している。手入れログだけがこのブロックを欠いており、Native 内で一貫性のない状態になっている。Web 側（`Bon_Log_cfw`）にはオフライン検知の仕組み（`navigator.onLine` 等を使った書き込みブロック）がそもそも存在しないため、この是正判断は「Web 準拠」ではなく「Native 内の他フォームとの一貫性」を根拠とする。
+>
+> **判定: 乖離あり。他フォームと揃えるべき。** `error-handling.md`（「すべての画面はローディング / 空 / エラー / オフラインの4状態を持つ」）および CLAUDE.md の核心ルールに沿い、手入れログの CRUD 操作もオフライン時に明示的にブロックする仕様へ是正する。
+
+**frontend 実装仕様（何をどう変えるか）:**
+
+1. `CareLogFormModal` に新規 prop `isOnline: boolean` を追加する（現状 `visible` / `editingItem` / `onClose` / `onSuccess` / `showToast` のみを受け取っており `isOnline` を受け取っていない）。`CareLogsScreen` は既に `useOnlineStatus()` を呼び出し済みのため、その戻り値をそのまま `<CareLogFormModal isOnline={isOnline} ... />` として渡す
+2. `CareLogFormModal` の `handleSubmit` の先頭、`isSubmittable` の判定より前に以下を追加する:
+   ```
+   if (!isOnline) {
+     showToast(ERR_OFFLINE_ACTION, 'error');
+     return;
+   }
+   ```
+   （`bonsai/new/index.tsx` の `handleSave` と同じ「ブロック→ return」パターン。相違点は `FormErrorMessage` / `setError` ではなく、このモーダルが既に使っている `showToast` prop 経由でトースト表示する点。このモーダルには `FormErrorMessage` 相当の表示枠が存在しないため、既存のエラー通知手段（作成・更新失敗時と同じトースト）に合わせる）
+3. `CareLogsScreen` の `handleDelete`（一覧画面の削除・§6.4 のゴミ箱ボタン）の先頭、`Alert.alert` を呼び出すより前に同じチェックを追加する:
+   ```
+   if (!isOnline) {
+     showToast(ERR_OFFLINE_ACTION, 'error');
+     return;
+   }
+   ```
+   （`bonsai/[id]/index.tsx` の `handleDelete` と同じ「確認ダイアログを開く前にオフラインを弾く」順序）
+4. **`isSubmittable` 自体は変更しない**（`isOnline` を組み込まない）。送信ボタンの活性・非活性の見た目はオンライン/オフラインで変化させず、タップした瞬間にオフラインならトーストで弾く方式のみとする（§4.5・§5.2 と同じ方式に統一するため）
+5. FAB（「+」新規作成ボタン）や行タップによる編集モーダルを開く操作自体はブロックしない。モーダルを開く行為はローカルの UI 状態変更のみでネットワーク通信を伴わないため、他の画面遷移導線と同様オフラインでも操作可能なままとする。ブロック対象は「記録」「更新」「削除」の 3 つの書き込みミューテーションの発火のみ
+
+この変更により、手入れログの CRUD 操作のオフライン時挙動は §4・§5 の盆栽フォーム・成長記録フォームと完全に一致する。
 
 ### 6.10 データの流れ
 
@@ -516,7 +549,7 @@ Web 版 `/bonsai` に相当するモバイル版。
 | ローディング（初回） | `ScreenLoading`（`variant="skeleton"` / `skeletonCount=4`）|
 | エラー（一覧取得失敗） | `ScreenError`（title: 「読み込めませんでした」/ description: `ERR_CARE_LOGS_LOAD_FAILED` / onRetry: refetch）|
 | 空（0件） | `ScreenEmpty`（icon: `leaf-outline` / title: 「手入れログがありません」/ description: 「右下のボタンから手入れを記録しましょう」/ actionLabel: 「記録する」→ 作成モーダルを開く）|
-| オフライン | `OfflineBanner` を表示。一覧はキャッシュ表示を維持。作成・更新・削除はブロックしない実装（**注記:** 他画面と異なりオフライン時の明示的な `ERR_OFFLINE_ACTION` ブロックはこの画面のコードに見当たらない。オフライン時の書き込みはネットワークエラーとして失敗しトースト表示になる想定。挙動の正式な整理は §6.13 の未確定事項を参照）|
+| オフライン | `OfflineBanner` を表示。一覧はキャッシュ表示を維持。作成・更新・削除は送信時に `ERR_OFFLINE_ACTION` をトースト表示してブロックする（**2026-07-13 第2回改訂で確定・§6.9 参照**。§4・§5 の盆栽フォーム・成長記録フォームと同じ挙動に統一した）|
 | 作成・更新失敗 | トースト（`ERR_CARE_LOG_CREATE_FAILED` / `ERR_CARE_LOG_UPDATE_FAILED`）|
 | 削除失敗 | トースト（`ERR_CARE_LOG_DELETE_FAILED`）|
 | 削除確認ダイアログ | タイトル「手入れログを削除」/ 本文「{種別}（{日付}）を削除しますか？」/ ボタン [キャンセル] [削除（`colorError` / `style: 'destructive'`）] |
@@ -545,7 +578,7 @@ Web 版 `/bonsai` に相当するモバイル版。
 
 | 項目 | 内容 | 判断者 |
 |------|------|--------|
-| オフライン時の書き込みブロック | 他の盆栽フォーム（§4・§5）は送信時に `useOnlineStatus` を見て `ERR_OFFLINE_ACTION` で明示的にブロックするが、手入れログ画面のコードにその分岐が見当たらない。挙動を統一するか、意図的な差異かを確認する | frontend / PM（要確認）|
+| オフライン時の書き込みブロック | **解決済み（2026-07-13 第2回改訂）**: 他の盆栽フォーム（§4・§5）と揃え、`ERR_OFFLINE_ACTION` で明示的にブロックする仕様へ是正した。frontend 実装仕様は §6.9 参照 | frontend / PM |
 | 期間フィルタ UI | クエリ層は `from`/`to` に対応済みだが、一覧画面に期間絞り込みの UI は実装されていない。追加するかはスコープ判断 | PM（要判断）|
 
 ---
@@ -596,6 +629,8 @@ CareLogsScreen (care-logs)      ← §6
 │   └── TextInput（メモ）
 └── （common-states.md コンポーネント群）
 ```
+
+**（2026-07-13 第2回改訂）:** `CareLogFormModal` は §6.9 のオフライン制御のため `isOnline: boolean` prop を新たに受け取る（`CareLogsScreen` の `useOnlineStatus()` の戻り値を渡す）。
 
 ---
 
@@ -680,7 +715,7 @@ CareLogsScreen (care-logs)      ← §6
 - `OfflineBanner` を各画面上部に表示
 - 一覧・詳細はキャッシュ表示を維持
 - 盆栽フォーム（§4）・成長記録フォーム（§5）の CRUD 操作はオフライン時にブロックし `FormErrorMessage` に `ERR_OFFLINE_ACTION` を表示
-- 手入れログ画面（§6）のオフライン時挙動は §6.13 の未確定事項を参照
+- 手入れログ画面（§6）の CRUD 操作も同様にオフライン時にブロックする（**2026-07-13 第2回改訂で確定**。表示手段は `FormErrorMessage` ではなく画面既存のトースト。§6.9 参照）
 
 ---
 
@@ -757,6 +792,7 @@ CareLogsScreen (care-logs)      ← §6
 | `navigation-structure.md` §5.2（破棄確認）| 変更がある場合の破棄確認を踏襲する |
 | `common-states.md`（4 状態コンポーネント）| 全画面で既存コンポーネントを再利用する |
 | FAB デザイン（`bonsai/index` および `bonsai/care-logs`）| 直径 56pt / `colorActionPrimary` / `shadowWashi` を踏襲する |
+| §4.5・§5.2 のオフラインブロックパターン（`if (!isOnline) { ...; return; }`）| 手入れログ（§6.9）の作成・更新・削除も同じパターンを踏襲する（2026-07-13 第2回改訂で追加）|
 
 ---
 
@@ -769,5 +805,5 @@ CareLogsScreen (care-logs)      ← §6
 | 記録内容（content）の文字数上限 | サーバー側の Zod バリデーション値を確認する | core | **解決済み（2026-07-13）**: 2000 文字（`MAX_BONSAI_DESCRIPTION_LENGTH`）|
 | アイキャッチ画像の有無 | 盆栽エンティティにアイキャッチ画像フィールドが存在するか確認する | core | **解決済み（2026-07-13）**: フォームに存在しない。一覧サムネイルは最新成長記録の画像を使う（§2.2 / §4.1）|
 | `more-menu.md` の「マイ盆栽」遷移先 | ネイティブ画面実装後に `openBrowserAsync` → `router.push(routes.bonsai)` に切り替えるタイミング | frontend | 未解決 |
-| 手入れログのオフライン時挙動 | §6.13 参照 | frontend / PM | 未解決（新規発見） |
+| 手入れログのオフライン時挙動 | **解決済み（2026-07-13 第2回改訂）**: §6.9・§6.13 参照。他フォームと同じ `ERR_OFFLINE_ACTION` ブロックに統一 | frontend / PM | 解決済み（2026-07-13）|
 | 手入れログの期間フィルタ UI | §6.13 参照 | PM | 未解決（新規発見） |

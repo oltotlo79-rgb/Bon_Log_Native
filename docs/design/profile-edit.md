@@ -2,6 +2,7 @@
 
 作成日: 2026-06-19
 最終改訂: 2026-07-13（実装 `app/settings/profile/index.tsx` / `components/profile/LocationField.tsx` / `components/profile/BonsaiHistoryField.tsx` / `components/profile/BirthdayField.tsx` / `hooks/use-profile-edit.ts` の確認結果に基づき §2・§7・§8.2 を全面改訂。居住地・盆栽歴・誕生日はいずれも自由入力のテキストフィールドではなく、トリガー→モーダルのグループ選択 / 日付ピッカーであることが判明したため是正した。誕生日の年齢制限（最小13歳）は Web に対応する制約がなく実装にも存在しないため撤回。保存ボタンの活性条件も `isDirty` を要求しない実装に合わせて修正した）
+同日追記（2026-07-13 第2回改訂・Web 準拠監査）: bio 文字数カウンタの警告色について Web (`components/user/ProfileEditForm.tsx`) の実装を確認し、§7.2・§14 を更新した。Web には動的カウンタ・警告色のいずれも存在しないことを確認したため、Native も「残り文字数接近時の警告色」は採用しない方針で確定した（詳細は §7.2 参照）。あわせて bio の文字数上限（200文字）が Web と一致していることを cfw 側のソース（`lib/constants/limits/post.ts`）で再確認した
 対象画面:
 - `settings/profile` — プロフィール編集
 
@@ -68,7 +69,7 @@
 │   ┌─────────────────────────────────────────────────────┐   │
 │   │ 松柏が好きで...（初期値）                           │   │
 │   │                                                     │   │
-│   │                                           0/200     │   │
+│   │                                           0/200     │   │  ← 常に colorTextSecondary（警告色なし。§7.2 参照）
 │   └─────────────────────────────────────────────────────┘   │
 │                                                             │
 │   [居住地（任意）— LocationField（トリガー→グループ付きモーダル）]│
@@ -104,7 +105,7 @@
 | フィールド | 種類 | 必須 | 文字数上限 | 備考 |
 |-----------|------|------|-----------|------|
 | ニックネーム | 1 行テキスト | 必須 | 50 文字（`MAX_NICKNAME_LENGTH`）| 文字数カウンタを表示 |
-| 自己紹介（bio）| 複数行テキスト | 任意 | **200 文字**（`MAX_BIO_LENGTH`）| 文字数カウンタを表示。旧仕様は 300 文字だったが実装は 200 文字 |
+| 自己紹介（bio）| 複数行テキスト | 任意 | **200 文字**（`MAX_BIO_LENGTH`）| 文字数カウンタを表示。旧仕様は 300 文字だったが実装は 200 文字。カウンタに警告色の段階は設けない（§7.2 参照） |
 | 居住地（location）| `LocationField`（トリガー→グループ付きモーダルの単一選択）| 任意 | 100 文字（`MAX_LOCATION_LENGTH`。ただし選択肢はすべて上限を大きく下回る短い文字列のため実質到達しない）| 自由入力不可。§7.3 参照 |
 | 盆栽歴（開始年・開始月）| `BonsaiHistoryField`（年・月それぞれ数値ピッカーのトリガー→モーダル）| 任意 | — | 自由入力不可。§7.4 参照 |
 | 誕生日 | `BirthdayField`（`DatePickerField` ラップ・日付のみピッカー）| 任意 | — | 最大値=本日。最小値の制限なし（年齢制限なし）。§7.5 参照 |
@@ -291,10 +292,30 @@ ProfileEditScreen                  ← 画面全体のコンテナ
 
 **（2026-07-13 修正）:** 文字数上限を旧仕様の 300 文字から **200 文字**（`MAX_BIO_LENGTH`）へ修正した。
 
-**（2026-07-13 発見・実装上の注記）:** 実装のカウンタ配色は「残り 30 文字以下で警告色に変化」という設計意図（`bioNearLimit` フラグ）を持つが、対応するスタイル `bioCounterWarning` の実際の色指定は `colorTextSecondary`（通常色と同じ）になっており、見た目上は警告時も変化しない。超過時（`bioCounterError`）のみ `colorError` へ確実に変化する。本書は実装のこの状態をそのまま記録する（意図と実装の差異は frontend への申し送り事項として §14 に残す）。
+**カウンタの警告色について（2026-07-13 第2回改訂・確定仕様）:**
+
+> **旧稿の撤回:** 本節は第1回改訂時点で「実装のカウンタ配色は『残り30文字以下で警告色に変化』という設計意図（`bioNearLimit` フラグ）を持つが、対応するスタイル `bioCounterWarning` の実際の色指定は `colorTextSecondary`（通常色と同じ）になっており、見た目上は警告時も変化しない」という**現状の記録のみ**を書き、最終的な仕様としてどちらが正しいかは決めていなかった（§14 に未解決事項として残していた）。今回、Web 側の実装を確認しこの点を確定した。
+
+**Web の実装確認結果（`Bon_Log_cfw/components/user/ProfileEditForm.tsx`）:** Web の bio フィールドは `<Textarea maxLength={MAX_BIO_LENGTH} />` の下に静的なヒントテキスト `<p className="text-xs text-muted-foreground">最大200文字</p>` を表示するのみで、**入力中の残り文字数を動的に数えるカウンタ（`{N}/200` のような表示）自体が存在しない**。したがって警告色に変化する仕組みも当然存在しない。Web はブラウザの `maxLength` 属性でそもそも 200 文字を超える入力を受け付けない（越境状態に到達しない）。
+
+**確定仕様:** Web に警告色の挙動が存在しない以上、Web 準拠の原則により Native も「残り文字数接近時に警告色へ変化する」という段階（近接警告）を**採用しない**。
+
+- `{N}/200` の**動的カウンタ表示自体は Native 独自の UX 加点として維持する**（Web にない機能だが、削除は本改訂のスコープ外。件2の依頼は警告色の要否判定のみ）
+- カウンタの色は **`colorTextSecondary` で固定**とし、`MAX_BIO_LENGTH` に近づいても変化させない（＝ `bioNearLimit` という「残り30文字」の閾値判定そのものを視覚表現に使わない）
+- **上限超過時（`bioLength > MAX_BIO_LENGTH`）のみ `colorError` に変化させる。** これは Native 側で「サーバーの上限を超えた入力を許可しつつ、超過をインラインエラーで知らせる」独自の UX（`errors.bio` のインラインエラー表示と対）であり、Web のような `maxLength` によるハード制限（超過状態そのものに到達しない）とは異なる設計だが、これは本改訂のスコープ外（既存のまま維持してよい）。上限超過状態を赤色で警告する挙動自体は他の入力エラー表現（`colorError`）と一貫しており妥当と判断する
+- 新規の警告色トークンは提案しない（`colorWarning`（`#b45309`）は `lib/constants/design-tokens.ts` に既存だが、今回の結論により bio カウンタでは使用しない）
+
+**frontend 実装仕様（何をどう変えるか）:**
+
+1. `app/settings/profile/index.tsx` の `bioNearLimit` 判定（`bioLength > MAX_BIO_LENGTH - BIO_WARNING_THRESHOLD`）と、それに連動する `styles.bioCounterWarning` の適用（`bioNearLimit && styles.bioCounterWarning`）を削除する。これにより見た目は変化しない（`bioCounterWarning` は現状 `colorTextSecondary` で通常色と同値のため、削除しても表示上のデグレードはない）
+2. `bioCounterWarning` スタイル定義・`BIO_WARNING_THRESHOLD` 定数は死んだコードになるため、あわせて削除してよい（削除するかどうかは frontend の裁量。visual には無関係）
+3. `bioCounterError`（`colorError`）と `bioOverLimit` 判定はそのまま維持する（変更不要）
+4. 結果として bio カウンタの色は「`colorTextSecondary` 固定、ただし上限超過時のみ `colorError`」という 2 状態のみになる
 
 **バリデーション（blur 時）:**
 - 200 文字超 → `ERR_BIO_TOO_LONG(200)`「自己紹介は200文字以内で入力してください。」
+
+**bio 文字数上限の Web 一致確認（core 引き継ぎ事項なし）:** Web 側 `Bon_Log_cfw/lib/constants/limits/post.ts` の `MAX_BIO_LENGTH = 200` と、Native 側 `lib/constants/limits/auth.ts` の `MAX_BIO_LENGTH = 200` は**両方とも 200 文字で一致している**ことを本改訂で再確認した。相違はないため core への追加の指摘事項はない。
 
 ### 7.3 居住地（LocationField）
 
@@ -568,11 +589,11 @@ ProfileEditScreen                  ← 画面全体のコンテナ
 | 項目 | 内容 | 判断者 | 状態 |
 |------|------|--------|------|
 | PATCH エンドポイントの差分更新方式 | 部分更新か全件置き換えかを確認する | core | **解決済み（2026-07-13）**: 部分更新（`buildUpdateRequest` が差分のみ送信）|
-| 各フィールドの最大文字数の正本 | bio・location 等がサーバー実装と一致しているか確認する | core | **解決済み（2026-07-13）**: bio=200 / location=100（`lib/constants/limits/auth.ts` で確認済み）|
+| 各フィールドの最大文字数の正本 | bio・location 等がサーバー実装と一致しているか確認する | core | **解決済み（2026-07-13）**: bio=200 / location=100（`lib/constants/limits/auth.ts` で確認済み）。第2回改訂で Web 側 `Bon_Log_cfw/lib/constants/limits/post.ts` の `MAX_BIO_LENGTH = 200` とも再照合し、相違なしを確認 |
 | 最小年齢制限 | 誕生日選択可能な最小年齢（13歳相当）の有無 | core / PM | **解決済み（2026-07-13）**: なし。§7.5 参照 |
 | bonsaiStartMonth フィールドの存在 | サーバーの DB スキーマに `bonsaiStartMonth`（月）が存在するか確認する | core | **解決済み（2026-07-13）**: 存在する（`BonsaiHistoryField` で使用）|
 | 誕生日の公開設定 | 誕生日を他ユーザーに公開するか非公開か、プロフィール表示での扱いはサーバー側ポリシーを確認する | core / PM | 未解決 |
 | 画像のクロップ UI | アバター・ヘッダー選択後に手動クロップ（ピンチズーム等）を挟むか否か | PM | 未解決（§6 は本改訂の対象外）|
 | 盆栽歴フィールドの iOS UX | 年・月それぞれのモーダル選択という現在の実装で iOS 上も統一されているため、旧仕様が懸念していた「テキスト入力 vs ピッカー」の論点は解消済み | frontend | **解決済み（2026-07-13）** |
 | ユーザー識別子（@handle）の編集 | 変更可能か否か。変更可能な場合は別フィールドとして追加が必要 | core / PM | 未解決 |
-| bio 文字数警告色の実装不備 | 「残り30文字以下で警告色」という設計意図が `colorTextSecondary`（通常色と同一）に実装されており、視覚的な警告が機能していない（§7.2 参照） | frontend（要修正判断）| 未解決（新規発見。2026-07-13 調査で判明）|
+| bio 文字数警告色の実装不備 | **解決済み（2026-07-13 第2回改訂）**: Web (`ProfileEditForm.tsx`) には動的カウンタ・警告色のいずれも存在しないことを確認した。Web 準拠のため Native も「残り文字数接近時の警告色」は採用しないことで確定。カウンタは `colorTextSecondary` 固定・上限超過時のみ `colorError` の 2 状態とする。frontend 実装仕様は §7.2 参照 | frontend | 解決済み（2026-07-13） |
