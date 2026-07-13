@@ -3,6 +3,7 @@
 作成日: 2026-06-12
 最終改訂: 2026-07-12（墨筆枠オーバーレイ実装への追従改訂 — §3・§4・§8「PostCard」。改訂元: `post-card.md` §4.1・§7.2、`sumi-e-theme-parity-2026-07-06.md`。同日追記: §6 シャドウ `shadowColor` を実装 `lib/constants/design-tokens.ts` の実値に合わせて修正、§8「FAB」を実装 `components/post/ComposeFab.tsx` の現行仕様に合わせて更新）
 同日追記（2026-07-13・エラー色トークンの是正）: `colorError` の値が本書（`#c0392b`）と実装 `lib/constants/design-tokens.ts`（`#c21721`）とで食い違っていることを Web 準拠監査で発見し、§2.2・§2.3・§7 の該当値を実装に合わせて修正した。新規 §11 に判定根拠・是正対象コードの一覧を追記した
+追記（2026-07-14・§11.5 の是正状況を更新）: §11.5 で「未修正・フォローアップ推奨」として引き継いでいた 9 ドキュメントについて、その後すべて是正済み（`#c0392b` → `#c21721` / `colorError`）であることを確認した。§11.5 を現状に合わせて更新した（旧文面は §11.5 内に履歴として残す）。
 
 対象: `lib/constants/design-tokens.ts`（core が TypeScript 定数として実装）
 前提: StyleSheet + 定数ベース（NativeWind 採否確定まで）
@@ -474,13 +475,28 @@ Web 版は `cubic-bezier(0.25, 0.46, 0.45, 0.94)` を主に使用（`.hover-wash
 
 `app/scheduled-posts/new/index.tsx` の `counterOver`（既に `colorError` を使用済み）を実装リファレンスとして参照してよい。
 
-### 11.5 本改訂の対象外（PM 引き継ぎ）
+### 11.5 ドキュメント側フォローアップの状況（2026-07-14 更新: 全件是正済み）
 
-本改訂では上記 5 箇所のコードおよび本書自身（design-tokens.md）の値のみを是正した。以下は同じ `#c0392b`（旧 `colorError` 誤記載値）を参照しているが、件4の依頼スコープ（フォームのエラーテキスト色）に直接該当しないため、本改訂では修正していない:
+本改訂（2026-07-13）の時点では、上記 11.4 の 5 箇所のコードおよび本書自身（design-tokens.md）の値のみを是正し、以下は「同じ `#c0392b`（旧 `colorError` 誤記載値）を参照しているが、当時の依頼スコープ（フォームのエラーテキスト色）に直接該当しないため未修正」として PM 引き継ぎ事項に残していた。
 
-- `auth-forms.md` §0.2 / §0.3 / §0.9.5（フォームの共通エラー方針を定義する文書。**本改訂で合わせて修正済み**）
-- `scheduled-posts.md` §3.3（StatusBadge の「失敗」ラベル色。**本改訂で合わせて修正済み**）
-- `post-composer.md` §6.2（本文カウンタの上限超過色。**本改訂で合わせて修正済み**）
-- `docs/design/ugc-safety.md`・`two-factor-auth.md`・`post-card.md`・`common-states.md`・`notifications-screen.md`・`comment-composer.md`・`more-menu.md`・`follow-and-engagement.md`・`account-deletion.md` に残る `colorError（#c0392b）` の記載（**未修正。フォローアップで一括修正することを推奨**）
+**2026-07-13 時点で当初から本改訂の対象内として是正済みだったもの:**
 
-これらのドキュメントも将来的に `#c21721` へ揃えるべきだが、影響範囲の精査（数値の記載箇所が多数にわたる）が必要なため、本改訂のスコープには含めない。PM は別タスクとして一括修正を検討すること。
+- `auth-forms.md` §0.2 / §0.3 / §0.9.5（フォームの共通エラー方針を定義する文書）
+- `scheduled-posts.md` §3.3（StatusBadge の「失敗」ラベル色）
+- `post-composer.md` §6.2（本文カウンタの上限超過色）
+
+**2026-07-13 時点で「未修正・フォローアップで一括修正することを推奨」としていた 9 ドキュメント:**
+
+- `docs/design/ugc-safety.md`（§2.1・§15）
+- `docs/design/two-factor-auth.md`（§10.4）
+- `docs/design/post-card.md`（§10.5）
+- `docs/design/common-states.md`（§4.4）
+- `docs/design/notifications-screen.md`（§6.1・§7.1・§13）
+- `docs/design/comment-composer.md`（§7.5）
+- `docs/design/more-menu.md`（§11・§12）
+- `docs/design/follow-and-engagement.md`（§2.2・§3.1）
+- `docs/design/account-deletion.md`（§2.2「危険ゾーン」）
+
+**（2026-07-14 追記）上記 9 ドキュメントについて是正状況を再確認したところ、いずれも `#c0392b` から `#c21721`（`colorError` トークン）への是正が完了していることを確認した。** 各ファイルとも「2026-07-13・エラー色トークンの是正」を明示した改訂注記を伴っており、本書 §11.1〜§11.4 と同じ根拠（Web `--destructive` / `--aka` の oklch 値の正確な sRGB 変換は `#c21721` である旨）を参照している。
+
+**現状（2026-07-14 時点）: `colorError` の値表記に関する `#c0392b` → `#c21721` の是正は、本書が把握している対象範囲において全ドキュメント完了している。** 新規ドキュメント作成時・既存ドキュメント編集時は、引き続き §11.3 の方針（`colorError` トークン経由の参照を徹底し、リテラル直書きを禁止）を遵守すること。
