@@ -7,7 +7,11 @@ import React from 'react';
 import { screen, fireEvent, waitFor, act } from '@testing-library/react-native';
 import { renderWithProviders } from '@/__tests__/utils/test-utils';
 import { NotificationTypeSettings } from '@/components/settings/NotificationTypeSettings';
-import { NOTIFICATION_PREFERENCE_KEYS } from '@/lib/constants/notification-settings';
+import {
+  NOTIFICATION_PREFERENCE_KEYS,
+  NOTIFICATION_PREFERENCE_LABELS,
+  NOTIFICATION_PREFERENCE_DESCRIPTIONS,
+} from '@/lib/constants/notification-settings';
 import {
   ERR_OFFLINE_ACTION,
   ERR_NOTIFICATION_SETTINGS_UPDATE_FAILED,
@@ -146,6 +150,26 @@ describe('NotificationTypeSettings', () => {
       renderWithProviders(<NotificationTypeSettings isOnline={true} />);
       const likeSwitch = screen.getByTestId('notification-setting-like');
       expect(likeSwitch.props.value).toBe(false);
+    });
+  });
+
+  describe('説明文（sublabel）', () => {
+    it('各行に NOTIFICATION_PREFERENCE_DESCRIPTIONS の説明文が表示される', () => {
+      renderWithProviders(<NotificationTypeSettings isOnline={true} />);
+      NOTIFICATION_PREFERENCE_KEYS.forEach((key) => {
+        expect(screen.getByText(NOTIFICATION_PREFERENCE_DESCRIPTIONS[key])).toBeTruthy();
+      });
+    });
+
+    it('各 notificationKey の行に、対応する label と sublabel が配線されている', () => {
+      const { UNSAFE_getByProps } = renderWithProviders(
+        <NotificationTypeSettings isOnline={true} />
+      );
+      NOTIFICATION_PREFERENCE_KEYS.forEach((key) => {
+        const row = UNSAFE_getByProps({ notificationKey: key });
+        expect(row.props.label).toBe(NOTIFICATION_PREFERENCE_LABELS[key]);
+        expect(row.props.sublabel).toBe(NOTIFICATION_PREFERENCE_DESCRIPTIONS[key]);
+      });
     });
   });
 

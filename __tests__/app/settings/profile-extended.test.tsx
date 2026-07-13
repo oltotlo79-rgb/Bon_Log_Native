@@ -8,6 +8,8 @@ import React from 'react';
 import { screen, fireEvent, waitFor } from '@testing-library/react-native';
 import { renderWithProviders } from '@/__tests__/utils/test-utils';
 import SettingsProfileScreen from '@/app/settings/profile/index';
+import { MAX_BIO_LENGTH } from '@/lib/constants/limits/auth';
+import { colorError } from '@/lib/constants/design-tokens';
 
 const mockApiGet = jest.fn();
 const mockApiPatch = jest.fn();
@@ -185,5 +187,54 @@ describe('SettingsProfileScreen - 保存ボタン制御', () => {
       // PROFILE_DETAIL.location = '東京' のため「居住地（任意）：東京」というラベルになる
       expect(screen.getByRole('button', { name: '居住地（任意）：東京' })).toBeTruthy();
     });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 自己紹介カウンタの色（2状態: 通常 / 上限超過。近接警告(bioNearLimit)は撤去済み）
+// ---------------------------------------------------------------------------
+
+function hasErrorColor(style: unknown): boolean {
+  const styleArr = Array.isArray(style) ? style : [style];
+  return styleArr.some(
+    (s) => s !== null && s !== undefined && typeof s === 'object' && 'color' in s && s.color === colorError
+  );
+}
+
+describe('SettingsProfileScreen - 自己紹介カウンタの色', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockApiGet
+      .mockResolvedValueOnce({ data: PROFILE_DATA, error: undefined })
+      .mockResolvedValueOnce({ data: PROFILE_DETAIL, error: undefined });
+  });
+
+  it('文字数が上限以下のとき、カウンタは通常色（colorError が付与されない）', async () => {
+    renderWithProviders(<SettingsProfileScreen />);
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('自己紹介（任意）')).toBeTruthy();
+    });
+
+    const bioField = screen.getByLabelText('自己紹介（任意）');
+    fireEvent.changeText(bioField, 'a'.repeat(MAX_BIO_LENGTH));
+
+    const counter = screen.getByText(`${MAX_BIO_LENGTH}/${MAX_BIO_LENGTH}`);
+    expect(hasErrorColor(counter.props.style)).toBe(false);
+  });
+
+  it('文字数が上限を超えると、カウンタに colorError が付与される', async () => {
+    renderWithProviders(<SettingsProfileScreen />);
+
+    await waitFor(() => {
+      expect(screen.getByLabelText('自己紹介（任意）')).toBeTruthy();
+    });
+
+    const bioField = screen.getByLabelText('自己紹介（任意）');
+    const overLength = MAX_BIO_LENGTH + 10;
+    fireEvent.changeText(bioField, 'a'.repeat(overLength));
+
+    const counter = screen.getByText(`${overLength}/${MAX_BIO_LENGTH}`);
+    expect(hasErrorColor(counter.props.style)).toBe(true);
   });
 });

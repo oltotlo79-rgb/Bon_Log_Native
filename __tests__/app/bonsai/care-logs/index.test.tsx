@@ -8,6 +8,7 @@ import { screen, fireEvent, act } from '@testing-library/react-native';
 import CareLogsScreen from '@/app/bonsai/care-logs/index';
 import { renderWithProviders } from '@/__tests__/utils/test-utils';
 import { BONSAI_CARE_TYPE } from '@/lib/queries/bonsai-care-logs';
+import { ERR_OFFLINE_ACTION } from '@/lib/constants/errors';
 
 // ---------------------------------------------------------------------------
 // モック設定
@@ -50,13 +51,8 @@ jest.mock('@/lib/queries/bonsai-care-logs', () => ({
   },
 }));
 
-jest.mock('@/hooks/use-toast', () => ({
-  useToast: jest.fn(() => ({
-    toast: { message: '', visible: false, variant: 'default' },
-    showToast: jest.fn(),
-    hideToast: jest.fn(),
-  })),
-}));
+// use-toast は実装を使う（ERR_OFFLINE_ACTION 等の実際の表示を検証するため、
+// 他の bonsai テスト（bonsai/new, bonsai/[id]/edit 等）と同様にモックしない）。
 
 // ---------------------------------------------------------------------------
 // ヘルパー
@@ -590,5 +586,121 @@ describe('CareLogsScreen オフライン', () => {
     renderWithProviders(<CareLogsScreen />);
     const { ERR_OFFLINE } = jest.requireActual('@/lib/constants/errors');
     expect(screen.getByText(ERR_OFFLINE)).toBeTruthy();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// オフラインガード（作成・更新・削除の送信ブロック）
+// ---------------------------------------------------------------------------
+
+function goOffline() {
+  const { useOnlineStatus } = jest.requireMock('@/hooks/use-online-status');
+  (useOnlineStatus as jest.Mock).mockReturnValue(false);
+}
+
+describe('CareLogsScreen オフラインガード — 新規作成の送信', () => {
+  it('オフライン時に「記録する」を押しても createMutation.mutate は呼ばれない', () => {
+    goOffline();
+    mockUseCareLogsQuery.mockReturnValue({
+      ...defaultQuery,
+      data: makeCareLogsData([makeCareLogItem('log-1', 'other')]),
+    });
+    renderWithProviders(<CareLogsScreen />);
+    act(() => {
+      fireEvent.press(screen.getByLabelText('手入れを記録する'));
+    });
+    act(() => {
+      fireEvent.press(screen.getByLabelText('記録する'));
+    });
+    expect(mockCreateMutate).not.toHaveBeenCalled();
+  });
+
+  it('オフライン時に「記録する」を押すと ERR_OFFLINE_ACTION が表示される', () => {
+    goOffline();
+    mockUseCareLogsQuery.mockReturnValue({
+      ...defaultQuery,
+      data: makeCareLogsData([makeCareLogItem('log-1', 'other')]),
+    });
+    renderWithProviders(<CareLogsScreen />);
+    act(() => {
+      fireEvent.press(screen.getByLabelText('手入れを記録する'));
+    });
+    act(() => {
+      fireEvent.press(screen.getByLabelText('記録する'));
+    });
+    expect(screen.getByText(ERR_OFFLINE_ACTION)).toBeTruthy();
+  });
+
+  it('オンライン時は従来どおり「記録する」で createMutation.mutate が呼ばれ、エラーは表示されない', () => {
+    mockUseCareLogsQuery.mockReturnValue({
+      ...defaultQuery,
+      data: makeCareLogsData([makeCareLogItem('log-1', 'other')]),
+    });
+    renderWithProviders(<CareLogsScreen />);
+    act(() => {
+      fireEvent.press(screen.getByLabelText('手入れを記録する'));
+    });
+    act(() => {
+      fireEvent.press(screen.getByLabelText('記録する'));
+    });
+    expect(mockCreateMutate).toHaveBeenCalled();
+    expect(screen.queryByText(ERR_OFFLINE_ACTION)).toBeNull();
+  });
+});
+
+describe('CareLogsScreen オフラインガード — 編集の送信', () => {
+  it('オフライン時に編集モーダルの「更新する」を押しても updateMutation.mutate は呼ばれない', () => {
+    goOffline();
+    mockUseCareLogsQuery.mockReturnValue({
+      ...defaultQuery,
+      data: makeCareLogsData([makeCareLogItem('log-1', 'other')]),
+    });
+    renderWithProviders(<CareLogsScreen />);
+    act(() => {
+      fireEvent.press(screen.getByLabelText('その他 2025年6月1日を編集'));
+    });
+    act(() => {
+      fireEvent.press(screen.getByLabelText('更新する'));
+    });
+    expect(mockUpdateMutate).not.toHaveBeenCalled();
+    expect(screen.getByText(ERR_OFFLINE_ACTION)).toBeTruthy();
+  });
+});
+
+describe('CareLogsScreen オフラインガード — 削除', () => {
+  it('オフライン時は削除ボタンを押しても確認 Alert が表示されず、deleteMutation.mutate も呼ばれない', () => {
+    goOffline();
+    const Alert = require('react-native').Alert;
+    const alertSpy = jest.spyOn(Alert, 'alert');
+    mockUseCareLogsQuery.mockReturnValue({
+      ...defaultQuery,
+      data: makeCareLogsData([makeCareLogItem('log-1', 'other')]),
+    });
+    renderWithProviders(<CareLogsScreen />);
+    const deleteButton = screen.getByLabelText('その他 2025年6月1日を削除');
+    act(() => {
+      fireEvent.press(deleteButton);
+    });
+    expect(alertSpy).not.toHaveBeenCalled();
+    expect(mockDeleteMutate).not.toHaveBeenCalled();
+    expect(screen.getByText(ERR_OFFLINE_ACTION)).toBeTruthy();
+    alertSpy.mockRestore();
+  });
+
+  it('オンライン時は従来どおり削除確認 Alert が表示される', () => {
+    const Alert = require('react-native').Alert;
+    const alertSpy = jest.spyOn(Alert, 'alert');
+    mockUseCareLogsQuery.mockReturnValue({
+      ...defaultQuery,
+      data: makeCareLogsData([makeCareLogItem('log-1', 'other')]),
+    });
+    renderWithProviders(<CareLogsScreen />);
+    const deleteButton = screen.getByLabelText('その他 2025年6月1日を削除');
+    act(() => {
+      fireEvent.press(deleteButton);
+    });
+    expect(alertSpy).toHaveBeenCalled();
+    expect(screen.queryByText(ERR_OFFLINE_ACTION)).toBeNull();
+    alertSpy.mockRestore();
   });
 });
