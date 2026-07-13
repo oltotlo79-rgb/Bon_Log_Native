@@ -4,9 +4,10 @@
  */
 
 import React from 'react';
-import { screen } from '@testing-library/react-native';
+import { screen, fireEvent } from '@testing-library/react-native';
 import ShopReviewsScreen from '@/app/shops/[id]/reviews/index';
 import { renderWithProviders } from '@/__tests__/utils/test-utils';
+import { REPORT_TARGET_LABELS } from '@/lib/constants/report';
 
 const mockUseLocalSearchParams = jest.requireMock('expo-router').useLocalSearchParams;
 
@@ -25,6 +26,35 @@ jest.mock('@/lib/queries/shops', () => ({
 
 jest.mock('@/lib/queries/auth', () => ({
   useCurrentUserQuery: () => mockUseCurrentUserQuery(),
+}));
+
+// ReportDialog は別コンポーネントのテスト（__tests__/components/report/ReportDialog.test.tsx）で
+// 内部動作を検証するため、ここでは受け取った props を検証できる簡易スタブに置き換える
+jest.mock('@/components/report/ReportDialog', () => ({
+  ReportDialog: ({
+    targetType,
+    targetId,
+    targetDisplayName,
+    onClose,
+  }: {
+    targetType: string;
+    targetId: string;
+    targetDisplayName: string;
+    onClose: () => void;
+  }) => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports -- jest.mock ファクトリ内では ESM import が使えないため require を使用する（Jest 制約）
+    const { View, Text, Pressable } = require('react-native');
+    return (
+      <View testID="report-dialog">
+        <Text testID="report-dialog-target-type">{targetType}</Text>
+        <Text testID="report-dialog-target-id">{targetId}</Text>
+        <Text testID="report-dialog-target-display-name">{targetDisplayName}</Text>
+        <Pressable onPress={onClose} accessibilityRole="button" accessibilityLabel="通報ダイアログを閉じる">
+          <Text>閉じる</Text>
+        </Pressable>
+      </View>
+    );
+  },
 }));
 
 function makeReview(overrides = {}) {
@@ -240,6 +270,112 @@ describe('ShopReviewsScreen', () => {
       });
       renderWithProviders(<ShopReviewsScreen />);
       expect(screen.getByText('まだレビューはありません')).toBeTruthy();
+    });
+  });
+
+  describe('通報導線（レビュー）', () => {
+    const reportButtonLabel = `この${REPORT_TARGET_LABELS.review}を通報する`;
+
+    it('他人のレビューには通報ボタン（flag アイコン）が表示される', () => {
+      mockUseCurrentUserQuery.mockReturnValue({ data: { id: 'me' } });
+      mockUseShopReviewsQuery.mockReturnValue({
+        data: makeReviewsPage([
+          makeReview({ user: { id: 'other-user', nickname: '他ユーザー', avatarUrl: null } }),
+        ]),
+        isLoading: false,
+        isError: false,
+        refetch: jest.fn(),
+        fetchNextPage: jest.fn(),
+        hasNextPage: false,
+        isFetchingNextPage: false,
+        isRefetching: false,
+      });
+      renderWithProviders(<ShopReviewsScreen />);
+      expect(screen.getByRole('button', { name: reportButtonLabel })).toBeTruthy();
+    });
+
+    it('自分のレビューには通報ボタンが表示されない', () => {
+      mockUseCurrentUserQuery.mockReturnValue({ data: { id: 'me' } });
+      mockUseShopReviewsQuery.mockReturnValue({
+        data: makeReviewsPage([
+          makeReview({ user: { id: 'me', nickname: '自分', avatarUrl: null } }),
+        ]),
+        isLoading: false,
+        isError: false,
+        refetch: jest.fn(),
+        fetchNextPage: jest.fn(),
+        hasNextPage: false,
+        isFetchingNextPage: false,
+        isRefetching: false,
+      });
+      renderWithProviders(<ShopReviewsScreen />);
+      expect(screen.queryByRole('button', { name: reportButtonLabel })).toBeNull();
+    });
+
+    it('未ログイン時は通報ボタンが表示されない', () => {
+      mockUseCurrentUserQuery.mockReturnValue({ data: undefined });
+      mockUseShopReviewsQuery.mockReturnValue({
+        data: makeReviewsPage([
+          makeReview({ user: { id: 'other-user', nickname: '他ユーザー', avatarUrl: null } }),
+        ]),
+        isLoading: false,
+        isError: false,
+        refetch: jest.fn(),
+        fetchNextPage: jest.fn(),
+        hasNextPage: false,
+        isFetchingNextPage: false,
+        isRefetching: false,
+      });
+      renderWithProviders(<ShopReviewsScreen />);
+      expect(screen.queryByRole('button', { name: reportButtonLabel })).toBeNull();
+    });
+
+    it('通報ボタンを押すと ReportDialog が targetType="review" で開く', () => {
+      mockUseCurrentUserQuery.mockReturnValue({ data: { id: 'me' } });
+      mockUseShopReviewsQuery.mockReturnValue({
+        data: makeReviewsPage([
+          makeReview({
+            id: 'review-9',
+            user: { id: 'other-user', nickname: '他ユーザー', avatarUrl: null },
+          }),
+        ]),
+        isLoading: false,
+        isError: false,
+        refetch: jest.fn(),
+        fetchNextPage: jest.fn(),
+        hasNextPage: false,
+        isFetchingNextPage: false,
+        isRefetching: false,
+      });
+      renderWithProviders(<ShopReviewsScreen />);
+      fireEvent.press(screen.getByRole('button', { name: reportButtonLabel }));
+      expect(screen.getByTestId('report-dialog-target-type').props.children).toBe('review');
+      expect(screen.getByTestId('report-dialog-target-id').props.children).toBe('review-9');
+      expect(screen.getByTestId('report-dialog-target-display-name').props.children).toBe('他ユーザーのレビュー');
+    });
+
+    it('ReportDialog の onClose で通報ダイアログが閉じる', () => {
+      mockUseCurrentUserQuery.mockReturnValue({ data: { id: 'me' } });
+      mockUseShopReviewsQuery.mockReturnValue({
+        data: makeReviewsPage([
+          makeReview({
+            id: 'review-9',
+            user: { id: 'other-user', nickname: '他ユーザー', avatarUrl: null },
+          }),
+        ]),
+        isLoading: false,
+        isError: false,
+        refetch: jest.fn(),
+        fetchNextPage: jest.fn(),
+        hasNextPage: false,
+        isFetchingNextPage: false,
+        isRefetching: false,
+      });
+      renderWithProviders(<ShopReviewsScreen />);
+      fireEvent.press(screen.getByRole('button', { name: reportButtonLabel }));
+      expect(screen.getByTestId('report-dialog')).toBeTruthy();
+      fireEvent.press(screen.getByRole('button', { name: '通報ダイアログを閉じる' }));
+      expect(screen.queryByTestId('report-dialog')).toBeNull();
     });
   });
 });

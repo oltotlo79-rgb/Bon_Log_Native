@@ -15,7 +15,8 @@ import {
   ERR_RATE_LIMIT,
   ERR_OFFLINE_ACTION,
 } from '@/lib/constants/errors';
-import { REPORT_DESCRIPTION_MAX_LENGTH } from '@/lib/constants/report';
+import { REPORT_DESCRIPTION_MAX_LENGTH, REPORT_REASON_LABELS } from '@/lib/constants/report';
+import type { ReportTargetType } from '@/lib/constants/report';
 
 // ---------------------------------------------------------------------------
 // モック
@@ -71,11 +72,11 @@ describe('ReportDialog', () => {
 
     it('すべての通報理由ラジオボタンが表示される', () => {
       renderWithProviders(<ReportDialog {...defaultProps} />);
-      expect(screen.getByRole('radio', { name: 'スパム' })).toBeTruthy();
-      expect(screen.getByRole('radio', { name: '不適切なコンテンツ' })).toBeTruthy();
-      expect(screen.getByRole('radio', { name: '嫌がらせ' })).toBeTruthy();
-      expect(screen.getByRole('radio', { name: '著作権侵害' })).toBeTruthy();
-      expect(screen.getByRole('radio', { name: 'その他' })).toBeTruthy();
+      expect(screen.getByRole('radio', { name: REPORT_REASON_LABELS.spam })).toBeTruthy();
+      expect(screen.getByRole('radio', { name: REPORT_REASON_LABELS.inappropriate })).toBeTruthy();
+      expect(screen.getByRole('radio', { name: REPORT_REASON_LABELS.harassment })).toBeTruthy();
+      expect(screen.getByRole('radio', { name: REPORT_REASON_LABELS.copyright })).toBeTruthy();
+      expect(screen.getByRole('radio', { name: REPORT_REASON_LABELS.other })).toBeTruthy();
     });
 
     it('理由未選択のとき「次へ」ボタンが disabled になる', () => {
@@ -88,45 +89,45 @@ describe('ReportDialog', () => {
   describe('理由選択', () => {
     it('理由を選択すると checked 状態になる', () => {
       renderWithProviders(<ReportDialog {...defaultProps} />);
-      const spamRadio = screen.getByRole('radio', { name: 'スパム' });
+      const spamRadio = screen.getByRole('radio', { name: REPORT_REASON_LABELS.spam });
       fireEvent.press(spamRadio);
       expect(spamRadio.props.accessibilityState?.checked).toBe(true);
     });
 
     it('別の理由を選択すると前の選択が外れる', () => {
       renderWithProviders(<ReportDialog {...defaultProps} />);
-      fireEvent.press(screen.getByRole('radio', { name: 'スパム' }));
-      fireEvent.press(screen.getByRole('radio', { name: '嫌がらせ' }));
-      expect(screen.getByRole('radio', { name: 'スパム' }).props.accessibilityState?.checked).toBe(false);
-      expect(screen.getByRole('radio', { name: '嫌がらせ' }).props.accessibilityState?.checked).toBe(true);
+      fireEvent.press(screen.getByRole('radio', { name: REPORT_REASON_LABELS.spam }));
+      fireEvent.press(screen.getByRole('radio', { name: REPORT_REASON_LABELS.harassment }));
+      expect(screen.getByRole('radio', { name: REPORT_REASON_LABELS.spam }).props.accessibilityState?.checked).toBe(false);
+      expect(screen.getByRole('radio', { name: REPORT_REASON_LABELS.harassment }).props.accessibilityState?.checked).toBe(true);
     });
   });
 
   describe('ステップ 2（詳細入力）', () => {
     it('理由選択後に「次へ」を押すとステップ 2 に進む', () => {
       renderWithProviders(<ReportDialog {...defaultProps} />);
-      fireEvent.press(screen.getByRole('radio', { name: 'スパム' }));
+      fireEvent.press(screen.getByRole('radio', { name: REPORT_REASON_LABELS.spam }));
       fireEvent.press(screen.getByRole('button', { name: '次へ' }));
       expect(screen.getByRole('header', { name: '詳細を入力（任意）' })).toBeTruthy();
     });
 
     it('ステップ 2 では選択した理由が表示される', () => {
       renderWithProviders(<ReportDialog {...defaultProps} />);
-      fireEvent.press(screen.getByRole('radio', { name: 'スパム' }));
+      fireEvent.press(screen.getByRole('radio', { name: REPORT_REASON_LABELS.spam }));
       fireEvent.press(screen.getByRole('button', { name: '次へ' }));
-      expect(screen.getByText('選択した理由: スパム')).toBeTruthy();
+      expect(screen.getByText(`選択した理由: ${REPORT_REASON_LABELS.spam}`)).toBeTruthy();
     });
 
     it('文字数カウンターが表示される（0/1000）', () => {
       renderWithProviders(<ReportDialog {...defaultProps} />);
-      fireEvent.press(screen.getByRole('radio', { name: 'スパム' }));
+      fireEvent.press(screen.getByRole('radio', { name: REPORT_REASON_LABELS.spam }));
       fireEvent.press(screen.getByRole('button', { name: '次へ' }));
       expect(screen.getByText(`0/${REPORT_DESCRIPTION_MAX_LENGTH}`)).toBeTruthy();
     });
 
     it('「理由選択に戻る」ボタンでステップ 1 に戻る', () => {
       renderWithProviders(<ReportDialog {...defaultProps} />);
-      fireEvent.press(screen.getByRole('radio', { name: 'スパム' }));
+      fireEvent.press(screen.getByRole('radio', { name: REPORT_REASON_LABELS.spam }));
       fireEvent.press(screen.getByRole('button', { name: '次へ' }));
       fireEvent.press(screen.getByRole('button', { name: '理由選択に戻る' }));
       expect(screen.getByRole('header', { name: '通報の理由を選択してください' })).toBeTruthy();
@@ -140,7 +141,7 @@ describe('ReportDialog', () => {
       });
 
       renderWithProviders(<ReportDialog {...defaultProps} />);
-      fireEvent.press(screen.getByRole('radio', { name: 'スパム' }));
+      fireEvent.press(screen.getByRole('radio', { name: REPORT_REASON_LABELS.spam }));
       fireEvent.press(screen.getByRole('button', { name: '次へ' }));
       fireEvent.press(screen.getByRole('button', { name: '通報する' }));
 
@@ -163,7 +164,7 @@ describe('ReportDialog', () => {
       });
 
       renderWithProviders(<ReportDialog {...defaultProps} />);
-      fireEvent.press(screen.getByRole('radio', { name: 'スパム' }));
+      fireEvent.press(screen.getByRole('radio', { name: REPORT_REASON_LABELS.spam }));
       fireEvent.press(screen.getByRole('button', { name: '次へ' }));
       fireEvent.changeText(
         screen.getByAccessibilityHint !== undefined
@@ -190,7 +191,7 @@ describe('ReportDialog', () => {
       });
 
       renderWithProviders(<ReportDialog {...defaultProps} />);
-      fireEvent.press(screen.getByRole('radio', { name: 'スパム' }));
+      fireEvent.press(screen.getByRole('radio', { name: REPORT_REASON_LABELS.spam }));
       fireEvent.press(screen.getByRole('button', { name: '次へ' }));
       fireEvent.press(screen.getByRole('button', { name: '通報する' }));
 
@@ -206,7 +207,7 @@ describe('ReportDialog', () => {
       });
 
       renderWithProviders(<ReportDialog {...defaultProps} />);
-      fireEvent.press(screen.getByRole('radio', { name: 'スパム' }));
+      fireEvent.press(screen.getByRole('radio', { name: REPORT_REASON_LABELS.spam }));
       fireEvent.press(screen.getByRole('button', { name: '次へ' }));
       fireEvent.press(screen.getByRole('button', { name: '通報する' }));
 
@@ -222,7 +223,7 @@ describe('ReportDialog', () => {
       });
 
       renderWithProviders(<ReportDialog {...defaultProps} />);
-      fireEvent.press(screen.getByRole('radio', { name: 'スパム' }));
+      fireEvent.press(screen.getByRole('radio', { name: REPORT_REASON_LABELS.spam }));
       fireEvent.press(screen.getByRole('button', { name: '次へ' }));
       fireEvent.press(screen.getByRole('button', { name: '通報する' }));
 
@@ -237,7 +238,7 @@ describe('ReportDialog', () => {
       mockIsOnline.value = false;
 
       renderWithProviders(<ReportDialog {...defaultProps} />);
-      fireEvent.press(screen.getByRole('radio', { name: 'スパム' }));
+      fireEvent.press(screen.getByRole('radio', { name: REPORT_REASON_LABELS.spam }));
       fireEvent.press(screen.getByRole('button', { name: '次へ' }));
       fireEvent.press(screen.getByRole('button', { name: '通報する' }));
 
@@ -262,5 +263,60 @@ describe('ReportDialog', () => {
       fireEvent.press(screen.getByRole('button', { name: '通報をキャンセルして閉じる' }));
       expect(onClose).toHaveBeenCalledTimes(1);
     });
+  });
+
+  describe('複数の通報対象種別（event/shop/review）への対応', () => {
+    // 対象種別ごとの文言組立は呼び出し側の画面（Alert / accessibilityLabel）が担い、
+    // ReportDialog 自体の見出しは対象種別に関わらず共通（targetDisplayName は非表示 props）。
+    const targetTypes: readonly ReportTargetType[] = ['event', 'shop', 'review'];
+
+    it.each(targetTypes)(
+      'targetType="%s" でも通報理由選択のヘッダーが表示される',
+      (targetType) => {
+        renderWithProviders(
+          <ReportDialog
+            targetType={targetType}
+            targetId={`${targetType}-1`}
+            targetDisplayName="テスト対象"
+            onClose={jest.fn()}
+          />
+        );
+        expect(screen.getByRole('header', { name: '通報の理由を選択してください' })).toBeTruthy();
+        expect(screen.getByRole('radio', { name: REPORT_REASON_LABELS.spam })).toBeTruthy();
+      }
+    );
+
+    it.each(targetTypes)(
+      'targetType="%s" で送信すると mutate にその targetType がそのまま渡る',
+      async (targetType) => {
+        mockMutate.mockImplementation((_params: unknown, callbacks: { onSuccess: () => void }) => {
+          callbacks.onSuccess();
+        });
+
+        renderWithProviders(
+          <ReportDialog
+            targetType={targetType}
+            targetId={`${targetType}-1`}
+            targetDisplayName="テスト対象"
+            onClose={jest.fn()}
+          />
+        );
+        fireEvent.press(screen.getByRole('radio', { name: REPORT_REASON_LABELS.spam }));
+        fireEvent.press(screen.getByRole('button', { name: '次へ' }));
+        fireEvent.press(screen.getByRole('button', { name: '通報する' }));
+
+        await waitFor(() => {
+          expect(mockMutate).toHaveBeenCalledWith(
+            {
+              targetType,
+              targetId: `${targetType}-1`,
+              reason: 'spam',
+              description: undefined,
+            },
+            expect.any(Object)
+          );
+        });
+      }
+    );
   });
 });

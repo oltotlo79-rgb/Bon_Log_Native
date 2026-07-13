@@ -5,10 +5,11 @@
 
 import React from 'react';
 import { Alert } from 'react-native';
-import { screen, fireEvent } from '@testing-library/react-native';
+import { screen, fireEvent, act } from '@testing-library/react-native';
 import ShopDetailScreen from '@/app/shops/[id]/index';
 import { ApiError } from '@/lib/api/errors';
 import { renderWithProviders } from '@/__tests__/utils/test-utils';
+import { REPORT_TARGET_LABELS } from '@/lib/constants/report';
 
 const mockUseLocalSearchParams = jest.requireMock('expo-router').useLocalSearchParams;
 
@@ -35,6 +36,35 @@ jest.mock('expo-web-browser', () => ({
 
 jest.mock('@sentry/react-native', () => ({
   captureException: jest.fn(),
+}));
+
+// ReportDialog は別コンポーネントのテスト（__tests__/components/report/ReportDialog.test.tsx）で
+// 内部動作を検証するため、ここでは受け取った props を検証できる簡易スタブに置き換える
+jest.mock('@/components/report/ReportDialog', () => ({
+  ReportDialog: ({
+    targetType,
+    targetId,
+    targetDisplayName,
+    onClose,
+  }: {
+    targetType: string;
+    targetId: string;
+    targetDisplayName: string;
+    onClose: () => void;
+  }) => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports -- jest.mock ファクトリ内では ESM import が使えないため require を使用する（Jest 制約）
+    const { View, Text, Pressable } = require('react-native');
+    return (
+      <View testID="report-dialog">
+        <Text testID="report-dialog-target-type">{targetType}</Text>
+        <Text testID="report-dialog-target-id">{targetId}</Text>
+        <Text testID="report-dialog-target-display-name">{targetDisplayName}</Text>
+        <Pressable onPress={onClose} accessibilityRole="button" accessibilityLabel="通報ダイアログを閉じる">
+          <Text>閉じる</Text>
+        </Pressable>
+      </View>
+    );
+  },
 }));
 
 function makeShop(overrides = {}) {
@@ -199,6 +229,92 @@ describe('ShopDetailScreen', () => {
       fireEvent.press(screen.getByRole('button', { name: '店舗のメニューを開く' }));
       expect(AlertSpy).toHaveBeenCalled();
       AlertSpy.mockRestore();
+    });
+  });
+
+  describe('通報導線（非オーナー）', () => {
+    it('ログイン中の非オーナーはメニューボタンが表示される', () => {
+      mockUseCurrentUserQuery.mockReturnValue({ data: { id: 'user-9' } });
+      mockUseShopDetailQuery.mockReturnValue({
+        data: makeShop({ isOwner: false }),
+        isLoading: false,
+        isError: false,
+        error: null,
+        refetch: jest.fn(),
+      });
+      renderWithProviders(<ShopDetailScreen />);
+      expect(screen.getByRole('button', { name: '店舗のメニューを開く' })).toBeTruthy();
+    });
+
+    it('メニューボタンを押すと通報確認 Alert が表示される', () => {
+      const alertCalls: Parameters<typeof Alert.alert>[] = [];
+      jest.spyOn(Alert, 'alert').mockImplementation((...args) => {
+        alertCalls.push(args as Parameters<typeof Alert.alert>);
+      });
+      mockUseCurrentUserQuery.mockReturnValue({ data: { id: 'user-9' } });
+      mockUseShopDetailQuery.mockReturnValue({
+        data: makeShop({ isOwner: false }),
+        isLoading: false,
+        isError: false,
+        error: null,
+        refetch: jest.fn(),
+      });
+      renderWithProviders(<ShopDetailScreen />);
+      fireEvent.press(screen.getByRole('button', { name: '店舗のメニューを開く' }));
+      expect(alertCalls[0]?.[0]).toBe(`この${REPORT_TARGET_LABELS.shop}を通報しますか？`);
+      jest.restoreAllMocks();
+    });
+
+    it('Alert で「通報する」を選ぶと ReportDialog が targetType="shop" で開く', () => {
+      const alertCalls: Parameters<typeof Alert.alert>[] = [];
+      jest.spyOn(Alert, 'alert').mockImplementation((...args) => {
+        alertCalls.push(args as Parameters<typeof Alert.alert>);
+      });
+      mockUseCurrentUserQuery.mockReturnValue({ data: { id: 'user-9' } });
+      mockUseShopDetailQuery.mockReturnValue({
+        data: makeShop({ id: 'shop-1', name: '盆栽専門店 松苑', isOwner: false }),
+        isLoading: false,
+        isError: false,
+        error: null,
+        refetch: jest.fn(),
+      });
+      renderWithProviders(<ShopDetailScreen />);
+      fireEvent.press(screen.getByRole('button', { name: '店舗のメニューを開く' }));
+      const options = alertCalls[0]?.[2] as { text: string; onPress?: () => void }[] | undefined;
+      const reportOption = options?.find((opt) => opt.text === '通報する');
+      act(() => {
+        reportOption?.onPress?.();
+      });
+      expect(screen.getByTestId('report-dialog-target-type').props.children).toBe('shop');
+      expect(screen.getByTestId('report-dialog-target-id').props.children).toBe('shop-1');
+      expect(screen.getByTestId('report-dialog-target-display-name').props.children).toBe('盆栽専門店 松苑');
+      jest.restoreAllMocks();
+    });
+
+    it('ReportDialog の onClose で通報ダイアログが閉じる', () => {
+      const alertCalls: Parameters<typeof Alert.alert>[] = [];
+      jest.spyOn(Alert, 'alert').mockImplementation((...args) => {
+        alertCalls.push(args as Parameters<typeof Alert.alert>);
+      });
+      mockUseCurrentUserQuery.mockReturnValue({ data: { id: 'user-9' } });
+      mockUseShopDetailQuery.mockReturnValue({
+        data: makeShop({ isOwner: false }),
+        isLoading: false,
+        isError: false,
+        error: null,
+        refetch: jest.fn(),
+      });
+      renderWithProviders(<ShopDetailScreen />);
+      fireEvent.press(screen.getByRole('button', { name: '店舗のメニューを開く' }));
+      const options = alertCalls[0]?.[2] as { text: string; onPress?: () => void }[] | undefined;
+      const reportOption = options?.find((opt) => opt.text === '通報する');
+      act(() => {
+        reportOption?.onPress?.();
+      });
+      expect(screen.getByTestId('report-dialog')).toBeTruthy();
+      fireEvent.press(screen.getByRole('button', { name: '通報ダイアログを閉じる' }));
+      expect(screen.queryByTestId('report-dialog')).toBeNull();
+      jest.restoreAllMocks();
     });
   });
 
