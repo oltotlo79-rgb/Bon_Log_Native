@@ -39,6 +39,7 @@ import {
   ERR_RATE_LIMIT_DAILY_POSTS,
   ERR_FORBIDDEN,
   ERR_SERVER,
+  messageForPostBonsaiError,
 } from '@/lib/constants/errors';
 import {
   MAX_POST_CONTENT_FREE,
@@ -51,6 +52,7 @@ import { useToast } from '@/hooks/use-toast';
 import { usePostComposer } from '@/hooks/use-post-composer';
 import { PostBodyInput } from './PostBodyInput';
 import { GenreSelector } from './GenreSelector';
+import { BonsaiSelector } from './BonsaiSelector';
 import { ImageAttachmentGrid } from './ImageAttachmentGrid';
 import { VideoAttachmentArea } from './VideoAttachmentArea';
 import { ComposerFormError } from './ComposerFormError';
@@ -82,8 +84,11 @@ export type PostComposerProps = {
 // エラーコードからユーザー向けメッセージへの変換
 // ---------------------------------------------------------------------------
 
-function resolveCreateError(error: unknown, appliedMaxLength: number): string {
+function resolveCreateError(error: unknown, appliedMaxLength: number, hasBonsaiId: boolean): string {
   if (isApiError(error)) {
+    // bonsaiId 指定時の NOT_FOUND は「投稿が見つからない」と区別不能な秘匿設計のため、
+    // bonsaiId を指定したリクエストの文脈でのみ盆栽起因として解釈する（他の文脈では messageForApiError を使う）。
+    if (hasBonsaiId && error.code === 'NOT_FOUND') return messageForPostBonsaiError(error.code);
     if (error.code === 'RATE_LIMITED') return ERR_RATE_LIMIT_DAILY_POSTS;
     if (error.code === 'VALIDATION_ERROR') return ERR_POST_CONTENT_TOO_LONG(appliedMaxLength);
     if (error.code === 'GUEST_NOT_ALLOWED' || error.code === 'ACCOUNT_SUSPENDED') return ERR_FORBIDDEN;
@@ -141,6 +146,9 @@ export function PostComposer({
   const [formError, setFormError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [pollValue, setPollValue] = useState<PollAttachmentValue | null>(null);
+  // Web の PostEditForm には対応する UI がなく編集時は変更不可のため、新規投稿でのみ保持する
+  // （usePostComposer の isDirty 判定にも含めない。pollValue と同じ扱い）。
+  const [selectedBonsaiId, setSelectedBonsaiId] = useState<string | null>(null);
 
   const createMutation = useCreatePostMutation(currentUserId);
   const updateMutation = useUpdatePostMutation();
@@ -228,6 +236,7 @@ export function PostComposer({
           genreIds: selectedGenres,
           mediaUrls,
           mediaTypes,
+          bonsaiId: selectedBonsaiId,
           poll: pollValue !== null
             ? { options: pollValue.options, durationSeconds: pollValue.durationSeconds }
             : undefined,
@@ -236,6 +245,8 @@ export function PostComposer({
         router.dismiss();
       } else {
         if (postId === undefined) return;
+        // bonsaiId キー自体を渡さない＝三値契約の「現状維持」。Web の PostEditForm も
+        // bonsaiId を一切変更しないため、編集では常に維持のまま送信する。
         await updateMutation.mutateAsync({
           id: postId,
           content,
@@ -249,7 +260,7 @@ export function PostComposer({
     } catch (error) {
       const message =
         mode === 'create'
-          ? resolveCreateError(error, maxLength)
+          ? resolveCreateError(error, maxLength, selectedBonsaiId !== null)
           : resolveUpdateError(error, maxLength);
       setFormError(message);
     } finally {
@@ -266,6 +277,7 @@ export function PostComposer({
     mode,
     content,
     selectedGenres,
+    selectedBonsaiId,
     createMutation,
     updateMutation,
     postId,
@@ -356,6 +368,15 @@ export function PostComposer({
           onChange={setSelectedGenres}
           isDisabled={isSubmitting}
         />
+
+        {/* 盆栽の紐付け（新規投稿のみ。Web の PostEditForm には対応する UI がない） */}
+        {mode === 'create' && (
+          <BonsaiSelector
+            selectedBonsaiId={selectedBonsaiId}
+            onChange={setSelectedBonsaiId}
+            isDisabled={isSubmitting}
+          />
+        )}
 
         <View style={styles.divider} />
 
