@@ -94,7 +94,7 @@ export default function PostEditScreen() {
         postId={post.id}
         initialValues={{
           content: post.content ?? '',
-          genreIds: post.genres.map((g) => g.name),
+          genreIds: post.genres.map((g) => g.id),
           imageUris: initialImageUris,
           videoUri: initialVideoUri,
         }}
