@@ -567,6 +567,107 @@ describe('ShopDetailScreen', () => {
     });
   });
 
+  describe('通報導線（レビュープレビュー）', () => {
+    const reportButtonLabel = `この${REPORT_TARGET_LABELS.review}を通報する`;
+
+    function mockReviewsWith(user: { id: string; nickname: string; avatarUrl: string | null }, overrides = {}) {
+      mockUseShopReviewsQuery.mockReturnValue({
+        data: {
+          pages: [{
+            items: [{
+              id: 'rev-9',
+              rating: 5,
+              content: 'レビュー本文',
+              images: [],
+              user,
+              createdAt: '2025-06-01T00:00:00Z',
+              ...overrides,
+            }],
+            nextCursor: null,
+          }],
+          pageParams: [undefined],
+        },
+        isLoading: false,
+      });
+    }
+
+    it('他人のレビューには通報ボタン（flag アイコン）が表示される', () => {
+      mockUseCurrentUserQuery.mockReturnValue({ data: { id: 'me' } });
+      mockReviewsWith({ id: 'other-user', nickname: '他ユーザー', avatarUrl: null });
+      mockUseShopDetailQuery.mockReturnValue({
+        data: makeShop(),
+        isLoading: false,
+        isError: false,
+        error: null,
+        refetch: jest.fn(),
+      });
+      renderWithProviders(<ShopDetailScreen />);
+      expect(screen.getByRole('button', { name: reportButtonLabel })).toBeTruthy();
+    });
+
+    it('自分のレビューには通報ボタンが表示されない', () => {
+      mockUseCurrentUserQuery.mockReturnValue({ data: { id: 'me' } });
+      mockReviewsWith({ id: 'me', nickname: '自分', avatarUrl: null });
+      mockUseShopDetailQuery.mockReturnValue({
+        data: makeShop(),
+        isLoading: false,
+        isError: false,
+        error: null,
+        refetch: jest.fn(),
+      });
+      renderWithProviders(<ShopDetailScreen />);
+      expect(screen.queryByRole('button', { name: reportButtonLabel })).toBeNull();
+    });
+
+    it('未ログイン時は通報ボタンが表示されない', () => {
+      mockUseCurrentUserQuery.mockReturnValue({ data: undefined });
+      mockReviewsWith({ id: 'other-user', nickname: '他ユーザー', avatarUrl: null });
+      mockUseShopDetailQuery.mockReturnValue({
+        data: makeShop(),
+        isLoading: false,
+        isError: false,
+        error: null,
+        refetch: jest.fn(),
+      });
+      renderWithProviders(<ShopDetailScreen />);
+      expect(screen.queryByRole('button', { name: reportButtonLabel })).toBeNull();
+    });
+
+    it('通報ボタンを押すと ReportDialog が targetType="review" で開く', () => {
+      mockUseCurrentUserQuery.mockReturnValue({ data: { id: 'me' } });
+      mockReviewsWith({ id: 'other-user', nickname: '他ユーザー', avatarUrl: null });
+      mockUseShopDetailQuery.mockReturnValue({
+        data: makeShop(),
+        isLoading: false,
+        isError: false,
+        error: null,
+        refetch: jest.fn(),
+      });
+      renderWithProviders(<ShopDetailScreen />);
+      fireEvent.press(screen.getByRole('button', { name: reportButtonLabel }));
+      expect(screen.getByTestId('report-dialog-target-type').props.children).toBe('review');
+      expect(screen.getByTestId('report-dialog-target-id').props.children).toBe('rev-9');
+      expect(screen.getByTestId('report-dialog-target-display-name').props.children).toBe('他ユーザーのレビュー');
+    });
+
+    it('ReportDialog の onClose で通報ダイアログが閉じる', () => {
+      mockUseCurrentUserQuery.mockReturnValue({ data: { id: 'me' } });
+      mockReviewsWith({ id: 'other-user', nickname: '他ユーザー', avatarUrl: null });
+      mockUseShopDetailQuery.mockReturnValue({
+        data: makeShop(),
+        isLoading: false,
+        isError: false,
+        error: null,
+        refetch: jest.fn(),
+      });
+      renderWithProviders(<ShopDetailScreen />);
+      fireEvent.press(screen.getByRole('button', { name: reportButtonLabel }));
+      expect(screen.getByTestId('report-dialog')).toBeTruthy();
+      fireEvent.press(screen.getByRole('button', { name: '通報ダイアログを閉じる' }));
+      expect(screen.queryByTestId('report-dialog')).toBeNull();
+    });
+  });
+
   describe('ジャンル表示', () => {
     it('ジャンルが表示される', () => {
       mockUseShopDetailQuery.mockReturnValue({

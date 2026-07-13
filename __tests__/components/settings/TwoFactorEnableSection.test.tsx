@@ -101,6 +101,17 @@ describe('TwoFactorEnableSection 有効化フロー', () => {
     expect(screen.getByLabelText('バックアップコード IJKL-MNOP5678')).toBeTruthy();
   });
 
+  it('setup 開始で QR コード画像が表示され、シークレットキー等のフォールバックテキストと併存する', async () => {
+    // QR の data URI 形式（svg / gif / base64 等）には依存しない。
+    // accessibilityLabel を持つ画像要素の存在と、読み取れない環境向けの
+    // テキストフォールバック（シークレットキー・otpauth URL）が両方あることのみ検証する。
+    renderWithProviders(<TwoFactorEnableSection isOnline />);
+    await startSetup();
+    expect(screen.getByLabelText('2FA QRコード')).toBeTruthy();
+    expect(screen.getByLabelText('シークレットキー')).toBeTruthy();
+    expect(screen.getByLabelText('otpauth URL')).toBeTruthy();
+  });
+
   it('コードを入力して有効化するとサーバーへ code と setupId が渡る', async () => {
     renderWithProviders(<TwoFactorEnableSection isOnline />);
     await startSetup();

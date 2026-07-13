@@ -6,6 +6,7 @@
  */
 
 import React from 'react';
+import type { ReactTestRendererNode } from 'react-test-renderer';
 import { render, screen, fireEvent } from '@testing-library/react-native';
 import { ProfileHeader, type ProfileHeaderProps } from '@/components/profile/ProfileHeader';
 
@@ -480,5 +481,35 @@ describe('ProfileHeader: 統計リンクのタップ遷移', () => {
     const likesLink = screen.getByLabelText('いいねした投稿一覧を見る');
     expect(likesLink).toBeTruthy();
     expect(screen.getByText('いいね')).toBeTruthy();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 統計の並び順（Web版 components/user/ProfileHeader.tsx と一致させる）
+// ---------------------------------------------------------------------------
+
+/** 描画ツリーを深さ優先で辿り、Text の内容を出現順に平坦化する。 */
+function flattenTexts(node: ReactTestRendererNode): string[] {
+  if (typeof node === 'string') return [node];
+  if (node.children === null) return [];
+  return node.children.flatMap(flattenTexts);
+}
+
+describe('ProfileHeader: 統計の並び順', () => {
+  it('フォロー中→フォロワー→いいね→投稿の順に描画される', () => {
+    // isSelf=true にして FollowButton（following=true 時に「フォロー中」という
+    // 別テキストを描画しうる）を除外し、統計ラベル文字列の一意性を保証する
+    const { toJSON } = renderHeader({
+      isSelf: true,
+      followingCount: 12,
+      followersCount: 34,
+      postsCount: 56,
+    });
+    const tree = toJSON();
+    const allTexts = tree === null ? [] : (Array.isArray(tree) ? tree.flatMap(flattenTexts) : flattenTexts(tree));
+    const statLabels = allTexts.filter(
+      (text) => text === 'フォロー中' || text === 'フォロワー' || text === 'いいね' || text === '投稿'
+    );
+    expect(statLabels).toEqual(['フォロー中', 'フォロワー', 'いいね', '投稿']);
   });
 });

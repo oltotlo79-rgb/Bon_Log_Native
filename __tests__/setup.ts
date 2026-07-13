@@ -371,6 +371,14 @@ jest.mock('expo-secure-store', () => {
   };
 });
 
+// @react-native-async-storage/async-storage のモック
+// 公式提供の jest モック（in-memory 実装）を使う。__INTERNAL_MOCK_STORAGE__ は
+// テストファイル内の it() 間で持ち越されるため、これを使うテストは beforeEach で
+// AsyncStorage.clear() を呼び、他テストへの汚染を防ぐこと。
+jest.mock('@react-native-async-storage/async-storage', () =>
+  require('@react-native-async-storage/async-storage/jest/async-storage-mock')
+);
+
 // lib/auth/use-auth のモック
 // LoginScreen 等が useAuth() を呼ぶため、テスト環境では安定したデフォルト値を返す
 jest.mock('@/lib/auth/use-auth', () => ({

@@ -4,6 +4,7 @@
  */
 
 import React from 'react';
+import { Modal } from 'react-native';
 import { screen, fireEvent, act } from '@testing-library/react-native';
 import CareLogsScreen from '@/app/bonsai/care-logs/index';
 import { renderWithProviders } from '@/__tests__/utils/test-utils';
@@ -227,6 +228,67 @@ describe('CareLogsScreen 一覧表示', () => {
     expect(screen.getByText('室入れ')).toBeTruthy();
     expect(screen.getByText('室出し')).toBeTruthy();
     expect(screen.getByText('その他')).toBeTruthy();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 型ガード（isBonsaiCareType のフォールバック）
+// ---------------------------------------------------------------------------
+
+describe('CareLogsScreen 型ガード（isBonsaiCareType のフォールバック）', () => {
+  it('不正な type の項目は一覧行に生の type 文字列がそのまま表示される', () => {
+    mockUseCareLogsQuery.mockReturnValue({
+      ...defaultQuery,
+      data: makeCareLogsData([makeCareLogItem('log-1', 'unknown_type_xyz')]),
+    });
+    renderWithProviders(<CareLogsScreen />);
+    expect(screen.getByText('unknown_type_xyz')).toBeTruthy();
+  });
+
+  it('正当な種別（液体肥料）は従来どおりのラベルで表示される（回帰確認）', () => {
+    mockUseCareLogsQuery.mockReturnValue({
+      ...defaultQuery,
+      data: makeCareLogsData([makeCareLogItem('log-1', BONSAI_CARE_TYPE.LIQUID_FERTILIZER)]),
+    });
+    renderWithProviders(<CareLogsScreen />);
+    expect(screen.getByText('液体肥料')).toBeTruthy();
+    expect(screen.queryByText(BONSAI_CARE_TYPE.LIQUID_FERTILIZER)).toBeNull();
+  });
+
+  it('不正な type の項目を編集すると種別セレクタで「その他」が選択される（BONSAI_CARE_TYPE.OTHER フォールバック）', () => {
+    mockUseCareLogsQuery.mockReturnValue({
+      ...defaultQuery,
+      data: makeCareLogsData([makeCareLogItem('log-1', 'unknown_type_xyz')]),
+    });
+    renderWithProviders(<CareLogsScreen />);
+    act(() => {
+      fireEvent.press(screen.getByLabelText('unknown_type_xyz 2025年6月1日を編集'));
+    });
+    // Modal.onShow は実機では表示時にネイティブ側から発火するが、テスト環境では
+    // 自動発火しないため、handleShow（フォーム初期化）を直接呼び出して検証する
+    const modal = screen.UNSAFE_getByType(Modal);
+    act(() => {
+      modal.props.onShow?.();
+    });
+    const otherChip = screen.getByRole('radio', { name: 'その他' });
+    expect(otherChip.props.accessibilityState?.selected).toBe(true);
+  });
+
+  it('正当な type の項目を編集すると種別セレクタでその種別が選択される（回帰確認）', () => {
+    mockUseCareLogsQuery.mockReturnValue({
+      ...defaultQuery,
+      data: makeCareLogsData([makeCareLogItem('log-1', BONSAI_CARE_TYPE.SOLID_FERTILIZER)]),
+    });
+    renderWithProviders(<CareLogsScreen />);
+    act(() => {
+      fireEvent.press(screen.getByLabelText('固形肥料 2025年6月1日を編集'));
+    });
+    const modal = screen.UNSAFE_getByType(Modal);
+    act(() => {
+      modal.props.onShow?.();
+    });
+    const solidFertilizerChip = screen.getByRole('radio', { name: '固形肥料' });
+    expect(solidFertilizerChip.props.accessibilityState?.selected).toBe(true);
   });
 });
 

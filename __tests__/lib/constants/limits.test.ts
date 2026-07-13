@@ -57,6 +57,7 @@ import {
   DEBOUNCE_SEARCH_MS,
   DEBOUNCE_DELAY_MS,
   LIKE_DEBOUNCE_MS,
+  MAX_RECENT_SEARCHES,
 } from '@/lib/constants/limits/ui';
 
 import * as limitsIndex from '@/lib/constants/limits';
@@ -238,6 +239,10 @@ describe('limits/ui — UI タイミング定数', () => {
   it('LIKE_DEBOUNCE_MS は正の数', () => {
     expect(LIKE_DEBOUNCE_MS).toBeGreaterThan(0);
   });
+
+  it('MAX_RECENT_SEARCHES は 10（検索履歴の最大保持件数）', () => {
+    expect(MAX_RECENT_SEARCHES).toBe(10);
+  });
 });
 
 describe('limits/index — barrel エクスポート', () => {
@@ -260,5 +265,6 @@ describe('limits/index — barrel エクスポート', () => {
   it('ui モジュールの定数が re-export されている', () => {
     expect(limitsIndex.LIKE_DEBOUNCE_MS).toBeDefined();
     expect(limitsIndex.DEBOUNCE_SEARCH_MS).toBeDefined();
+    expect(limitsIndex.MAX_RECENT_SEARCHES).toBeDefined();
   });
 });
