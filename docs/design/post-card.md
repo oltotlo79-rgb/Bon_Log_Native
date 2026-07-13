@@ -2,6 +2,7 @@
 
 作成日: 2026-06-12
 最終改訂: 2026-07-11（墨筆枠オーバーレイ実装 `post-frame.svg` への追従改訂 — §4.1・§4.2・§7.2・§19・§20。改訂元: `sumi-e-theme-parity-2026-07-06.md`）
+追記（2026-07-13・エラー色トークンの是正）: §10.5 いいね済みアイコンの `colorError` 記載値を `#c0392b` から `#c21721` へ修正した。旧値は `design-tokens.md` の旧誤記に起因するもので、実装 `lib/constants/design-tokens.ts` の実際の値は `#c21721`。根拠は `design-tokens.md` §11 を参照。
 前提: `design-tokens.md`（§2.3・§4・§5・§6・§8）・`navigation-structure.md`（§4.2・§6）に準拠。**ただし `design-tokens.md` §4・§8 の PostCard 記述（`radiusLg` 起点の標準カード形状・「モバイルでは SVG 枠は再現しない」）は 2026-07-11 時点で未更新。本書 §4.1・§19 の方針転換が正（`design-tokens.md` 側の改訂は本書のスコープ外）**
 Web 出典: `Bon_Log_cfw/components/post/PostCard.tsx`・`PostCardHeader.tsx`・`PostCardActions.tsx`・`ImageGallery.tsx`・`types/post.ts`
 実装の正（2026-07-11 追記）: `components/post/PostCard.tsx`・`components/post/PostImageGallery.tsx`（本書との記述に差異が生じた場合は実装を正とし、本書を追従改訂する）
@@ -405,7 +406,7 @@ Row（flexDirection: row / alignItems: center）
 | 要素 | トークン |
 |------|---------|
 | アイコン（非アクティブ） | `colorTextSecondary`（`#5c5c5c`）|
-| いいね済みアイコン | `colorError`（`#c0392b`）|
+| いいね済みアイコン | `colorError`（`#c21721`）|
 | リポスト済みアイコン | `colorSuccess`（`#3a6b42`）|
 | ブックマーク済みアイコン | `colorActionPrimary`（`#2e2e2e`）|
 | 数値テキスト | `textSm` / `colorTextSecondary` |

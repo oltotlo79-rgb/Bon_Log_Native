@@ -1,6 +1,7 @@
 # 共通状態コンポーネント仕様 — Bon_Log Native
 
 作成日: 2026-06-12
+追記（2026-07-13・エラー色トークンの是正）: §4.4 ScreenError のアイコン色 `colorError` 記載値を `#c0392b` から `#c21721` へ修正した。旧値は `design-tokens.md` の旧誤記に起因するもので、実装 `lib/constants/design-tokens.ts` の実際の値は `#c21721`。根拠は `design-tokens.md` §11 を参照。
 前提: `design-tokens.md`（§2.3 セマンティックカラー）・`navigation-structure.md`（§6 文言トーン方針）に準拠
 対象: `components/common/` に配置される 4 種の共通状態コンポーネント
 
@@ -223,7 +224,7 @@ Web 版 `PageError.tsx` のモバイル版に相当する（`components/common/P
 | 要素 | トークン |
 |------|---------|
 | アイコン円背景 | `colorErrorBg`（`#fdf0ef`）|
-| アイコン色 | `colorError`（`#c0392b`）|
+| アイコン色 | `colorError`（`#c21721`）|
 | タイトルテキスト | `textLg` / `colorTextPrimary` |
 | 説明テキスト | `textBase` / `colorTextSecondary` |
 | 再試行ボタン背景 | `colorActionPrimary`（`#2e2e2e`）|

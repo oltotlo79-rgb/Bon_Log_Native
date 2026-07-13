@@ -1,6 +1,7 @@
 # アカウント削除フロー UI/UX 仕様 — Bon_Log Native
 
 作成日: 2026-06-19
+追記（2026-07-13・エラー色トークンの是正）: §2.2「危険ゾーン」セクションの `colorError` 記載値を `#c0392b` から `#c21721` へ修正した。旧値は `design-tokens.md` の旧誤記に起因するもので、実装 `lib/constants/design-tokens.ts` の実際の値は `#c21721`。根拠は `design-tokens.md` §11 を参照。
 対象画面:
 - `settings/account` — アカウント設定（削除導線を含む）
 
@@ -68,10 +69,10 @@
 
 ### 2.2 「危険ゾーン」セクションの設計
 
-- セクション見出し「危険ゾーン」: `textSm`（12pt）/ `colorError`（`#c0392b`）/ `letterSpacingWidest`（1.5）/ 上下に `spacing2` のセパレータ
+- セクション見出し「危険ゾーン」: `textSm`（12pt）/ `colorError`（`#c21721`）/ `letterSpacingWidest`（1.5）/ 上下に `spacing2` のセパレータ
 - 「アカウントを削除する」リスト行:
   - 高さ: 56pt（タップターゲット確保）
-  - テキスト: `textMd`（15pt）/ `colorError`（`#c0392b`）
+  - テキスト: `textMd`（15pt）/ `colorError`（`#c21721`）
   - 左端にアイコン: AlertTriangle 系 / サイズ 20pt / `colorError`
   - 背景: `colorBackground`（通常と同じ白背景。赤背景は使わない — ユーザーが誤タップを避けるため視認性は保ちつつ過度な強調は避ける）
   - 右端にシェブロン（›）: 20pt / `colorTextTertiary`

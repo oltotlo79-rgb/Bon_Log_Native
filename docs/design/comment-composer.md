@@ -2,6 +2,7 @@
 
 作成日: 2026-06-19
 最終改訂: 2026-07-13（実装 `components/comment/CommentInput.tsx` / `hooks/use-comment-media.ts` / `lib/queries/comments.ts` の確認結果に基づき §2・§4・§5.2・§6 を全面改訂。旧仕様は画像添付を「MVP はボタン配置のみ・タップ時の実装は基本仕様として含める」という将来対応扱いにしていたが、**画像添付（最大2枚）・動画添付（プレミアムのみ最大1本）は既に実装済み**である。送信条件も「本文またはメディアのいずれかがあれば送信可」に是正した）
+同日追記（2026-07-13 第2回改訂・エラー色トークンの是正）: §7.5 いいねアイコンの `colorError` 記載値を `#c0392b` から `#c21721` へ修正した。旧値は `design-tokens.md` の旧誤記に起因するもので、実装 `lib/constants/design-tokens.ts` の実際の値は `#c21721`。根拠は `design-tokens.md` §11 を参照。
 対象画面:
 - `posts/[id]` — 投稿詳細画面（コメント投稿 UI はこの画面に内包）
 
@@ -359,7 +360,7 @@ PostDetailScreen               ← 画面全体
   - `accessibilityRole="button"` / `accessibilityLabel="{nickname}のコメントに返信する"`
 - 「♡ いいね {N}」ボタン:
   - 楽観更新（`post-card.md` §10.2 のいいね仕様に準拠）
-  - 済み: `colorError`（`#c0392b`）塗りアイコン / 未: `colorTextSecondary` 線アイコン
+  - 済み: `colorError`（`#c21721`）塗りアイコン / 未: `colorTextSecondary` 線アイコン
   - `accessibilityLabel`: 「いいねする。現在 {N} 件」または「いいねを取り消す。現在 {N} 件」
 - 各ボタンの最小タップターゲット: 44pt（`hitSlop` で確保）
 - ボタン間の `gap`: `spacing3`（12pt）

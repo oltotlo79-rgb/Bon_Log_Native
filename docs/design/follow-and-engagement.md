@@ -2,6 +2,7 @@
 
 作成日: 2026-06-14
 更新日: 2026-06-15（§2.6 403 文言を ERR_FORBIDDEN 定数に統一。詳細は §12 参照）
+追記（2026-07-13・エラー色トークンの是正）: §2.2（フォロー解除・申請取り消しの pressIn 表示）と §3.1（いいねアイコン）の `colorError` 記載値を `#c0392b` から `#c21721` へ修正した。旧値は `design-tokens.md` の旧誤記に起因するもので、実装 `lib/constants/design-tokens.ts` の実際の値は `#c21721`。根拠・是正対象コードの一覧は `design-tokens.md` §11 を参照。
 前提: `design-tokens.md` / `navigation-structure.md` / `post-card.md` / `common-states.md` に準拠
 API 出典: `docs/plans/openapi-v1.3.0-snapshot.json` (v1.3.0)
 Web 出典: `Bon_Log_cfw/components/user/FollowButton.tsx` / `lib/actions/follow.ts`
@@ -99,8 +100,8 @@ Web 出典: `Bon_Log_cfw/components/user/FollowButton.tsx` / `lib/actions/follow
 | 属性 | 値 |
 |------|----|
 | 背景色 | `colorErrorBg`（`#fdf0ef`）|
-| テキスト | `colorError`（`#c0392b`）/ 同フォント |
-| 枠線 | 1.5pt solid `colorError`（`#c0392b`）|
+| テキスト | `colorError`（`#c21721`）/ 同フォント |
+| 枠線 | 1.5pt solid `colorError`（`#c21721`）|
 | 文言 | 「フォローを解除」 |
 
 `onPressOut` でボタンを離した場合（指を滑らせてキャンセル）は通常の「フォロー中」表示に戻す。
@@ -116,8 +117,8 @@ Web 出典: `Bon_Log_cfw/components/user/FollowButton.tsx` / `lib/actions/follow
 | 属性 | 値 |
 |------|----|
 | 背景色 | `colorErrorBg`（`#fdf0ef`）|
-| テキスト | `colorError`（`#c0392b`）|
-| 枠線 | 1.5pt solid `colorError`（`#c0392b`）|
+| テキスト | `colorError`（`#c21721`）|
+| 枠線 | 1.5pt solid `colorError`（`#c21721`）|
 | 文言 | 「申請を取り消す」 |
 
 ### 2.3 確認ダイアログの要否
@@ -200,7 +201,7 @@ disabled 状態でも外観の変化が必要。
 ```
 タップ
  → 即時に表示を切り替える（楽観更新）:
-     未いいね → 済: Heart アイコンを colorError（#c0392b）塗りに変更 + likeCount を +1
+     未いいね → 済: Heart アイコンを colorError（#c21721）塗りに変更 + likeCount を +1
      済 → 未: Heart アイコンを colorTextSecondary（#5c5c5c）線のみに変更 + likeCount を -1
  → スケールアニメーション: 1.0 → 1.3 → 1.0（durationFast: 200ms / easingBounce / useNativeDriver: true）
  → POST または DELETE /api/v1/posts/{id}/like を呼び出す

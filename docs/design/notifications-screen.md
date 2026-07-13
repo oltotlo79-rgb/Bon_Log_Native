@@ -2,6 +2,7 @@
 
 作成日: 2026-06-13
 更新日: 2026-06-14（Batch 2b リリースに伴い §8 の既読化方針を確定。API エンドポイント名を修正）
+追記（2026-07-13・エラー色トークンの是正）: §6.1 type別対応表（`like`・`comment_like`）・§7.1 未読バッジ背景・§13 使用デザイントークンの `colorError` 記載値を `#c0392b` から `#c21721` へ修正した。旧値は `design-tokens.md` の旧誤記に起因するもので、実装 `lib/constants/design-tokens.ts` の実際の値は `#c21721`。根拠は `design-tokens.md` §11 を参照。
 前提: `design-tokens.md` / `navigation-structure.md` / `common-states.md` / `post-card.md` に準拠
 Web 出典: `Bon_Log_cfw/components/notification/NotificationItem.tsx` / `NotificationList.tsx` / `NotificationBadge.tsx` / `types/notification.ts`
 API: `GET /api/v1/notifications`（カーソルベース）/ `GET /api/v1/notifications/unread-count`
@@ -84,9 +85,9 @@ NotificationsScreen           ← 画面ルート。TanStack Query フック・u
 │   ├── NotificationBody      ← 本文テキスト + コンテンツプレビュー + 日時
 │   └── UnreadDot             ← 未読インジケータドット
 ├── ScreenLoading             ← variant="skeleton" / skeletonCount=4（共通）
-├── ScreenEmpty               ← 空状態（共通）
-├── ScreenError               ← エラー状態（共通）
-└── OfflineBanner             ← オフライン時（共通）
+├── ScreenEmpty                ← 空状態（共通）
+├── ScreenError                ← エラー状態（共通）
+└── OfflineBanner              ← オフライン時（共通）
 ```
 
 ### NotificationCell props 概要
@@ -158,8 +159,8 @@ Web の `NotificationItem.tsx`（`getNotificationIcon` / `getNotificationMessage
 
 | type | アイコン（Lucide 系）| アイコン色 | 本文テンプレート | 遷移先 |
 |------|---------------------|-----------|--------------|-------|
-| `like` | Heart（filled） | `colorError`（`#c0392b`）| **{nickname}** さんがあなたの投稿にいいねしました | `posts/{postId}` |
-| `comment_like` | Heart（filled） | `colorError`（`#c0392b`）| **{nickname}** さんがあなたのコメントにいいねしました | `posts/{postId}`（commentId がある場合 `posts/{postId}#comment-{commentId}` — モバイルはアンカーなし → 投稿詳細に着地）|
+| `like` | Heart（filled） | `colorError`（`#c21721`）| **{nickname}** さんがあなたの投稿にいいねしました | `posts/{postId}` |
+| `comment_like` | Heart（filled） | `colorError`（`#c21721`）| **{nickname}** さんがあなたのコメントにいいねしました | `posts/{postId}`（commentId がある場合 `posts/{postId}#comment-{commentId}` — モバイルはアンカーなし → 投稿詳細に着地）|
 | `comment` | MessageCircle | `colorTextSecondary` | **{nickname}** さんがあなたの投稿にコメントしました | `posts/{postId}` |
 | `reply` | CornerUpLeft（Reply 系）| `colorTextSecondary` | **{nickname}** さんがあなたのコメントに返信しました | `posts/{postId}` |
 | `follow` | UserPlus | `colorSuccess`（`#3a6b42`）| **{nickname}** さんがあなたをフォローしました | `users/{actorId}` |
@@ -232,7 +233,7 @@ Web の `NotificationItem.tsx`（`getNotificationIcon` / `getNotificationMessage
 ```
 
 - バッジサイズ: 最小 18pt × 18pt（文字 1 桁）/ 文字 2 桁以上で幅が伸びる
-- バッジ背景: `colorError`（`#c0392b` — 朱色）
+- バッジ背景: `colorError`（`#c21721` — 朱色）
 - バッジテキスト: `textXs`（10pt）/ `colorTextInverse`（`#ffffff`）/ `fontWeight: 700`
 - `borderRadius: radiusFull`
 - バッジ位置: アイコン右上 / オフセット `top: -4pt, right: -4pt`
@@ -441,7 +442,7 @@ Web の `NotificationItem.tsx`（`getNotificationIcon` / `getNotificationMessage
 | プレビューテキスト | `textSm`（12pt）/ `colorTextSecondary` |
 | 日時テキスト | `textSm`（12pt）/ `colorTextSecondary` |
 | セパレータ | 1pt / `colorBorderLight` |
-| タブバッジ背景 | `colorError`（`#c0392b`）|
+| タブバッジ背景 | `colorError`（`#c21721`）|
 | タブバッジテキスト | `textXs` / `colorTextInverse` |
 
 ---

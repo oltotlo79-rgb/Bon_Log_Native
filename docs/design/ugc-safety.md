@@ -3,6 +3,7 @@
 
 作成日: 2026-06-15
 更新日: 2026-07-13（通報対象をイベント・盆栽園・レビューへ拡張した実装〔`app/events/[id]/index.tsx`・`app/shops/[id]/index.tsx`・`app/shops/[id]/reviews/index.tsx`・`components/report/ReportDialog.tsx`・`lib/constants/report.ts`〕を反映。§1.2・§2.5・§2.6（新設）・§7.1・§7.2・§7.5・§8.1・§9・§10・§11・§12.1・§12.8（新設）・§15・§16 を更新。通報理由ラベル `inappropriate`/`harassment` を Web (`Bon_Log_cfw`) 整合値に是正）
+同日追記（2026-07-13 第2回改訂・エラー色トークンの是正）: §2.1・§15 の `colorError` 記載値を `#c0392b` から `#c21721` へ修正した。旧値は `design-tokens.md` の旧誤記に起因するもので、実装 `lib/constants/design-tokens.ts` の実際の値は `#c21721`。根拠は `design-tokens.md` §11 を参照。
 前提: `design-tokens.md` / `navigation-structure.md` / `common-states.md` / `post-card.md` / `follow-and-engagement.md` に準拠
 準拠規則: `.claude/rules/store-compliance.md`（通報・ブロックのアプリ内露出必須要件）
 
@@ -67,7 +68,7 @@ padding 水平: spacing5
 セパレータ: 1pt / colorBorderLight
 ```
 
-破壊的アクション（通報・ブロック）は `colorError (#c0392b)` でテキスト・アイコンを表示する。
+破壊的アクション（通報・ブロック）は `colorError`（`#c21721`）でテキスト・アイコンを表示する。
 
 ---
 
@@ -969,7 +970,7 @@ padding 水平: spacing5
 | `events.md` §3.4（ヘッダー「⋮」メニュー） | 非作成者・ログイン済みユーザー向けの通報導線（確認 Alert → `ReportDialog`）は本仕様 §2.6.1 に委ねる。作成者向けの編集・削除メニューは `events.md` 側の記述が正 |
 | `shops.md` §3.6・§5.2（ヘッダー「⋮」メニュー・ReviewItem） | 非オーナー向け通報導線は本仕様 §2.6.2、レビュー一覧の flag アイコンは §2.6.3 に委ねる。オーナー向け編集メニューは `shops.md` 側の記述が正 |
 | `common-states.md` 4 状態コンポーネント | 全リスト画面・通報モーダルで `ScreenLoading` / `ScreenEmpty` / `ScreenError` / `OfflineBanner` を使用 |
-| `design-tokens.md` `colorError`（`#c0392b`） | 破壊的アクション（通報・ブロック）のメニュー項目・確認ダイアログの確定ボタンに適用 |
+| `design-tokens.md` `colorError`（`#c21721`） | 破壊的アクション（通報・ブロック）のメニュー項目・確認ダイアログの確定ボタンに適用（**2026-07-13 是正**: 旧誤記載値 `#c0392b` から修正。根拠は `design-tokens.md` §11 を参照）|
 | `design-tokens.md` `shadow-washi-lg` | ボトムシートメニューの影に適用 |
 
 ---
