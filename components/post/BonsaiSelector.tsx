@@ -63,6 +63,7 @@ const ROW_MIN_HEIGHT = 48;
 const SECTION_LABEL = '関連する盆栽（任意）';
 const NONE_LABEL = '選択しない';
 const NONE_ROW_KEY = '__NONE__';
+const END_REACHED_THRESHOLD = 0.3;
 
 type BonsaiItem = BonsaiListResponse['items'][number];
 // null は Web の `<option value="">選択しない</option>` に相当する行
@@ -295,7 +296,7 @@ export function BonsaiSelector({ selectedBonsaiId, onChange, isDisabled }: Bonsa
               renderItem={renderItem}
               ItemSeparatorComponent={ItemSeparator}
               onEndReached={handleLoadMore}
-              onEndReachedThreshold={0.3}
+              onEndReachedThreshold={END_REACHED_THRESHOLD}
               ListFooterComponent={renderFooter}
               accessibilityRole="list"
             />

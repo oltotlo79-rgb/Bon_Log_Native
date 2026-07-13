@@ -4,7 +4,8 @@
  * secret / otpAuthUrl / backupCodes はサーバーがキャッシュしない値のため、
  * 呼び出す度にローカル state で新しく保持し、キャンセル・完了時に破棄する。
  * QR コードは lib/utils/qr-code の generateQrCodeDataUri で otpAuthUrl から都度生成する
- * （SVG data URI。読み取れない環境向けに secret / otpAuthUrl のテキスト表示も残す）。
+ * （GIF base64 data URI。expo-image の Android data URI デコーダとの整合のため raster GIF を採用。
+ * 読み取れない環境向けに secret / otpAuthUrl のテキスト表示も残す）。
  */
 
 import React, { useMemo, useRef, useState } from 'react';
@@ -92,7 +93,7 @@ export function TwoFactorEnableSection({ isOnline }: TwoFactorEnableSectionProps
   const setupMutation = useTwoFactorSetupMutation();
   const enableMutation = useEnableTwoFactorMutation();
 
-  // code は 6 桁入力の毎キー入力で更新されるため、QR (SVG エンコード) の再生成を
+  // code は 6 桁入力の毎キー入力で更新されるため、QR (GIF 生成) の再生成を
   // otpAuthUrl が変わらない限り避ける。
   const qrCodeUri = useMemo(
     () => (setupData !== null ? generateQrCodeDataUri(setupData.otpAuthUrl) : null),
