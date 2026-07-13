@@ -15,7 +15,7 @@
 - `auth-forms.md`（AuthTextField・FormErrorMessage）を入力フィールドに流用する
 - 開催日・終了日は `components/common/DateTimeField.tsx`（日付+時刻のネイティブピッカー）を使う（§4.3 参照）
 - 都道府県は `components/events/EventPrefecturePickerModal.tsx`（47都道府県・単一選択・**必須**）を使う（§4.4 参照）
-- 作成者のみ編集・削除を実行できる（`isCreator` フラグで判定）
+- 作成者のみ編集・削除を実行できる（`isCreator` フラグで判定）。非作成者・ログイン済みユーザーには通報導線を提供する（§3.4.2 / `ugc-safety.md` §2.6.1）
 - `store-compliance.md`（通報・ブロック要件）を確認済み
 
 ---
@@ -119,7 +119,7 @@
 │ [スタックヘッダー]                                           │
 │   左: 「← 戻る」                                            │
 │   中央: 「イベント詳細」                                     │
-│   右: 「⋮」（3点メニュー。`isCreator === true` のみ表示）    │
+│   右: 「⋮」（3点メニュー。内容は閲覧者により異なる。§3.4）  │
 │                                                             │
 │ [ScrollView]                                                │
 │   paddingHorizontal: spacing4                               │
@@ -151,6 +151,8 @@
 
 > **本改訂の対象外の注記:** 詳細画面のレイアウトは 2026-06-22 版のワイヤーフレームを保持しつつ、§4 のフォームで追加された「主催者」「即売あり」の 2 項目の表示行を暫定的に追記した（実装ファイル `app/events/[id]/index.tsx` 自体は今回未検証）。「主催者（organizer・作成者が入力した文字列）」と「主催者 {nickname}（投稿したユーザー・`creator`）」は別概念であるため、詳細画面での見出し文言の重複がないか frontend 実装時に確認すること。
 
+> **追記（2026-07-13）:** ヘッダー「⋮」ボタンの表示条件を実装確認済みの内容に更新した（`app/events/[id]/index.tsx`）。非作成者かつログイン済みユーザーには通報導線（確認 Alert → `ReportDialog`）を表示する。詳細は §3.4 と `ugc-safety.md` §2.6.1・§7.1 を参照。
+
 ### 3.2 アイコン行の共通スタイル
 
 ```
@@ -169,7 +171,15 @@ gap: spacing3
 - `accessibilityLabel`: 「詳細ページを開く（外部リンク）」
 - オフライン時: タップで `openBrowserAsync` を呼ぶが、ブラウザ側がエラーハンドリング
 
-### 3.4 3点メニュー（作成者のみ）
+### 3.4 3点メニュー（表示は閲覧者により分岐）
+
+| 閲覧者 | 表示 |
+|--------|------|
+| 作成者（`isCreator === true`） | 編集・削除メニュー（§3.4.1） |
+| 非作成者・ログイン済み | 通報確認 Alert（§3.4.2） |
+| 未ログイン | 「⋮」ボタン自体を非表示 |
+
+#### 3.4.1 作成者メニュー
 
 | 項目 | 動作 |
 |------|------|
@@ -182,6 +192,17 @@ gap: spacing3
 本文: 「削除したイベントは復元できません。」
 ボタン: [キャンセル] [削除する（colorError）]
 ```
+
+#### 3.4.2 非作成者向け通報導線
+
+非作成者・ログイン済みユーザーがヘッダー「⋮」をタップすると、確認 Alert（ネイティブ `Alert.alert`）を表示する。
+
+```
+タイトル: 「このイベントを通報しますか？」
+ボタン: [通報する（destructive）] [キャンセル]
+```
+
+「通報する」で `ReportDialog`（`targetType: 'event'`）を開く。詳細な UI 仕様・エラーハンドリングは `ugc-safety.md` §2.6.1・§7 に委ねる。本仕様（events.md）では表示条件と Alert 文言のみを扱う。
 
 ---
 
@@ -337,7 +358,8 @@ EventDetailScreen ([id])
 ├── EventDetailHeader           ← イベント名
 ├── EventDetailInfoSection      ← 日時・会場・都道府県/市区町村・入場料・主催者・即売あり等の情報行
 ├── EventExternalLink           ← 外部 URL ボタン（URL があるときのみ）
-└── DeleteConfirmDialog         ← 削除確認（作成者のみ）
+├── DeleteConfirmDialog         ← 削除確認（作成者のみ。§3.4.1）
+└── ReportDialog                ← 通報モーダル（非作成者・ログイン済みのみ。§3.4.2 / ugc-safety.md §2.6.1）
 
 EventFormScreen (new / edit)
 ├── EventFormHeader             ← モーダルヘッダー（キャンセル / タイトル / 保存）
@@ -373,6 +395,8 @@ EventFormScreen (new / edit)
 | 削除 | `DELETE /api/v1/events/{id}` | 作成者のみ | `events.list` → 一覧に戻る |
 
 **作成リクエストボディ（実装確認済み）:** `{ title, startDate, endDate, prefecture, city, venue, organizer, admissionFee, hasSales, description, externalUrl }`。**`region` フィールドは送信しない**（§4.1 参照。一覧側のフィルタパラメータ `region` とは別物）。
+
+**通報（非作成者向け）:** `POST /api/v1/reports`（`targetType: 'event'`）。詳細は `ugc-safety.md` §7 を参照。
 
 ---
 
@@ -418,7 +442,7 @@ EventFormScreen (new / edit)
 
 ### 8.4 権限なし（非作成者）
 
-- 詳細画面の 3点メニューを非表示にする（`isCreator === false` の場合）
+- 詳細画面の 3点メニューは非表示にはせず、通報導線（§3.4.2）に切り替える（`isCreator === false` の場合）
 - URL から直接 `events/[id]/edit` に到達した場合: サーバーが 403 を返す → `ScreenError`
 
 ### 8.5 オフライン
@@ -472,6 +496,7 @@ EventFormScreen (new / edit)
 | 破棄確認 本文 | 「保存されていない変更は失われます。」|
 | 破棄確認（続ける）| 「編集を続ける」|
 | 破棄確認（破棄）| 「破棄する」|
+| 通報確認 Alert タイトル | 「このイベントを通報しますか？」（`ugc-safety.md` §2.6.1・§12.8 参照）|
 
 ---
 
@@ -483,7 +508,7 @@ EventFormScreen (new / edit)
 | FAB | `accessibilityRole="button"` / `accessibilityLabel="イベントを作成する"` / 56pt |
 | フィルタチップ | `accessibilityRole="radio"` / `accessibilityState: { selected }` |
 | 外部リンク行 | `accessibilityRole="link"` / `accessibilityLabel="詳細ページを開く（外部リンク）"` |
-| 3点メニュー | `accessibilityLabel="イベントのメニューを開く"` |
+| 3点メニュー | `accessibilityLabel="イベントのメニューを開く"`（作成者メニュー・通報 Alert のいずれの場合も同一文言。§3.4 参照） |
 | 開始/終了日時 DateTimeField | `accessibilityRole="button"` / `accessibilityLabel="{ラベル}：{選択値 または プレースホルダー}"` |
 | 都道府県トリガー | `accessibilityRole="button"` / `accessibilityLabel="都道府県（必須）"` または `"都道府県（必須）：{値}"` |
 | 都道府県モーダル各行 | `accessibilityRole="radio"` / `accessibilityState: { selected }` |
@@ -507,6 +532,7 @@ EventFormScreen (new / edit)
 | `common-states.md`（4 状態コンポーネント）| 全画面で既存コンポーネントを再利用する |
 | `more-menu.md` §3.2「イベント」行 | ネイティブ画面実装後は `openBrowserAsync` → `router.push` に切り替える（frontend への申し送り）|
 | `bonsai.md` の FAB デザイン | 直径 56pt / `colorActionPrimary` を踏襲する |
+| `ugc-safety.md` §2.6.1・§7.1（イベントの通報導線） | 非作成者・ログイン済みユーザー向けの通報確認 Alert → `ReportDialog` の詳細仕様（エラーハンドリング・コピー含む）はこちらに委ねる（§3.4.2 参照） |
 
 ---
 

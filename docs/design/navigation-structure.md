@@ -67,6 +67,8 @@ app/
         └── index.tsx              # サブスクリプション（購入・復元）
 ```
 
+> **注記（2026-07-13）:** 上記ツリーは 2026-06-20 時点のスナップショットであり、その後実装された `events/`・`shops/`・`dictionary/`・`pesticides/`・`fertilizers/`・`hormones/`・`bookmarks/`・`follow-requests/` 等の画面群を反映していない（`docs/design/events.md` 等、個別の設計ドキュメントを参照）。ツリー全体の再検証は本改訂のスコープ外（本改訂は §8 ストア審査対応表の通報 UI 行のみを更新した）。
+
 ---
 
 ## 2. ボトムタブ構成
@@ -619,11 +621,13 @@ Push 通知タップ → 該当画面遷移のルーティングは `lib/push/` 
 
 | 要件 | 対応画面 | 備考 |
 |-----|---------|-----|
-| 通報 UI の露出 | `users/[id]` ヘッダーメニュー + `posts/[id]` PostCard ヘッダーメニュー | 投稿の通報・ユーザーの通報の両方 |
+| 通報 UI の露出 | `posts/[id]`（PostCard ヘッダー・コメント⋮）+ `users/[id]` ヘッダーメニュー + `events/[id]` ヘッダーメニュー + `shops/[id]` ヘッダーメニュー + `shops/[id]/reviews`（レビュー行の通報アイコン） | 投稿・コメント・ユーザー・イベント・盆栽園・レビューの 6 種すべてに対応（`ugc-safety.md` §7.1 の `REPORT_TARGET_TYPES` 準拠） |
 | ブロック UI の露出 | `users/[id]` プロフィール画面 + `settings/blocked` | フォローボタン横のメニューからアクセス |
 | アカウント削除 | `settings/account` | 2 ステップ確認 + Play Console データ削除申告 |
 | 購入の復元 | `settings/subscription` | RevenueCat の restorePurchases 呼び出し |
 | 外部決済誘導の禁止 | `settings/subscription` | Stripe ページへのリンクは一切出さない |
+
+（2026-07-13 追記: `events/[id]`・`shops/[id]`・`shops/[id]/reviews` の通報導線実装を反映して上表の「通報 UI の露出」行を更新した。詳細仕様は `ugc-safety.md` §2.6・§7.1 を参照）
 
 ---
 
@@ -636,3 +640,4 @@ Push 通知タップ → 該当画面遷移のルーティングは `lib/push/` 
 - **オンボーディング画面 `(auth)/onboarding`:** 新規登録後のウェルカムフロー。MVP の優先度を PM に確認要。
 - **「もっと見る」メニューの詳細仕様:** `docs/design/more-menu.md` に分離。項目追加・変更時はこのファイルと `more-menu.md` を両方更新すること。
 - **非プレミアムユーザーへのプレミアム機能訴求:** `(tabs)/more` でグループ 4（プレミアム機能）を非プレミアムユーザーには完全非表示とした。グレーアウト表示でサブスクリプション画面へ誘導する案は PM が判断する。
+- **§1 全体構造ツリーの再検証:** `events/`・`shops/`・`dictionary/` 等、2026-06-20 以降に追加された画面群がツリーに未反映（§1 の注記参照）。ツリー全体の棚卸しは別タスクとして PM が優先度を判断する。

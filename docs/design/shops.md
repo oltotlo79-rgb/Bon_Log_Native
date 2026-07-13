@@ -17,7 +17,7 @@
 - `auth-forms.md`（AuthTextField・FormErrorMessage）を入力フィールドに流用する
 - `post-composer.md` §8 の ImageAttachmentGrid を画像選択に流用する
 - **地図描画ライブラリは使わない**（PM 決定）。lat/lng はテキスト表示 +「地図アプリで開く」リンク
-- `isOwner` フラグで owner のみ店舗情報を編集できる権限制御を実装する
+- `isOwner` フラグで owner のみ店舗情報を編集できる権限制御を実装する。非オーナー・ログイン済みユーザーには通報導線を提供する（§3.6.2 / `ugc-safety.md` §2.6.2）
 - レビューの二重投稿 (409) を適切にハンドリングする
 - `store-compliance.md`（通報・ブロック要件）を確認済み
 
@@ -119,7 +119,7 @@ Web 版 `/shops` のモバイル対応。地図表示は行わず、住所テキ
 │ [スタックヘッダー]                                           │
 │   左: 「← 戻る」                                            │
 │   中央: 「{店舗名}」                                         │
-│   右: 「⋮」（3点メニュー。`isOwner === true` のみ表示）      │
+│   右: 「⋮」（3点メニュー。内容は閲覧者により異なる。§3.6） │
 │                                                             │
 │ [ScrollView]                                                │
 │   paddingHorizontal: spacing4                               │
@@ -160,6 +160,10 @@ Web 版 `/shops` のモバイル対応。地図表示は行わず、住所テキ
 
 > **本改訂の対象外の注記:** 詳細画面（`app/shops/[id]/index.tsx`）自体は今回未検証。§4 の変更（ジャンル任意化・緯度経度の取得方法変更）にともなうジャンル 0 件表示の扱いのみ本節に反映した。
 
+> **追記（2026-07-13）:** ヘッダー「⋮」ボタンの表示条件を実装確認済みの内容に更新した（`app/shops/[id]/index.tsx`）。非オーナーかつログイン済みユーザーには通報導線（確認 Alert → `ReportDialog`）を表示する。詳細は §3.6 と `ugc-safety.md` §2.6.2・§7.1 を参照。
+
+> **既知の未実装（低優先度）:** 本画面のレビュープレビュー（上記ワイヤーフレームの「ReviewList（最新3件 プレビュー）」・`ReviewPreviewItem` コンポーネント）には通報導線がない。通報するには「すべてのレビューを見る」から §5 のレビュー一覧画面（`shops/[id]/reviews`）に遷移する必要がある（レビュー一覧側は §5.2 の通報アイコンで対応済み）。詳細は `ugc-safety.md` §2.6.3・§16 を参照。
+
 ### 3.2 「地図アプリで開く」リンク
 
 - `lat` と `lng` の両方が存在する場合のみ表示する
@@ -192,13 +196,32 @@ Web 版 `/shops` のモバイル対応。地図表示は行わず、住所テキ
 - 半星（0.5単位）を表示する（例: 4.5 → ★★★★半星）
 - `accessibilityLabel`: 「評価 {averageRating} 点 / 5点。{reviewCount} 件のレビュー。」
 
-### 3.6 3点メニュー（owner のみ）
+### 3.6 3点メニュー（表示は閲覧者により分岐）
+
+| 閲覧者 | 表示 |
+|--------|------|
+| オーナー（`shop.isOwner === true`） | 編集メニュー（§3.6.1） |
+| 非オーナー・ログイン済み | 通報確認 Alert（§3.6.2） |
+| 未ログイン | 「⋮」ボタン自体を非表示 |
+
+#### 3.6.1 オーナーメニュー
 
 | 項目 | 動作 |
 |------|------|
 | 「店舗情報を編集する」| `shops/[id]/edit` へ遷移（モーダル）|
 
 ※ 店舗の削除機能は管理者専用のため一般ユーザー向け UI には含めない（**core に要確認**）。
+
+#### 3.6.2 非オーナー向け通報導線
+
+非オーナー・ログイン済みユーザーがヘッダー「⋮」をタップすると、確認 Alert（ネイティブ `Alert.alert`）を表示する。
+
+```
+タイトル: 「この盆栽園を通報しますか？」
+ボタン: [通報する（destructive）] [キャンセル]
+```
+
+「通報する」で `ReportDialog`（`targetType: 'shop'`）を開く。詳細な UI 仕様・エラーハンドリングは `ugc-safety.md` §2.6.2・§7 に委ねる。本仕様（shops.md）では表示条件と Alert 文言のみを扱う。
 
 ---
 
@@ -344,8 +367,8 @@ Web 版 `/shops` のモバイル対応。地図表示は行わず、住所テキ
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│ [アバター 32pt] [{nickname}]    [{投稿日時 相対表示}]         │
-│ [★★★★☆ rating]                                             │
+│ [アバター 32pt] [{nickname}]  [★★★★☆ rating] [通報アイコン 44×44]│
+│                                    [{投稿日時 相対表示}]      │
 │ [本文テキスト（3行まで / 「続きを読む」）]                    │
 │ [画像グリッド（最大3枚・任意）]                              │
 └─────────────────────────────────────────────────────────────┘
@@ -353,6 +376,7 @@ Web 版 `/shops` のモバイル対応。地図表示は行わず、住所テキ
 
 - 下端区切り: `1pt solid colorBorderLight`
 - `paddingVertical: spacing4` / `paddingHorizontal: spacing4`
+- **通報アイコン（flag・2026-07-13 追加）:** `flag-outline` / 44×44 タップ領域 / 自分以外のレビュー・ログイン済みの場合のみ表示（自分のレビューには表示しない）。タップで確認 Alert を挟まず `ReportDialog`（`targetType: 'review'`）を直接開く。詳細は `ugc-safety.md` §2.6.3・§7.1 を参照。**本一覧画面（`shops/[id]/reviews`）のみの機能であり、§3.1 のレビュープレビューには実装されていない**（既知の未実装・低優先度）
 
 ---
 
@@ -449,9 +473,10 @@ ShopDetailScreen ([id])
 ├── ShopBasicInfo               ← 店舗名・ジャンル・評価
 ├── ShopInfoList                ← 住所・地図リンク・電話・Web・営業時間・定休日
 │   └── ShopInfoRow             ← アイコン + テキストの共通行
-├── ShopReviewsSection          ← 詳細画面内のレビュープレビュー
-│   └── ReviewItem              ← 各レビュー（レビュー一覧でも共用）
-└── StarRating                  ← 星評価表示（読み取り専用）
+├── ShopReviewsSection          ← 詳細画面内のレビュープレビュー（最新3件）
+│   └── ReviewPreviewItem       ← プレビュー専用の簡易表示（`ReviewItem` とは別コンポーネント。通報アイコンなし。§3.1 追記・既知の未実装参照）
+├── StarRating                  ← 星評価表示（読み取り専用）
+└── ReportDialog                ← 通報モーダル（非オーナー・ログイン済みのみ。§3.6.2 / ugc-safety.md §2.6.2）
 
 ShopFormScreen (new / edit)
 ├── ShopFormHeader              ← モーダルヘッダー
@@ -465,8 +490,9 @@ ShopFormScreen (new / edit)
 ShopReviewsScreen ([id]/reviews)
 ├── ReviewSummaryHeader         ← 総合評価サマリー
 ├── ReviewList                  ← FlatList ラッパー
-│   └── ReviewItem              ← 各レビュー
-└── ReviewFAB                   ← レビュー書く FAB（未投稿ユーザーのみ）
+│   └── ReviewItem              ← 各レビュー（通報アイコン付き。自分のレビューには非表示。§5.2）
+├── ReviewFAB                   ← レビュー書く FAB（未投稿ユーザーのみ）
+└── ReportDialog                ← 通報モーダル（flag アイコンから直接起動。§5.2 / ugc-safety.md §2.6.3）
 
 ReviewFormScreen ([id]/reviews/new)
 ├── ReviewFormHeader            ← モーダルヘッダー
@@ -511,6 +537,8 @@ ReviewFormScreen ([id]/reviews/new)
 
 **作成リクエストボディ（実装確認済み）:** `{ name, address, genreIds, latitude, longitude, phone, website, businessHours, closedDays }`。`genreIds` は空配列を許容する（ジャンル任意化。§4.4）。
 
+**通報（非オーナー向け）:** `POST /api/v1/reports`（`targetType: 'shop'`）。§3.6.2 のヘッダーメニューから起動する。詳細は `ugc-safety.md` §7 を参照。
+
 ### 9.4 レビューの CRUD
 
 | 操作 | エンドポイント | 権限 | invalidation |
@@ -519,6 +547,8 @@ ReviewFormScreen ([id]/reviews/new)
 | 作成 | `POST /api/v1/shops/{id}/reviews` | 認証済み（1件まで）| `shops.reviews(id)` / `shops.detail(id)` |
 
 **画像アップロード:** `post-composer.md` §5.3 の presigned URL → R2 直接 PUT フローを使う。
+
+**通報（自分以外のレビュー向け）:** `POST /api/v1/reports`（`targetType: 'review'`）。レビュー一覧画面（`shops/[id]/reviews`）の flag アイコンから直接起動する（§5.2）。詳細は `ugc-safety.md` §7 を参照。
 
 ---
 
@@ -623,6 +653,8 @@ ReviewFormScreen ([id]/reviews/new)
 | 破棄確認 本文 | 「保存されていない変更は失われます。」|
 | 破棄確認（続ける）| 「編集を続ける」|
 | 破棄確認（破棄）| 「破棄する」|
+| 通報確認 Alert タイトル（盆栽園） | 「この盆栽園を通報しますか？」（`ugc-safety.md` §2.6.2・§12.8 参照）|
+| レビュー通報アイコン accessibilityLabel | 「このレビューを通報する」（`ugc-safety.md` §2.6.3・§12.8 参照）|
 
 ---
 
@@ -642,6 +674,8 @@ ReviewFormScreen ([id]/reviews/new)
 | ジャンルチップ | `accessibilityRole="checkbox"` / `accessibilityState: { checked, disabled }` / `accessibilityLabel` は「{ジャンル名}を選択」または「{ジャンル名}の選択を解除」|
 | 「住所から位置を取得」ボタン | `accessibilityRole="button"` / `accessibilityLabel="住所から位置を取得"` / `accessibilityState: { disabled }` |
 | 「緯度・経度を手動で編集」トリガー | `accessibilityRole="button"` / `accessibilityState: { expanded }` |
+| ヘッダー「⋮」（通報 Alert 経由時） | Alert 自体は OS ネイティブが a11y を扱う。ボタンの `accessibilityLabel` は「店舗のメニューを開く」で固定（§3.6 参照） |
+| レビュー通報アイコン（flag） | `accessibilityRole="button"` / `accessibilityLabel="このレビューを通報する"` / 44×44 タップ領域（§5.2 参照） |
 
 ---
 
@@ -657,6 +691,7 @@ ReviewFormScreen ([id]/reviews/new)
 | `common-states.md`（4 状態コンポーネント）| 全画面で既存コンポーネントを再利用する |
 | `events.md` の FAB デザイン | 直径 56pt / `colorActionPrimary` / `shadowWashi` を踏襲する |
 | `more-menu.md` §3.2「盆栽園マップ」行 | ネイティブ画面実装後は `openBrowserAsync` → `router.push` に切り替える（frontend への申し送り）|
+| `ugc-safety.md` §2.6.2・§2.6.3・§7.1（盆栽園・レビューの通報導線） | 非オーナー向けヘッダー通報 Alert（§3.6.2）とレビュー一覧の通報アイコン（§5.2）の詳細仕様（エラーハンドリング・コピー含む）はこちらに委ねる |
 
 ---
 
