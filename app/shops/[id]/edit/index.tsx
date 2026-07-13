@@ -49,6 +49,9 @@ import {
 import {
   ERR_SHOP_UPDATE_FAILED,
   ERR_OFFLINE_ACTION,
+  ERR_SHOP_LATITUDE_OUT_OF_RANGE,
+  ERR_SHOP_LONGITUDE_OUT_OF_RANGE,
+  ERR_URL_INVALID_PROTOCOL,
 } from '@/lib/constants/errors';
 import {
   MAX_SHOP_NAME_LENGTH,
@@ -58,6 +61,10 @@ import {
   MAX_SHOP_BUSINESS_HOURS_LENGTH,
   MAX_SHOP_CLOSED_DAYS_LENGTH,
   MAX_SHOP_GENRES,
+  MIN_SHOP_LATITUDE,
+  MAX_SHOP_LATITUDE,
+  MIN_SHOP_LONGITUDE,
+  MAX_SHOP_LONGITUDE,
 } from '@/lib/constants/limits/shop';
 
 // ---------------------------------------------------------------------------
@@ -90,13 +97,13 @@ function isValidUrl(url: string): boolean {
 function isValidLat(lat: string): boolean {
   if (lat.length === 0) return true;
   const n = parseFloat(lat);
-  return !isNaN(n) && n >= -90 && n <= 90;
+  return !isNaN(n) && n >= MIN_SHOP_LATITUDE && n <= MAX_SHOP_LATITUDE;
 }
 
 function isValidLng(lng: string): boolean {
   if (lng.length === 0) return true;
   const n = parseFloat(lng);
-  return !isNaN(n) && n >= -180 && n <= 180;
+  return !isNaN(n) && n >= MIN_SHOP_LONGITUDE && n <= MAX_SHOP_LONGITUDE;
 }
 
 // ---------------------------------------------------------------------------
@@ -413,7 +420,9 @@ export default function ShopEditScreen() {
               accessibilityLabel="緯度（任意）"
             />
             {lat.trim().length > 0 && !isLatValid && (
-              <Text style={styles.fieldError}>緯度は -90〜90 の数値を入力してください。</Text>
+              <Text style={styles.fieldError}>
+                {ERR_SHOP_LATITUDE_OUT_OF_RANGE(MIN_SHOP_LATITUDE, MAX_SHOP_LATITUDE)}
+              </Text>
             )}
           </View>
 
@@ -428,7 +437,9 @@ export default function ShopEditScreen() {
               accessibilityLabel="経度（任意）"
             />
             {lng.trim().length > 0 && !isLngValid && (
-              <Text style={styles.fieldError}>経度は -180〜180 の数値を入力してください。</Text>
+              <Text style={styles.fieldError}>
+                {ERR_SHOP_LONGITUDE_OUT_OF_RANGE(MIN_SHOP_LONGITUDE, MAX_SHOP_LONGITUDE)}
+              </Text>
             )}
           </View>
 
@@ -458,7 +469,7 @@ export default function ShopEditScreen() {
               accessibilityLabel="Web サイト URL（任意）"
             />
             {website.trim().length > 0 && !isWebsiteValid && (
-              <Text style={styles.fieldError}>URLは https:// または http:// から始めてください。</Text>
+              <Text style={styles.fieldError}>{ERR_URL_INVALID_PROTOCOL}</Text>
             )}
           </View>
 

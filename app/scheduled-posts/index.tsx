@@ -60,6 +60,7 @@ import {
   ERR_SCHEDULED_POSTS_LOAD_FAILED,
   ERR_PREMIUM_ONLY,
 } from '@/lib/constants/errors';
+import { SCHEDULED_POST_PENDING_LIMIT } from '@/lib/constants/limits/scheduled-post';
 
 // ---------------------------------------------------------------------------
 // 定数
@@ -67,7 +68,6 @@ import {
 
 const FAB_SIZE = 56;
 const FAB_ICON_SIZE = 24;
-const PENDING_LIMIT = 10;
 
 // ---------------------------------------------------------------------------
 // 型
@@ -231,7 +231,7 @@ export default function ScheduledPostsScreen() {
   }));
 
   const pendingCount = pendingItems.length;
-  const isFabDisabled = pendingCount >= PENDING_LIMIT;
+  const isFabDisabled = pendingCount >= SCHEDULED_POST_PENDING_LIMIT;
 
   const handleRefresh = useCallback(() => {
     void refetch();
@@ -356,7 +356,11 @@ export default function ScheduledPostsScreen() {
         accessibilityRole="button"
         accessibilityLabel="予約投稿を作成する"
         accessibilityState={{ disabled: isFabDisabled }}
-        accessibilityHint={isFabDisabled ? '保留中の予約投稿が上限の10件に達しています。' : undefined}
+        accessibilityHint={
+          isFabDisabled
+            ? `保留中の予約投稿が上限の${SCHEDULED_POST_PENDING_LIMIT}件に達しています。`
+            : undefined
+        }
       >
         <Ionicons
           name="add"

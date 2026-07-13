@@ -57,6 +57,8 @@ import {
 import {
   ERR_EVENT_CREATE_FAILED,
   ERR_OFFLINE_ACTION,
+  ERR_EVENT_END_DATE_BEFORE_START,
+  ERR_URL_INVALID_PROTOCOL,
 } from '@/lib/constants/errors';
 
 // ---------------------------------------------------------------------------
@@ -263,7 +265,7 @@ export default function EventNewScreen() {
               clearAccessibilityLabel="終了日時を削除"
             />
             {endDate !== null && !isEndDateValid && (
-              <Text style={styles.fieldError}>終了日時は開始日時以降にしてください。</Text>
+              <Text style={styles.fieldError}>{ERR_EVENT_END_DATE_BEFORE_START}</Text>
             )}
           </View>
 
@@ -419,7 +421,7 @@ export default function EventNewScreen() {
               accessibilityLabel="詳細ページ URL（任意）"
             />
             {externalUrl.trim().length > 0 && !isUrlValid && (
-              <Text style={styles.fieldError}>URLは https:// または http:// から始めてください。</Text>
+              <Text style={styles.fieldError}>{ERR_URL_INVALID_PROTOCOL}</Text>
             )}
           </View>
         </ScrollView>

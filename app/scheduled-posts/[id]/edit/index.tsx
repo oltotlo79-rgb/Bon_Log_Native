@@ -56,14 +56,20 @@ import {
   ERR_SCHEDULED_POST_UPDATE_FAILED,
   ERR_OFFLINE_ACTION,
   ERR_MEDIA_UPLOAD_FAILED,
+  ERR_SCHEDULED_POST_DATE_REQUIRED,
+  ERR_SCHEDULED_POST_DATE_NOT_FUTURE,
+  ERR_SCHEDULED_POST_DATE_TOO_FAR,
+  ERR_SCHEDULED_POST_EDIT_PENDING_ONLY,
 } from '@/lib/constants/errors';
 import { MAX_POST_CONTENT_PREMIUM } from '@/lib/constants/limits/post';
+import {
+  SCHEDULED_POST_MAX_FUTURE_DAYS,
+} from '@/lib/constants/limits/scheduled-post';
 
 // ---------------------------------------------------------------------------
 // 定数
 // ---------------------------------------------------------------------------
 
-const SCHEDULED_AT_DAYS_LIMIT = 30;
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
 
 // ---------------------------------------------------------------------------
@@ -151,7 +157,7 @@ function FormBody({ id, post, isPremium }: FormBodyProps) {
     (isDirty || scheduledAt !== initialScheduledAt);
 
   const now = new Date();
-  const maximumScheduledDate = new Date(now.getTime() + SCHEDULED_AT_DAYS_LIMIT * MS_PER_DAY);
+  const maximumScheduledDate = new Date(now.getTime() + SCHEDULED_POST_MAX_FUTURE_DAYS * MS_PER_DAY);
 
   const handleCancel = useCallback(() => {
     if (isDirty || scheduledAt !== initialScheduledAt) {
@@ -174,19 +180,19 @@ function FormBody({ id, post, isPremium }: FormBodyProps) {
       return;
     }
     if (scheduledAt === null) {
-      setFormError('公開予定日時を選択してください。');
+      setFormError(ERR_SCHEDULED_POST_DATE_REQUIRED);
       return;
     }
 
     const scheduledDate = new Date(scheduledAt);
     const nowMs = Date.now();
-    const limitMs = nowMs + SCHEDULED_AT_DAYS_LIMIT * MS_PER_DAY;
+    const limitMs = nowMs + SCHEDULED_POST_MAX_FUTURE_DAYS * MS_PER_DAY;
     if (scheduledDate.getTime() <= nowMs) {
-      setFormError('公開予定日時は現在より未来に設定してください。');
+      setFormError(ERR_SCHEDULED_POST_DATE_NOT_FUTURE);
       return;
     }
     if (scheduledDate.getTime() > limitMs) {
-      setFormError(`公開予定日時は${SCHEDULED_AT_DAYS_LIMIT}日以内に設定してください。`);
+      setFormError(ERR_SCHEDULED_POST_DATE_TOO_FAR(SCHEDULED_POST_MAX_FUTURE_DAYS));
       return;
     }
 
@@ -231,7 +237,7 @@ function FormBody({ id, post, isPremium }: FormBodyProps) {
         onSuccess: () => router.back(),
         onError: (err) => {
           if (isApiError(err) && err.code === 'VALIDATION_ERROR') {
-            setFormError('pending 状態の投稿のみ編集できます。または日時が無効です。');
+            setFormError(ERR_SCHEDULED_POST_EDIT_PENDING_ONLY);
           } else {
             setFormError(ERR_SCHEDULED_POST_UPDATE_FAILED);
           }
@@ -299,7 +305,7 @@ function FormBody({ id, post, isPremium }: FormBodyProps) {
               maximumDate={maximumScheduledDate}
               clearAccessibilityLabel="公開予定日時を削除"
             />
-            <Text style={styles.hint}>現在から{SCHEDULED_AT_DAYS_LIMIT}日以内の日時を選択してください。</Text>
+            <Text style={styles.hint}>現在から{SCHEDULED_POST_MAX_FUTURE_DAYS}日以内の日時を選択してください。</Text>
           </View>
 
           {/* 投稿本文 */}
