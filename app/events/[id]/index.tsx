@@ -26,6 +26,8 @@ import { ScreenError } from '@/components/common/ScreenError';
 import { OfflineBanner } from '@/components/common/OfflineBanner';
 import { Toast } from '@/components/common/Toast';
 import { UserAvatar } from '@/components/common/UserAvatar';
+import { ReportDialog } from '@/components/report/ReportDialog';
+import { REPORT_TARGET_LABELS } from '@/lib/constants/report';
 import {
   colorBackground,
   colorSurfaceWashi,
@@ -95,9 +97,12 @@ export default function EventDetailScreen() {
   const { mutate: deleteEvent } = useDeleteEventMutation();
   const [toastMessage, setToastMessage] = useState<string | null>(null);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [showReportDialog, setShowReportDialog] = useState(false);
 
   const isCreator = event !== undefined && currentUser !== undefined
     && event.creator?.id === currentUser.id;
+  // 作成者以外のログイン済みユーザーのみ通報導線を出す（自分のイベントは通報対象外）
+  const canReport = event !== undefined && currentUser !== undefined && !isCreator;
 
   const now = new Date();
   const startDate = event !== undefined ? new Date(event.startDate) : null;
@@ -155,6 +160,17 @@ export default function EventDetailScreen() {
     );
   }, [eventId, handleDelete]);
 
+  const handleOpenReportMenu = useCallback(() => {
+    Alert.alert(
+      `この${REPORT_TARGET_LABELS.event}を通報しますか？`,
+      undefined,
+      [
+        { text: '通報する', style: 'destructive', onPress: () => setShowReportDialog(true) },
+        { text: 'キャンセル', style: 'cancel' },
+      ]
+    );
+  }, []);
+
   const handleOpenExternalUrl = useCallback(async (url: string) => {
     try {
       await WebBrowser.openBrowserAsync(url);
@@ -205,7 +221,7 @@ export default function EventDetailScreen() {
 
       <DetailHeader
         title="イベント詳細"
-        onMenuPress={isCreator ? handleOpenMenu : undefined}
+        onMenuPress={isCreator ? handleOpenMenu : (canReport ? handleOpenReportMenu : undefined)}
       />
 
       <ScrollView
@@ -318,6 +334,15 @@ export default function EventDetailScreen() {
         visible={toastMessage !== null}
         onHide={() => setToastMessage(null)}
       />
+
+      {showReportDialog && (
+        <ReportDialog
+          targetType="event"
+          targetId={eventId}
+          targetDisplayName={event.title}
+          onClose={() => setShowReportDialog(false)}
+        />
+      )}
     </View>
   );
 }

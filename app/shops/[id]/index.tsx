@@ -4,7 +4,7 @@
  * 仕様: docs/design/shops.md §3
  */
 
-import React, { useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   View,
   Text,
@@ -27,6 +27,8 @@ import { ScreenLoading } from '@/components/common/ScreenLoading';
 import { ScreenError } from '@/components/common/ScreenError';
 import { OfflineBanner } from '@/components/common/OfflineBanner';
 import { BonsaiMapView } from '@/components/shops/BonsaiMapView';
+import { ReportDialog } from '@/components/report/ReportDialog';
+import { REPORT_TARGET_LABELS } from '@/lib/constants/report';
 import {
   colorBackground,
   colorSurfaceWashi,
@@ -83,8 +85,11 @@ export default function ShopDetailScreen() {
   const { data: shop, isLoading, isError, error, refetch } = useShopDetailQuery(shopId);
   const { data: reviewsData } = useShopReviewsQuery(shopId);
   const { data: currentUser } = useCurrentUserQuery();
+  const [showReportDialog, setShowReportDialog] = useState(false);
 
   const isOwner = shop?.isOwner === true;
+  // オーナー以外のログイン済みユーザーのみ通報導線を出す（自分の店舗は通報対象外）
+  const canReportShop = currentUser !== undefined && !isOwner;
   const previewReviews = reviewsData?.pages.flatMap((p) => p.items).slice(0, PREVIEW_REVIEW_COUNT) ?? [];
   const reviewCount = shop?.reviewCount ?? 0;
   const averageRating = shop?.averageRating;
@@ -99,6 +104,17 @@ export default function ShopDetailScreen() {
       ]
     );
   }, [shopId]);
+
+  const handleOpenReportMenu = useCallback(() => {
+    Alert.alert(
+      `この${REPORT_TARGET_LABELS.shop}を通報しますか？`,
+      undefined,
+      [
+        { text: '通報する', style: 'destructive', onPress: () => setShowReportDialog(true) },
+        { text: 'キャンセル', style: 'cancel' },
+      ]
+    );
+  }, []);
 
   const handleOpenMapApp = useCallback(async (lat: number, lng: number, name: string) => {
     const url = Platform.OS === 'ios'
@@ -175,7 +191,7 @@ export default function ShopDetailScreen() {
 
       <ShopDetailHeader
         title={shop.name}
-        onMenuPress={isOwner ? handleOpenMenu : undefined}
+        onMenuPress={isOwner ? handleOpenMenu : (canReportShop ? handleOpenReportMenu : undefined)}
       />
 
       <ScrollView
@@ -323,6 +339,15 @@ export default function ShopDetailScreen() {
           )}
         </View>
       </ScrollView>
+
+      {showReportDialog && (
+        <ReportDialog
+          targetType="shop"
+          targetId={shopId}
+          targetDisplayName={shop.name}
+          onClose={() => setShowReportDialog(false)}
+        />
+      )}
     </View>
   );
 }

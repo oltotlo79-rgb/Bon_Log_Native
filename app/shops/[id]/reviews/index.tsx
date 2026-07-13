@@ -4,7 +4,7 @@
  * 仕様: docs/design/shops.md §5
  */
 
-import React, { useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   View,
   Text,
@@ -25,6 +25,8 @@ import { ScreenLoading } from '@/components/common/ScreenLoading';
 import { ScreenEmpty } from '@/components/common/ScreenEmpty';
 import { ScreenError } from '@/components/common/ScreenError';
 import { OfflineBanner } from '@/components/common/OfflineBanner';
+import { ReportDialog } from '@/components/report/ReportDialog';
+import { REPORT_TARGET_LABELS } from '@/lib/constants/report';
 import {
   colorBackground,
   colorSurface,
@@ -56,6 +58,8 @@ import {
 const FAB_SIZE = 56;
 const FAB_ICON_SIZE = 24;
 const STAR_SIZE = 14;
+const REPORT_ICON_SIZE = 18;
+const REPORT_BUTTON_SIZE = 44;
 
 // ---------------------------------------------------------------------------
 // 型ガード
@@ -120,8 +124,10 @@ export default function ShopReviewsScreen() {
   }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
 
   const renderItem = useCallback(
-    ({ item }: { item: ReviewListItem }) => <ReviewItem review={item} />,
-    []
+    ({ item }: { item: ReviewListItem }) => (
+      <ReviewItem review={item} currentUserId={currentUser?.id} />
+    ),
+    [currentUser?.id]
   );
 
   const keyExtractor = useCallback((item: ReviewListItem) => item.id, []);
@@ -266,18 +272,50 @@ function ReviewSummaryHeader({ averageRating, reviewCount }: ReviewSummaryHeader
 
 type ReviewItemProps = {
   review: ReviewListItem;
+  /** 閲覧者のユーザー ID（未認証は undefined）。自分のレビューには通報導線を出さない */
+  currentUserId: string | undefined;
 };
 
-function ReviewItemInner({ review }: ReviewItemProps) {
+function ReviewItemInner({ review, currentUserId }: ReviewItemProps) {
+  const [showReportDialog, setShowReportDialog] = useState(false);
+  const canReport = currentUserId !== undefined && currentUserId !== review.user.id;
+
   return (
     <View style={styles.reviewItem}>
-      <View style={styles.reviewHeader}>
-        <Text style={styles.reviewerName}>{review.user.nickname}</Text>
-        <StarDisplay rating={review.rating} />
-        <Text style={styles.reviewDate}>{formatRelativeTime(review.createdAt)}</Text>
+      <View style={styles.reviewTopRow}>
+        <View style={styles.reviewHeader}>
+          <Text style={styles.reviewerName}>{review.user.nickname}</Text>
+          <StarDisplay rating={review.rating} />
+          <Text style={styles.reviewDate}>{formatRelativeTime(review.createdAt)}</Text>
+        </View>
+        {canReport && (
+          <Pressable
+            style={styles.reportButton}
+            onPress={() => setShowReportDialog(true)}
+            accessibilityRole="button"
+            accessibilityLabel={`この${REPORT_TARGET_LABELS.review}を通報する`}
+          >
+            <Ionicons
+              name="flag-outline"
+              size={REPORT_ICON_SIZE}
+              color={colorTextSecondary}
+              accessibilityElementsHidden
+              importantForAccessibility="no"
+            />
+          </Pressable>
+        )}
       </View>
       {review.content !== null && review.content.length > 0 && (
         <Text style={styles.reviewContent}>{review.content}</Text>
+      )}
+
+      {showReportDialog && (
+        <ReportDialog
+          targetType="review"
+          targetId={review.id}
+          targetDisplayName={`${review.user.nickname}のレビュー`}
+          onClose={() => setShowReportDialog(false)}
+        />
       )}
     </View>
   );
@@ -408,7 +446,13 @@ const styles = StyleSheet.create({
     borderBottomColor: colorBorderLight,
     ...shadowWashi,
   },
+  reviewTopRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+  },
   reviewHeader: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing2,
@@ -423,6 +467,14 @@ const styles = StyleSheet.create({
     ...textXs,
     color: colorTextTertiary,
     marginLeft: 'auto',
+  },
+  reportButton: {
+    width: REPORT_BUTTON_SIZE,
+    height: REPORT_BUTTON_SIZE,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: -spacing2,
+    marginRight: -spacing2,
   },
   reviewContent: {
     ...textBase,
