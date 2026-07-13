@@ -312,7 +312,7 @@ describe('useShopReviewsQuery', () => {
 describe('useGenresQuery', () => {
   it('正常系 type=shop: ジャンル一覧が返される', async () => {
     const genreList: GenreListResponse = {
-      items: [{ id: 'genre-1', name: '盆栽販売' }],
+      items: [{ id: 'genre-1', name: '盆栽販売', category: '用品・道具' }],
     };
     mockApiClientGet.mockResolvedValue({ data: genreList, error: undefined });
     const { Wrapper } = createWrapper();
@@ -325,7 +325,7 @@ describe('useGenresQuery', () => {
 
   it('正常系 type=post: 投稿ジャンル一覧が返される', async () => {
     const genreList: GenreListResponse = {
-      items: [{ id: 'genre-2', name: '松柏類' }],
+      items: [{ id: 'genre-2', name: '松柏類', category: '松柏類' }],
     };
     mockApiClientGet.mockResolvedValue({ data: genreList, error: undefined });
     const { Wrapper } = createWrapper();

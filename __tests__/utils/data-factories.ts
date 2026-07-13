@@ -155,6 +155,7 @@ export function makePostResponse(overrides?: Partial<PostResponse>): PostRespons
     createdAt: '2025-06-01T10:00:00Z',
     updatedAt: '2025-06-01T10:00:00Z',
     userId: 'user-1',
+    bonsaiId: null,
     user: { id: 'user-1', nickname: '松の匠', avatarUrl: null, isBlocked: false, isMuted: false },
     media: [],
     genres: [],
@@ -295,6 +296,7 @@ export function makeFeedItem(overrides?: Partial<FeedItemData>): FeedItemData {
     createdAt: '2025-06-01T10:00:00Z',
     updatedAt: '2025-06-01T10:00:00Z',
     userId: 'user-1',
+    bonsaiId: null,
     user: {
       id: 'user-1',
       nickname: '松の匠',

@@ -3,6 +3,9 @@
  * PostComposer コンポーネントのアンケート機能テスト。
  * アンケート追加・削除・選択肢バリデーション・送信時の poll 引数を検証する。
  * モック境界: useCreatePostMutation / useUpdatePostMutation / uploadImage / uploadVideo をモック。
+ * useGenresQuery（実 GenreSelector が呼ぶ）・useBonsaiListQuery（実 BonsaiSelector が呼ぶ、
+ * mode=create で常時マウントされる）もモックし、実ネットワーク呼び出しによる
+ * act 警告・flaky 化を防ぐ（testing.md 規約: モック境界は lib/api・クエリフック）。
  */
 
 import React from 'react';
@@ -27,6 +30,27 @@ jest.mock('@/lib/queries/posts', () => ({
   useUpdatePostMutation: jest.fn(() => ({
     mutateAsync: mockUpdateMutateAsync,
     isPending: false,
+  })),
+}));
+
+jest.mock('@/lib/queries/shops', () => ({
+  useGenresQuery: jest.fn(() => ({
+    data: { items: [] },
+    isLoading: false,
+    isError: false,
+    refetch: jest.fn(),
+  })),
+}));
+
+jest.mock('@/lib/queries/bonsai', () => ({
+  useBonsaiListQuery: jest.fn(() => ({
+    data: undefined,
+    isLoading: false,
+    isError: false,
+    refetch: jest.fn(),
+    fetchNextPage: jest.fn(),
+    hasNextPage: false,
+    isFetchingNextPage: false,
   })),
 }));
 
