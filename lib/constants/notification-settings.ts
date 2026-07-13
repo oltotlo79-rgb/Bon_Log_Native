@@ -36,13 +36,13 @@ export const NOTIFICATION_PREFERENCE_LABELS: Record<NotificationPreferenceKey, s
   like: 'いいね',
   comment: 'コメント',
   reply: '返信',
-  comment_like: 'コメントへのいいね',
+  comment_like: 'コメントいいね',
   follow: 'フォロー',
-  quote: '引用',
+  quote: '引用投稿',
   follow_request: 'フォローリクエスト',
-  follow_request_approved: 'フォローリクエストの承認',
+  follow_request_approved: 'フォロー承認',
   mention: 'メンション',
-  message: 'メッセージ',
+  message: 'ダイレクトメッセージ',
   repost: 'リポスト',
 };
 
