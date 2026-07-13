@@ -13,6 +13,7 @@ import { apiClient } from '@/lib/api/client';
 import { queryKeys } from '@/lib/queries/keys';
 import type { components } from '@/lib/api/generated/schema.d.ts';
 import { USERS_PAGE_SIZE } from '@/lib/constants/limits/pagination';
+import type { ReportReason, ReportTargetType } from '@/lib/constants/report';
 
 // ---------------------------------------------------------------------------
 // 型 export（frontend が直接使用する）
@@ -229,12 +230,12 @@ export function useUnmuteUserMutation() {
 // ---------------------------------------------------------------------------
 
 export type ReportParams = {
-  /** 通報対象種別（MVP: post / comment / user） */
-  targetType: 'post' | 'comment' | 'user';
+  /** 通報対象種別 */
+  targetType: ReportTargetType;
   /** 通報対象 ID */
   targetId: string;
   /** 通報理由 */
-  reason: 'spam' | 'inappropriate' | 'harassment' | 'copyright' | 'other';
+  reason: ReportReason;
   /** 詳細説明（任意・最大 1000 文字） */
   description?: string;
 };
