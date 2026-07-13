@@ -41,3 +41,9 @@ export const BADGE_OVERFLOW_THRESHOLD = 99;
 
 /** スケルトンローディングの表示件数 */
 export const SKELETON_COUNT = 5;
+
+/**
+ * 検索履歴として保持する最大件数。
+ * cfw 出典: lib/constants/limits/ui.ts#MAX_RECENT_SEARCHES (10)
+ */
+export const MAX_RECENT_SEARCHES = 10;
