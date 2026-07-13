@@ -374,9 +374,10 @@ function ProfileHeaderInner({
           </View>
         </View>
 
-        {/* 統計（フォロー中・フォロワー・いいねは Web 版同様に一覧画面へ遷移する） */}
+        {/* 統計（フォロー中・フォロワー・いいねは Web 版同様に一覧画面へ遷移する）
+            並び順は Web 版 components/user/ProfileHeader.tsx と一致させる:
+            フォロー中 → フォロワー → いいね → 投稿 */}
         <View style={styles.statsRow}>
-          <StatItem count={postsCount} label="投稿" />
           <StatLink
             count={followingCount}
             label="フォロー中"
@@ -394,6 +395,7 @@ function ProfileHeaderInner({
             onPress={() => router.push(routeUserLikes(id))}
             accessibilityLabel="いいねした投稿一覧を見る"
           />
+          <StatItem count={postsCount} label="投稿" />
         </View>
       </View>
     </View>

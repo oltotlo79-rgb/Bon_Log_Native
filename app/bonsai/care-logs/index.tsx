@@ -33,6 +33,7 @@ import {
   type CareLogItem,
   type BonsaiCareType,
 } from '@/lib/queries/bonsai-care-logs';
+import { isBonsaiCareType } from '@/lib/constants/bonsai-care-type';
 import { useOnlineStatus } from '@/hooks/use-online-status';
 import { useToast } from '@/hooks/use-toast';
 import { DateTimeField } from '@/components/common/DateTimeField';
@@ -160,7 +161,7 @@ function buildInitialForm(): CareLogFormState {
 
 function buildFormFromItem(item: CareLogItem): CareLogFormState {
   return {
-    type: item.type as BonsaiCareType,
+    type: isBonsaiCareType(item.type) ? item.type : BONSAI_CARE_TYPE.OTHER,
     performedAt: item.performedAt,
     note: item.note ?? '',
   };
@@ -563,7 +564,7 @@ const CareLogRow = React.memo(function CareLogRow({
   onEdit,
   onDelete,
 }: CareLogRowProps) {
-  const typeLabel = CARE_TYPE_LABEL[item.type as BonsaiCareType] ?? item.type;
+  const typeLabel = isBonsaiCareType(item.type) ? CARE_TYPE_LABEL[item.type] : item.type;
   const dateLabel = formatPerformedAt(item.performedAt);
 
   const handleEdit = useCallback(() => onEdit(item), [item, onEdit]);
@@ -764,7 +765,7 @@ export default function CareLogsScreen() {
         showToast(ERR_OFFLINE_ACTION, 'error');
         return;
       }
-      const typeLabel = CARE_TYPE_LABEL[item.type as BonsaiCareType] ?? item.type;
+      const typeLabel = isBonsaiCareType(item.type) ? CARE_TYPE_LABEL[item.type] : item.type;
       const dateLabel = formatPerformedAt(item.performedAt);
       Alert.alert(
         '手入れログを削除',

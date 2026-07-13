@@ -25,12 +25,14 @@ import { useSearchPostsQuery, useSearchUsersQuery, type SearchPostItem, type Sea
 import type { SearchPostsFilter } from '@/lib/queries/keys';
 import { useDebounce } from '@/hooks/use-debounce';
 import { useOnlineStatus } from '@/hooks/use-online-status';
+import { useRecentSearches } from '@/hooks/use-recent-searches';
 import { mapToPostCardProps } from '@/hooks/use-post-card-props';
 import { useCurrentUserQuery } from '@/lib/queries/auth';
 import { PostCard } from '@/components/post/PostCard';
 import { UserResultItem, ITEM_MIN_HEIGHT } from '@/components/user/UserResultItem';
 import { PostSearchFilterPanel } from '@/components/search/PostSearchFilterPanel';
 import { HashtagSearchResults } from '@/components/search/HashtagSearchResults';
+import { RecentSearchesPanel } from '@/components/search/RecentSearchesPanel';
 import { ScreenEmpty } from '@/components/common/ScreenEmpty';
 import { ScreenError } from '@/components/common/ScreenError';
 import { ScreenLoading } from '@/components/common/ScreenLoading';
@@ -93,11 +95,23 @@ type SearchBarProps = {
   onChangeText: (text: string) => void;
   onSubmit: (text: string) => void;
   onClear: () => void;
+  /** 最近の検索パネルの表示判定に使うため、フォーカス状態を親へ通知する */
+  onFocusChange?: (isFocused: boolean) => void;
   inputRef?: React.RefObject<TextInput | null>;
 };
 
-function SearchBar({ value, onChangeText, onSubmit, onClear, inputRef }: SearchBarProps) {
+function SearchBar({ value, onChangeText, onSubmit, onClear, onFocusChange, inputRef }: SearchBarProps) {
   const [isFocused, setIsFocused] = useState(false);
+
+  const handleFocus = () => {
+    setIsFocused(true);
+    onFocusChange?.(true);
+  };
+
+  const handleBlur = () => {
+    setIsFocused(false);
+    onFocusChange?.(false);
+  };
 
   return (
     <View
@@ -120,8 +134,8 @@ function SearchBar({ value, onChangeText, onSubmit, onClear, inputRef }: SearchB
         value={value}
         onChangeText={onChangeText}
         onSubmitEditing={() => onSubmit(value)}
-        onFocus={() => setIsFocused(true)}
-        onBlur={() => setIsFocused(false)}
+        onFocus={handleFocus}
+        onBlur={handleBlur}
         placeholder="投稿・ユーザー・タグを検索..."
         placeholderTextColor={colorTextTertiary}
         returnKeyType="search"
@@ -449,12 +463,20 @@ export default function SearchScreen() {
   const [postFilter, setPostFilter] = useState<SearchPostsFilter>(
     initialGenreId.length > 0 ? { genreId: initialGenreId } : {}
   );
+  const [isSearchBarFocused, setIsSearchBarFocused] = useState(false);
   const isOffline = !useOnlineStatus();
   const textInputRef = useRef<TextInput>(null);
 
   const debouncedQuery = useDebounce(inputValue, DEBOUNCE_SEARCH_MS);
 
   const activeQuery = debouncedQuery;
+
+  const {
+    searches: recentSearches,
+    add: addRecentSearch,
+    removeOne: removeRecentSearch,
+    clear: clearRecentSearches,
+  } = useRecentSearches();
 
   const handleClear = useCallback(() => {
     setInputValue('');
@@ -463,7 +485,14 @@ export default function SearchScreen() {
 
   const handleSubmit = useCallback((text: string) => {
     setInputValue(text);
-  }, []);
+    addRecentSearch(text);
+  }, [addRecentSearch]);
+
+  const handleSelectRecentSearch = useCallback((query: string) => {
+    setInputValue(query);
+    addRecentSearch(query);
+    textInputRef.current?.blur();
+  }, [addRecentSearch]);
 
   const handleFilterApply = useCallback((filter: SearchPostsFilter) => {
     setPostFilter(filter);
@@ -477,6 +506,8 @@ export default function SearchScreen() {
   // （ジャンルタグタップ直後に投稿タブへ着地させる — Web の GenreFilter 挙動）。
   const hasGenreFilter = postFilter.genreId !== undefined;
   const showInitialView = inputValue.length === 0 && debouncedQuery.length === 0 && !hasGenreFilter;
+  // 検索バーフォーカス中・未入力・履歴ありの時だけ最近の検索を出す（cfw SearchBar のドロップダウン条件と同じ）
+  const showRecentSearches = isSearchBarFocused && inputValue.length === 0 && recentSearches.length > 0;
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
@@ -496,17 +527,27 @@ export default function SearchScreen() {
           onChangeText={setInputValue}
           onSubmit={handleSubmit}
           onClear={handleClear}
+          onFocusChange={setIsSearchBarFocused}
           inputRef={textInputRef}
         />
       </View>
 
       <View style={styles.body}>
         {showInitialView ? (
-          <ScreenEmpty
-            iconName="search"
-            title="検索してみましょう"
-            description="ニックネーム、キーワード、#タグを入力してください"
-          />
+          showRecentSearches ? (
+            <RecentSearchesPanel
+              searches={recentSearches}
+              onSelect={handleSelectRecentSearch}
+              onRemove={removeRecentSearch}
+              onClearAll={clearRecentSearches}
+            />
+          ) : (
+            <ScreenEmpty
+              iconName="search"
+              title="検索してみましょう"
+              description="ニックネーム、キーワード、#タグを入力してください"
+            />
+          )
         ) : (
           <>
             <SearchSegmentTabs

@@ -61,6 +61,7 @@ import { ERR_NOT_FOUND, ERR_FORBIDDEN } from '@/lib/constants/errors';
 const ICON_SIZE = 18;
 const STAR_SIZE = 14;
 const PREVIEW_REVIEW_COUNT = 3;
+const REPORT_BUTTON_SIZE = 44;
 
 // ---------------------------------------------------------------------------
 // 型ガード
@@ -323,7 +324,7 @@ export default function ShopDetailScreen() {
           ) : (
             <>
               {previewReviews.map((review) => (
-                <ReviewPreviewItem key={review.id} review={review} />
+                <ReviewPreviewItem key={review.id} review={review} currentUserId={currentUser?.id} />
               ))}
               {reviewCount > PREVIEW_REVIEW_COUNT && (
                 <Pressable
@@ -450,18 +451,50 @@ type ReviewPreviewItemProps = {
     user: { id: string; nickname: string; avatarUrl: string | null };
     createdAt: string;
   };
+  /** 閲覧者のユーザー ID（未認証は undefined）。自分のレビューには通報導線を出さない */
+  currentUserId: string | undefined;
 };
 
-function ReviewPreviewItem({ review }: ReviewPreviewItemProps) {
+function ReviewPreviewItem({ review, currentUserId }: ReviewPreviewItemProps) {
+  const [showReportDialog, setShowReportDialog] = useState(false);
+  const canReport = currentUserId !== undefined && currentUserId !== review.user.id;
+
   return (
     <View style={styles.reviewItem}>
-      <View style={styles.reviewHeader}>
-        <Text style={styles.reviewerName}>{review.user.nickname}</Text>
-        <StarDisplay rating={review.rating} />
-        <Text style={styles.reviewDate}>{formatRelativeTime(review.createdAt)}</Text>
+      <View style={styles.reviewTopRow}>
+        <View style={styles.reviewHeader}>
+          <Text style={styles.reviewerName}>{review.user.nickname}</Text>
+          <StarDisplay rating={review.rating} />
+          <Text style={styles.reviewDate}>{formatRelativeTime(review.createdAt)}</Text>
+        </View>
+        {canReport && (
+          <Pressable
+            style={styles.reviewReportButton}
+            onPress={() => setShowReportDialog(true)}
+            accessibilityRole="button"
+            accessibilityLabel={`この${REPORT_TARGET_LABELS.review}を通報する`}
+          >
+            <Ionicons
+              name="flag-outline"
+              size={ICON_SIZE}
+              color={colorTextSecondary}
+              accessibilityElementsHidden
+              importantForAccessibility="no"
+            />
+          </Pressable>
+        )}
       </View>
       {review.content !== null && review.content.length > 0 && (
         <Text style={styles.reviewContent} numberOfLines={3}>{review.content}</Text>
+      )}
+
+      {showReportDialog && (
+        <ReportDialog
+          targetType="review"
+          targetId={review.id}
+          targetDisplayName={`${review.user.nickname}のレビュー`}
+          onClose={() => setShowReportDialog(false)}
+        />
       )}
     </View>
   );
@@ -642,11 +675,25 @@ const styles = StyleSheet.create({
     borderBottomColor: colorBorderLight,
     ...shadowWashi,
   },
+  reviewTopRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    justifyContent: 'space-between',
+  },
   reviewHeader: {
+    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     gap: spacing2,
     flexWrap: 'wrap',
+  },
+  reviewReportButton: {
+    width: REPORT_BUTTON_SIZE,
+    height: REPORT_BUTTON_SIZE,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: -spacing2,
+    marginRight: -spacing2,
   },
   reviewerName: {
     ...textSm,

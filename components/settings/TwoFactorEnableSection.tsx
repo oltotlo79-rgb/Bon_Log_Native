@@ -1,15 +1,18 @@
 /**
  * @module components/settings/TwoFactorEnableSection
- * 2FA 有効化フロー（開始 → シークレット・バックアップコード表示 → コード確認 → 完了）。
+ * 2FA 有効化フロー（開始 → QR コード・シークレット・バックアップコード表示 → コード確認 → 完了）。
  * secret / otpAuthUrl / backupCodes はサーバーがキャッシュしない値のため、
  * 呼び出す度にローカル state で新しく保持し、キャンセル・完了時に破棄する。
- * QR コードは描画しない（secret / otpAuthUrl を手入力・コピー用に表示するのみ）。
+ * QR コードは lib/utils/qr-code の generateQrCodeDataUri で otpAuthUrl から都度生成する
+ * （SVG data URI。読み取れない環境向けに secret / otpAuthUrl のテキスト表示も残す）。
  */
 
-import React, { useRef, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { View, Text, Pressable, StyleSheet } from 'react-native';
 import type { TextInput } from 'react-native';
+import { Image } from 'expo-image';
 import { Ionicons } from '@expo/vector-icons';
+import { generateQrCodeDataUri } from '@/lib/utils/qr-code';
 import {
   useTwoFactorSetupMutation,
   useEnableTwoFactorMutation,
@@ -51,6 +54,7 @@ import {
 // ---------------------------------------------------------------------------
 
 const SHIELD_ICON_SIZE = 22;
+const QR_IMAGE_SIZE = 200;
 
 /**
  * 設定画面の 2FA 有効化フロー専用のエラー文言変換。
@@ -87,6 +91,13 @@ export function TwoFactorEnableSection({ isOnline }: TwoFactorEnableSectionProps
 
   const setupMutation = useTwoFactorSetupMutation();
   const enableMutation = useEnableTwoFactorMutation();
+
+  // code は 6 桁入力の毎キー入力で更新されるため、QR (SVG エンコード) の再生成を
+  // otpAuthUrl が変わらない限り避ける。
+  const qrCodeUri = useMemo(
+    () => (setupData !== null ? generateQrCodeDataUri(setupData.otpAuthUrl) : null),
+    [setupData]
+  );
 
   function resetToIdle() {
     setStep('idle');
@@ -156,8 +167,20 @@ export function TwoFactorEnableSection({ isOnline }: TwoFactorEnableSectionProps
       <View style={styles.card}>
         <Text style={styles.title}>ステップ 1: 認証アプリに登録</Text>
         <Text style={styles.description}>
-          認証アプリ（Google Authenticator、Microsoft Authenticator 等）で以下のキーを手動で入力してください。
+          認証アプリ（Google Authenticator、Microsoft Authenticator 等）で下の QR コードを読み取るか、
+          以下のキーを手動で入力してください。
         </Text>
+        {qrCodeUri !== null && (
+          <View style={styles.qrWrapper}>
+            <Image
+              source={{ uri: qrCodeUri }}
+              style={styles.qrImage}
+              contentFit="contain"
+              accessibilityRole="image"
+              accessibilityLabel="2FA QRコード"
+            />
+          </View>
+        )}
         <View style={styles.secretBox}>
           <Text style={styles.secretLabel}>シークレットキー</Text>
           <Text style={styles.secretValue} selectable accessibilityLabel="シークレットキー">
@@ -275,6 +298,17 @@ const styles = StyleSheet.create({
   description: {
     ...textSm,
     color: colorTextSecondary,
+  },
+  qrWrapper: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: spacing3,
+    backgroundColor: colorSurfaceMuted,
+    borderRadius: radiusMd,
+  },
+  qrImage: {
+    width: QR_IMAGE_SIZE,
+    height: QR_IMAGE_SIZE,
   },
   secretBox: {
     backgroundColor: colorSurfaceMuted,
