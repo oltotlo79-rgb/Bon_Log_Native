@@ -17,6 +17,8 @@ export type ShopCreatedResponse = components['schemas']['ShopCreatedResponse'];
 export type ReviewItem = components['schemas']['ReviewItem'];
 export type ReviewListResponse = components['schemas']['ReviewListResponse'];
 export type GenreListResponse = components['schemas']['GenreListResponse'];
+/** ジャンル1件（id / name / category）。GET /api/v1/genres の items 要素。 */
+export type Genre = GenreListResponse['items'][number];
 export type ShopMapPinsResponse = components['schemas']['ShopMapPinsResponse'];
 export type GeocodeResponse = components['schemas']['GeocodeResponse'];
 
@@ -142,6 +144,8 @@ export function useShopReviewsQuery(shopId: string) {
 /**
  * ジャンル一覧クエリ（ゲスト可）。
  * type=shop: 盆栽園タグ用ジャンル / type=post: 投稿タグ用ジャンル。
+ * items の各要素は category を持つ。「カテゴリ→個別ジャンル」の2階層 UI を組み立てる場合は
+ * `groupGenresByCategory(data.items)`（lib/utils/group-genres-by-category）でグルーピングする。
  * マスタ系データのため長めの staleTime を設定する。
  */
 export function useGenresQuery(type: GenreType) {

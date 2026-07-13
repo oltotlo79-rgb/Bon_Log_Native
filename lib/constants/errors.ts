@@ -184,6 +184,13 @@ export const ERR_FORBIDDEN = 'この操作を行う権限がありません。';
 export const ERR_GEOCODE_ADDRESS_NOT_FOUND =
   '住所が見つかりませんでした。住所の表記を確認してください（例: 東京都渋谷区...）';
 
+/**
+ * 投稿作成・更新で指定した盆栽が見つからない場合（404 NOT_FOUND）。
+ * サーバーは他人所有・不存在のいずれも区別せず同じ NOT_FOUND で返す（存在有無の秘匿。
+ * Web 版 Bon_Log_cfw/lib/constants/errors/entity.ts の ERR_BONSAI_NOT_FOUND と同じ設計）。
+ */
+export const ERR_BONSAI_NOT_FOUND = '指定した盆栽が見つかりません。';
+
 // ---------------------------------------------------------------------------
 // 入力バリデーション系（400）
 // ---------------------------------------------------------------------------
@@ -664,6 +671,18 @@ export function messageForEmailChangeRequestError(code: MobileApiErrorCode): str
   if (code === 'CONFLICT') return ERR_EMAIL_CHANGE_OAUTH_ONLY;
   if (code === 'RATE_LIMITED') return ERR_RATE_LIMIT;
   return ERR_GENERIC;
+}
+
+/**
+ * useCreatePostMutation / useUpdatePostMutation で bonsaiId を指定した場合のエラーメッセージ変換。
+ * サーバーは「投稿自体が見つからない」ケースと「盆栽が他人所有・不存在」ケースを
+ * 同じ 404 NOT_FOUND で返す（存在有無の秘匿設計のため区別不能）。bonsaiId を指定した
+ * リクエストでの NOT_FOUND は本関数で盆栽起因として解釈する。呼び出し側は bonsaiId を
+ * 指定しなかったリクエストの NOT_FOUND には使わず messageForApiError を使うこと。
+ */
+export function messageForPostBonsaiError(code: MobileApiErrorCode): string {
+  if (code === 'NOT_FOUND') return ERR_BONSAI_NOT_FOUND;
+  return messageForApiError(code);
 }
 
 /**

@@ -60,6 +60,11 @@ export type CreatePostParams = {
   mediaTypes: ('image' | 'video')[];
   /** アンケート付き投稿にする場合に指定する。指定しない場合は通常投稿 */
   poll?: CreatePostPoll;
+  /**
+   * 紐付ける盆栽の ID（任意）。省略時は紐付けなし。
+   * 他人・不存在の盆栽 ID を指定した場合は 404 NOT_FOUND（messageForPostBonsaiError 参照）。
+   */
+  bonsaiId?: string | null;
 };
 
 /**
@@ -76,12 +81,12 @@ export function useCreatePostMutation(currentUserId: string) {
   const queryClient = useQueryClient();
 
   return useMutation<PostResponse, Error, CreatePostParams>({
-    mutationFn: async ({ content, genreIds, mediaUrls, mediaTypes, poll }) => {
+    mutationFn: async ({ content, genreIds, mediaUrls, mediaTypes, poll, bonsaiId }) => {
       const pollBody = poll !== undefined
         ? { options: poll.options, durationSeconds: poll.durationSeconds ?? 86400 }
         : undefined;
       const { data, error } = await apiClient.POST('/api/v1/posts', {
-        body: { content, genreIds, mediaUrls, mediaTypes, poll: pollBody },
+        body: { content, genreIds, mediaUrls, mediaTypes, poll: pollBody, bonsaiId },
       });
       if (error !== undefined || data === undefined) {
         throw error ?? new Error('Unexpected error creating post');
@@ -106,6 +111,13 @@ export type UpdatePostParams = {
   genreIds: string[];
   mediaUrls: string[];
   mediaTypes: ('image' | 'video')[];
+  /**
+   * 紐付ける盆栽の ID の三値制御。キー省略（undefined）＝現状維持、null＝紐付け解除、
+   * 文字列＝紐付け設定。呼び出し側がキー自体を省略すると JSON シリアライズ時に
+   * bonsaiId が送信されず「維持」として扱われる（サーバー側の PATCH 部分更新契約）。
+   * 他人・不存在の盆栽 ID を指定した場合は 404 NOT_FOUND（messageForPostBonsaiError 参照）。
+   */
+  bonsaiId?: string | null;
 };
 
 /**
@@ -120,10 +132,10 @@ export function useUpdatePostMutation() {
   const queryClient = useQueryClient();
 
   return useMutation<PostResponse, Error, UpdatePostParams>({
-    mutationFn: async ({ id, content, genreIds, mediaUrls, mediaTypes }) => {
+    mutationFn: async ({ id, content, genreIds, mediaUrls, mediaTypes, bonsaiId }) => {
       const { data, error } = await apiClient.PATCH('/api/v1/posts/{id}', {
         params: { path: { id } },
-        body: { content, genreIds, mediaUrls, mediaTypes },
+        body: { content, genreIds, mediaUrls, mediaTypes, bonsaiId },
       });
       if (error !== undefined || data === undefined) {
         throw error ?? new Error('Unexpected error updating post');

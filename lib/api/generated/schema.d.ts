@@ -13637,6 +13637,7 @@ export interface components {
         /**
          * @description 投稿作成リクエスト。content / mediaUrls のどちらか一方は必須。
          *     genreIds は最大 3 つ。mediaUrls と mediaTypes は同数で対応させること。
+         *     bonsaiId を指定すると投稿者自身が所有する盆栽に紐付けられる（他人の盆栽 ID は 404）。省略可。
          *     poll を指定するとアンケート付き投稿になる。
          */
         CreatePostRequest: {
@@ -13648,6 +13649,7 @@ export interface components {
             mediaUrls: string[];
             /** @default [] */
             mediaTypes: ("image" | "video")[];
+            bonsaiId?: string | null;
             poll?: {
                 options: string[];
                 /** @default 86400 */
@@ -13683,6 +13685,7 @@ export interface components {
                 /** Format: date-time */
                 updatedAt: string;
                 userId: string;
+                bonsaiId: string | null;
                 user: {
                     id: string;
                     nickname: string;
@@ -13784,6 +13787,7 @@ export interface components {
                 /** Format: date-time */
                 updatedAt: string;
                 userId: string;
+                bonsaiId: string | null;
                 user: {
                     id: string;
                     nickname: string;
@@ -13963,6 +13967,7 @@ export interface components {
          * @description 投稿編集リクエスト（所有者のみ）。ジャンル・メディアは差し替え方式。
          *     純粋リポストは編集不可（400 VALIDATION_ERROR）。
          *     1 日投稿上限は消費しない。editedAt が更新される。
+         *     bonsaiId はキー省略で現状維持、null で紐付け解除、文字列指定で紐付け（投稿者自身が所有する盆栽のみ、他人の盆栽 ID は 404）。
          */
         UpdatePostRequest: {
             /** @default  */
@@ -13973,6 +13978,7 @@ export interface components {
             mediaUrls: string[];
             /** @default [] */
             mediaTypes: ("image" | "video")[];
+            bonsaiId?: string | null;
         };
         /**
          * @description コメント作成リクエスト。content / mediaUrls のどちらか一方は必須。
@@ -14055,6 +14061,7 @@ export interface components {
                 /** Format: date-time */
                 updatedAt: string;
                 userId: string;
+                bonsaiId: string | null;
                 user: {
                     id: string;
                     nickname: string;
@@ -14156,6 +14163,7 @@ export interface components {
             /** Format: date-time */
             updatedAt: string;
             userId: string;
+            bonsaiId: string | null;
             user: {
                 id: string;
                 nickname: string;
@@ -14357,6 +14365,7 @@ export interface components {
                 /** Format: date-time */
                 updatedAt: string;
                 userId: string;
+                bonsaiId: string | null;
                 user: {
                     id: string;
                     nickname: string;
@@ -14537,6 +14546,7 @@ export interface components {
                 /** Format: date-time */
                 updatedAt: string;
                 userId: string;
+                bonsaiId: string | null;
                 user: {
                     id: string;
                     nickname: string;
@@ -15683,6 +15693,7 @@ export interface components {
         /**
          * @description 盆栽部分更新リクエスト。全フィールドが optional。
          *     acquiredAt に null を渡すと取得日をクリアする。
+         *     acquiredAt は完全な ISO 8601 日時文字列が必須（例: "2024-03-15T09:00:00.000Z"）。日付のみの文字列（例: "2024-03-15"）は 400 になる。
          */
         UpdateBonsaiRequest: {
             name?: string;
@@ -15693,6 +15704,7 @@ export interface components {
         };
         /**
          * @description 成長記録作成リクエスト。recordAt は必須（ISO 8601）。
+         *     recordAt は完全な ISO 8601 日時文字列が必須（例: "2024-03-15T09:00:00.000Z"）。日付のみの文字列（例: "2024-03-15"）は 400 になる。
          *     mediaUrls は POST /api/v1/upload/image で取得した自社ストレージ URL のみ（外部 URL は 400 VALIDATION_ERROR）。
          *     最大 4 枚。
          */
@@ -15705,6 +15717,7 @@ export interface components {
         };
         /**
          * @description 成長記録部分更新リクエスト。
+         *     recordAt 指定時は完全な ISO 8601 日時文字列が必須（例: "2024-03-15T09:00:00.000Z"）。日付のみの文字列（例: "2024-03-15"）は 400 になる。省略時は既存の recordAt を維持する。
          *     mediaUrls 指定時は既存画像を全て置換する（差し替え方式）。省略時は既存画像を維持する。
          */
         UpdateBonsaiRecordRequest: {
@@ -16095,6 +16108,7 @@ export interface components {
             items: {
                 id: string;
                 name: string;
+                category: string;
             }[];
         };
         /** @description GET /api/v1/shops クエリパラメータ。sortBy は rating/name/newest/location。region は地方名フィルタ（prefecture 指定時は無視）。 */
@@ -16593,6 +16607,7 @@ export interface components {
                 /** Format: date-time */
                 updatedAt: string;
                 userId: string;
+                bonsaiId: string | null;
                 user: {
                     id: string;
                     nickname: string;

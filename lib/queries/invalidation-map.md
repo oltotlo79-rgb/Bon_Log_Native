@@ -26,8 +26,8 @@
 
 | ミューテーション | 無効化するキー | 備考 |
 |----------------|--------------|------|
-| 投稿作成（`useCreatePostMutation`） | `queryKeys.posts.feed()` / 自分の `queryKeys.users.detail(currentUserId)`（onSettled） | フィードと自分のプロフィールの投稿カウントが変わるため。楽観更新なし |
-| 投稿更新（`useUpdatePostMutation`） | `queryKeys.posts.detail(id)` / `queryKeys.posts.feed()`（onSettled） | 詳細とフィードの内容を同期するため。楽観更新なし |
+| 投稿作成（`useCreatePostMutation`） | `queryKeys.posts.feed()` / 自分の `queryKeys.users.detail(currentUserId)`（onSettled） | フィードと自分のプロフィールの投稿カウントが変わるため。楽観更新なし。`bonsaiId`（任意）対応後も対象キーは変更なし（Native に「盆栽紐付け投稿一覧」クエリが存在しないため） |
+| 投稿更新（`useUpdatePostMutation`） | `queryKeys.posts.detail(id)` / `queryKeys.posts.feed()`（onSettled） | 詳細とフィードの内容を同期するため。楽観更新なし。`bonsaiId` 三値制御（省略=維持/null=解除/文字列=設定）対応後も対象キーは変更なし。他人・不存在の盆栽 ID 指定時は 404 NOT_FOUND（`messageForPostBonsaiError` 参照） |
 | 投稿削除（`useDeletePostMutation`） | `queryKeys.posts.all` / 自分の `queryKeys.users.detail(currentUserId)`（onSettled） | 投稿系を一括 invalidate し、プロフィールのカウントも更新するため |
 | いいね・いいね取り消し（`useToggleLikeMutation`） | `queryKeys.posts.detail(id)` のみ（onSettled で invalidate） | フィード・検索は楽観更新 + onSuccess で setQueryData による確定反映を優先。フィード再取得は重いため invalidate しない |
 | リポスト・リポスト解除（`useToggleRepostMutation`） | `queryKeys.posts.detail(postId)` のみ（onSettled で invalidate） | フィード・詳細の isReposted / repostCount は onMutate で楽観更新、onError でロールバック。フィード再取得は重いため invalidate しない |
