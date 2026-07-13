@@ -96,7 +96,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    minHeight: 52,
+    minHeight: 64,
     paddingVertical: 12,
     paddingHorizontal: spacing4,
     borderBottomWidth: 1,

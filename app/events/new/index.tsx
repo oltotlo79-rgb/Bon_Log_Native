@@ -44,6 +44,7 @@ import {
   colorBorder,
   colorBorderLight,
   colorActionPrimary,
+  colorError,
   colorSurfaceMuted,
   spacing2,
   spacing3,
@@ -497,7 +498,7 @@ const styles = StyleSheet.create({
   },
   fieldError: {
     ...textSm,
-    color: '#c0392b',
+    color: colorError,
   },
   textInput: {
     height: INPUT_HEIGHT,

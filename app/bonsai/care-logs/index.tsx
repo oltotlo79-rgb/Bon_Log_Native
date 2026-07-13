@@ -46,6 +46,7 @@ import {
   ERR_CARE_LOG_CREATE_FAILED,
   ERR_CARE_LOG_UPDATE_FAILED,
   ERR_CARE_LOG_DELETE_FAILED,
+  ERR_OFFLINE_ACTION,
 } from '@/lib/constants/errors';
 import { MAX_CARE_LOG_NOTE_LENGTH } from '@/lib/constants/limits/post';
 import {
@@ -255,6 +256,7 @@ const selectorStyles = StyleSheet.create({
 type CareLogFormModalProps = {
   visible: boolean;
   editingItem: CareLogItem | null;
+  isOnline: boolean;
   onClose: () => void;
   onSuccess: () => void;
   showToast: (message: string, variant?: 'default' | 'error' | 'warning') => void;
@@ -263,6 +265,7 @@ type CareLogFormModalProps = {
 function CareLogFormModal({
   visible,
   editingItem,
+  isOnline,
   onClose,
   onSuccess,
   showToast,
@@ -286,6 +289,10 @@ function CareLogFormModal({
   const isSubmitting = createMutation.isPending || updateMutation.isPending;
 
   const handleSubmit = useCallback(() => {
+    if (!isOnline) {
+      showToast(ERR_OFFLINE_ACTION, 'error');
+      return;
+    }
     const performedAt = form.performedAt;
     if (performedAt === null || isNoteOverflow) return;
     if (isEditing && editingItem !== null) {
@@ -325,6 +332,7 @@ function CareLogFormModal({
       );
     }
   }, [
+    isOnline,
     isNoteOverflow,
     isEditing,
     editingItem,
@@ -752,6 +760,10 @@ export default function CareLogsScreen() {
 
   const handleDelete = useCallback(
     (item: CareLogItem) => {
+      if (!isOnline) {
+        showToast(ERR_OFFLINE_ACTION, 'error');
+        return;
+      }
       const typeLabel = CARE_TYPE_LABEL[item.type as BonsaiCareType] ?? item.type;
       const dateLabel = formatPerformedAt(item.performedAt);
       Alert.alert(
@@ -776,7 +788,7 @@ export default function CareLogsScreen() {
         ]
       );
     },
-    [deleteMutation, showToast]
+    [isOnline, deleteMutation, showToast]
   );
 
   const handleEndReached = useCallback(() => {
@@ -879,6 +891,7 @@ export default function CareLogsScreen() {
       <CareLogFormModal
         visible={formVisible}
         editingItem={editingItem}
+        isOnline={isOnline}
         onClose={handleFormClose}
         onSuccess={handleFormSuccess}
         showToast={showToast}

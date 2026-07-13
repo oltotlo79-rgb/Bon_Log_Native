@@ -36,6 +36,7 @@ import {
   colorActionPrimaryText,
   colorActionSecondary,
   colorActionSecondaryText,
+  colorError,
   colorSurfaceMuted,
   colorSuccess,
   colorSuccessBg,
@@ -581,7 +582,7 @@ const styles = StyleSheet.create({
   },
   fieldError: {
     ...textSm,
-    color: '#c0392b',
+    color: colorError,
   },
   hint: {
     ...textXs,

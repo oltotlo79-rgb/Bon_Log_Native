@@ -34,6 +34,7 @@ import {
   colorActionPrimaryText,
   colorActionSecondary,
   colorActionSecondaryText,
+  colorError,
   colorSurfaceMuted,
   spacing2,
   spacing3,
@@ -532,7 +533,7 @@ const styles = StyleSheet.create({
   scrollContent: { paddingHorizontal: spacing4, paddingTop: spacing4, gap: spacing4 },
   fieldGroup: { gap: spacing2 },
   fieldLabel: { ...textSm, color: colorTextPrimary, fontWeight: '600' },
-  fieldError: { ...textSm, color: '#c0392b' },
+  fieldError: { ...textSm, color: colorError },
   textInput: {
     height: INPUT_HEIGHT,
     borderWidth: 1,

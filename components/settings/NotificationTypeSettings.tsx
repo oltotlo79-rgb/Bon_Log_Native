@@ -22,6 +22,7 @@ import type { NotificationPreferences } from '@/lib/queries/notifications';
 import {
   NOTIFICATION_PREFERENCE_KEYS,
   NOTIFICATION_PREFERENCE_LABELS,
+  NOTIFICATION_PREFERENCE_DESCRIPTIONS,
   type NotificationPreferenceKey,
 } from '@/lib/constants/notification-settings';
 import { NotificationToggleRow } from '@/components/settings/NotificationToggleRow';
@@ -166,6 +167,7 @@ export function NotificationTypeSettings({ isOnline }: NotificationTypeSettingsP
             key={key}
             notificationKey={key}
             label={NOTIFICATION_PREFERENCE_LABELS[key]}
+            sublabel={NOTIFICATION_PREFERENCE_DESCRIPTIONS[key]}
             value={
               preferences !== undefined
                 ? resolveNotificationPreference(preferences, key)

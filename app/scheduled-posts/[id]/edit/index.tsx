@@ -45,6 +45,7 @@ import {
   colorTextTertiary,
   colorBorderLight,
   colorActionPrimary,
+  colorError,
   spacing2,
   spacing4,
   spacing8,
@@ -421,6 +422,6 @@ const styles = StyleSheet.create({
     textAlign: 'right',
   },
   counterOver: {
-    color: '#c0392b',
+    color: colorError,
   },
 });

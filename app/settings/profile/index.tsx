@@ -76,7 +76,6 @@ import {
 
 const BIO_MIN_HEIGHT = 80;
 const BIO_MAX_HEIGHT = 160;
-const BIO_WARNING_THRESHOLD = 30;
 
 // ---------------------------------------------------------------------------
 // Screen
@@ -276,7 +275,6 @@ export default function SettingsProfileScreen() {
 
   const bioLength = form.bio.length;
   const bioOverLimit = bioLength > MAX_BIO_LENGTH;
-  const bioNearLimit = bioLength > MAX_BIO_LENGTH - BIO_WARNING_THRESHOLD;
 
   return (
     <SafeAreaView style={styles.safeArea} edges={['top']}>
@@ -426,7 +424,6 @@ export default function SettingsProfileScreen() {
                 <Text
                   style={[
                     styles.bioCounter,
-                    bioNearLimit && styles.bioCounterWarning,
                     bioOverLimit && styles.bioCounterError,
                   ]}
                   accessibilityLabel={`${bioLength}文字 / ${MAX_BIO_LENGTH}文字入力済み`}
@@ -617,9 +614,6 @@ const styles = StyleSheet.create({
     color: colorTextSecondary,
     textAlign: 'right',
     marginTop: spacing2,
-  },
-  bioCounterWarning: {
-    color: colorTextSecondary,
   },
   bioCounterError: {
     color: colorError,
