@@ -25,6 +25,12 @@ export const MAX_COMMENT_LENGTH = 500;
 /** 1日のコメント上限数 */
 export const DAILY_COMMENT_LIMIT = 100;
 
+/** ダイレクトメッセージの最大文字数 */
+export const MAX_MESSAGE_LENGTH = 1000;
+
+/** 1日のダイレクトメッセージ送信上限数 */
+export const DAILY_MESSAGE_LIMIT = 100;
+
 /** 検索クエリの最大文字数 */
 export const MAX_SEARCH_QUERY_LENGTH = 100;
 

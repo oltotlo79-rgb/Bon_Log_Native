@@ -11,6 +11,8 @@ import {
   MAX_GENRES_PER_POST,
   MAX_COMMENT_LENGTH,
   DAILY_COMMENT_LIMIT,
+  MAX_MESSAGE_LENGTH,
+  DAILY_MESSAGE_LIMIT,
   MAX_SEARCH_QUERY_LENGTH,
   GENRE_CATEGORY_ORDER,
 } from '@/lib/constants/limits/post';
@@ -93,6 +95,11 @@ describe('limits/post — 投稿制限値', () => {
 
   it('1日のコメント上限は正の整数', () => {
     expect(DAILY_COMMENT_LIMIT).toBeGreaterThan(0);
+  });
+
+  it('ダイレクトメッセージの文字数・日次送信上限がサーバー仕様と一致する', () => {
+    expect(MAX_MESSAGE_LENGTH).toBe(1000);
+    expect(DAILY_MESSAGE_LIMIT).toBe(100);
   });
 
   it('ニックネーム・自己紹介・居住地域・検索クエリの上限が定義されている', () => {

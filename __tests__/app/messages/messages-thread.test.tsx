@@ -16,9 +16,16 @@ import {
 } from '@/__tests__/utils/data-factories';
 import { ApiError } from '@/lib/api/errors';
 import { renderWithProviders } from '@/__tests__/utils/test-utils';
+import {
+  ERR_MESSAGE_DAILY_LIMIT,
+  ERR_MESSAGE_RATE_LIMITED,
+  ERR_MESSAGE_SEND_FAILED,
+  ERR_MESSAGE_UNAVAILABLE,
+  ERR_NETWORK,
+  ERR_OFFLINE_ACTION,
+} from '@/lib/constants/errors';
 
-const mockRouter = jest.requireMock('expo-router').router;
-const mockUseLocalSearchParams = jest.requireMock('expo-router').useLocalSearchParams as jest.Mock;
+const mockUseLocalSearchParams: jest.Mock = jest.requireMock('expo-router').useLocalSearchParams;
 
 // ---------------------------------------------------------------------------
 // モック設定
@@ -27,6 +34,7 @@ const mockUseLocalSearchParams = jest.requireMock('expo-router').useLocalSearchP
 const mockUseMessagesQuery = jest.fn();
 const mockUseSendMessageMutation = jest.fn();
 const mockUseDeleteMessageMutation = jest.fn();
+const mockUseOnlineStatus = jest.fn(() => true);
 
 jest.mock('@/lib/queries/messages', () => ({
   useMessagesQuery: (...args: unknown[]) => mockUseMessagesQuery(...args),
@@ -43,7 +51,7 @@ jest.mock('@/lib/queries/auth', () => ({
 }));
 
 jest.mock('@/hooks/use-online-status', () => ({
-  useOnlineStatus: jest.fn(() => true),
+  useOnlineStatus: () => mockUseOnlineStatus(),
 }));
 
 jest.mock('@/lib/api/errors', () => {
@@ -77,6 +85,27 @@ function makeDefaultSendMutationReturn(overrides?: { mutate?: jest.Mock; isPendi
     isPending: false,
     ...overrides,
   };
+}
+
+type SendMutationCallbacks = {
+  onSuccess?: () => void;
+  onError?: (error: Error) => void;
+};
+
+function makeSuccessfulSendMutation(): jest.Mock {
+  return jest.fn(
+    (_variables: { content: string }, callbacks?: SendMutationCallbacks) => {
+      callbacks?.onSuccess?.();
+    }
+  );
+}
+
+function makeFailingSendMutation(error: Error): jest.Mock {
+  return jest.fn(
+    (_variables: { content: string }, callbacks?: SendMutationCallbacks) => {
+      callbacks?.onError?.(error);
+    }
+  );
 }
 
 function makeDefaultDeleteMutationReturn(overrides?: { mutate?: jest.Mock; isPending?: boolean }) {
@@ -133,6 +162,7 @@ function setupMocks(overrides?: {
 describe('ConversationThreadScreen', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockUseOnlineStatus.mockReturnValue(true);
     jest.spyOn(Alert, 'alert');
   });
 
@@ -308,10 +338,7 @@ describe('ConversationThreadScreen', () => {
 
   describe('オフライン状態', () => {
     it('オフライン時にエラー画面でオフラインバナーが表示される', () => {
-      const { useOnlineStatus } = jest.requireMock('@/hooks/use-online-status') as {
-        useOnlineStatus: jest.Mock;
-      };
-      useOnlineStatus.mockReturnValue(false);
+      mockUseOnlineStatus.mockReturnValue(false);
 
       setupMocks({
         messagesQuery: {
@@ -380,7 +407,13 @@ describe('ConversationThreadScreen', () => {
       });
       fireEvent.press(sendButton);
 
-      expect(mutate).toHaveBeenCalledWith({ content: 'テストメッセージ' });
+      expect(mutate).toHaveBeenCalledWith(
+        { content: 'テストメッセージ' },
+        expect.objectContaining({
+          onSuccess: expect.any(Function),
+          onError: expect.any(Function),
+        })
+      );
     });
 
     it('空文字（スペースのみ）のとき送信ボタンが無効になる', async () => {
@@ -416,8 +449,22 @@ describe('ConversationThreadScreen', () => {
       expect(sendButton.props.accessibilityState?.disabled).toBe(true);
     });
 
-    it('送信後に入力欄がリセットされる（mutate 呼び出し前にクリアする実装）', async () => {
+    it('送信結果を待っている間は入力欄を保持する', async () => {
       const mutate = jest.fn();
+      setupMocks({ sendMutation: { mutate } });
+      renderWithProviders(<ConversationThreadScreen />);
+
+      const input = screen.getByLabelText('メッセージ入力欄');
+      await act(async () => {
+        fireEvent.changeText(input, 'テストメッセージ');
+      });
+      fireEvent.press(screen.getByRole('button', { name: '送信' }));
+
+      expect(input.props.value).toBe('テストメッセージ');
+    });
+
+    it('送信成功後に入力欄をクリアする', async () => {
+      const mutate = makeSuccessfulSendMutation();
       setupMocks({ sendMutation: { mutate } });
       renderWithProviders(<ConversationThreadScreen />);
 
@@ -430,6 +477,105 @@ describe('ConversationThreadScreen', () => {
       await waitFor(() => {
         expect(input.props.value).toBe('');
       });
+    });
+
+    it('送信待機中に追加入力した本文は成功後も保持する', async () => {
+      let completeSend: (() => void) | undefined;
+      const mutate = jest.fn(
+        (_variables: { content: string }, callbacks?: SendMutationCallbacks) => {
+          completeSend = callbacks?.onSuccess;
+        }
+      );
+      setupMocks({ sendMutation: { mutate } });
+      renderWithProviders(<ConversationThreadScreen />);
+
+      const input = screen.getByLabelText('メッセージ入力欄');
+      await act(async () => {
+        fireEvent.changeText(input, '送信する本文');
+      });
+      fireEvent.press(screen.getByRole('button', { name: '送信' }));
+      await act(async () => {
+        fireEvent.changeText(input, '次に送る本文');
+        completeSend?.();
+      });
+
+      expect(input.props.value).toBe('次に送る本文');
+    });
+
+    it.each([
+      [
+        new ApiError({ code: 'RATE_LIMITED', status: 429, message: 'rate limited' }),
+        ERR_MESSAGE_RATE_LIMITED,
+      ],
+      [
+        new ApiError({ code: 'VALIDATION_ERROR', status: 400, message: 'daily limit' }),
+        ERR_MESSAGE_DAILY_LIMIT,
+      ],
+      [
+        new ApiError({ code: 'NOT_FOUND', status: 403, message: 'not found' }),
+        ERR_MESSAGE_UNAVAILABLE,
+      ],
+      [
+        new ApiError({ code: 'INTERNAL_ERROR', status: 500, message: 'server error' }),
+        ERR_MESSAGE_SEND_FAILED,
+      ],
+      [new Error('network error'), ERR_NETWORK],
+    ])('送信失敗時にコード別エラーを表示して入力を保持する', async (error, message) => {
+      const mutate = makeFailingSendMutation(error);
+      setupMocks({ sendMutation: { mutate } });
+      renderWithProviders(<ConversationThreadScreen />);
+
+      const input = screen.getByLabelText('メッセージ入力欄');
+      await act(async () => {
+        fireEvent.changeText(input, '消してはいけない本文');
+      });
+      fireEvent.press(screen.getByRole('button', { name: '送信' }));
+
+      expect(await screen.findByText(message)).toBeTruthy();
+      expect(input.props.value).toBe('消してはいけない本文');
+      expect(
+        screen.getByRole('button', { name: 'メッセージ送信を再試行' })
+      ).toBeTruthy();
+    });
+
+    it('再試行ボタンで保持した本文を再送する', async () => {
+      const mutate = makeFailingSendMutation(
+        new ApiError({ code: 'RATE_LIMITED', status: 429, message: 'rate limited' })
+      );
+      setupMocks({ sendMutation: { mutate } });
+      renderWithProviders(<ConversationThreadScreen />);
+
+      const input = screen.getByLabelText('メッセージ入力欄');
+      await act(async () => {
+        fireEvent.changeText(input, '再送する本文');
+      });
+      fireEvent.press(screen.getByRole('button', { name: '送信' }));
+      fireEvent.press(
+        await screen.findByRole('button', { name: 'メッセージ送信を再試行' })
+      );
+
+      expect(mutate).toHaveBeenCalledTimes(2);
+      expect(mutate).toHaveBeenLastCalledWith(
+        { content: '再送する本文' },
+        expect.objectContaining({ onError: expect.any(Function) })
+      );
+    });
+
+    it('オフライン時は通信せず本文とエラーを表示する', async () => {
+      const mutate = jest.fn();
+      mockUseOnlineStatus.mockReturnValue(false);
+      setupMocks({ sendMutation: { mutate } });
+      renderWithProviders(<ConversationThreadScreen />);
+
+      const input = screen.getByLabelText('メッセージ入力欄');
+      await act(async () => {
+        fireEvent.changeText(input, 'オフライン中の本文');
+      });
+      fireEvent.press(screen.getByRole('button', { name: '送信' }));
+
+      expect(await screen.findByText(ERR_OFFLINE_ACTION)).toBeTruthy();
+      expect(input.props.value).toBe('オフライン中の本文');
+      expect(mutate).not.toHaveBeenCalled();
     });
   });
 

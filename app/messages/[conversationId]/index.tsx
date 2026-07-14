@@ -47,30 +47,33 @@ import {
   colorBorder,
   colorActionPrimary,
   colorActionPrimaryText,
+  colorError,
+  colorErrorBg,
   spacing2,
   spacing3,
   spacing4,
   spacing8,
+  spacing12,
   radiusFull,
+  radiusMd,
   radiusLg,
   textBase,
   textLg,
   textXs,
+  fontFamilySerifBold,
   letterSpacingWidest,
 } from '@/lib/constants/design-tokens';
 import {
   ERR_USER_NOT_FOUND,
   ERR_LOAD_FAILED,
   ERR_GENERIC,
+  ERR_NETWORK,
+  ERR_OFFLINE_ACTION,
+  messageForSendMessageError,
 } from '@/lib/constants/errors';
+import { MAX_MESSAGE_LENGTH } from '@/lib/constants/limits/post';
 import { UserAvatar } from '@/components/common/UserAvatar';
 import { routeUserDetail } from '@/lib/constants/routes';
-
-// ---------------------------------------------------------------------------
-// メッセージ最大文字数（Web 版 MAX_MESSAGE_LENGTH と揃える）
-// ---------------------------------------------------------------------------
-
-const MAX_MESSAGE_LENGTH = 1000;
 
 // ---------------------------------------------------------------------------
 // リストアイテムの型（メッセージ or 日付セパレータ）
@@ -222,6 +225,7 @@ function ConversationThreadContent({ conversationId, paramOtherUser }: Conversat
   const deleteMutation = useDeleteMessageMutation(conversationId);
 
   const [inputText, setInputText] = useState('');
+  const [sendError, setSendError] = useState<string | null>(null);
   const inputRef = useRef<TextInput>(null);
 
   // 403 + NOT_FOUND は存在秘匿として not-found 扱いにする
@@ -238,6 +242,7 @@ function ConversationThreadContent({ conversationId, paramOtherUser }: Conversat
 
   const listItems: MessageListItem[] =
     messagesData !== undefined ? buildListItems(messagesData.pages) : [];
+  const isSendDisabled = inputText.trim().length === 0 || sendMutation.isPending;
 
   const handleRetry = useCallback(() => {
     void refetch();
@@ -253,9 +258,31 @@ function ConversationThreadContent({ conversationId, paramOtherUser }: Conversat
   const handleSend = useCallback(() => {
     const content = inputText.trim();
     if (content.length === 0 || sendMutation.isPending) return;
-    setInputText('');
-    sendMutation.mutate({ content });
-  }, [inputText, sendMutation]);
+    if (isOffline) {
+      setSendError(ERR_OFFLINE_ACTION);
+      return;
+    }
+
+    const submittedInput = inputText;
+    setSendError(null);
+    sendMutation.mutate(
+      { content },
+      {
+        onSuccess: () => {
+          setInputText((currentInput) =>
+            currentInput === submittedInput ? '' : currentInput
+          );
+          setSendError(null);
+          inputRef.current?.focus();
+        },
+        onError: (error) => {
+          setSendError(
+            isApiError(error) ? messageForSendMessageError(error.code) : ERR_NETWORK
+          );
+        },
+      }
+    );
+  }, [inputText, isOffline, sendMutation]);
 
   const handleLongPressMessage = useCallback(
     (messageId: string) => {
@@ -405,7 +432,28 @@ function ConversationThreadContent({ conversationId, paramOtherUser }: Conversat
           />
         )}
 
-        {/* 入力欄 */}
+        {sendError !== null && (
+          <View style={styles.sendErrorContainer}>
+            <Text
+              style={styles.sendErrorText}
+              accessibilityRole="alert"
+              accessibilityLiveRegion="assertive"
+            >
+              {sendError}
+            </Text>
+            <TouchableOpacity
+              style={styles.retrySendButton}
+              onPress={handleSend}
+              disabled={isSendDisabled}
+              accessibilityRole="button"
+              accessibilityLabel="メッセージ送信を再試行"
+              accessibilityState={{ disabled: isSendDisabled }}
+            >
+              <Text style={styles.retrySendText}>再試行</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
         <View style={styles.inputBar}>
           <TextInput
             ref={inputRef}
@@ -426,15 +474,14 @@ function ConversationThreadContent({ conversationId, paramOtherUser }: Conversat
           <TouchableOpacity
             style={[
               styles.sendButton,
-              (inputText.trim().length === 0 || sendMutation.isPending) &&
-                styles.sendButtonDisabled,
+              isSendDisabled && styles.sendButtonDisabled,
             ]}
             onPress={handleSend}
-            disabled={inputText.trim().length === 0 || sendMutation.isPending}
+            disabled={isSendDisabled}
             accessibilityRole="button"
             accessibilityLabel="送信"
             accessibilityState={{
-              disabled: inputText.trim().length === 0 || sendMutation.isPending,
+              disabled: isSendDisabled,
             }}
           >
             <Ionicons
@@ -574,7 +621,33 @@ const styles = StyleSheet.create({
     ...textXs,
     color: colorTextSecondary,
   },
-  // 入力バー
+  sendErrorContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing3,
+    paddingHorizontal: spacing3,
+    paddingVertical: spacing2,
+    backgroundColor: colorErrorBg,
+    borderTopWidth: 1,
+    borderTopColor: colorError,
+  },
+  sendErrorText: {
+    ...textBase,
+    flex: 1,
+    color: colorError,
+  },
+  retrySendButton: {
+    minHeight: spacing12,
+    paddingHorizontal: spacing3,
+    borderRadius: radiusMd,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  retrySendText: {
+    ...textBase,
+    color: colorError,
+    fontFamily: fontFamilySerifBold,
+  },
   inputBar: {
     flexDirection: 'row',
     alignItems: 'flex-end',
