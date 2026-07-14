@@ -1,21 +1,39 @@
 /**
  * @module __tests__/components/post/PostComposerBonsai
- * PostComposer コンポーネントの bonsaiId 分岐テスト。
+ * PostComposer コンポーネントの bonsaiId と重要な送信・異常系分岐テスト。
  * 新規投稿時のみ BonsaiSelector が表示されること、作成ミューテーションへの bonsaiId 伝播、
  * 作成時 NOT_FOUND での messageForPostBonsaiError 表示、編集時は BonsaiSelector が
- * 表示されず bonsaiId を一切送らないことを検証する。
+ * 表示されず bonsaiId を一切送らないことに加え、エラー変換、オフライン、未保存キャンセル、
+ * 既存・ローカルメディアの送信契約を検証する。
  * モック境界: useCreatePostMutation / useUpdatePostMutation / useGenresQuery /
  * useBonsaiListQuery / uploadImage / uploadVideo。
  */
 
 import React from 'react';
+import { Alert, Platform } from 'react-native';
+import { router } from 'expo-router';
 import { screen, fireEvent, act, waitFor } from '@testing-library/react-native';
 import type { ReactTestInstance } from 'react-test-renderer';
 import { onlineManager } from '@tanstack/react-query';
 import { ApiError } from '@/lib/api/errors';
+import type { MobileApiErrorCode } from '@/lib/api/errors';
 import { PostComposer } from '@/components/post/PostComposer';
 import { renderWithProviders } from '@/__tests__/utils/test-utils';
-import { ERR_BONSAI_NOT_FOUND, ERR_POST_CREATE_FAILED } from '@/lib/constants/errors';
+import {
+  ERR_BONSAI_NOT_FOUND,
+  ERR_FORBIDDEN,
+  ERR_MEDIA_UPLOAD_FAILED,
+  ERR_OFFLINE_ACTION,
+  ERR_POST_CONTENT_TOO_LONG,
+  ERR_POST_CREATE_FAILED,
+  ERR_POST_UPDATE_FAILED,
+  ERR_RATE_LIMIT_DAILY_POSTS,
+  ERR_SERVER,
+} from '@/lib/constants/errors';
+import {
+  MAX_POST_CONTENT_FREE,
+  MAX_POST_CONTENT_PREMIUM,
+} from '@/lib/constants/limits/post';
 
 // ---------------------------------------------------------------------------
 // モック設定
@@ -23,6 +41,8 @@ import { ERR_BONSAI_NOT_FOUND, ERR_POST_CREATE_FAILED } from '@/lib/constants/er
 
 const mockCreateMutateAsync = jest.fn();
 const mockUpdateMutateAsync = jest.fn();
+const mockUploadImage = jest.fn().mockResolvedValue('https://example.com/uploaded.jpg');
+const mockUploadVideo = jest.fn().mockResolvedValue('https://example.com/uploaded.mp4');
 
 jest.mock('@/lib/queries/posts', () => ({
   useCreatePostMutation: jest.fn(() => ({
@@ -69,8 +89,8 @@ jest.mock('@/lib/queries/bonsai', () => ({
 }));
 
 jest.mock('@/lib/queries/upload', () => ({
-  uploadImage: jest.fn().mockResolvedValue('https://example.com/uploaded.jpg'),
-  uploadVideo: jest.fn().mockResolvedValue('https://example.com/uploaded.mp4'),
+  uploadImage: (params: unknown) => mockUploadImage(params),
+  uploadVideo: (params: unknown) => mockUploadVideo(params),
 }));
 
 // usePostComposer の内部で expo-image-picker を使うためモック
@@ -82,15 +102,12 @@ jest.mock('expo-image-picker', () => ({
 
 // expo-router は setup.ts で一元モック済み。dismiss をセットアップ後に追加する。
 const mockRouterDismiss = jest.fn();
-const mockPostComposerRouter = jest.requireMock('expo-router').router as {
-  push: jest.Mock;
-  back: jest.Mock;
-  replace: jest.Mock;
-  navigate: jest.Mock;
-  dismiss?: jest.Mock;
-};
+const originalPlatformOS = Platform.OS;
 beforeAll(() => {
-  mockPostComposerRouter.dismiss = mockRouterDismiss;
+  Object.defineProperty(router, 'dismiss', {
+    configurable: true,
+    value: mockRouterDismiss,
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -124,15 +141,97 @@ async function submit() {
   });
 }
 
+async function submitEdit() {
+  await act(async () => {
+    fireEvent.press(screen.getByRole('button', { name: '変更を保存する' }));
+  });
+}
+
+type ApiErrorMessageCase = {
+  code: MobileApiErrorCode;
+  status: number;
+  expectedMessage: string;
+  isPremium?: boolean;
+};
+
+const CREATE_API_ERROR_CASES = [
+  {
+    code: 'RATE_LIMITED',
+    status: 429,
+    expectedMessage: ERR_RATE_LIMIT_DAILY_POSTS,
+  },
+  {
+    code: 'VALIDATION_ERROR',
+    status: 400,
+    expectedMessage: ERR_POST_CONTENT_TOO_LONG(MAX_POST_CONTENT_PREMIUM),
+    isPremium: true,
+  },
+  {
+    code: 'GUEST_NOT_ALLOWED',
+    status: 403,
+    expectedMessage: ERR_FORBIDDEN,
+  },
+  {
+    code: 'ACCOUNT_SUSPENDED',
+    status: 403,
+    expectedMessage: ERR_FORBIDDEN,
+  },
+  {
+    code: 'INTERNAL_ERROR',
+    status: 500,
+    expectedMessage: ERR_SERVER,
+  },
+  {
+    code: 'SERVER_MISCONFIGURED',
+    status: 500,
+    expectedMessage: ERR_SERVER,
+  },
+] satisfies readonly ApiErrorMessageCase[];
+
+const UPDATE_API_ERROR_CASES = [
+  {
+    code: 'VALIDATION_ERROR',
+    status: 400,
+    expectedMessage: ERR_POST_CONTENT_TOO_LONG(MAX_POST_CONTENT_FREE),
+  },
+  {
+    code: 'GUEST_NOT_ALLOWED',
+    status: 403,
+    expectedMessage: ERR_FORBIDDEN,
+  },
+  {
+    code: 'ACCOUNT_SUSPENDED',
+    status: 403,
+    expectedMessage: ERR_FORBIDDEN,
+  },
+  {
+    code: 'INTERNAL_ERROR',
+    status: 500,
+    expectedMessage: ERR_SERVER,
+  },
+  {
+    code: 'SERVER_MISCONFIGURED',
+    status: 500,
+    expectedMessage: ERR_SERVER,
+  },
+  {
+    code: 'RATE_LIMITED',
+    status: 429,
+    expectedMessage: ERR_POST_UPDATE_FAILED,
+  },
+] satisfies readonly ApiErrorMessageCase[];
+
 // ---------------------------------------------------------------------------
 // テスト
 // ---------------------------------------------------------------------------
 
-describe('PostComposer bonsaiId 分岐', () => {
+describe('PostComposer bonsaiId・送信分岐', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockCreateMutateAsync.mockResolvedValue({ id: 'new-post' });
     mockUpdateMutateAsync.mockResolvedValue({ id: 'post-1' });
+    mockUploadImage.mockResolvedValue('https://example.com/uploaded.jpg');
+    mockUploadVideo.mockResolvedValue('https://example.com/uploaded.mp4');
     act(() => {
       onlineManager.setOnline(true);
     });
@@ -142,6 +241,11 @@ describe('PostComposer bonsaiId 分岐', () => {
     act(() => {
       onlineManager.setOnline(true);
     });
+    Object.defineProperty(Platform, 'OS', {
+      configurable: true,
+      value: originalPlatformOS,
+    });
+    jest.restoreAllMocks();
   });
 
   // -------------------------------------------------------------------------
@@ -240,6 +344,260 @@ describe('PostComposer bonsaiId 分岐', () => {
         expect(screen.getByText(ERR_POST_CREATE_FAILED)).toBeTruthy();
       });
       expect(screen.queryByText(ERR_BONSAI_NOT_FOUND)).toBeNull();
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // 作成・編集エラーのユーザー向けメッセージ
+  // -------------------------------------------------------------------------
+
+  describe('作成時の API エラー表示', () => {
+    it.each(CREATE_API_ERROR_CASES)(
+      '$code を対応するメッセージへ変換する',
+      async ({ code, status, expectedMessage, isPremium = false }) => {
+        mockCreateMutateAsync.mockRejectedValueOnce(
+          new ApiError({ code, status, message: code })
+        );
+        renderPostComposer({ mode: 'create', isPremium });
+        typeContent('本文');
+
+        await submit();
+
+        await waitFor(() => {
+          expect(screen.getByText(expectedMessage)).toBeTruthy();
+        });
+      }
+    );
+
+    it('画像アップロード失敗を専用メッセージで表示し、投稿 API を呼ばない', async () => {
+      mockUploadImage.mockRejectedValueOnce(new Error(ERR_MEDIA_UPLOAD_FAILED));
+      renderPostComposer({
+        mode: 'create',
+        initialValues: {
+          content: '画像付き投稿',
+          genreIds: [],
+          imageUris: ['file:///local-image.jpg'],
+          videoUri: null,
+        },
+      });
+
+      await submit();
+
+      await waitFor(() => {
+        expect(mockUploadImage).toHaveBeenCalledWith({ localUri: 'file:///local-image.jpg' });
+      });
+      await waitFor(() => {
+        expect(screen.getByText(ERR_MEDIA_UPLOAD_FAILED)).toBeTruthy();
+      });
+      expect(mockCreateMutateAsync).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('編集時の API エラー表示', () => {
+    it.each(UPDATE_API_ERROR_CASES)(
+      '$code を対応するメッセージへ変換する',
+      async ({ code, status, expectedMessage }) => {
+        mockUpdateMutateAsync.mockRejectedValueOnce(
+          new ApiError({ code, status, message: code })
+        );
+        renderPostComposer({
+          mode: 'edit',
+          postId: 'post-1',
+          initialValues: {
+            content: '既存の内容',
+            genreIds: [],
+            imageUris: [],
+            videoUri: null,
+          },
+        });
+        typeContent('編集後の内容');
+
+        await submitEdit();
+
+        await waitFor(() => {
+          expect(screen.getByText(expectedMessage)).toBeTruthy();
+        });
+      }
+    );
+
+    it('編集時の画像アップロード失敗を専用メッセージで表示し、更新 API を呼ばない', async () => {
+      mockUploadImage.mockRejectedValueOnce(new Error(ERR_MEDIA_UPLOAD_FAILED));
+      renderPostComposer({
+        mode: 'edit',
+        postId: 'post-1',
+        initialValues: {
+          content: '既存の内容',
+          genreIds: [],
+          imageUris: ['file:///edit-image.jpg'],
+          videoUri: null,
+        },
+      });
+      typeContent('編集後の内容');
+
+      await submitEdit();
+
+      await waitFor(() => {
+        expect(screen.getByText(ERR_MEDIA_UPLOAD_FAILED)).toBeTruthy();
+      });
+      expect(mockUploadImage).toHaveBeenCalledWith({ localUri: 'file:///edit-image.jpg' });
+      expect(mockUpdateMutateAsync).not.toHaveBeenCalled();
+    });
+
+    it('未知の例外を通常の更新失敗メッセージへフォールバックする', async () => {
+      mockUpdateMutateAsync.mockRejectedValueOnce(new Error('unexpected'));
+      renderPostComposer({
+        mode: 'edit',
+        postId: 'post-1',
+        initialValues: {
+          content: '既存の内容',
+          genreIds: [],
+          imageUris: [],
+          videoUri: null,
+        },
+      });
+      typeContent('編集後の内容');
+
+      await submitEdit();
+
+      await waitFor(() => {
+        expect(screen.getByText(ERR_POST_UPDATE_FAILED)).toBeTruthy();
+      });
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // オフライン・キャンセル
+  // -------------------------------------------------------------------------
+
+  describe('送信前のガード', () => {
+    it('オフラインではエラーを表示し、投稿 API を呼ばない', async () => {
+      act(() => {
+        onlineManager.setOnline(false);
+      });
+      renderPostComposer({ mode: 'create' });
+      typeContent('本文');
+
+      await submit();
+
+      await waitFor(() => {
+        expect(screen.getByText(ERR_OFFLINE_ACTION)).toBeTruthy();
+      });
+      expect(mockCreateMutateAsync).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('キャンセル', () => {
+    it('未変更なら確認ダイアログなしで閉じる', () => {
+      const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
+      renderPostComposer({ mode: 'create' });
+
+      fireEvent.press(screen.getByRole('button', { name: 'キャンセル' }));
+
+      expect(mockRouterDismiss).toHaveBeenCalledTimes(1);
+      expect(alertSpy).not.toHaveBeenCalled();
+    });
+
+    it('iOS で変更済みなら destructive な破棄確認を表示し、確定後に閉じる', () => {
+      Object.defineProperty(Platform, 'OS', { configurable: true, value: 'ios' });
+      const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
+      renderPostComposer({ mode: 'create' });
+      typeContent('未保存の本文');
+
+      fireEvent.press(screen.getByRole('button', { name: 'キャンセル' }));
+
+      expect(alertSpy.mock.calls[0]?.[0]).toBe('投稿を破棄しますか？');
+      const buttons = alertSpy.mock.calls[0]?.[2];
+      const discardButton = buttons?.find((button) => button.text === '破棄する');
+      expect(discardButton?.style).toBe('destructive');
+      expect(mockRouterDismiss).not.toHaveBeenCalled();
+
+      act(() => {
+        discardButton?.onPress?.();
+      });
+      expect(mockRouterDismiss).toHaveBeenCalledTimes(1);
+    });
+
+    it('Android で変更済みなら破棄確認を表示し、確定後に閉じる', () => {
+      Object.defineProperty(Platform, 'OS', { configurable: true, value: 'android' });
+      const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(() => undefined);
+      renderPostComposer({ mode: 'create' });
+      typeContent('未保存の本文');
+
+      fireEvent.press(screen.getByRole('button', { name: 'キャンセル' }));
+
+      const buttons = alertSpy.mock.calls[0]?.[2];
+      const discardButton = buttons?.find((button) => button.text === '破棄する');
+      expect(discardButton?.style).toBeUndefined();
+
+      act(() => {
+        discardButton?.onPress?.();
+      });
+      expect(mockRouterDismiss).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  // -------------------------------------------------------------------------
+  // 既存・ローカルメディアの送信
+  // -------------------------------------------------------------------------
+
+  describe('メディア送信', () => {
+    it('既存画像は維持し、ローカル画像と動画だけをアップロードして順序どおり送る', async () => {
+      renderPostComposer({
+        mode: 'create',
+        isPremium: true,
+        initialValues: {
+          content: 'メディア付き投稿',
+          genreIds: [],
+          imageUris: ['https://example.com/existing.jpg', 'file:///local-image.jpg'],
+          videoUri: 'file:///local-video.mp4',
+        },
+      });
+
+      await submit();
+
+      await waitFor(() => {
+        expect(mockCreateMutateAsync).toHaveBeenCalledWith(
+          expect.objectContaining({
+            mediaUrls: [
+              'https://example.com/existing.jpg',
+              'https://example.com/uploaded.jpg',
+              'https://example.com/uploaded.mp4',
+            ],
+            mediaTypes: ['image', 'image', 'video'],
+          })
+        );
+      });
+      expect(mockUploadImage).toHaveBeenCalledTimes(1);
+      expect(mockUploadImage).toHaveBeenCalledWith({ localUri: 'file:///local-image.jpg' });
+      expect(mockUploadVideo).toHaveBeenCalledWith({
+        localUri: 'file:///local-video.mp4',
+        fileSize: 0,
+      });
+    });
+
+    it('既存の動画 URL は再アップロードせずそのまま送る', async () => {
+      renderPostComposer({
+        mode: 'create',
+        isPremium: true,
+        initialValues: {
+          content: '既存動画付き投稿',
+          genreIds: [],
+          imageUris: [],
+          videoUri: 'https://example.com/existing.mp4',
+        },
+      });
+
+      await submit();
+
+      await waitFor(() => {
+        expect(mockCreateMutateAsync).toHaveBeenCalledWith(
+          expect.objectContaining({
+            mediaUrls: ['https://example.com/existing.mp4'],
+            mediaTypes: ['video'],
+          })
+        );
+      });
+      expect(mockUploadVideo).not.toHaveBeenCalled();
     });
   });
 
