@@ -504,8 +504,11 @@ export default function SearchScreen() {
 
   // ジャンルフィルタが適用されている間は、クエリが空でも初期案内画面へ戻さない
   // （ジャンルタグタップ直後に投稿タブへ着地させる — Web の GenreFilter 挙動）。
+  // タグタブは未入力で人気タグを表示するため、この初期表示分岐の対象外とする。
   const hasGenreFilter = postFilter.genreId !== undefined;
-  const showInitialView = inputValue.length === 0 && debouncedQuery.length === 0 && !hasGenreFilter;
+  const hasEmptyQuery = inputValue.length === 0 && debouncedQuery.length === 0;
+  const showInitialView =
+    hasEmptyQuery && activeSegment !== 'tags' && !(activeSegment === 'posts' && hasGenreFilter);
   // 検索バーフォーカス中・未入力・履歴ありの時だけ最近の検索を出す（cfw SearchBar のドロップダウン条件と同じ）
   const showRecentSearches = isSearchBarFocused && inputValue.length === 0 && recentSearches.length > 0;
 
@@ -533,6 +536,11 @@ export default function SearchScreen() {
       </View>
 
       <View style={styles.body}>
+        <SearchSegmentTabs
+          activeSegment={activeSegment}
+          onSelect={setActiveSegment}
+        />
+
         {showInitialView ? (
           showRecentSearches ? (
             <RecentSearchesPanel
@@ -548,44 +556,35 @@ export default function SearchScreen() {
               description="ニックネーム、キーワード、#タグを入力してください"
             />
           )
-        ) : (
-          <>
-            <SearchSegmentTabs
-              activeSegment={activeSegment}
-              onSelect={setActiveSegment}
-            />
-
-            {isOffline ? (
-              <ScreenEmpty
-                iconName="cloud-offline-outline"
-                title="オフライン中"
-                description={ERR_OFFLINE_ACTION}
+        ) : isOffline ? (
+          <ScreenEmpty
+            iconName="cloud-offline-outline"
+            title="オフライン中"
+            description={ERR_OFFLINE_ACTION}
+          />
+        ) : activeQuery.length > 0 || activeSegment === 'tags' || (activeSegment === 'posts' && hasGenreFilter) ? (
+          <View style={styles.resultsContainer}>
+            {activeSegment === 'posts' ? (
+              <PostSearchResults
+                query={activeQuery}
+                filter={postFilter}
+                currentUserId={currentUserId}
+                onFilterApply={handleFilterApply}
+                onFilterReset={handleFilterReset}
               />
-            ) : activeQuery.length > 0 || activeSegment === 'tags' || (activeSegment === 'posts' && hasGenreFilter) ? (
-              <View style={styles.resultsContainer}>
-                {activeSegment === 'posts' ? (
-                  <PostSearchResults
-                    query={activeQuery}
-                    filter={postFilter}
-                    currentUserId={currentUserId}
-                    onFilterApply={handleFilterApply}
-                    onFilterReset={handleFilterReset}
-                  />
-                ) : activeSegment === 'users' ? (
-                  <UserSearchResults
-                    query={activeQuery}
-                    currentUserId={currentUserId}
-                  />
-                ) : (
-                  /* タグタブは入力値をそのまま渡す（内部でデバウンス処理） */
-                  <HashtagSearchResults rawQuery={inputValue} />
-                )}
-              </View>
+            ) : activeSegment === 'users' ? (
+              <UserSearchResults
+                query={activeQuery}
+                currentUserId={currentUserId}
+              />
             ) : (
-              /* デバウンス待ち中のローディング（タグタブ以外） */
-              <ScreenLoading variant="skeleton" skeletonCount={3} />
+              /* タグタブは入力値をそのまま渡す（内部でデバウンス処理） */
+              <HashtagSearchResults rawQuery={inputValue} />
             )}
-          </>
+          </View>
+        ) : (
+          /* デバウンス待ち中のローディング（タグタブ以外） */
+          <ScreenLoading variant="skeleton" skeletonCount={3} />
         )}
       </View>
     </SafeAreaView>

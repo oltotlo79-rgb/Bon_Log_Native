@@ -1,23 +1,38 @@
 /**
  * @module __tests__/app/(tabs)/search-wave2
  * 検索画面の波2追加テスト。
- * タグタブの HashtagSearchResults 表示・3タブ切り替え完全検証・
+ * 初期表示からのタグタブ到達・人気タグ表示・3タブ切り替え完全検証・
  * 投稿タブフィルタの useSearchPostsQuery への伝播を検証する。
- * モック境界: useSearchPostsQuery / useSearchUsersQuery / useSearchHashtagsQuery / useGenresQuery。
+ * モック境界: useSearchPostsQuery / useSearchUsersQuery / useSearchHashtagsQuery /
+ * useTrendingHashtagsQuery / useGenresQuery / useRecentSearches。
  */
 
 import React from 'react';
-import { screen, fireEvent, act } from '@testing-library/react-native';
+import { screen, fireEvent } from '@testing-library/react-native';
 import SearchScreen from '@/app/(tabs)/search/index';
 import { renderWithProviders } from '@/__tests__/utils/test-utils';
 import type { SearchPostsFilter } from '@/lib/queries/keys';
+
+const mockUseOnlineStatus = jest.fn(() => true);
+const mockUseRecentSearches = jest.fn(() => ({
+  searches: [],
+  isLoaded: true,
+  get: async (): Promise<string[]> => [],
+  add: jest.fn(),
+  removeOne: jest.fn(),
+  clear: jest.fn(),
+}));
 
 // ---------------------------------------------------------------------------
 // クエリフック・依存モック
 // ---------------------------------------------------------------------------
 
 jest.mock('@/hooks/use-online-status', () => ({
-  useOnlineStatus: jest.fn(() => true),
+  useOnlineStatus: () => mockUseOnlineStatus(),
+}));
+
+jest.mock('@/hooks/use-recent-searches', () => ({
+  useRecentSearches: () => mockUseRecentSearches(),
 }));
 
 jest.mock('@/lib/queries/auth', () => ({
@@ -34,9 +49,13 @@ jest.mock('@/hooks/use-debounce', () => ({
   useDebounce: (value: string) => value,
 }));
 
-const mockUseSearchPostsQuery = jest.fn();
+const mockUseSearchPostsQuery = jest.fn<
+  unknown,
+  [string, SearchPostsFilter | undefined]
+>();
 const mockUseSearchUsersQuery = jest.fn();
 const mockUseSearchHashtagsQuery = jest.fn();
+const mockUseTrendingHashtagsQuery = jest.fn();
 const mockUseGenresQuery = jest.fn();
 
 jest.mock('@/lib/queries/search', () => ({
@@ -49,6 +68,10 @@ jest.mock('@/lib/queries/search', () => ({
 
 jest.mock('@/lib/queries/shops', () => ({
   useGenresQuery: (...args: unknown[]) => mockUseGenresQuery(...args),
+}));
+
+jest.mock('@/lib/queries/explore', () => ({
+  useTrendingHashtagsQuery: () => mockUseTrendingHashtagsQuery(),
 }));
 
 // ---------------------------------------------------------------------------
@@ -75,6 +98,14 @@ const emptyHashtagState = {
   refetch: jest.fn(),
 };
 
+const emptyTrendingHashtagState = {
+  data: { items: [] },
+  isLoading: false,
+  isError: false,
+  error: null,
+  refetch: jest.fn(),
+};
+
 const emptyGenreState = {
   data: { items: [] },
   isLoading: false,
@@ -93,6 +124,21 @@ function pressTab(name: string) {
   fireEvent.press(screen.getByRole('tab', { name }));
 }
 
+function latestSearchPostsCall(): [string, SearchPostsFilter | undefined] {
+  const call = mockUseSearchPostsQuery.mock.calls[
+    mockUseSearchPostsQuery.mock.calls.length - 1
+  ];
+  if (call === undefined) {
+    throw new Error('Expected useSearchPostsQuery to be called');
+  }
+  return call;
+}
+
+beforeEach(() => {
+  mockUseOnlineStatus.mockReturnValue(true);
+  mockUseTrendingHashtagsQuery.mockReturnValue(emptyTrendingHashtagState);
+});
+
 // ---------------------------------------------------------------------------
 // 3タブ切り替え
 // ---------------------------------------------------------------------------
@@ -106,14 +152,15 @@ describe('SearchScreen — 3タブ切り替え（波2）', () => {
     mockUseGenresQuery.mockReturnValue(emptyGenreState);
   });
 
-  it('初期状態では 3 つのタブが表示されない（入力前）', () => {
+  it('初期状態から投稿・ユーザー・タグの 3 タブが表示される', () => {
     renderWithProviders(<SearchScreen />);
-    expect(screen.queryByRole('tab', { name: '投稿' })).toBeNull();
-    expect(screen.queryByRole('tab', { name: 'ユーザー' })).toBeNull();
-    expect(screen.queryByRole('tab', { name: 'タグ' })).toBeNull();
+    expect(screen.getByRole('tab', { name: '投稿' })).toBeTruthy();
+    expect(screen.getByRole('tab', { name: 'ユーザー' })).toBeTruthy();
+    expect(screen.getByRole('tab', { name: 'タグ' })).toBeTruthy();
+    expect(screen.getByText('検索してみましょう')).toBeTruthy();
   });
 
-  it('テキスト入力後に投稿・ユーザー・タグの 3 タブが表示される', () => {
+  it('テキスト入力後も投稿・ユーザー・タグの 3 タブが表示される', () => {
     renderWithProviders(<SearchScreen />);
     typeInSearchBar('黒松');
     expect(screen.getByRole('tab', { name: '投稿' })).toBeTruthy();
@@ -123,24 +170,22 @@ describe('SearchScreen — 3タブ切り替え（波2）', () => {
 
   it('デフォルトは投稿タブが selected=true', () => {
     renderWithProviders(<SearchScreen />);
-    typeInSearchBar('松');
     expect(screen.getByRole('tab', { name: '投稿' }).props.accessibilityState.selected).toBe(true);
     expect(screen.getByRole('tab', { name: 'ユーザー' }).props.accessibilityState.selected).toBe(false);
     expect(screen.getByRole('tab', { name: 'タグ' }).props.accessibilityState.selected).toBe(false);
   });
 
-  it('ユーザータブをタップすると selected=true になる', () => {
+  it('空入力でユーザータブをタップしても初期案内を維持する', () => {
     renderWithProviders(<SearchScreen />);
-    typeInSearchBar('松');
     pressTab('ユーザー');
     expect(screen.getByRole('tab', { name: 'ユーザー' }).props.accessibilityState.selected).toBe(true);
     expect(screen.getByRole('tab', { name: '投稿' }).props.accessibilityState.selected).toBe(false);
     expect(screen.getByRole('tab', { name: 'タグ' }).props.accessibilityState.selected).toBe(false);
+    expect(screen.getByText('検索してみましょう')).toBeTruthy();
   });
 
-  it('タグタブをタップすると selected=true になる', () => {
+  it('空入力のままタグタブをタップできる', () => {
     renderWithProviders(<SearchScreen />);
-    typeInSearchBar('松');
     pressTab('タグ');
     expect(screen.getByRole('tab', { name: 'タグ' }).props.accessibilityState.selected).toBe(true);
     expect(screen.getByRole('tab', { name: '投稿' }).props.accessibilityState.selected).toBe(false);
@@ -174,25 +219,33 @@ describe('SearchScreen — タグタブ（波2）', () => {
     mockUseGenresQuery.mockReturnValue(emptyGenreState);
   });
 
-  it('タグタブに切り替えると HashtagSearchResults が表示される（空入力の案内）', () => {
+  it('空入力のままタグタブに切り替えると人気タグが表示される', () => {
     mockUseSearchHashtagsQuery.mockReturnValue(emptyHashtagState);
+    mockUseTrendingHashtagsQuery.mockReturnValue({
+      ...emptyTrendingHashtagState,
+      data: { items: [{ id: 'popular-1', name: '黒松', count: 120 }] },
+    });
     renderWithProviders(<SearchScreen />);
-    typeInSearchBar('松');
     pressTab('タグ');
-    // タグタブでは rawQuery=inputValue が HashtagSearchResults に渡るので
-    // 「タグを検索」ではなく候補一覧か空状態が表示される
     expect(screen.getByRole('tab', { name: 'タグ' }).props.accessibilityState.selected).toBe(true);
+    expect(screen.getByRole('header', { name: '人気のタグ' })).toBeTruthy();
+    expect(screen.getByText('#黒松')).toBeTruthy();
   });
 
-  it('タグタブで入力なし（search bar クリア後）のとき「タグを検索」案内が表示される', () => {
+  it('タグタブで検索バーをクリアすると人気タグへ戻る', () => {
     mockUseSearchHashtagsQuery.mockReturnValue(emptyHashtagState);
+    mockUseTrendingHashtagsQuery.mockReturnValue({
+      ...emptyTrendingHashtagState,
+      data: { items: [{ id: 'popular-1', name: '五葉松', count: 80 }] },
+    });
     renderWithProviders(<SearchScreen />);
-    // まず入力してタグタブへ
     typeInSearchBar('松');
     pressTab('タグ');
-    // クリア → 画面は初期状態に戻る（タブ自体が非表示になる）
     fireEvent.press(screen.getByRole('button', { name: '検索をクリア' }));
-    expect(screen.getByText('検索してみましょう')).toBeTruthy();
+    expect(screen.getByRole('tab', { name: 'タグ' }).props.accessibilityState.selected).toBe(true);
+    expect(screen.getByRole('header', { name: '人気のタグ' })).toBeTruthy();
+    expect(screen.getByText('#五葉松')).toBeTruthy();
+    expect(screen.queryByText('検索してみましょう')).toBeNull();
   });
 
   it('タグタブでハッシュタグ候補が表示される', () => {
@@ -294,9 +347,7 @@ describe('SearchScreen — 投稿タブフィルタ伝播（波2）', () => {
     typeInSearchBar('松');
     // 投稿タブ（デフォルト）での呼び出し引数を確認
     // 最新の呼び出しを取得する
-    const lastCall = mockUseSearchPostsQuery.mock.calls[
-      mockUseSearchPostsQuery.mock.calls.length - 1
-    ] as [string, SearchPostsFilter];
+    const lastCall = latestSearchPostsCall();
     expect(lastCall[0]).toBe('松');
     expect(lastCall[1]).toEqual({});
   });
@@ -310,8 +361,7 @@ describe('SearchScreen — 投稿タブフィルタ伝播（波2）', () => {
     fireEvent.press(screen.getByRole('checkbox', { name: 'ジャンル 松柏類' }));
     fireEvent.press(screen.getByRole('button', { name: 'フィルターを適用する' }));
     // 適用後の呼び出し引数で genreId が含まれることを確認
-    const calls = mockUseSearchPostsQuery.mock.calls as [string, SearchPostsFilter][];
-    const latestCall = calls[calls.length - 1];
+    const latestCall = latestSearchPostsCall();
     expect(latestCall[0]).toBe('松');
     expect(latestCall[1]).toMatchObject({ genreId: 'genre-1' });
   });
@@ -327,9 +377,22 @@ describe('SearchScreen — 投稿タブフィルタ伝播（波2）', () => {
     // リセット
     fireEvent.press(screen.getByRole('button', { name: 'フィルターをリセットする' }));
     // リセット後の最新呼び出しで filter={} になることを確認
-    const calls = mockUseSearchPostsQuery.mock.calls as [string, SearchPostsFilter][];
-    const latestCall = calls[calls.length - 1];
+    const latestCall = latestSearchPostsCall();
     expect(latestCall[1]).toEqual({});
+  });
+
+  it('ジャンルフィルタ適用中でも空入力のユーザータブは初期案内を表示する', () => {
+    mockUseSearchPostsQuery.mockReturnValue(emptyInfiniteState);
+    renderWithProviders(<SearchScreen />);
+    typeInSearchBar('松');
+    fireEvent.press(screen.getByRole('button', { name: '詳細フィルターを開く' }));
+    fireEvent.press(screen.getByRole('checkbox', { name: 'ジャンル 松柏類' }));
+    fireEvent.press(screen.getByRole('button', { name: 'フィルターを適用する' }));
+    fireEvent.press(screen.getByRole('button', { name: '検索をクリア' }));
+    pressTab('ユーザー');
+
+    expect(screen.getByText('検索してみましょう')).toBeTruthy();
+    expect(screen.queryByText('読み込み中')).toBeNull();
   });
 
   it('フィルタパネルが投稿タブに表示される（詳細フィルターボタンが存在する）', () => {
@@ -372,13 +435,10 @@ describe('SearchScreen — 投稿タブのデバウンス待ち（波2）', () =
 
   it('タグタブは入力値が空でも HashtagSearchResults が表示される', () => {
     renderWithProviders(<SearchScreen />);
-    // 入力なし → 初期案内画面
     expect(screen.getByText('検索してみましょう')).toBeTruthy();
-    // 入力してタグタブに切り替え
-    typeInSearchBar('松');
     pressTab('タグ');
-    // タグタブは常に HashtagSearchResults を表示（入力値=debouncedQuery なので即時）
     expect(screen.getByRole('tab', { name: 'タグ' }).props.accessibilityState.selected).toBe(true);
+    expect(screen.getByText('人気のタグはまだありません')).toBeTruthy();
   });
 });
 
@@ -396,8 +456,7 @@ describe('SearchScreen — オフラインとタグタブ（波2）', () => {
   });
 
   it('オフライン時に入力すると「オフライン中」メッセージが表示される', () => {
-    const { useOnlineStatus } = jest.requireMock('@/hooks/use-online-status');
-    (useOnlineStatus as jest.Mock).mockReturnValue(false);
+    mockUseOnlineStatus.mockReturnValue(false);
     renderWithProviders(<SearchScreen />);
     typeInSearchBar('松');
     expect(screen.getByText('オフライン中')).toBeTruthy();
