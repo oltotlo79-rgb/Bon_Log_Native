@@ -4,10 +4,12 @@
  * 投稿本文の #タグ タップ（routeSearchByQuery）やジャンルタグのタップ
  * （routeSearchByGenre）からの遷移で useLocalSearchParams の q / genre を
  * 初期値として受け取る挙動（firstStringParam による string | string[] | undefined の絞り込み含む）を検証する。
- * モック境界: expo-router useLocalSearchParams / useSearchPostsQuery / useSearchUsersQuery / useGenresQuery
+ * モック境界: expo-router useLocalSearchParams / useRecentSearches /
+ * useSearchPostsQuery / useSearchUsersQuery / useGenresQuery
  */
 
 import React from 'react';
+import { useLocalSearchParams } from 'expo-router';
 import { screen } from '@testing-library/react-native';
 import SearchScreen from '@/app/(tabs)/search/index';
 import { renderWithProviders } from '@/__tests__/utils/test-utils';
@@ -15,6 +17,17 @@ import type { SearchPostsFilter } from '@/lib/queries/keys';
 
 jest.mock('@/hooks/use-online-status', () => ({
   useOnlineStatus: jest.fn(() => true),
+}));
+
+jest.mock('@/hooks/use-recent-searches', () => ({
+  useRecentSearches: () => ({
+    searches: [],
+    isLoaded: true,
+    get: jest.fn(async (): Promise<string[]> => []),
+    add: jest.fn(),
+    removeOne: jest.fn(),
+    clear: jest.fn(),
+  }),
 }));
 
 jest.mock('@/hooks/use-debounce', () => ({
@@ -34,6 +47,7 @@ const mockUseSearchPostsQuery = jest.fn();
 const mockUseSearchUsersQuery = jest.fn();
 const mockUseSearchHashtagsQuery = jest.fn();
 const mockUseGenresQuery = jest.fn();
+const mockUseLocalSearchParams = jest.mocked(useLocalSearchParams);
 
 jest.mock('@/lib/queries/search', () => ({
   useSearchPostsQuery: (q: string, filter?: SearchPostsFilter) =>
@@ -73,11 +87,8 @@ const emptyGenreState = {
   isError: false,
 };
 
-function mockSearchParams(params: Record<string, string | string[] | undefined>) {
-  const { useLocalSearchParams } = jest.requireMock('expo-router') as {
-    useLocalSearchParams: jest.Mock;
-  };
-  useLocalSearchParams.mockReturnValue(params);
+function mockSearchParams(params: Record<string, string | string[]>) {
+  mockUseLocalSearchParams.mockReturnValue(params);
 }
 
 beforeEach(() => {

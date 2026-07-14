@@ -11,8 +11,21 @@ import { renderWithProviders } from '@/__tests__/utils/test-utils';
 import { makeSearchUserItem, makeFeedItem } from '@/__tests__/utils/data-factories';
 import { ERR_SEARCH_FAILED } from '@/lib/constants/errors';
 
+const mockUseOnlineStatus = jest.fn(() => true);
+
 jest.mock('@/hooks/use-online-status', () => ({
-  useOnlineStatus: jest.fn(() => true),
+  useOnlineStatus: () => mockUseOnlineStatus(),
+}));
+
+jest.mock('@/hooks/use-recent-searches', () => ({
+  useRecentSearches: () => ({
+    searches: [],
+    isLoaded: true,
+    get: jest.fn(async (): Promise<string[]> => []),
+    add: jest.fn(),
+    removeOne: jest.fn(),
+    clear: jest.fn(),
+  }),
 }));
 
 jest.mock('@/lib/queries/auth', () => ({
@@ -230,13 +243,13 @@ describe('SearchScreen — SearchBar フォーカス状態', () => {
 describe('SearchScreen — オフライン状態', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockUseOnlineStatus.mockReturnValue(true);
     mockUseSearchPostsQuery.mockReturnValue(emptyInfiniteState);
     mockUseSearchUsersQuery.mockReturnValue(emptyInfiniteState);
   });
 
   it('オフライン時も基本レンダリングが通る', () => {
-    const { useOnlineStatus } = jest.requireMock('@/hooks/use-online-status');
-    (useOnlineStatus as jest.Mock).mockReturnValue(false);
+    mockUseOnlineStatus.mockReturnValue(false);
     renderWithProviders(<SearchScreen />);
     expect(screen.getByRole('header', { name: '検索' })).toBeTruthy();
   });

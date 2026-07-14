@@ -14,6 +14,17 @@ jest.mock('@/hooks/use-online-status', () => ({
   useOnlineStatus: jest.fn(() => true),
 }));
 
+jest.mock('@/hooks/use-recent-searches', () => ({
+  useRecentSearches: () => ({
+    searches: [],
+    isLoaded: true,
+    get: jest.fn(async (): Promise<string[]> => []),
+    add: jest.fn(),
+    removeOne: jest.fn(),
+    clear: jest.fn(),
+  }),
+}));
+
 jest.mock('@/lib/queries/auth', () => ({
   ...jest.requireActual('@/lib/queries/auth'),
   useCurrentUserQuery: jest.fn(() => ({

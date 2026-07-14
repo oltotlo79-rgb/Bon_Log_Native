@@ -7,11 +7,9 @@ import { StyleSheet } from 'react-native';
 import { QueryClientProvider } from '@tanstack/react-query';
 import type { QueryClient } from '@tanstack/react-query';
 import { useFonts } from 'expo-font';
-import {
-  ShipporiMincho_400Regular,
-  ShipporiMincho_500Medium,
-  ShipporiMincho_700Bold,
-} from '@expo-google-fonts/shippori-mincho';
+import { ShipporiMincho_400Regular } from '@expo-google-fonts/shippori-mincho/400Regular';
+import { ShipporiMincho_500Medium } from '@expo-google-fonts/shippori-mincho/500Medium';
+import { ShipporiMincho_700Bold } from '@expo-google-fonts/shippori-mincho/700Bold';
 import { createQueryClient } from '@/lib/queries/query-client';
 import { setupOnlineManager, setupFocusManager } from '@/lib/queries/managers';
 import { initSentry, captureException } from '@/lib/monitoring/sentry';
