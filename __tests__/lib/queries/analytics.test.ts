@@ -21,7 +21,6 @@ import {
   useAnalyticsFollowerGrowthQuery,
   useAnalyticsPeriodComparisonQuery,
 } from '@/lib/queries/analytics';
-import type { AnalyticsDays } from '@/lib/queries/keys';
 
 // ---------------------------------------------------------------------------
 // モック設定
@@ -114,10 +113,7 @@ describe('useAnalyticsSummaryQuery', () => {
     mockApiClientGet.mockResolvedValue({ data, error: undefined });
     const { Wrapper } = createWrapper();
 
-    const { result } = renderHook(
-      () => useAnalyticsSummaryQuery('7' as AnalyticsDays),
-      { wrapper: Wrapper }
-    );
+    const { result } = renderHook(() => useAnalyticsSummaryQuery('7'), { wrapper: Wrapper });
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(mockApiClientGet).toHaveBeenCalledWith(
@@ -131,10 +127,7 @@ describe('useAnalyticsSummaryQuery', () => {
     mockApiClientGet.mockResolvedValue({ data, error: undefined });
     const { Wrapper } = createWrapper();
 
-    const { result } = renderHook(
-      () => useAnalyticsSummaryQuery('90' as AnalyticsDays),
-      { wrapper: Wrapper }
-    );
+    const { result } = renderHook(() => useAnalyticsSummaryQuery('90'), { wrapper: Wrapper });
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(mockApiClientGet).toHaveBeenCalledWith(

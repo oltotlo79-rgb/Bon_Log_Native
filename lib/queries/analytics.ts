@@ -24,9 +24,15 @@ export type AnalyticsPeriodComparisonResponse = components['schemas']['Analytics
 const ANALYTICS_DEFAULT_DAYS: AnalyticsDays = '30';
 const ANALYTICS_DEFAULT_PERIOD: AnalyticsPeriod = 30;
 
+const ANALYTICS_DAYS_BY_PERIOD: Record<AnalyticsPeriod, AnalyticsDays> = {
+  7: '7',
+  30: '30',
+  90: '90',
+};
+
 /** AnalyticsPeriod（数値）を API クエリパラメータ用の AnalyticsDays（文字列）へ変換する。 */
 function toAnalyticsDays(period: AnalyticsPeriod): AnalyticsDays {
-  return String(period) as AnalyticsDays;
+  return ANALYTICS_DAYS_BY_PERIOD[period];
 }
 
 export function useAnalyticsSummaryQuery(days: AnalyticsDays = ANALYTICS_DEFAULT_DAYS) {
