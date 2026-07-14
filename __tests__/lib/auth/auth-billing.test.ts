@@ -48,12 +48,15 @@ jest.mock('expo-secure-store', () => ({
 }));
 
 const mockUnregisterDevice = jest.fn().mockResolvedValue(undefined);
+const mockClearLocalPushRegistration = jest.fn().mockResolvedValue(undefined);
 const mockCancelPendingPushRegistrations = jest.fn();
 jest.mock('@/lib/push/device-registration', () => ({
   cancelPendingPushRegistrations: (...args: unknown[]) =>
     mockCancelPendingPushRegistrations(...args),
   unregisterDeviceForPushNotifications: (...args: unknown[]) =>
     mockUnregisterDevice(...args),
+  clearLocalPushNotificationRegistration: (...args: unknown[]) =>
+    mockClearLocalPushRegistration(...args),
 }));
 
 // billing ラッパーをモック: identifyBillingUser / resetBillingUser の呼び出しを検証する
@@ -111,6 +114,7 @@ beforeEach(() => {
   mockDeleteItem.mockResolvedValue(undefined);
   mockGetItem.mockResolvedValue(null);
   mockUnregisterDevice.mockResolvedValue(undefined);
+  mockClearLocalPushRegistration.mockResolvedValue(undefined);
   mockIdentifyBillingUser.mockResolvedValue(undefined);
   mockResetBillingUser.mockResolvedValue(undefined);
 });

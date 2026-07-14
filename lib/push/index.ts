@@ -7,6 +7,7 @@
 export {
   registerDeviceForPushNotifications,
   unregisterDeviceForPushNotifications,
+  clearLocalPushNotificationRegistration,
   getPushPermissionStatus,
   createPushRegistrationGuard,
   cancelPendingPushRegistrations,

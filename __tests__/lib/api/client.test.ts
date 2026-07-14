@@ -278,7 +278,7 @@ describe('AUTH_TOKEN_EXPIRED → 単一飛行 refresh → 再試行 1 回', () =
     expect(r3.data).toBeDefined();
   });
 
-  it('refresh 失敗時は onAuthFailure(false) を呼び ApiError を throw する', async () => {
+  it('refresh 失敗時は AUTH_REFRESH_TOKEN_INVALID を通知して ApiError を throw する', async () => {
     const onAuthFailure = jest.fn();
     configureAuthHooks({
       getAccessToken: jest.fn().mockResolvedValue('old-token'),
@@ -298,7 +298,7 @@ describe('AUTH_TOKEN_EXPIRED → 単一飛行 refresh → 再試行 1 回', () =
       caught = e;
     }
     expect(isApiError(caught)).toBe(true);
-    expect(onAuthFailure).toHaveBeenCalledWith(false);
+    expect(onAuthFailure).toHaveBeenCalledWith('AUTH_REFRESH_TOKEN_INVALID');
   });
 });
 
@@ -307,7 +307,7 @@ describe('AUTH_TOKEN_EXPIRED → 単一飛行 refresh → 再試行 1 回', () =
 // ---------------------------------------------------------------------------
 
 describe('AUTH_INVALID_TOKEN は refresh しない', () => {
-  it('refresh を呼ばず onAuthFailure(false) を呼ぶ', async () => {
+  it('refresh を呼ばず AUTH_INVALID_TOKEN を通知する', async () => {
     const refreshFn = jest.fn();
     const onAuthFailure = jest.fn();
     configureAuthHooks({
@@ -331,7 +331,7 @@ describe('AUTH_INVALID_TOKEN は refresh しない', () => {
     expect(isApiError(caught)).toBe(true);
     expect(caught instanceof ApiError && caught.code).toBe('AUTH_INVALID_TOKEN');
     expect(refreshFn).not.toHaveBeenCalled();
-    expect(onAuthFailure).toHaveBeenCalledWith(false);
+    expect(onAuthFailure).toHaveBeenCalledWith('AUTH_INVALID_TOKEN');
   });
 
   it('AUTH_REFRESH_TOKEN_INVALID も refresh しない', async () => {
@@ -350,14 +350,16 @@ describe('AUTH_INVALID_TOKEN は refresh しない', () => {
     const client = createApiClient('https://test.example.com');
     let caught: unknown;
     try {
-      await client.GET('/api/v1/users/me');
+      await client.POST('/api/v1/auth/refresh', {
+        body: { refreshToken: 'invalid-refresh-token' },
+      });
     } catch (e) {
       caught = e;
     }
 
     expect(isApiError(caught)).toBe(true);
     expect(refreshFn).not.toHaveBeenCalled();
-    expect(onAuthFailure).toHaveBeenCalledWith(false);
+    expect(onAuthFailure).toHaveBeenCalledWith('AUTH_REFRESH_TOKEN_INVALID');
   });
 });
 
@@ -366,7 +368,7 @@ describe('AUTH_INVALID_TOKEN は refresh しない', () => {
 // ---------------------------------------------------------------------------
 
 describe('AUTH_REFRESH_TOKEN_REUSE_DETECTED', () => {
-  it('onAuthFailure(true) を呼ぶ（reuseDetected=true）', async () => {
+  it('AUTH_REFRESH_TOKEN_REUSE_DETECTED を通知する', async () => {
     const refreshFn = jest.fn();
     const onAuthFailure = jest.fn();
     configureAuthHooks({
@@ -382,7 +384,9 @@ describe('AUTH_REFRESH_TOKEN_REUSE_DETECTED', () => {
     const client = createApiClient('https://test.example.com');
     let caught: unknown;
     try {
-      await client.GET('/api/v1/users/me');
+      await client.POST('/api/v1/auth/refresh', {
+        body: { refreshToken: 'reused-refresh-token' },
+      });
     } catch (e) {
       caught = e;
     }
@@ -390,7 +394,156 @@ describe('AUTH_REFRESH_TOKEN_REUSE_DETECTED', () => {
     expect(isApiError(caught)).toBe(true);
     expect(caught instanceof ApiError && caught.code).toBe('AUTH_REFRESH_TOKEN_REUSE_DETECTED');
     expect(refreshFn).not.toHaveBeenCalled();
-    expect(onAuthFailure).toHaveBeenCalledWith(true);
+    expect(onAuthFailure).toHaveBeenCalledWith('AUTH_REFRESH_TOKEN_REUSE_DETECTED');
+  });
+});
+
+describe('401 のセッション致命性を誤分類しない', () => {
+  it('logout の refresh token エラーは再帰的な auth failure を通知しない', async () => {
+    const onAuthFailure = jest.fn();
+    configureAuthHooks({
+      getAccessToken: jest.fn().mockResolvedValue('access-token'),
+      refreshTokens: jest.fn().mockResolvedValue(null),
+      onAuthFailure,
+    });
+    jest.spyOn(globalThis, 'fetch').mockResolvedValue(
+      makeResponse(401, makeErrorBody('AUTH_REFRESH_TOKEN_INVALID'))
+    );
+
+    const client = createApiClient('https://test.example.com');
+    await expect(
+      client.POST('/api/v1/auth/logout', { body: { refreshToken: 'invalid' } })
+    ).rejects.toMatchObject({ code: 'AUTH_REFRESH_TOKEN_INVALID' });
+
+    expect(onAuthFailure).not.toHaveBeenCalled();
+  });
+
+  it('login の AUTH_INVALID_CREDENTIALS は logout を通知せず Bearer も送らない', async () => {
+    const onAuthFailure = jest.fn();
+    configureAuthHooks({
+      getAccessToken: jest.fn().mockResolvedValue('stale-access-token'),
+      refreshTokens: jest.fn().mockResolvedValue(null),
+      onAuthFailure,
+    });
+    let capturedRequest: Request | undefined;
+    jest.spyOn(globalThis, 'fetch').mockImplementation((request) => {
+      capturedRequest = request instanceof Request ? request : new Request(request);
+      return Promise.resolve(
+        makeResponse(401, makeErrorBody('AUTH_INVALID_CREDENTIALS'))
+      );
+    });
+
+    const client = createApiClient('https://test.example.com');
+    await expect(
+      client.POST('/api/v1/auth/login', {
+        body: { email: 'a@b.com', password: 'wrong-password' },
+      })
+    ).rejects.toMatchObject({ code: 'AUTH_INVALID_CREDENTIALS' });
+
+    expect(onAuthFailure).not.toHaveBeenCalled();
+    expect(capturedRequest?.headers.get('Authorization')).toBeNull();
+  });
+
+  it('認証済み password change のパスワード不一致でも logout を通知しない', async () => {
+    const onAuthFailure = jest.fn();
+    configureAuthHooks({
+      getAccessToken: jest.fn().mockResolvedValue('access-token'),
+      refreshTokens: jest.fn().mockResolvedValue(null),
+      onAuthFailure,
+    });
+    jest.spyOn(globalThis, 'fetch').mockResolvedValue(
+      makeResponse(401, makeErrorBody('AUTH_INVALID_CREDENTIALS'))
+    );
+
+    const client = createApiClient('https://test.example.com');
+    await expect(
+      client.POST('/api/v1/auth/password/change', {
+        body: { currentPassword: 'wrong-password', newPassword: 'NewPassword1' },
+      })
+    ).rejects.toMatchObject({ code: 'AUTH_INVALID_CREDENTIALS' });
+
+    expect(onAuthFailure).not.toHaveBeenCalled();
+  });
+
+  it('Google ID token の AUTH_INVALID_TOKEN は現在セッションの失効扱いにしない', async () => {
+    const onAuthFailure = jest.fn();
+    configureAuthHooks({
+      getAccessToken: jest.fn().mockResolvedValue('stale-access-token'),
+      refreshTokens: jest.fn().mockResolvedValue(null),
+      onAuthFailure,
+    });
+    jest.spyOn(globalThis, 'fetch').mockResolvedValue(
+      makeResponse(401, makeErrorBody('AUTH_INVALID_TOKEN'))
+    );
+
+    const client = createApiClient('https://test.example.com');
+    await expect(
+      client.POST('/api/v1/auth/google', { body: { idToken: 'invalid' } })
+    ).rejects.toMatchObject({ code: 'AUTH_INVALID_TOKEN' });
+
+    expect(onAuthFailure).not.toHaveBeenCalled();
+  });
+});
+
+describe('再試行後と403の認証失敗通知', () => {
+  it('refresh 後の再試行も AUTH_TOKEN_EXPIRED ならセッション失効を通知する', async () => {
+    const onAuthFailure = jest.fn();
+    configureAuthHooks({
+      getAccessToken: jest.fn().mockResolvedValue('old-token'),
+      refreshTokens: jest.fn().mockResolvedValue('new-token'),
+      onAuthFailure,
+    });
+    jest
+      .spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(makeResponse(401, makeErrorBody('AUTH_TOKEN_EXPIRED')))
+      .mockResolvedValueOnce(makeResponse(401, makeErrorBody('AUTH_TOKEN_EXPIRED')));
+
+    const client = createApiClient('https://test.example.com');
+    await expect(client.GET('/api/v1/users/me')).rejects.toMatchObject({
+      code: 'AUTH_TOKEN_EXPIRED',
+    });
+
+    expect(onAuthFailure).toHaveBeenCalledWith('AUTH_TOKEN_EXPIRED');
+  });
+
+  it('認証済みリクエストの ACCOUNT_SUSPENDED は停止を通知する', async () => {
+    const onAuthFailure = jest.fn();
+    configureAuthHooks({
+      getAccessToken: jest.fn().mockResolvedValue('access-token'),
+      refreshTokens: jest.fn().mockResolvedValue(null),
+      onAuthFailure,
+    });
+    jest.spyOn(globalThis, 'fetch').mockResolvedValue(
+      makeResponse(403, makeErrorBody('ACCOUNT_SUSPENDED'))
+    );
+
+    const client = createApiClient('https://test.example.com');
+    await expect(client.GET('/api/v1/users/me')).rejects.toMatchObject({
+      code: 'ACCOUNT_SUSPENDED',
+    });
+
+    expect(onAuthFailure).toHaveBeenCalledWith('ACCOUNT_SUSPENDED');
+  });
+
+  it('login の ACCOUNT_SUSPENDED はフォームエラーに留め、セッション失効通知をしない', async () => {
+    const onAuthFailure = jest.fn();
+    configureAuthHooks({
+      getAccessToken: jest.fn().mockResolvedValue('stale-token'),
+      refreshTokens: jest.fn().mockResolvedValue(null),
+      onAuthFailure,
+    });
+    jest.spyOn(globalThis, 'fetch').mockResolvedValue(
+      makeResponse(403, makeErrorBody('ACCOUNT_SUSPENDED'))
+    );
+
+    const client = createApiClient('https://test.example.com');
+    await expect(
+      client.POST('/api/v1/auth/login', {
+        body: { email: 'a@b.com', password: 'password' },
+      })
+    ).rejects.toMatchObject({ code: 'ACCOUNT_SUSPENDED' });
+
+    expect(onAuthFailure).not.toHaveBeenCalled();
   });
 });
 

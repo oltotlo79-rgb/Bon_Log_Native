@@ -53,12 +53,15 @@ jest.mock('expo-secure-store', () => ({
 // signOut 内で呼ばれる unregisterDeviceForPushNotifications は
 // lib/push のテストで別途検証するためここではモックする。
 const mockUnregisterDevice = jest.fn().mockResolvedValue(undefined);
+const mockClearLocalPushRegistration = jest.fn().mockResolvedValue(undefined);
 const mockCancelPendingPushRegistrations = jest.fn();
 jest.mock('@/lib/push/device-registration', () => ({
   cancelPendingPushRegistrations: (...args: unknown[]) =>
     mockCancelPendingPushRegistrations(...args),
   unregisterDeviceForPushNotifications: (...args: unknown[]) =>
     mockUnregisterDevice(...args),
+  clearLocalPushNotificationRegistration: (...args: unknown[]) =>
+    mockClearLocalPushRegistration(...args),
 }));
 
 // ---------------------------------------------------------------------------
@@ -95,6 +98,7 @@ beforeEach(() => {
   mockSetItem.mockResolvedValue(undefined);
   mockDeleteItem.mockResolvedValue(undefined);
   mockUnregisterDevice.mockResolvedValue(undefined);
+  mockClearLocalPushRegistration.mockResolvedValue(undefined);
 });
 
 // ---------------------------------------------------------------------------
@@ -339,16 +343,20 @@ describe('initializeAuth の onAuthFailure', () => {
     await initializeAuth({ queryClient });
 
     const capturedHooks = configureAuthHooks.mock.calls[0][0] as {
-      onAuthFailure: (reuseDetected: boolean) => void;
+      onAuthFailure: (errorCode: MobileApiErrorCode) => void;
     };
 
     // onAuthFailure(true) を手動呼び出しで検証
-    capturedHooks.onAuthFailure(true);
+    capturedHooks.onAuthFailure('AUTH_REFRESH_TOKEN_REUSE_DETECTED');
     // 非同期処理のため少し待つ
     await new Promise((resolve) => setTimeout(resolve, 10));
 
     expect(getLastAuthFailureReason()).toEqual({ kind: 'reuseDetected' });
     expect(getAuthStatus()).toBe('signedOut');
+    expect(queryClient.clear).toHaveBeenCalledTimes(1);
+    expect(mockCancelPendingPushRegistrations).toHaveBeenCalled();
+    expect(mockClearLocalPushRegistration).toHaveBeenCalledTimes(1);
+    expect(mockUnregisterDevice).not.toHaveBeenCalled();
   });
 
   it('reuseDetected=false の場合は kind: sessionExpired を記録する', async () => {
@@ -361,14 +369,65 @@ describe('initializeAuth の onAuthFailure', () => {
     await initializeAuth({ queryClient });
 
     const capturedHooks = configureAuthHooks.mock.calls[0][0] as {
-      onAuthFailure: (reuseDetected: boolean) => void;
+      onAuthFailure: (errorCode: MobileApiErrorCode) => void;
     };
 
-    capturedHooks.onAuthFailure(false);
+    capturedHooks.onAuthFailure('AUTH_REFRESH_TOKEN_INVALID');
     await new Promise((resolve) => setTimeout(resolve, 10));
 
     expect(getLastAuthFailureReason()).toEqual({ kind: 'sessionExpired' });
     expect(getAuthStatus()).toBe('signedOut');
+  });
+
+  it('並行した通常失効が reuseDetected の警告理由を上書きしない', async () => {
+    mockGetItem.mockResolvedValue(null);
+    const { configureAuthHooks } = jest.requireMock('@/lib/api/client') as {
+      configureAuthHooks: jest.Mock;
+    };
+    const queryClient = makeQueryClient();
+
+    await initializeAuth({ queryClient });
+
+    const capturedHooks = configureAuthHooks.mock.calls[0][0] as {
+      onAuthFailure: (errorCode: MobileApiErrorCode) => void;
+    };
+
+    capturedHooks.onAuthFailure('AUTH_REFRESH_TOKEN_REUSE_DETECTED');
+    capturedHooks.onAuthFailure('AUTH_REFRESH_TOKEN_INVALID');
+    await new Promise((resolve) => setTimeout(resolve, 10));
+
+    expect(getLastAuthFailureReason()).toEqual({ kind: 'reuseDetected' });
+    expect(mockClearLocalPushRegistration).toHaveBeenCalledTimes(1);
+  });
+
+  it('非同期削除の完了前に signedOut と cache clear を反映する', async () => {
+    mockGetItem.mockResolvedValue(null);
+    const resolveDeletes: Array<() => void> = [];
+    mockDeleteItem.mockImplementation(
+      () =>
+        new Promise<void>((resolve) => {
+          resolveDeletes.push(resolve);
+        })
+    );
+    const { configureAuthHooks } = jest.requireMock('@/lib/api/client') as {
+      configureAuthHooks: jest.Mock;
+    };
+    const queryClient = makeQueryClient();
+
+    await initializeAuth({ queryClient });
+    const capturedHooks = configureAuthHooks.mock.calls[0][0] as {
+      onAuthFailure: (errorCode: MobileApiErrorCode) => void;
+    };
+
+    capturedHooks.onAuthFailure('AUTH_REFRESH_TOKEN_INVALID');
+
+    expect(getAuthStatus()).toBe('signedOut');
+    expect(queryClient.clear).toHaveBeenCalledTimes(1);
+
+    for (const resolveDelete of resolveDeletes) {
+      resolveDelete();
+    }
+    await new Promise((resolve) => setTimeout(resolve, 0));
   });
 });
 

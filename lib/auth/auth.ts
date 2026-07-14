@@ -16,11 +16,13 @@ import {
 } from '@/lib/auth/token-store';
 import {
   setAuthStatus,
+  getLastAuthFailureReason,
   setLastAuthFailureReason,
   toAuthFailureReason,
 } from '@/lib/auth/auth-store';
 import {
   cancelPendingPushRegistrations,
+  clearLocalPushNotificationRegistration,
   unregisterDeviceForPushNotifications,
 } from '@/lib/push/device-registration';
 import { identifyBillingUser, resetBillingUser } from '@/lib/billing/purchases';
@@ -59,6 +61,36 @@ export type SignInResult = SignInSuccess | SignIn2FARequired;
 // ---------------------------------------------------------------------------
 
 let pending2FATicket: string | null = null;
+
+/** 並行 401 で同じローカル後始末を重複実行しないための単一飛行 Promise。 */
+let pendingAuthFailureCleanup: Promise<void> | null = null;
+
+/**
+ * 認証失敗後の非同期ローカル後始末を開始する。
+ * 各処理は独立して fail-safe に完了させ、1つの失敗で別の秘密情報を残さない。
+ */
+function startAuthFailureCleanup(): void {
+  if (pendingAuthFailureCleanup !== null) {
+    return;
+  }
+
+  pendingAuthFailureCleanup = Promise.allSettled([
+    deleteTokenPair(),
+    clearLocalPushNotificationRegistration(),
+    resetBillingUser(),
+  ])
+    .then(() => undefined)
+    .finally(() => {
+      pendingAuthFailureCleanup = null;
+    });
+}
+
+/** 直前セッションの後始末が新しい認証情報を消さないよう、認証開始前に完了を待つ。 */
+async function waitForAuthFailureCleanup(): Promise<void> {
+  if (pendingAuthFailureCleanup !== null) {
+    await pendingAuthFailureCleanup;
+  }
+}
 
 /** テスト用: 2FA チケットをリセットする。 */
 export function resetPending2FATicketForTest(): void {
@@ -101,17 +133,35 @@ export async function initializeAuth({
       });
       return data.accessToken;
     },
-    onAuthFailure: (reuseDetected: boolean): void => {
-      void (async () => {
-        const errorCode = reuseDetected
-          ? ('AUTH_REFRESH_TOKEN_REUSE_DETECTED' as const)
-          : ('AUTH_REFRESH_TOKEN_INVALID' as const);
+    onAuthFailure: (errorCode): void => {
+      // 非同期削除を待たず、前ユーザーの画面・キャッシュ・自動 Push 登録を即座に無効化する。
+      cancelPendingPushRegistrations();
+      queryClient.clear();
 
-        await deleteTokenPair();
-        queryClient.clear();
-        setLastAuthFailureReason(toAuthFailureReason(errorCode, reuseDetected));
-        setAuthStatus('signedOut');
-      })();
+      // 並行 401 の通常失効通知で、より重大な再利用検知の理由を上書きしない。
+      const currentReason = getLastAuthFailureReason();
+      const reuseDetected = errorCode === 'AUTH_REFRESH_TOKEN_REUSE_DETECTED';
+      const nextReason = toAuthFailureReason(errorCode, reuseDetected);
+      const currentPriority =
+        currentReason?.kind === 'reuseDetected'
+          ? 3
+          : currentReason?.kind === 'accountSuspended'
+            ? 2
+            : currentReason?.kind === 'sessionExpired'
+              ? 1
+              : 0;
+      const nextPriority =
+        nextReason?.kind === 'reuseDetected'
+          ? 3
+          : nextReason?.kind === 'accountSuspended'
+            ? 2
+            : 1;
+      if (nextPriority >= currentPriority) {
+        setLastAuthFailureReason(nextReason);
+      }
+      setAuthStatus('signedOut');
+
+      startAuthFailureCleanup();
     },
   });
 
@@ -144,6 +194,9 @@ export async function signInWithPassword(
   email: string,
   password: string
 ): Promise<SignInResult> {
+  await waitForAuthFailureCleanup();
+  pending2FATicket = null;
+
   const { data, error } = await apiClient.POST('/api/v1/auth/login', {
     body: { email, password },
   });
@@ -164,6 +217,7 @@ export async function signInWithPassword(
       refreshToken: data.refreshToken,
     });
     setAuthStatus('signedIn');
+    setLastAuthFailureReason(null);
 
     // RevenueCat にサーバーのユーザー ID を紐付ける（fail-safe）
     try {
@@ -189,6 +243,8 @@ export async function signInWithPassword(
  * - チケット未保持の場合は Error を throw する（不正遷移の防御）
  */
 export async function verifyTwoFactor(code: string): Promise<void> {
+  await waitForAuthFailureCleanup();
+
   const ticket = pending2FATicket;
   if (ticket === null) {
     throw new Error('2FA ticket is not available. Please sign in again.');
@@ -210,6 +266,7 @@ export async function verifyTwoFactor(code: string): Promise<void> {
     refreshToken: data.refreshToken,
   });
   setAuthStatus('signedIn');
+  setLastAuthFailureReason(null);
 
   // RevenueCat にサーバーのユーザー ID を紐付ける（fail-safe）
   try {
@@ -317,6 +374,9 @@ export async function confirmPasswordReset(params: {
  * ID トークンの検証はサーバーの責務。クライアントは検証・信頼しない（auth-tokens.md）。
  */
 export async function signInWithGoogle(idToken: string): Promise<void> {
+  await waitForAuthFailureCleanup();
+  pending2FATicket = null;
+
   const { data, error } = await apiClient.POST('/api/v1/auth/google', {
     body: { idToken },
   });
@@ -330,6 +390,7 @@ export async function signInWithGoogle(idToken: string): Promise<void> {
     refreshToken: data.refreshToken,
   });
   setAuthStatus('signedIn');
+  setLastAuthFailureReason(null);
 
   // RevenueCat にサーバーのユーザー ID を紐付ける（fail-safe）
   try {

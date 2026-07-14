@@ -104,6 +104,8 @@ export default function LoginScreen() {
   const allRequiredFilled = email.length > 0 && password.length > 0;
 
   function handleSubmit() {
+    if (isGoogleLoading) return;
+
     const newEmailError = validateEmailField(email);
     const newPasswordError = validatePasswordField(password);
     setEmailError(newEmailError);
@@ -219,7 +221,7 @@ export default function LoginScreen() {
                   onChangeText={setEmail}
                   onBlur={handleEmailBlur}
                   error={emailError}
-                  disabled={isPending}
+                  disabled={isPending || isGoogleLoading}
                   placeholder="mail@example.com"
                   keyboardType="email-address"
                   autoCapitalize="none"
@@ -238,7 +240,7 @@ export default function LoginScreen() {
                   onChangeText={setPassword}
                   onBlur={handlePasswordBlur}
                   error={passwordError}
-                  disabled={isPending}
+                  disabled={isPending || isGoogleLoading}
                   placeholder="8文字以上（英字・数字を含む）"
                   autoComplete="current-password"
                   textContentType="password"
@@ -259,7 +261,7 @@ export default function LoginScreen() {
                 <AuthPrimaryButton
                   label="ログイン"
                   onPress={handleSubmit}
-                  disabled={!allRequiredFilled}
+                  disabled={!allRequiredFilled || isGoogleLoading}
                   isLoading={isPending}
                 />
 
@@ -267,7 +269,7 @@ export default function LoginScreen() {
 
                 <GoogleSignInButton
                   label="Google でログイン"
-                  disabled={!isGoogleAvailable}
+                  disabled={!isGoogleAvailable || isPending}
                   loading={isGoogleLoading}
                   onPress={googleSignIn}
                 />

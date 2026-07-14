@@ -25,9 +25,9 @@ export type AuthHooks = {
   refreshTokens: () => Promise<string | null>;
   /**
    * リフレッシュが失敗した場合、またはリフレッシュ不可の 401 を受け取った場合に呼ばれる。
-   * reuseDetected が true の場合は AUTH_REFRESH_TOKEN_REUSE_DETECTED（専用警告画面を出すこと）。
+   * エラーコードをそのまま渡し、再利用検知・停止・通常失効を認証層で区別する。
    */
-  onAuthFailure: (reuseDetected: boolean) => void;
+  onAuthFailure: (errorCode: MobileApiErrorCode) => void;
 };
 
 const defaultAuthHooks: AuthHooks = {
@@ -113,9 +113,68 @@ export async function parseApiError(response: Response): Promise<ApiError> {
 // ミドルウェア生成
 // ---------------------------------------------------------------------------
 
+/** Bearer を送らず、body / ticket 自体で本人性を検証する公開認証 endpoint。 */
+const PUBLIC_AUTH_PATHS = new Set([
+  '/api/v1/auth/login',
+  '/api/v1/auth/2fa/verify',
+  '/api/v1/auth/email/change/confirm',
+  '/api/v1/auth/refresh',
+  '/api/v1/auth/logout',
+  '/api/v1/auth/google',
+  '/api/v1/auth/password-reset/request',
+  '/api/v1/auth/password-reset/confirm',
+  '/api/v1/auth/register',
+]);
+
+function requestPath(request: Request): string {
+  return new URL(request.url).pathname;
+}
+
+function carriesSessionCredential(request: Request): boolean {
+  return (
+    request.headers.has('Authorization') ||
+    requestPath(request) === '/api/v1/auth/refresh'
+  );
+}
+
+/**
+ * 401 のうち、現在のログインセッションを破棄すべきものだけを判定する。
+ * AUTH_INVALID_CREDENTIALS / 2FA 不正等は操作入力の失敗であり、logout してはならない。
+ */
+function isFatalSessionError(error: ApiError, request: Request): boolean {
+  if (
+    error.code === 'AUTH_REFRESH_TOKEN_INVALID' ||
+    error.code === 'AUTH_REFRESH_TOKEN_REUSE_DETECTED'
+  ) {
+    return requestPath(request) === '/api/v1/auth/refresh';
+  }
+
+  if (
+    error.code === 'AUTH_REQUIRED' ||
+    error.code === 'AUTH_INVALID_TOKEN' ||
+    error.code === 'AUTH_TOKEN_EXPIRED'
+  ) {
+    return carriesSessionCredential(request);
+  }
+
+  return false;
+}
+
+function notifyFatalAuthError(error: ApiError, request: Request): void {
+  const isSuspendedSession =
+    error.code === 'ACCOUNT_SUSPENDED' && carriesSessionCredential(request);
+  if (isSuspendedSession || isFatalSessionError(error, request)) {
+    authHooks.onAuthFailure(error.code);
+  }
+}
+
 function buildAuthAndErrorMiddleware(): Middleware {
   return {
     async onRequest({ request }) {
+      if (PUBLIC_AUTH_PATHS.has(requestPath(request))) {
+        return;
+      }
+
       const token = await authHooks.getAccessToken();
       if (token === null) {
         // トークンが無い場合はヘッダを変更しないため undefined を返す
@@ -133,13 +192,22 @@ function buildAuthAndErrorMiddleware(): Middleware {
         return;
       }
 
+      if (response.status === 403) {
+        const error = await parseApiError(response);
+        notifyFatalAuthError(error, request);
+        throw error;
+      }
+
       if (response.status === 401) {
         const error = await parseApiError(response);
 
         // AUTH_TOKEN_EXPIRED のみリフレッシュを試みる。
         // それ以外の 401 コード（AUTH_INVALID_TOKEN / AUTH_REFRESH_TOKEN_INVALID /
         // AUTH_REFRESH_TOKEN_REUSE_DETECTED）はリフレッシュせず即座に失敗させる。
-        if (error.code === 'AUTH_TOKEN_EXPIRED') {
+        if (
+          error.code === 'AUTH_TOKEN_EXPIRED' &&
+          carriesSessionCredential(request)
+        ) {
           const newToken = await singleFlightRefresh();
           if (newToken !== null) {
             const retried = request.clone();
@@ -148,16 +216,16 @@ function buildAuthAndErrorMiddleware(): Middleware {
             if (retryResponse.ok) {
               return retryResponse;
             }
-            throw await parseApiError(retryResponse);
+            const retryError = await parseApiError(retryResponse);
+            notifyFatalAuthError(retryError, retried);
+            throw retryError;
           }
           // refresh 失敗
-          authHooks.onAuthFailure(false);
+          authHooks.onAuthFailure('AUTH_REFRESH_TOKEN_INVALID');
           throw error;
         }
 
-        // REUSE_DETECTED は専用の警告が必要なため区別して通知する
-        const reuseDetected = error.code === 'AUTH_REFRESH_TOKEN_REUSE_DETECTED';
-        authHooks.onAuthFailure(reuseDetected);
+        notifyFatalAuthError(error, request);
         throw error;
       }
 

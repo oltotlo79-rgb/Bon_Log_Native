@@ -228,6 +228,7 @@ export default function TwoFactorVerifyScreen() {
                   pressed && styles.backLinkPressed,
                 ]}
                 onPress={() => router.replace(routes.login)}
+                disabled={isPending}
                 accessibilityRole="button"
                 accessibilityLabel="ログイン画面に戻る"
               >

@@ -12,6 +12,7 @@ import type { NotificationPermissionsStatus } from 'expo-notifications';
 import {
   registerDeviceForPushNotifications,
   unregisterDeviceForPushNotifications,
+  clearLocalPushNotificationRegistration,
   getPushPermissionStatus,
   createPushRegistrationGuard,
   cancelPendingPushRegistrations,
@@ -323,6 +324,27 @@ describe('Push 登録世代 guard', () => {
     expect(isCurrentRegistration()).toBe(true);
     cancelPendingPushRegistrations();
     expect(isCurrentRegistration()).toBe(false);
+  });
+});
+
+describe('clearLocalPushNotificationRegistration', () => {
+  it('保存済みトークンを削除し、サーバー DELETE は呼ばない', async () => {
+    mockSecureStoreGet.mockResolvedValue('ExponentPushToken[saved-token]');
+
+    await clearLocalPushNotificationRegistration();
+
+    expect(mockApiClientDelete).not.toHaveBeenCalled();
+    expect(mockSecureStoreDelete).toHaveBeenCalledWith(SECURE_STORE_PUSH_TOKEN);
+  });
+
+  it('登録 listener を解除する', async () => {
+    const mockRemove = jest.fn();
+    mockAddPushTokenListener.mockReturnValue({ remove: mockRemove });
+    await registerDeviceForPushNotifications();
+
+    await clearLocalPushNotificationRegistration();
+
+    expect(mockRemove).toHaveBeenCalledTimes(1);
   });
 });
 

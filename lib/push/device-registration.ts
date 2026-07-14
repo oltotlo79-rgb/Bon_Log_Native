@@ -34,7 +34,23 @@ let tokenListenerSubscription: EventSubscription | null = null;
 let registrationGeneration = 0;
 
 /** unregister が進行中の登録完了を待ち、最終状態を必ず未登録にするため保持する。 */
-const pendingRegistrations = new Set<Promise<PushPermissionStatus>>();
+const pendingRegistrations = new Set<Promise<unknown>>();
+
+/** logout / auth failure が listener 由来の再登録も待てるよう全登録処理を追跡する。 */
+function trackRegistration<T>(registration: Promise<T>): Promise<T> {
+  pendingRegistrations.add(registration);
+  const removePendingRegistration = (): void => {
+    pendingRegistrations.delete(registration);
+  };
+  void registration.then(removePendingRegistration, removePendingRegistration);
+  return registration;
+}
+
+async function waitForPendingRegistrations(): Promise<void> {
+  while (pendingRegistrations.size > 0) {
+    await Promise.allSettled([...pendingRegistrations]);
+  }
+}
 
 /** 現在の認証セッションに属する Push 登録かを後から判定する guard を返す。 */
 export function createPushRegistrationGuard(): () => boolean {
@@ -168,7 +184,7 @@ async function performDeviceRegistration(): Promise<PushPermissionStatus> {
   // DevicePushToken が変わったら Expo プッシュトークンを再取得して再登録する
   tokenListenerSubscription = Notifications.addPushTokenListener(async () => {
     try {
-      await fetchTokenAndRegister();
+      await trackRegistration(fetchTokenAndRegister());
     } catch {
       // 再登録失敗は静かに無視する（次の起動時に再試行される）
     }
@@ -178,15 +194,7 @@ async function performDeviceRegistration(): Promise<PushPermissionStatus> {
 }
 
 export function registerDeviceForPushNotifications(): Promise<PushPermissionStatus> {
-  const registration = performDeviceRegistration();
-  pendingRegistrations.add(registration);
-
-  const removePendingRegistration = (): void => {
-    pendingRegistrations.delete(registration);
-  };
-  void registration.then(removePendingRegistration, removePendingRegistration);
-
-  return registration;
+  return trackRegistration(performDeviceRegistration());
 }
 
 /**
@@ -199,15 +207,15 @@ export function registerDeviceForPushNotifications(): Promise<PushPermissionStat
 export async function unregisterDeviceForPushNotifications(): Promise<void> {
   cancelPendingPushRegistrations();
 
-  // 既に API 登録が始まっている場合は完了を待ってから解除し、
-  // 遅れて保存されたトークンや listener がログアウト後に残らないようにする。
-  await Promise.allSettled([...pendingRegistrations]);
-
-  // トークン変更リスナーを解除する
+  // 新しい listener callback を開始させないよう、待機前に購読を解除する。
   if (tokenListenerSubscription !== null) {
     tokenListenerSubscription.remove();
     tokenListenerSubscription = null;
   }
+
+  // 既に API 登録が始まっている場合は完了を待ってから解除し、
+  // 遅れて保存されたトークンや listener がログアウト後に残らないようにする。
+  await waitForPendingRegistrations();
 
   const savedToken = await getSavedPushToken();
 
@@ -221,6 +229,26 @@ export async function unregisterDeviceForPushNotifications(): Promise<void> {
       // GUEST_NOT_ALLOWED(403) / 429 等のエラーは無視してローカルのクリーンアップを続行する
     }
   }
+
+  await deleteSavedPushToken();
+}
+
+/**
+ * Push 登録のローカル状態だけを破棄する。
+ *
+ * 認証更新失敗時はアクセストークンも無効なため、解除 API を呼ぶと別の 401 を発生させる。
+ * その経路では本関数を使い、進行中の登録を無効化してから listener と保存済みトークンを消す。
+ */
+export async function clearLocalPushNotificationRegistration(): Promise<void> {
+  cancelPendingPushRegistrations();
+
+  if (tokenListenerSubscription !== null) {
+    tokenListenerSubscription.remove();
+    tokenListenerSubscription = null;
+  }
+
+  // 遅れて完了した登録が token / listener を残さないよう、進行中処理の完了を待つ。
+  await waitForPendingRegistrations();
 
   await deleteSavedPushToken();
 }
