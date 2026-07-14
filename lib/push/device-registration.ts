@@ -30,6 +30,23 @@ export type PushPermissionStatus =
 /** トークン変更リスナーの subscription（解除用に保持） */
 let tokenListenerSubscription: EventSubscription | null = null;
 
+/** ログアウト開始後に古い非同期登録を進めないための世代番号。 */
+let registrationGeneration = 0;
+
+/** unregister が進行中の登録完了を待ち、最終状態を必ず未登録にするため保持する。 */
+const pendingRegistrations = new Set<Promise<PushPermissionStatus>>();
+
+/** 現在の認証セッションに属する Push 登録かを後から判定する guard を返す。 */
+export function createPushRegistrationGuard(): () => boolean {
+  const generation = registrationGeneration;
+  return () => generation === registrationGeneration;
+}
+
+/** ログアウト開始時に、権限確認待ちなどの古い登録試行を無効化する。 */
+export function cancelPendingPushRegistrations(): void {
+  registrationGeneration += 1;
+}
+
 // ---------------------------------------------------------------------------
 // 内部ユーティリティ
 // ---------------------------------------------------------------------------
@@ -124,7 +141,7 @@ async function fetchTokenAndRegister(): Promise<void> {
  *
  * 物理デバイス以外（エミュレータ等）では許可要求をスキップして `{ granted: false, canAskAgain: false }` を返す。
  */
-export async function registerDeviceForPushNotifications(): Promise<PushPermissionStatus> {
+async function performDeviceRegistration(): Promise<PushPermissionStatus> {
   if (!isPhysicalDevice()) {
     return { granted: false, canAskAgain: false };
   }
@@ -160,6 +177,18 @@ export async function registerDeviceForPushNotifications(): Promise<PushPermissi
   return { granted: true };
 }
 
+export function registerDeviceForPushNotifications(): Promise<PushPermissionStatus> {
+  const registration = performDeviceRegistration();
+  pendingRegistrations.add(registration);
+
+  const removePendingRegistration = (): void => {
+    pendingRegistrations.delete(registration);
+  };
+  void registration.then(removePendingRegistration, removePendingRegistration);
+
+  return registration;
+}
+
 /**
  * サーバーのデバイストークン登録を解除し、ローカルのトークンを削除する。
  * ログアウト時に必ず呼び出すこと（auth-tokens.md）。
@@ -168,6 +197,12 @@ export async function registerDeviceForPushNotifications(): Promise<PushPermissi
  * トークン変更リスナーも解除する。
  */
 export async function unregisterDeviceForPushNotifications(): Promise<void> {
+  cancelPendingPushRegistrations();
+
+  // 既に API 登録が始まっている場合は完了を待ってから解除し、
+  // 遅れて保存されたトークンや listener がログアウト後に残らないようにする。
+  await Promise.allSettled([...pendingRegistrations]);
+
   // トークン変更リスナーを解除する
   if (tokenListenerSubscription !== null) {
     tokenListenerSubscription.remove();
@@ -178,10 +213,9 @@ export async function unregisterDeviceForPushNotifications(): Promise<void> {
 
   if (savedToken !== null) {
     try {
-      // ExponentPushToken[...] の [ ] を URL エンコードする（仕様: delete エンドポイント）
-      const encodedToken = encodeURIComponent(savedToken);
+      // openapi-fetch の path serializer が URL エンコードするため、生トークンを渡して二重変換を避ける。
       await apiClient.DELETE('/api/v1/devices/{token}', {
-        params: { path: { token: encodedToken } },
+        params: { path: { token: savedToken } },
       });
     } catch {
       // GUEST_NOT_ALLOWED(403) / 429 等のエラーは無視してローカルのクリーンアップを続行する

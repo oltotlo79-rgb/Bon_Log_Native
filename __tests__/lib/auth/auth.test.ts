@@ -53,7 +53,10 @@ jest.mock('expo-secure-store', () => ({
 // signOut 内で呼ばれる unregisterDeviceForPushNotifications は
 // lib/push のテストで別途検証するためここではモックする。
 const mockUnregisterDevice = jest.fn().mockResolvedValue(undefined);
+const mockCancelPendingPushRegistrations = jest.fn();
 jest.mock('@/lib/push/device-registration', () => ({
+  cancelPendingPushRegistrations: (...args: unknown[]) =>
+    mockCancelPendingPushRegistrations(...args),
   unregisterDeviceForPushNotifications: (...args: unknown[]) =>
     mockUnregisterDevice(...args),
 }));
@@ -301,6 +304,10 @@ describe('signOut', () => {
     await signOut(queryClient);
 
     expect(mockUnregisterDevice).toHaveBeenCalledTimes(1);
+    expect(mockCancelPendingPushRegistrations).toHaveBeenCalledTimes(1);
+    expect(mockCancelPendingPushRegistrations.mock.invocationCallOrder[0]).toBeLessThan(
+      mockApiClientPost.mock.invocationCallOrder[0]
+    );
   });
 
   it('Push 解除が失敗してもトークン削除・状態遷移は完了する（fail-safe）', async () => {

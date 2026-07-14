@@ -9,6 +9,7 @@ import React from 'react';
 import { screen, fireEvent, waitFor } from '@testing-library/react-native';
 import { renderWithProviders } from '@/__tests__/utils/test-utils';
 import SettingsAccountScreen from '@/app/settings/account/index';
+import { ERR_ACCOUNT_DELETE_FAILED } from '@/lib/constants/errors';
 
 const mockApiDelete = jest.fn();
 const mockApiGet = jest.fn();
@@ -113,6 +114,21 @@ describe('SettingsAccountScreen - アカウント削除フロー', () => {
         deleteBtn.props.accessibilityState?.disabled === true;
       expect(isDisabled).toBe(false);
     });
+  });
+
+  it('削除APIが失敗したときはダイアログを維持して再試行できる', async () => {
+    mockApiDelete.mockResolvedValue({ data: undefined, error: undefined });
+    renderWithProviders(<SettingsAccountScreen />);
+    await openConfirmDialog();
+
+    fireEvent.changeText(screen.getByPlaceholderText('削除する'), '削除する');
+    fireEvent.press(screen.getByRole('button', { name: '削除する' }));
+
+    await waitFor(() => {
+      expect(screen.getByText(ERR_ACCOUNT_DELETE_FAILED)).toBeTruthy();
+    });
+    expect(screen.getByText('本当にアカウントを削除しますか？')).toBeTruthy();
+    expect(screen.getByRole('button', { name: '削除する' })).toBeEnabled();
   });
 
   it('確認ダイアログに削除することを確認するフィールドが表示される', async () => {

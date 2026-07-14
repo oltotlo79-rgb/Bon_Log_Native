@@ -107,7 +107,7 @@ export default function SettingsAccountScreen() {
 
     try {
       await deleteAccountMutation.mutateAsync();
-      // mutateAsync 後の画面遷移は useDeleteAccountMutation 内部の onSettled → signOut が行う
+      // mutateAsync 後の画面遷移は useDeleteAccountMutation 内部の onSuccess → signOut が行う
       // ここでトーストを表示してもよいが、signOut で画面が切り替わるため不要
     } catch (err) {
       if (isApiError(err)) {

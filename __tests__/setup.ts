@@ -554,6 +554,7 @@ jest.mock('react-native-purchases', () => {
       customerInfo: mockCustomerInfo,
     })),
     restorePurchases: jest.fn(async () => mockCustomerInfo),
+    getAppUserID: jest.fn(async () => 'mock-app-user-id'),
     getCustomerInfo: jest.fn(async () => mockCustomerInfo),
     setLogLevel: jest.fn(),
     addCustomerInfoUpdateListener: jest.fn(() => jest.fn()),
@@ -656,13 +657,17 @@ jest.mock('expo-font', () => ({
   },
 }));
 
-// @expo-google-fonts/shippori-mincho のモック
+// @expo-google-fonts/shippori-mincho のウェイト別 entry point モック
 // TTF バイナリは Jest で処理できないため、フォント識別子として文字列を返す。
 // useFonts はフォントマップのキーをフォントファミリー名として登録するため、
 // 値（ここでは文字列）はロードシンボルとして機能する。
-jest.mock('@expo-google-fonts/shippori-mincho', () => ({
+jest.mock('@expo-google-fonts/shippori-mincho/400Regular', () => ({
   ShipporiMincho_400Regular: 'ShipporiMincho_400Regular',
+}));
+jest.mock('@expo-google-fonts/shippori-mincho/500Medium', () => ({
   ShipporiMincho_500Medium: 'ShipporiMincho_500Medium',
+}));
+jest.mock('@expo-google-fonts/shippori-mincho/700Bold', () => ({
   ShipporiMincho_700Bold: 'ShipporiMincho_700Bold',
 }));
 

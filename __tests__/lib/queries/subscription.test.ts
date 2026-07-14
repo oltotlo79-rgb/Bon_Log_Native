@@ -15,20 +15,38 @@ import {
 } from '@/lib/queries/subscription';
 import { queryKeys } from '@/lib/queries/keys';
 import type { PremiumOffering, PurchaseResult, RestoreResult } from '@/lib/billing/purchases';
-import type { PurchasesPackage } from 'react-native-purchases';
+import {
+  PACKAGE_TYPE,
+  PRODUCT_TYPE,
+  type PurchasesPackage,
+} from 'react-native-purchases';
+import { BILLING_USER_IDENTITY_ERROR_MESSAGE } from '@/lib/constants/billing';
 
 // ---------------------------------------------------------------------------
 // モック設定（lib/billing/purchases がモック境界）
 // ---------------------------------------------------------------------------
 
 const mockGetPremiumOffering = jest.fn();
+const mockGetBillingAppUserId = jest.fn();
+const mockIdentifyBillingUser = jest.fn();
 const mockPurchasePremium = jest.fn();
 const mockRestorePurchases = jest.fn();
 
 jest.mock('@/lib/billing/purchases', () => ({
   getPremiumOffering: (...args: unknown[]) => mockGetPremiumOffering(...args),
+  getBillingAppUserId: (...args: unknown[]) => mockGetBillingAppUserId(...args),
+  identifyBillingUser: (...args: unknown[]) => mockIdentifyBillingUser(...args),
   purchasePremium: (...args: unknown[]) => mockPurchasePremium(...args),
   restorePurchases: (...args: unknown[]) => mockRestorePurchases(...args),
+}));
+
+jest.mock('react-native-purchases', () => ({
+  PACKAGE_TYPE: {
+    MONTHLY: 'MONTHLY',
+  },
+  PRODUCT_TYPE: {
+    AUTO_RENEWABLE_SUBSCRIPTION: 'AUTO_RENEWABLE_SUBSCRIPTION',
+  },
 }));
 
 // ---------------------------------------------------------------------------
@@ -44,27 +62,51 @@ function createWrapper() {
 }
 
 function makePremiumOffering(): PremiumOffering {
+  const premiumPackage = makePackage();
   return {
-    package: {
-      identifier: 'monthly',
-      product: {
-        priceString: '¥480/月',
-        title: 'プレミアムプラン（月額）',
-      },
-    } as unknown as PurchasesPackage,
+    package: premiumPackage,
     priceString: '¥480/月',
     title: 'プレミアムプラン（月額）',
   };
 }
 
 function makePackage(): PurchasesPackage {
+  const presentedOfferingContext = {
+    offeringIdentifier: 'premium',
+    placementIdentifier: null,
+    targetingContext: null,
+  };
+
   return {
     identifier: 'monthly',
+    packageType: PACKAGE_TYPE.MONTHLY,
     product: {
-      priceString: '¥480/月',
+      identifier: 'com.bon_log.premium.monthly',
+      description: 'Bon Log プレミアムプラン',
       title: 'プレミアムプラン（月額）',
+      price: 480,
+      priceString: '¥480/月',
+      pricePerWeek: null,
+      pricePerMonth: 480,
+      pricePerYear: 5_760,
+      pricePerWeekString: null,
+      pricePerMonthString: '¥480/月',
+      pricePerYearString: '¥5,760/年',
+      currencyCode: 'JPY',
+      introPrice: null,
+      discounts: null,
+      productCategory: null,
+      productType: PRODUCT_TYPE.AUTO_RENEWABLE_SUBSCRIPTION,
+      subscriptionPeriod: 'P1M',
+      defaultOption: null,
+      subscriptionOptions: null,
+      presentedOfferingIdentifier: 'premium',
+      presentedOfferingContext,
     },
-  } as unknown as PurchasesPackage;
+    offeringIdentifier: 'premium',
+    presentedOfferingContext,
+    webCheckoutUrl: null,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -73,6 +115,8 @@ function makePackage(): PurchasesPackage {
 
 beforeEach(() => {
   jest.clearAllMocks();
+  mockIdentifyBillingUser.mockResolvedValue(undefined);
+  mockGetBillingAppUserId.mockResolvedValue('user-1');
 });
 
 // ---------------------------------------------------------------------------
@@ -128,8 +172,32 @@ describe('usePremiumOfferingQuery', () => {
 
 describe('usePurchasePremiumMutation', () => {
   const pkg = makePackage();
+  const variables = { premiumPackage: pkg, userId: 'user-1' };
 
-  it('購入成功（success）: onSettled で users.me が invalidate される', async () => {
+  it('購入直前にサーバーの userId で identify し、SDK の App User ID 一致後に購入する', async () => {
+    const successResult: PurchaseResult = { kind: 'success' };
+    mockPurchasePremium.mockResolvedValue(successResult);
+
+    const { Wrapper } = createWrapper();
+    const { result } = renderHook(() => usePurchasePremiumMutation(), { wrapper: Wrapper });
+
+    await act(async () => {
+      result.current.mutate(variables);
+    });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(mockIdentifyBillingUser).toHaveBeenCalledWith('user-1');
+    expect(mockGetBillingAppUserId).toHaveBeenCalledTimes(1);
+    expect(mockPurchasePremium).toHaveBeenCalledWith(pkg);
+    expect(mockIdentifyBillingUser.mock.invocationCallOrder[0]).toBeLessThan(
+      mockGetBillingAppUserId.mock.invocationCallOrder[0]
+    );
+    expect(mockGetBillingAppUserId.mock.invocationCallOrder[0]).toBeLessThan(
+      mockPurchasePremium.mock.invocationCallOrder[0]
+    );
+  });
+
+  it('購入成功（success）時だけ users.me が invalidate される', async () => {
     const successResult: PurchaseResult = { kind: 'success' };
     mockPurchasePremium.mockResolvedValue(successResult);
 
@@ -139,7 +207,7 @@ describe('usePurchasePremiumMutation', () => {
     const { result } = renderHook(() => usePurchasePremiumMutation(), { wrapper: Wrapper });
 
     await act(async () => {
-      result.current.mutate(pkg);
+      result.current.mutate(variables);
     });
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
@@ -156,59 +224,96 @@ describe('usePurchasePremiumMutation', () => {
     const { result } = renderHook(() => usePurchasePremiumMutation(), { wrapper: Wrapper });
 
     await act(async () => {
-      result.current.mutate(pkg);
+      result.current.mutate(variables);
     });
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(result.current.data?.kind).toBe('success');
   });
 
-  it('ユーザーキャンセル（userCancelled）: data が kind="userCancelled"', async () => {
+  it('ユーザーキャンセル（userCancelled）では users.me を invalidate しない', async () => {
     const cancelResult: PurchaseResult = { kind: 'userCancelled' };
     mockPurchasePremium.mockResolvedValue(cancelResult);
 
-    const { Wrapper } = createWrapper();
+    const { Wrapper, queryClient } = createWrapper();
+    const invalidateSpy = jest.spyOn(queryClient, 'invalidateQueries');
     const { result } = renderHook(() => usePurchasePremiumMutation(), { wrapper: Wrapper });
 
     await act(async () => {
-      result.current.mutate(pkg);
+      result.current.mutate(variables);
     });
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(result.current.data?.kind).toBe('userCancelled');
+    expect(invalidateSpy).not.toHaveBeenCalled();
   });
 
-  it('決済保留（pending）: data が kind="pending"', async () => {
+  it('決済保留（pending）では users.me を invalidate しない', async () => {
     const pendingResult: PurchaseResult = { kind: 'pending', message: '保留中' };
     mockPurchasePremium.mockResolvedValue(pendingResult);
 
-    const { Wrapper } = createWrapper();
+    const { Wrapper, queryClient } = createWrapper();
+    const invalidateSpy = jest.spyOn(queryClient, 'invalidateQueries');
     const { result } = renderHook(() => usePurchasePremiumMutation(), { wrapper: Wrapper });
 
     await act(async () => {
-      result.current.mutate(pkg);
+      result.current.mutate(variables);
     });
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(result.current.data?.kind).toBe('pending');
+    expect(invalidateSpy).not.toHaveBeenCalled();
   });
 
-  it('購入エラー（error）: data が kind="error"', async () => {
+  it('購入エラー（error）では users.me を invalidate しない', async () => {
     const errorResult: PurchaseResult = { kind: 'error', message: 'ネットワークエラー' };
     mockPurchasePremium.mockResolvedValue(errorResult);
+
+    const { Wrapper, queryClient } = createWrapper();
+    const invalidateSpy = jest.spyOn(queryClient, 'invalidateQueries');
+    const { result } = renderHook(() => usePurchasePremiumMutation(), { wrapper: Wrapper });
+
+    await act(async () => {
+      result.current.mutate(variables);
+    });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(result.current.data?.kind).toBe('error');
+    expect(invalidateSpy).not.toHaveBeenCalled();
+  });
+
+  it('identify が失敗したら購入 SDK を呼ばず UI 向けエラーを返す', async () => {
+    mockIdentifyBillingUser.mockRejectedValue(new Error('identify failed'));
 
     const { Wrapper } = createWrapper();
     const { result } = renderHook(() => usePurchasePremiumMutation(), { wrapper: Wrapper });
 
     await act(async () => {
-      result.current.mutate(pkg);
+      result.current.mutate(variables);
     });
 
-    await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(result.current.data?.kind).toBe('error');
+    await waitFor(() => expect(result.current.isError).toBe(true));
+    expect(result.current.error?.message).toBe(BILLING_USER_IDENTITY_ERROR_MESSAGE);
+    expect(mockGetBillingAppUserId).not.toHaveBeenCalled();
+    expect(mockPurchasePremium).not.toHaveBeenCalled();
   });
 
-  it('SDK が例外 throw: isError が true になり users.me が invalidate される', async () => {
+  it('SDK の App User ID がサーバー ID と異なる場合は購入しない', async () => {
+    mockGetBillingAppUserId.mockResolvedValue('$RCAnonymousID:anonymous');
+
+    const { Wrapper } = createWrapper();
+    const { result } = renderHook(() => usePurchasePremiumMutation(), { wrapper: Wrapper });
+
+    await act(async () => {
+      result.current.mutate(variables);
+    });
+
+    await waitFor(() => expect(result.current.isError).toBe(true));
+    expect(result.current.error?.message).toBe(BILLING_USER_IDENTITY_ERROR_MESSAGE);
+    expect(mockPurchasePremium).not.toHaveBeenCalled();
+  });
+
+  it('購入 SDK が例外を投げた場合は users.me を invalidate しない', async () => {
     mockPurchasePremium.mockRejectedValue(new Error('SDK クラッシュ'));
 
     const { Wrapper, queryClient } = createWrapper();
@@ -217,14 +322,11 @@ describe('usePurchasePremiumMutation', () => {
     const { result } = renderHook(() => usePurchasePremiumMutation(), { wrapper: Wrapper });
 
     await act(async () => {
-      result.current.mutate(pkg);
+      result.current.mutate(variables);
     });
 
     await waitFor(() => expect(result.current.isError).toBe(true));
-    // onSettled は成功・失敗問わず呼ばれる
-    expect(invalidateSpy).toHaveBeenCalledWith(
-      expect.objectContaining({ queryKey: queryKeys.users.me })
-    );
+    expect(invalidateSpy).not.toHaveBeenCalled();
   });
 });
 
@@ -233,7 +335,9 @@ describe('usePurchasePremiumMutation', () => {
 // ---------------------------------------------------------------------------
 
 describe('useRestorePurchasesMutation', () => {
-  it('復元成功（success）: onSettled で users.me が invalidate される', async () => {
+  const variables = { userId: 'user-1' };
+
+  it('復元直前に identify と App User ID 一致確認を行い、成功時だけ invalidate する', async () => {
     const successResult: RestoreResult = { kind: 'success' };
     mockRestorePurchases.mockResolvedValue(successResult);
 
@@ -243,7 +347,7 @@ describe('useRestorePurchasesMutation', () => {
     const { result } = renderHook(() => useRestorePurchasesMutation(), { wrapper: Wrapper });
 
     await act(async () => {
-      result.current.mutate(undefined);
+      result.current.mutate(variables);
     });
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
@@ -251,53 +355,73 @@ describe('useRestorePurchasesMutation', () => {
       expect.objectContaining({ queryKey: queryKeys.users.me })
     );
     expect(result.current.data?.kind).toBe('success');
+    expect(mockIdentifyBillingUser).toHaveBeenCalledWith('user-1');
+    expect(mockGetBillingAppUserId).toHaveBeenCalledTimes(1);
+    expect(mockRestorePurchases).toHaveBeenCalledWith();
+    expect(mockGetBillingAppUserId.mock.invocationCallOrder[0]).toBeLessThan(
+      mockRestorePurchases.mock.invocationCallOrder[0]
+    );
   });
 
-  it('復元エラー（error）: data が kind="error"', async () => {
+  it('復元エラー（error）では users.me を invalidate しない', async () => {
     const errorResult: RestoreResult = { kind: 'error', message: '復元に失敗' };
     mockRestorePurchases.mockResolvedValue(errorResult);
 
-    const { Wrapper } = createWrapper();
+    const { Wrapper, queryClient } = createWrapper();
+    const invalidateSpy = jest.spyOn(queryClient, 'invalidateQueries');
     const { result } = renderHook(() => useRestorePurchasesMutation(), { wrapper: Wrapper });
 
     await act(async () => {
-      result.current.mutate(undefined);
+      result.current.mutate(variables);
     });
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(result.current.data?.kind).toBe('error');
+    expect(invalidateSpy).not.toHaveBeenCalled();
   });
 
-  it('SDK が例外 throw: isError が true になり users.me が invalidate される', async () => {
-    mockRestorePurchases.mockRejectedValue(new Error('SDK エラー'));
+  it('identify が失敗したら復元 SDK を呼ばない', async () => {
+    mockIdentifyBillingUser.mockRejectedValue(new Error('identify failed'));
 
-    const { Wrapper, queryClient } = createWrapper();
-    const invalidateSpy = jest.spyOn(queryClient, 'invalidateQueries');
+    const { Wrapper } = createWrapper();
 
     const { result } = renderHook(() => useRestorePurchasesMutation(), { wrapper: Wrapper });
 
     await act(async () => {
-      result.current.mutate(undefined);
+      result.current.mutate(variables);
     });
 
     await waitFor(() => expect(result.current.isError).toBe(true));
-    expect(invalidateSpy).toHaveBeenCalledWith(
-      expect.objectContaining({ queryKey: queryKeys.users.me })
-    );
+    expect(result.current.error?.message).toBe(BILLING_USER_IDENTITY_ERROR_MESSAGE);
+    expect(mockRestorePurchases).not.toHaveBeenCalled();
   });
 
-  it('restorePurchases が引数なしで呼ばれる', async () => {
-    const successResult: RestoreResult = { kind: 'success' };
-    mockRestorePurchases.mockResolvedValue(successResult);
+  it('SDK の App User ID が異なる場合は復元 SDK を呼ばない', async () => {
+    mockGetBillingAppUserId.mockResolvedValue('another-user');
 
     const { Wrapper } = createWrapper();
     const { result } = renderHook(() => useRestorePurchasesMutation(), { wrapper: Wrapper });
 
     await act(async () => {
-      result.current.mutate(undefined);
+      result.current.mutate(variables);
     });
 
-    await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(mockRestorePurchases).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(result.current.isError).toBe(true));
+    expect(mockRestorePurchases).not.toHaveBeenCalled();
+  });
+
+  it('復元 SDK が例外を投げた場合は users.me を invalidate しない', async () => {
+    mockRestorePurchases.mockRejectedValue(new Error('SDK エラー'));
+
+    const { Wrapper, queryClient } = createWrapper();
+    const invalidateSpy = jest.spyOn(queryClient, 'invalidateQueries');
+    const { result } = renderHook(() => useRestorePurchasesMutation(), { wrapper: Wrapper });
+
+    await act(async () => {
+      result.current.mutate(variables);
+    });
+
+    await waitFor(() => expect(result.current.isError).toBe(true));
+    expect(invalidateSpy).not.toHaveBeenCalled();
   });
 });

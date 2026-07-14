@@ -2,8 +2,8 @@
  * @module __tests__/lib/queries/users-mutations
  * useCurrentUserProfileQuery / useUpdateProfileMutation / useDeleteAccountMutation のテスト。
  *
- * 特重要: useDeleteAccountMutation は onSettled で signOut を呼び、
- * サーバー削除成功・失敗いずれの場合も fail-safe でローカル撤収を行う。
+ * 特重要: useDeleteAccountMutation はサーバー削除成功時だけ signOut を呼び、
+ * 失敗時はセッションを維持してエラー表示と再試行を可能にする。
  */
 
 import React from 'react';
@@ -316,11 +316,11 @@ describe('useUpdateProfileMutation', () => {
 });
 
 // ---------------------------------------------------------------------------
-// useDeleteAccountMutation（重要: fail-safe でのサインアウト検証）
+// useDeleteAccountMutation（重要: 削除成功時だけサインアウトする）
 // ---------------------------------------------------------------------------
 
 describe('useDeleteAccountMutation', () => {
-  it('成功時に signOut が呼ばれる（fail-safe）', async () => {
+  it('成功時に signOut が呼ばれる', async () => {
     mockApiDelete.mockResolvedValue({ data: { success: true }, error: undefined });
     const { Wrapper, queryClient } = createWrapper();
 
@@ -335,40 +335,34 @@ describe('useDeleteAccountMutation', () => {
     expect(mockSignOut).toHaveBeenCalledWith(queryClient);
   });
 
-  it('サーバーエラー（ApiError）が throw されても signOut が呼ばれる（fail-safe）', async () => {
+  it('サーバーエラー（ApiError）が throw されたときは signOut を呼ばない', async () => {
     mockApiDelete.mockResolvedValue({
       data: undefined,
       error: makeApiError('AUTH_REQUIRED', 401),
     });
-    const { Wrapper, queryClient } = createWrapper();
+    const { Wrapper } = createWrapper();
 
     const { result } = renderHook(() => useDeleteAccountMutation(), { wrapper: Wrapper });
 
     await actAndExpectError(() => result.current.mutateAsync());
 
-    // エラーの場合でも onSettled が呼ばれ signOut が実行される
-    await waitFor(() => expect(mockSignOut).toHaveBeenCalledTimes(1));
-    expect(mockSignOut).toHaveBeenCalledWith(queryClient);
+    await waitFor(() => expect(result.current.isError).toBe(true));
+    expect(mockSignOut).not.toHaveBeenCalled();
   });
 
-  it('汎用エラー（data/error ともに undefined）が throw されても signOut が呼ばれる（fail-safe）', async () => {
+  it('汎用エラー（data/error ともに undefined）が throw されたときは signOut を呼ばない', async () => {
     mockApiDelete.mockResolvedValue({ data: undefined, error: undefined });
-    const { Wrapper, queryClient } = createWrapper();
+    const { Wrapper } = createWrapper();
 
     const { result } = renderHook(() => useDeleteAccountMutation(), { wrapper: Wrapper });
 
     await actAndExpectError(() => result.current.mutateAsync());
 
-    await waitFor(() => expect(mockSignOut).toHaveBeenCalledTimes(1));
-    expect(mockSignOut).toHaveBeenCalledWith(queryClient);
-    void result;
+    await waitFor(() => expect(result.current.isError).toBe(true));
+    expect(mockSignOut).not.toHaveBeenCalled();
   });
 
-  it('signOut は onSettled で必ず呼ばれる（成功・失敗いずれのケースでも）', async () => {
-    // 本テストは signOut の呼び出しそのものを検証する。
-    // signOut 自体が throw した場合は onSettled のエラーが伝播するため（本番コードは try/catch なし）、
-    // そのシナリオは「core に useDeleteAccountMutation onSettled の try/catch 追加が必要」として差し戻す。
-    // ここでは signOut が正常な場合に呼ばれることを確認する。
+  it('signOut は削除成功後に queryClient を渡して呼ばれる', async () => {
     mockApiDelete.mockResolvedValue({ data: { success: true }, error: undefined });
     mockSignOut.mockResolvedValue(undefined);
 
@@ -381,7 +375,6 @@ describe('useDeleteAccountMutation', () => {
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
-    // onSettled が呼ばれ signOut が実行されること
     expect(mockSignOut).toHaveBeenCalledTimes(1);
     expect(mockSignOut).toHaveBeenCalledWith(queryClient);
   });

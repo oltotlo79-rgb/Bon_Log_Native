@@ -1,4 +1,4 @@
-import { useCallback } from 'react';
+import { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -38,11 +38,16 @@ import {
   letterSpacingWidest,
   shadowWashi,
 } from '@/lib/constants/design-tokens';
-import { PLAY_SUBSCRIPTIONS_MANAGEMENT_URL } from '@/lib/constants/billing';
+import {
+  BILLING_USER_IDENTITY_ERROR_MESSAGE,
+  PLAY_SUBSCRIPTIONS_MANAGEMENT_URL,
+  SUBSCRIPTION_REFLECTION_MAX_ATTEMPTS,
+  SUBSCRIPTION_REFLECTION_POLL_INTERVAL_MS,
+} from '@/lib/constants/billing';
 import {
   ERR_PURCHASE_FAILED,
   ERR_PURCHASE_PENDING,
-  ERR_GENERIC,
+  ERR_PURCHASE_RESTORE_FAILED,
 } from '@/lib/constants/errors';
 import {
   usePremiumOfferingQuery,
@@ -64,12 +69,26 @@ const LABEL_OFFERING_UNAVAILABLE = '価格情報を取得できませんでし�
 
 const MSG_PURCHASE_SUCCESS_PENDING =
   'プレミアムプランへの加入を受け付けました。反映には数秒かかることがあります。';
-const MSG_RESTORE_SUCCESS = '購入の復元が完了しました。';
+const MSG_RESTORE_SUCCESS_PENDING =
+  '購入の復元を受け付けました。反映には数秒かかることがあります。';
+const MSG_REFLECTION_POLLING =
+  '購入情報を確認しています。サーバーへの反映までこのままお待ちください。';
+const MSG_REFLECTION_TIMEOUT =
+  '購入情報の反映を確認できませんでした。しばらく待ってから、再確認してください。';
+const LABEL_REFLECTION_RETRY = '購入状態を再確認する';
+
+type ReflectionStatus = 'idle' | 'polling' | 'timedOut';
+
+function mutationErrorMessage(error: Error, fallback: string): string {
+  return error.message === BILLING_USER_IDENTITY_ERROR_MESSAGE
+    ? BILLING_USER_IDENTITY_ERROR_MESSAGE
+    : fallback;
+}
 
 export default function SettingsSubscriptionScreen() {
   const { toast, showToast, hideToast } = useToast();
 
-  const { data: currentUser, isFetching: isUserFetching } = useCurrentUserQuery();
+  const { data: currentUser, refetch: refetchCurrentUser } = useCurrentUserQuery();
   const {
     data: offering,
     isLoading: isOfferingLoading,
@@ -77,20 +96,81 @@ export default function SettingsSubscriptionScreen() {
   } = usePremiumOfferingQuery();
   const purchaseMutation = usePurchasePremiumMutation();
   const restoreMutation = useRestorePurchasesMutation();
+  const [reflectionStatus, setReflectionStatus] = useState<ReflectionStatus>('idle');
+  const [reflectionAttempts, setReflectionAttempts] = useState(0);
 
   const isPremium = currentUser?.isPremium === true;
+  const currentUserId = currentUser?.id;
 
-  // purchase 完了または restore 完了後、users.me が refetch 中かつ isPremium 未反映のときに案内を出す
-  const showPendingReflection =
-    isUserFetching &&
-    !isPremium &&
-    (purchaseMutation.isSuccess || restoreMutation.isSuccess);
+  function startReflectionPolling() {
+    setReflectionAttempts(0);
+    setReflectionStatus('polling');
+  }
 
-  const handlePurchase = useCallback(() => {
+  useEffect(() => {
+    if (reflectionStatus === 'idle') {
+      return undefined;
+    }
+
+    if (isPremium) {
+      return undefined;
+    }
+
+    if (reflectionStatus === 'timedOut') {
+      return undefined;
+    }
+
+    if (reflectionAttempts >= SUBSCRIPTION_REFLECTION_MAX_ATTEMPTS) {
+      return undefined;
+    }
+
+    let cancelled = false;
+    const timeoutId = setTimeout(() => {
+      void (async () => {
+        let reflected = false;
+        try {
+          const result = await refetchCurrentUser();
+          if (cancelled) {
+            return;
+          }
+
+          if (result.data?.isPremium === true) {
+            reflected = true;
+            setReflectionAttempts(0);
+            setReflectionStatus('idle');
+          }
+        } catch {
+          // 一時的な再取得失敗も 1 回として数え、上限までは次の確認を続ける。
+        } finally {
+          if (!cancelled && !reflected) {
+            const nextAttempt = reflectionAttempts + 1;
+            if (nextAttempt >= SUBSCRIPTION_REFLECTION_MAX_ATTEMPTS) {
+              setReflectionStatus('timedOut');
+            } else {
+              setReflectionAttempts(nextAttempt);
+            }
+          }
+        }
+      })();
+    }, SUBSCRIPTION_REFLECTION_POLL_INTERVAL_MS);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timeoutId);
+    };
+  }, [isPremium, reflectionAttempts, reflectionStatus, refetchCurrentUser]);
+
+  function handlePurchase() {
     if (offering === null || offering === undefined || isPremium) {
       return;
     }
-    purchaseMutation.mutate(offering.package, {
+
+    if (currentUserId === undefined || currentUserId.length === 0) {
+      showToast(BILLING_USER_IDENTITY_ERROR_MESSAGE, 'error');
+      return;
+    }
+
+    purchaseMutation.mutate({ premiumPackage: offering.package, userId: currentUserId }, {
       onSuccess: (result) => {
         if (result.kind === 'userCancelled') {
           // キャンセルはトーストを出さない（billing.md）
@@ -101,36 +181,60 @@ export default function SettingsSubscriptionScreen() {
           return;
         }
         if (result.kind === 'error') {
-          const message = result.message.length > 0 ? result.message : ERR_PURCHASE_FAILED;
-          showToast(message, 'error');
+          showToast(ERR_PURCHASE_FAILED, 'error');
           return;
         }
         // success
         showToast(MSG_PURCHASE_SUCCESS_PENDING);
+        startReflectionPolling();
+      },
+      onError: (error) => {
+        showToast(mutationErrorMessage(error, ERR_PURCHASE_FAILED), 'error');
       },
     });
-  }, [offering, isPremium, purchaseMutation, showToast]);
+  }
 
-  const handleRestore = useCallback(() => {
-    restoreMutation.mutate(undefined, {
+  function handleRestore() {
+    if (currentUserId === undefined || currentUserId.length === 0) {
+      showToast(BILLING_USER_IDENTITY_ERROR_MESSAGE, 'error');
+      return;
+    }
+
+    restoreMutation.mutate({ userId: currentUserId }, {
       onSuccess: (result) => {
         if (result.kind === 'error') {
-          const message = result.message.length > 0 ? result.message : ERR_GENERIC;
-          showToast(message, 'error');
+          showToast(ERR_PURCHASE_RESTORE_FAILED, 'error');
           return;
         }
         // success
-        showToast(MSG_RESTORE_SUCCESS);
+        showToast(MSG_RESTORE_SUCCESS_PENDING);
+        startReflectionPolling();
+      },
+      onError: (error) => {
+        showToast(
+          mutationErrorMessage(error, ERR_PURCHASE_RESTORE_FAILED),
+          'error'
+        );
       },
     });
-  }, [restoreMutation, showToast]);
+  }
 
-  const handleManage = useCallback(() => {
+  function handleManage() {
     void Linking.openURL(PLAY_SUBSCRIPTIONS_MANAGEMENT_URL);
-  }, []);
+  }
 
   const isPurchasing = purchaseMutation.isPending;
   const isRestoring = restoreMutation.isPending;
+  const isAwaitingReflection = reflectionStatus !== 'idle' && !isPremium;
+  const isPurchaseDisabled =
+    isPurchasing ||
+    isRestoring ||
+    isAwaitingReflection ||
+    offering === null ||
+    offering === undefined ||
+    currentUserId === undefined;
+  const isRestoreDisabled =
+    isPurchasing || isRestoring || isAwaitingReflection || currentUserId === undefined;
 
   const priceLabel = (() => {
     if (isOfferingLoading) return LABEL_OFFERING_LOADING;
@@ -173,11 +277,23 @@ export default function SettingsSubscriptionScreen() {
         </View>
 
         {/* 反映待ち案内 */}
-        {showPendingReflection && (
-          <View style={styles.pendingBanner}>
+        {isAwaitingReflection && (
+          <View style={styles.pendingBanner} accessibilityRole="alert">
             <Text style={styles.pendingBannerText}>
-              {MSG_PURCHASE_SUCCESS_PENDING}
+              {reflectionStatus === 'timedOut'
+                ? MSG_REFLECTION_TIMEOUT
+                : MSG_REFLECTION_POLLING}
             </Text>
+            {reflectionStatus === 'timedOut' && (
+              <TouchableOpacity
+                style={styles.reflectionRetryButton}
+                onPress={startReflectionPolling}
+                accessibilityRole="button"
+                accessibilityLabel={LABEL_REFLECTION_RETRY}
+              >
+                <Text style={styles.reflectionRetryButtonText}>{LABEL_REFLECTION_RETRY}</Text>
+              </TouchableOpacity>
+            )}
           </View>
         )}
 
@@ -205,14 +321,13 @@ export default function SettingsSubscriptionScreen() {
             testID="subscription-purchase"
             style={[
               styles.purchaseButton,
-              (isPurchasing || offering === null || offering === undefined) &&
-                styles.purchaseButtonDisabled,
+              isPurchaseDisabled && styles.purchaseButtonDisabled,
             ]}
             onPress={handlePurchase}
-            disabled={isPurchasing || offering === null || offering === undefined}
+            disabled={isPurchaseDisabled}
             accessibilityRole="button"
             accessibilityLabel="プレミアムプランを購入する"
-            accessibilityState={{ disabled: isPurchasing || offering === null || offering === undefined }}
+            accessibilityState={{ disabled: isPurchaseDisabled }}
           >
             {isPurchasing ? (
               <ActivityIndicator
@@ -232,12 +347,12 @@ export default function SettingsSubscriptionScreen() {
         {/* 購入を復元する */}
         <TouchableOpacity
           testID="subscription-restore"
-          style={[styles.restoreButton, isRestoring && styles.restoreButtonDisabled]}
+          style={[styles.restoreButton, isRestoreDisabled && styles.restoreButtonDisabled]}
           onPress={handleRestore}
-          disabled={isRestoring}
+          disabled={isRestoreDisabled}
           accessibilityRole="button"
           accessibilityLabel="購入を復元する"
-          accessibilityState={{ disabled: isRestoring }}
+          accessibilityState={{ disabled: isRestoreDisabled }}
         >
           {isRestoring ? (
             <ActivityIndicator
@@ -361,6 +476,19 @@ const styles = StyleSheet.create({
   pendingBannerText: {
     ...textSm,
     color: colorInfo,
+  },
+  reflectionRetryButton: {
+    minHeight: 44,
+    marginTop: spacing3,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: radiusMd,
+    backgroundColor: colorActionSecondary,
+  },
+  reflectionRetryButtonText: {
+    ...textSm,
+    color: colorActionSecondaryText,
+    fontWeight: '600',
   },
   benefitsCard: {
     backgroundColor: colorSurface,

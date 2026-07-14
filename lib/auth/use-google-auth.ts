@@ -38,6 +38,14 @@ export type UseGoogleAuthReturn = {
   error: Error | null;
 };
 
+function nativeErrorCode(error: unknown): string | null {
+  if (error === null || typeof error !== 'object' || !('code' in error)) {
+    return null;
+  }
+
+  return typeof error.code === 'string' ? error.code : null;
+}
+
 // ---------------------------------------------------------------------------
 // フック本体
 // ---------------------------------------------------------------------------
@@ -87,14 +95,8 @@ export function useGoogleAuth(): UseGoogleAuthReturn {
       await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
       result = await GoogleSignin.signIn();
     } catch (err) {
-      const isNativeError =
-        err !== null &&
-        typeof err === 'object' &&
-        'code' in err &&
-        typeof (err as { code: unknown }).code === 'string';
-
-      if (isNativeError) {
-        const code = (err as { code: string }).code;
+      const code = nativeErrorCode(err);
+      if (code !== null) {
         if (code === statusCodes.SIGN_IN_CANCELLED) {
           return;
         }

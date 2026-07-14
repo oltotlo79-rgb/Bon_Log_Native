@@ -19,7 +19,10 @@ import {
   setLastAuthFailureReason,
   toAuthFailureReason,
 } from '@/lib/auth/auth-store';
-import { unregisterDeviceForPushNotifications } from '@/lib/push/device-registration';
+import {
+  cancelPendingPushRegistrations,
+  unregisterDeviceForPushNotifications,
+} from '@/lib/push/device-registration';
 import { identifyBillingUser, resetBillingUser } from '@/lib/billing/purchases';
 
 // ---------------------------------------------------------------------------
@@ -225,6 +228,9 @@ export async function verifyTwoFactor(code: string): Promise<void> {
  * サーバー呼び出しが失敗してもローカルのトークン削除と状態遷移は必ず実施する（auth-tokens.md）。
  */
 export async function signOut(queryClient: QueryClient): Promise<void> {
+  // 権限確認待ちの自動登録を、サーバー logout より先に同期的に無効化する。
+  cancelPendingPushRegistrations();
+
   const refreshToken = await getRefreshToken();
 
   // logout API は冪等。失敗しても後続処理を続行する

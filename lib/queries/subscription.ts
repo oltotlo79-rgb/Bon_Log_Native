@@ -9,6 +9,8 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   getPremiumOffering,
+  getBillingAppUserId,
+  identifyBillingUser,
   purchasePremium,
   restorePurchases,
 } from '@/lib/billing/purchases';
@@ -16,6 +18,37 @@ import type { PremiumOffering, PurchaseResult, RestoreResult } from '@/lib/billi
 import type { PurchasesPackage } from 'react-native-purchases';
 import { queryKeys } from '@/lib/queries/keys';
 import { STALE_TIME_MASTER } from '@/lib/constants/query';
+import { BILLING_USER_IDENTITY_ERROR_MESSAGE } from '@/lib/constants/billing';
+
+export interface PurchasePremiumVariables {
+  premiumPackage: PurchasesPackage;
+  userId: string;
+}
+
+export interface RestorePurchasesVariables {
+  userId: string;
+}
+
+/**
+ * 購入・復元の直前に RevenueCat をサーバーのユーザー ID へ必ず再識別する。
+ * logIn 成功後も SDK が保持する ID を確認し、匿名 ID・別ユーザー ID のままなら中断する。
+ */
+async function requireBillingUserIdentity(userId: string): Promise<void> {
+  try {
+    if (userId.trim().length === 0) {
+      throw new Error(BILLING_USER_IDENTITY_ERROR_MESSAGE);
+    }
+
+    await identifyBillingUser(userId);
+
+    const revenueCatUserId = await getBillingAppUserId();
+    if (revenueCatUserId !== userId) {
+      throw new Error(BILLING_USER_IDENTITY_ERROR_MESSAGE);
+    }
+  } catch {
+    throw new Error(BILLING_USER_IDENTITY_ERROR_MESSAGE);
+  }
+}
 
 // ---------------------------------------------------------------------------
 // usePremiumOfferingQuery
@@ -48,18 +81,23 @@ export function usePremiumOfferingQuery() {
  * - 保留（pending）/ エラー（error）: 同上
  *
  * Webhook 経由のため反映に数秒かかる可能性がある（billing.md 絶対規則 2）。
- * invalidate 後は users.me の isFetching を確認して反映待ち UI を出すこと。
+ * 呼び出し前に RevenueCat をサーバーの currentUser.id へ再識別し、SDK 上の ID 一致も確認する。
+ * success 以外では users.me を invalidate しない。
  *
- * frontend 向け: mutate(premiumPackage) で呼び出す。PurchaseResult が onSuccess に来る。
+ * frontend 向け: mutate({ premiumPackage, userId }) で呼び出す。PurchaseResult が onSuccess に来る。
  */
 export function usePurchasePremiumMutation() {
   const queryClient = useQueryClient();
 
-  return useMutation<PurchaseResult, Error, PurchasesPackage>({
-    mutationFn: (pkg: PurchasesPackage) => purchasePremium(pkg),
-    onSettled: async (_data, _error, _variables) => {
-      // 購入試行後は常に users.me を invalidate する（成功・失敗問わず購読状態を最新化する）
-      await queryClient.invalidateQueries({ queryKey: queryKeys.users.me });
+  return useMutation<PurchaseResult, Error, PurchasePremiumVariables>({
+    mutationFn: async ({ premiumPackage, userId }) => {
+      await requireBillingUserIdentity(userId);
+      return purchasePremium(premiumPackage);
+    },
+    onSuccess: async (result) => {
+      if (result.kind === 'success') {
+        await queryClient.invalidateQueries({ queryKey: queryKeys.users.me });
+      }
     },
     // 429 等のリトライが不要。RevenueCat SDK が内部でリトライするため
     retry: false,
@@ -74,15 +112,22 @@ export function usePurchasePremiumMutation() {
  * 過去の購入を復元するミューテーションフック（審査要件 — billing.md 絶対規則 4）。
  * 復元成功後: queryKeys.users.me を invalidate してサーバーの購読状態を最新化する。
  *
- * frontend 向け: mutate() を引数なしで呼び出す。RestoreResult が onSuccess に来る。
+ * 購入と同様に RevenueCat の App User ID を検証し、success 以外では invalidate しない。
+ *
+ * frontend 向け: mutate({ userId }) で呼び出す。RestoreResult が onSuccess に来る。
  */
 export function useRestorePurchasesMutation() {
   const queryClient = useQueryClient();
 
-  return useMutation<RestoreResult, Error, void>({
-    mutationFn: () => restorePurchases(),
-    onSettled: async () => {
-      await queryClient.invalidateQueries({ queryKey: queryKeys.users.me });
+  return useMutation<RestoreResult, Error, RestorePurchasesVariables>({
+    mutationFn: async ({ userId }) => {
+      await requireBillingUserIdentity(userId);
+      return restorePurchases();
+    },
+    onSuccess: async (result) => {
+      if (result.kind === 'success') {
+        await queryClient.invalidateQueries({ queryKey: queryKeys.users.me });
+      }
     },
     retry: false,
   });

@@ -40,7 +40,7 @@
 | フォローリクエスト承認（`useApproveFollowRequestMutation`） | `queryKeys.users.detail(requesterId)` / `queryKeys.notifications.unreadCount` / `queryKeys.notifications.list()`（onSuccess で invalidate） | onSuccess で followRequests.list() のキャッシュから該当 id を setQueryData で除去（承認後は pending 一覧に出ないため）。承認でフォロー関係が成立するため users.detail と notifications も invalidate |
 | フォローリクエスト拒否（`useRejectFollowRequestMutation`） | なし（setQueryData のみ） | onSuccess で followRequests.list() のキャッシュから該当 id を setQueryData で除去。拒否は通知なし・フォロー関係変化なしのため invalidate 不要 |
 | プロフィール更新（`useUpdateProfileMutation`） | `queryKeys.users.me` / `queryKeys.users.meProfile` / 自分の `queryKeys.users.detail(currentUserId)`（onSuccess で setQueryData + invalidate） | onSuccess で users.me（基本情報）・users.meProfile（全フィールド）・users.detail（プロフィール全体）を setQueryData で即時反映し、その後 invalidate で整合させる |
-| アカウント削除（`useDeleteAccountMutation`） | なし（onSettled で `signOut(queryClient)` を呼び、`queryClient.clear()` が全キャッシュを消去） | fail-safe: サーバー削除成功・失敗いずれの場合も signOut を実行してローカル撤収する |
+| アカウント削除（`useDeleteAccountMutation`） | なし（成功時のみ `signOut(queryClient)` を呼び、`queryClient.clear()` が全キャッシュを消去） | 削除失敗時はセッションを維持してエラー表示・再試行を可能にし、サーバー削除成功後のみローカル撤収する |
 | 通知既読（`useMarkNotificationsReadMutation`） | invalidate なし（setQueryData のみ） | onSuccess で通知一覧の isRead と unreadCount を setQueryData で即時反映。サーバーとの整合はリスト再フェッチ（pull-to-refresh・フォアグラウンド復帰）に委ねる |
 | 通知設定更新（`useUpdateNotificationSettingsMutation`） | `queryKeys.notifications.settings`（onSuccess で invalidate） | 部分更新（PATCH）のため整合性を保つため invalidate を選択。楽観更新は行わない（設定ミスのロールバック処理が複雑になるため） |
 | 画像アップロード（`useUploadImageMutation` / `uploadImage`） | なし（アップロードはキャッシュを持たない。投稿/プロフィール更新ミューテーションに URL を渡す） | — |
@@ -103,8 +103,8 @@
 
 | ミューテーション | 無効化するキー | 備考 |
 |----------------|--------------|------|
-| プレミアム購入（`usePurchasePremiumMutation`） | `queryKeys.users.me`（onSettled） | 購入結果に関わらず常に invalidate する（成功・キャンセル・エラー）。RevenueCat Webhook 経由の反映遅延があるため、invalidate 後は users.me の isFetching を UI で表示する。RevenueCat entitlement は判定の正にしない（billing.md 絶対規則 1） |
-| 購入復元（`useRestorePurchasesMutation`） | `queryKeys.users.me`（onSettled） | 復元後の購読状態はサーバーの isPremium で確認する。同上 |
+| プレミアム購入（`usePurchasePremiumMutation`） | `queryKeys.users.me`（`success` 時の onSuccess） | RevenueCat をサーバーの currentUser.id へ再識別し、SDK 上の App User ID 一致を確認してから購入する。キャンセル・保留・エラーでは invalidate／ポーリングしない。成功後は画面側で users.me を上限付きポーリングし、サーバーの isPremium が true になるまで反映待ちを表示する |
+| 購入復元（`useRestorePurchasesMutation`） | `queryKeys.users.me`（`success` 時の onSuccess） | 購入と同じユーザー同一性確認を必須とする。成功後だけ users.me を上限付きポーリングし、タイムアウト後は手動再確認を案内する。RevenueCat entitlement は機能解放の正にせず、サーバーの isPremium のみを使う |
 
 ## 手入れログ系（lib/queries/bonsai-care-logs.ts）
 

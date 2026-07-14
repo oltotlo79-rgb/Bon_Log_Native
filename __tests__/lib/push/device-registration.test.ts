@@ -7,10 +7,14 @@
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import * as SecureStore from 'expo-secure-store';
+import { PermissionStatus } from 'expo-modules-core';
+import type { NotificationPermissionsStatus } from 'expo-notifications';
 import {
   registerDeviceForPushNotifications,
   unregisterDeviceForPushNotifications,
   getPushPermissionStatus,
+  createPushRegistrationGuard,
+  cancelPendingPushRegistrations,
 } from '@/lib/push/device-registration';
 import { SECURE_STORE_PUSH_TOKEN } from '@/lib/constants/secure-store-keys';
 
@@ -31,25 +35,35 @@ jest.mock('@/lib/api/client', () => ({
 
 // expo-secure-store はセットアップで in-memory モック済み。
 // ここでは各 fn への参照を型付きで取得する。
-const mockSecureStoreGet = SecureStore.getItemAsync as jest.Mock;
-const mockSecureStoreSet = SecureStore.setItemAsync as jest.Mock;
-const mockSecureStoreDelete = SecureStore.deleteItemAsync as jest.Mock;
+const mockSecureStoreGet = jest.mocked(SecureStore.getItemAsync);
+const mockSecureStoreSet = jest.mocked(SecureStore.setItemAsync);
+const mockSecureStoreDelete = jest.mocked(SecureStore.deleteItemAsync);
 
-const mockGetPermissions = Notifications.getPermissionsAsync as jest.Mock;
-const mockRequestPermissions = Notifications.requestPermissionsAsync as jest.Mock;
-const mockGetExpoPushToken = Notifications.getExpoPushTokenAsync as jest.Mock;
-const mockAddPushTokenListener = Notifications.addPushTokenListener as jest.Mock;
+const mockGetPermissions = jest.mocked(Notifications.getPermissionsAsync);
+const mockRequestPermissions = jest.mocked(Notifications.requestPermissionsAsync);
+const mockGetExpoPushToken = jest.mocked(Notifications.getExpoPushTokenAsync);
+const mockAddPushTokenListener = jest.mocked(Notifications.addPushTokenListener);
 
 // ---------------------------------------------------------------------------
 // ヘルパー
 // ---------------------------------------------------------------------------
 
-function makeGrantedPermission() {
-  return { granted: true, canAskAgain: false, status: 'granted' };
+function makeGrantedPermission(): NotificationPermissionsStatus {
+  return {
+    granted: true,
+    canAskAgain: false,
+    status: PermissionStatus.GRANTED,
+    expires: 'never',
+  };
 }
 
-function makeDeniedPermission(canAskAgain: boolean) {
-  return { granted: false, canAskAgain, status: canAskAgain ? 'undetermined' : 'denied' };
+function makeDeniedPermission(canAskAgain: boolean): NotificationPermissionsStatus {
+  return {
+    granted: false,
+    canAskAgain,
+    status: canAskAgain ? PermissionStatus.UNDETERMINED : PermissionStatus.DENIED,
+    expires: 'never',
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -168,13 +182,11 @@ describe('registerDeviceForPushNotifications', () => {
 
   describe('エミュレータ（Device.isDevice === false）の場合', () => {
     beforeEach(() => {
-      // setup.ts でゲッター/セッターとして定義されているため直接代入で切り替え可能
-      (Device as unknown as { isDevice: boolean }).isDevice = false;
+      jest.spyOn(Device, 'isDevice', 'get').mockReturnValue(false);
     });
 
     afterEach(() => {
-      // 物理デバイス状態に戻す（他テストへの影響を防ぐ）
-      (Device as unknown as { isDevice: boolean }).isDevice = true;
+      jest.restoreAllMocks();
     });
 
     it('許可要求をスキップして { granted: false, canAskAgain: false } を返す', async () => {
@@ -221,16 +233,52 @@ describe('registerDeviceForPushNotifications', () => {
 // ---------------------------------------------------------------------------
 
 describe('unregisterDeviceForPushNotifications', () => {
-  it('保存済みトークンを URL エンコードして DELETE /api/v1/devices/{token} を呼び出す', async () => {
+  it('進行中の登録完了を待ってから、遅れて保存されたトークンも解除する', async () => {
+    type PostResult = { data: { success: boolean }; error: undefined };
+    let resolvePost: ((value: PostResult) => void) | undefined;
+    let savedToken: string | null = null;
+
+    mockApiClientPost.mockImplementation(
+      () =>
+        new Promise<PostResult>((resolve) => {
+          resolvePost = resolve;
+        })
+    );
+    mockSecureStoreSet.mockImplementation(async (_key, value) => {
+      savedToken = value;
+    });
+    mockSecureStoreGet.mockImplementation(async () => savedToken);
+
+    const registration = registerDeviceForPushNotifications();
+    await Promise.resolve();
+    await Promise.resolve();
+    await Promise.resolve();
+    expect(mockApiClientPost).toHaveBeenCalledTimes(1);
+
+    const unregister = unregisterDeviceForPushNotifications();
+    expect(mockSecureStoreGet).not.toHaveBeenCalled();
+
+    if (resolvePost === undefined) {
+      throw new Error('POST resolver was not initialized');
+    }
+    resolvePost({ data: { success: true }, error: undefined });
+    await Promise.all([registration, unregister]);
+
+    expect(mockApiClientDelete).toHaveBeenCalledWith('/api/v1/devices/{token}', {
+      params: { path: { token: 'ExponentPushToken[test-token-abc]' } },
+    });
+    expect(mockSecureStoreDelete).toHaveBeenCalledWith(SECURE_STORE_PUSH_TOKEN);
+  });
+
+  it('保存済みの生トークンを path serializer に渡して DELETE を呼び出す', async () => {
     const savedToken = 'ExponentPushToken[saved-token]';
     mockSecureStoreGet.mockResolvedValue(savedToken);
 
     await unregisterDeviceForPushNotifications();
 
-    const encodedToken = encodeURIComponent(savedToken);
     expect(mockApiClientDelete).toHaveBeenCalledTimes(1);
     expect(mockApiClientDelete).toHaveBeenCalledWith('/api/v1/devices/{token}', {
-      params: { path: { token: encodedToken } },
+      params: { path: { token: savedToken } },
     });
   });
 
@@ -265,6 +313,16 @@ describe('unregisterDeviceForPushNotifications', () => {
     mockApiClientDelete.mockRejectedValue(new Error('403 Forbidden'));
 
     await expect(unregisterDeviceForPushNotifications()).resolves.toBeUndefined();
+  });
+});
+
+describe('Push 登録世代 guard', () => {
+  it('ログアウト開始で既存 guard を無効化する', () => {
+    const isCurrentRegistration = createPushRegistrationGuard();
+
+    expect(isCurrentRegistration()).toBe(true);
+    cancelPendingPushRegistrations();
+    expect(isCurrentRegistration()).toBe(false);
   });
 });
 

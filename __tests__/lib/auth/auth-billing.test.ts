@@ -48,7 +48,10 @@ jest.mock('expo-secure-store', () => ({
 }));
 
 const mockUnregisterDevice = jest.fn().mockResolvedValue(undefined);
+const mockCancelPendingPushRegistrations = jest.fn();
 jest.mock('@/lib/push/device-registration', () => ({
+  cancelPendingPushRegistrations: (...args: unknown[]) =>
+    mockCancelPendingPushRegistrations(...args),
   unregisterDeviceForPushNotifications: (...args: unknown[]) =>
     mockUnregisterDevice(...args),
 }));

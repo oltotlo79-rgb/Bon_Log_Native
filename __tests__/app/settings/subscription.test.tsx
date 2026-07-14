@@ -5,11 +5,20 @@
  */
 
 import React from 'react';
-import { render, screen, fireEvent, act, waitFor } from '@testing-library/react-native';
+import { screen, fireEvent, act } from '@testing-library/react-native';
 import { Linking } from 'react-native';
 import { renderWithProviders } from '@/__tests__/utils/test-utils';
 import SettingsSubscriptionScreen from '@/app/settings/subscription/index';
-import { PLAY_SUBSCRIPTIONS_MANAGEMENT_URL } from '@/lib/constants/billing';
+import {
+  BILLING_USER_IDENTITY_ERROR_MESSAGE,
+  PLAY_SUBSCRIPTIONS_MANAGEMENT_URL,
+  SUBSCRIPTION_REFLECTION_MAX_ATTEMPTS,
+  SUBSCRIPTION_REFLECTION_POLL_INTERVAL_MS,
+} from '@/lib/constants/billing';
+import {
+  ERR_PURCHASE_FAILED,
+  ERR_PURCHASE_RESTORE_FAILED,
+} from '@/lib/constants/errors';
 
 // ---------------------------------------------------------------------------
 // モック設定
@@ -19,6 +28,7 @@ const mockCurrentUserQuery = jest.fn();
 const mockPremiumOfferingQuery = jest.fn();
 const mockPurchaseMutate = jest.fn();
 const mockRestoreMutate = jest.fn();
+const mockRefetchCurrentUser = jest.fn();
 
 jest.mock('@/lib/queries/auth', () => ({
   useCurrentUserQuery: () => mockCurrentUserQuery(),
@@ -29,16 +39,12 @@ jest.mock('@/lib/queries/subscription', () => ({
   usePurchasePremiumMutation: () => ({
     mutate: mockPurchaseMutate,
     isPending: false,
-    isSuccess: false,
   }),
   useRestorePurchasesMutation: () => ({
     mutate: mockRestoreMutate,
     isPending: false,
-    isSuccess: false,
   }),
 }));
-
-const mockOpenURL = jest.fn(() => Promise.resolve());
 
 // ---------------------------------------------------------------------------
 // ヘルパー
@@ -73,6 +79,7 @@ function setupDefaultMocks() {
   mockCurrentUserQuery.mockReturnValue({
     data: makeCurrentUser(),
     isFetching: false,
+    refetch: mockRefetchCurrentUser,
   });
   mockPremiumOfferingQuery.mockReturnValue({
     data: makePremiumOffering(),
@@ -86,7 +93,9 @@ function setupDefaultMocks() {
 // ---------------------------------------------------------------------------
 
 beforeEach(() => {
+  jest.useRealTimers();
   jest.clearAllMocks();
+  mockRefetchCurrentUser.mockResolvedValue({ data: makeCurrentUser() });
   setupDefaultMocks();
 });
 
@@ -137,6 +146,7 @@ describe('SettingsSubscriptionScreen', () => {
       mockCurrentUserQuery.mockReturnValue({
         data: makeCurrentUser({ isPremium: false }),
         isFetching: false,
+        refetch: mockRefetchCurrentUser,
       });
     });
 
@@ -163,6 +173,7 @@ describe('SettingsSubscriptionScreen', () => {
       mockCurrentUserQuery.mockReturnValue({
         data: makeCurrentUser({ isPremium: true }),
         isFetching: false,
+        refetch: mockRefetchCurrentUser,
       });
     });
 
@@ -243,6 +254,16 @@ describe('SettingsSubscriptionScreen', () => {
       });
 
       expect(mockPurchaseMutate).toHaveBeenCalledTimes(1);
+      expect(mockPurchaseMutate).toHaveBeenCalledWith(
+        expect.objectContaining({
+          userId: 'user-1',
+          premiumPackage: expect.objectContaining({ identifier: 'monthly' }),
+        }),
+        expect.objectContaining({
+          onSuccess: expect.any(Function),
+          onError: expect.any(Function),
+        })
+      );
     });
 
     it('購入成功（success）時にトーストが表示される', async () => {
@@ -308,7 +329,27 @@ describe('SettingsSubscriptionScreen', () => {
         );
       });
 
-      expect(screen.getByText('購入に失敗しました。')).toBeTruthy();
+      expect(screen.getByText(ERR_PURCHASE_FAILED)).toBeTruthy();
+    });
+
+    it('identify 失敗が mutation error になった場合は案内を表示する', async () => {
+      mockPurchaseMutate.mockImplementation(
+        (
+          _variables: unknown,
+          options?: { onError?: (error: Error) => void }
+        ) => {
+          options?.onError?.(new Error(BILLING_USER_IDENTITY_ERROR_MESSAGE));
+        }
+      );
+      renderWithProviders(<SettingsSubscriptionScreen />);
+
+      await act(async () => {
+        fireEvent.press(
+          screen.getByRole('button', { name: 'プレミアムプランを購入する' })
+        );
+      });
+
+      expect(screen.getByText(BILLING_USER_IDENTITY_ERROR_MESSAGE)).toBeTruthy();
     });
 
     it('offering が null のとき購入ボタンは disabled になっている', () => {
@@ -340,6 +381,13 @@ describe('SettingsSubscriptionScreen', () => {
       });
 
       expect(mockRestoreMutate).toHaveBeenCalledTimes(1);
+      expect(mockRestoreMutate).toHaveBeenCalledWith(
+        { userId: 'user-1' },
+        expect.objectContaining({
+          onSuccess: expect.any(Function),
+          onError: expect.any(Function),
+        })
+      );
     });
 
     it('復元成功（success）時にトーストが表示される', async () => {
@@ -352,7 +400,9 @@ describe('SettingsSubscriptionScreen', () => {
         fireEvent.press(screen.getByRole('button', { name: '購入を復元する' }));
       });
 
-      expect(screen.getByText('購入の復元が完了しました。')).toBeTruthy();
+      expect(
+        screen.getByText('購入の復元を受け付けました。反映には数秒かかることがあります。')
+      ).toBeTruthy();
     });
 
     it('復元エラー（error）時にエラートーストが表示される', async () => {
@@ -365,7 +415,25 @@ describe('SettingsSubscriptionScreen', () => {
         fireEvent.press(screen.getByRole('button', { name: '購入を復元する' }));
       });
 
-      expect(screen.getByText('復元に失敗しました。')).toBeTruthy();
+      expect(screen.getByText(ERR_PURCHASE_RESTORE_FAILED)).toBeTruthy();
+    });
+
+    it('復元前の identify 失敗が mutation error になった場合は案内を表示する', async () => {
+      mockRestoreMutate.mockImplementation(
+        (
+          _variables: unknown,
+          options?: { onError?: (error: Error) => void }
+        ) => {
+          options?.onError?.(new Error(BILLING_USER_IDENTITY_ERROR_MESSAGE));
+        }
+      );
+      renderWithProviders(<SettingsSubscriptionScreen />);
+
+      await act(async () => {
+        fireEvent.press(screen.getByRole('button', { name: '購入を復元する' }));
+      });
+
+      expect(screen.getByText(BILLING_USER_IDENTITY_ERROR_MESSAGE)).toBeTruthy();
     });
   });
 
@@ -374,37 +442,183 @@ describe('SettingsSubscriptionScreen', () => {
   // -------------------------------------------------------------------------
 
   describe('反映待ち UI', () => {
-    it('購入成功後 users.me が fetching 中かつ isPremium=false のとき反映待ちバナーが表示される', async () => {
-      // isPremium=false かつ isFetching=true の状態 + purchaseMutation.isSuccess=true
-      mockCurrentUserQuery.mockReturnValue({
-        data: makeCurrentUser({ isPremium: false }),
-        isFetching: true,
+    beforeEach(() => {
+      jest.useFakeTimers();
+    });
+
+    it('購入成功時だけ users.me を再確認し、isPremium=true でポーリングを停止する', async () => {
+      mockPurchaseMutate.mockImplementation(
+        (
+          _variables: unknown,
+          options?: { onSuccess?: (result: { kind: 'success' }) => void }
+        ) => {
+          options?.onSuccess?.({ kind: 'success' });
+        }
+      );
+      mockRefetchCurrentUser.mockResolvedValue({
+        data: makeCurrentUser({ isPremium: true }),
       });
-
-      jest.mock('@/lib/queries/subscription', () => ({
-        usePremiumOfferingQuery: () => mockPremiumOfferingQuery(),
-        usePurchasePremiumMutation: () => ({
-          mutate: mockPurchaseMutate,
-          isPending: false,
-          isSuccess: true,
-        }),
-        useRestorePurchasesMutation: () => ({
-          mutate: mockRestoreMutate,
-          isPending: false,
-          isSuccess: false,
-        }),
-      }));
-
       renderWithProviders(<SettingsSubscriptionScreen />);
 
-      await waitFor(() => {
-        const banner = screen.queryByText(
-          'プレミアムプランへの加入を受け付けました。反映には数秒かかることがあります。'
+      await act(async () => {
+        fireEvent.press(
+          screen.getByRole('button', { name: 'プレミアムプランを購入する' })
         );
-        // isSuccess は mock レベルで false なのでバナーは出ない — この経路はモック差し替えを必要とするが
-        // コンポーネントのロジック（showPendingReflection条件）を下記で直接検証する
-        expect(banner).toBeNull();
       });
+      expect(
+        screen.getByText(
+          '購入情報を確認しています。サーバーへの反映までこのままお待ちください。'
+        )
+      ).toBeTruthy();
+
+      await act(async () => {
+        jest.advanceTimersByTime(SUBSCRIPTION_REFLECTION_POLL_INTERVAL_MS);
+        await Promise.resolve();
+      });
+
+      expect(mockRefetchCurrentUser).toHaveBeenCalledTimes(1);
+      expect(
+        screen.queryByText(
+          '購入情報を確認しています。サーバーへの反映までこのままお待ちください。'
+        )
+      ).toBeNull();
+
+      await act(async () => {
+        jest.advanceTimersByTime(
+          SUBSCRIPTION_REFLECTION_POLL_INTERVAL_MS *
+            SUBSCRIPTION_REFLECTION_MAX_ATTEMPTS
+        );
+      });
+      expect(mockRefetchCurrentUser).toHaveBeenCalledTimes(1);
+    });
+
+    it.each([
+      ['userCancelled', { kind: 'userCancelled' }],
+      ['pending', { kind: 'pending', message: '保留中' }],
+      ['error', { kind: 'error', message: '購入失敗' }],
+    ])('%s では users.me をポーリングしない', async (_label, mutationResult) => {
+      mockPurchaseMutate.mockImplementation(
+        (
+          _variables: unknown,
+          options?: { onSuccess?: (result: typeof mutationResult) => void }
+        ) => {
+          options?.onSuccess?.(mutationResult);
+        }
+      );
+      renderWithProviders(<SettingsSubscriptionScreen />);
+
+      await act(async () => {
+        fireEvent.press(
+          screen.getByRole('button', { name: 'プレミアムプランを購入する' })
+        );
+      });
+      await act(async () => {
+        jest.advanceTimersByTime(
+          SUBSCRIPTION_REFLECTION_POLL_INTERVAL_MS *
+            SUBSCRIPTION_REFLECTION_MAX_ATTEMPTS
+        );
+      });
+
+      expect(mockRefetchCurrentUser).not.toHaveBeenCalled();
+      expect(
+        screen.queryByText(
+          '購入情報を確認しています。サーバーへの反映までこのままお待ちください。'
+        )
+      ).toBeNull();
+    });
+
+    it('上限到達後は反映待ち状態を保持し、手動再確認で再開できる', async () => {
+      mockPurchaseMutate.mockImplementation(
+        (
+          _variables: unknown,
+          options?: { onSuccess?: (result: { kind: 'success' }) => void }
+        ) => {
+          options?.onSuccess?.({ kind: 'success' });
+        }
+      );
+      mockRefetchCurrentUser.mockResolvedValue({
+        data: makeCurrentUser({ isPremium: false }),
+      });
+      renderWithProviders(<SettingsSubscriptionScreen />);
+
+      await act(async () => {
+        fireEvent.press(
+          screen.getByRole('button', { name: 'プレミアムプランを購入する' })
+        );
+      });
+
+      for (let attempt = 0; attempt < SUBSCRIPTION_REFLECTION_MAX_ATTEMPTS; attempt += 1) {
+        await act(async () => {
+          jest.advanceTimersByTime(SUBSCRIPTION_REFLECTION_POLL_INTERVAL_MS);
+          await Promise.resolve();
+        });
+      }
+
+      expect(mockRefetchCurrentUser).toHaveBeenCalledTimes(
+        SUBSCRIPTION_REFLECTION_MAX_ATTEMPTS
+      );
+      expect(
+        screen.getByText(
+          '購入情報の反映を確認できませんでした。しばらく待ってから、再確認してください。'
+        )
+      ).toBeTruthy();
+      const retryButton = screen.getByRole('button', { name: '購入状態を再確認する' });
+
+      await act(async () => {
+        jest.advanceTimersByTime(
+          SUBSCRIPTION_REFLECTION_POLL_INTERVAL_MS *
+            SUBSCRIPTION_REFLECTION_MAX_ATTEMPTS
+        );
+      });
+      expect(mockRefetchCurrentUser).toHaveBeenCalledTimes(
+        SUBSCRIPTION_REFLECTION_MAX_ATTEMPTS
+      );
+
+      mockRefetchCurrentUser.mockResolvedValue({
+        data: makeCurrentUser({ isPremium: true }),
+      });
+      await act(async () => {
+        fireEvent.press(retryButton);
+      });
+      await act(async () => {
+        jest.advanceTimersByTime(SUBSCRIPTION_REFLECTION_POLL_INTERVAL_MS);
+        await Promise.resolve();
+      });
+
+      expect(mockRefetchCurrentUser).toHaveBeenCalledTimes(
+        SUBSCRIPTION_REFLECTION_MAX_ATTEMPTS + 1
+      );
+      expect(
+        screen.queryByText(
+          '購入情報の反映を確認できませんでした。しばらく待ってから、再確認してください。'
+        )
+      ).toBeNull();
+    });
+
+    it('画面を離れたら予約済みのポーリングを破棄する', async () => {
+      mockRestoreMutate.mockImplementation(
+        (
+          _variables: unknown,
+          options?: { onSuccess?: (result: { kind: 'success' }) => void }
+        ) => {
+          options?.onSuccess?.({ kind: 'success' });
+        }
+      );
+      const view = renderWithProviders(<SettingsSubscriptionScreen />);
+
+      await act(async () => {
+        fireEvent.press(screen.getByRole('button', { name: '購入を復元する' }));
+      });
+      view.unmount();
+
+      await act(async () => {
+        jest.advanceTimersByTime(
+          SUBSCRIPTION_REFLECTION_POLL_INTERVAL_MS *
+            SUBSCRIPTION_REFLECTION_MAX_ATTEMPTS
+        );
+      });
+
+      expect(mockRefetchCurrentUser).not.toHaveBeenCalled();
     });
   });
 
@@ -416,9 +630,7 @@ describe('SettingsSubscriptionScreen', () => {
     it('管理ボタンを押すと Linking.openURL が正しい URL で呼ばれる', async () => {
       // Linking は jest.mock ではなく spyOn で差し替える
       // react-native 内部の NativeLinking モジュール経由なので spyOn が有効
-      const linkingSpy = jest
-        .spyOn(require('react-native').Linking, 'openURL')
-        .mockResolvedValue(undefined);
+      const linkingSpy = jest.spyOn(Linking, 'openURL').mockResolvedValue(undefined);
 
       renderWithProviders(<SettingsSubscriptionScreen />);
 

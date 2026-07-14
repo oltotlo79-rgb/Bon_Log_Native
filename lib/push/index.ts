@@ -8,6 +8,8 @@ export {
   registerDeviceForPushNotifications,
   unregisterDeviceForPushNotifications,
   getPushPermissionStatus,
+  createPushRegistrationGuard,
+  cancelPendingPushRegistrations,
 } from '@/lib/push/device-registration';
 export type { PushPermissionStatus } from '@/lib/push/device-registration';
 

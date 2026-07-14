@@ -123,6 +123,11 @@ export async function identifyBillingUser(userId: string): Promise<void> {
   await Purchases.logIn(userId);
 }
 
+/** RevenueCat SDK が現在保持している App User ID を返す。 */
+export async function getBillingAppUserId(): Promise<string> {
+  return Purchases.getAppUserID();
+}
+
 /**
  * ログアウト時に RevenueCat のユーザーをリセットする（fail-safe）。
  * この関数が失敗しても呼び出し元のログアウト処理を止めない。

@@ -11,6 +11,7 @@ import type { PurchasesPackage } from 'react-native-purchases';
 import {
   initBilling,
   identifyBillingUser,
+  getBillingAppUserId,
   resetBillingUser,
   getPremiumOffering,
   purchasePremium,
@@ -182,6 +183,15 @@ describe('identifyBillingUser', () => {
     await identifyBillingUser('user-win');
 
     expect(Purchases.logIn).not.toHaveBeenCalled();
+  });
+});
+
+describe('getBillingAppUserId', () => {
+  it('RevenueCat SDK が保持する App User ID を返す', async () => {
+    jest.mocked(Purchases.getAppUserID).mockResolvedValue('user-123');
+
+    await expect(getBillingAppUserId()).resolves.toBe('user-123');
+    expect(Purchases.getAppUserID).toHaveBeenCalledTimes(1);
   });
 });
 

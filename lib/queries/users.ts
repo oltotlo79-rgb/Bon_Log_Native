@@ -191,7 +191,7 @@ export function useUpdateProfileMutation(currentUserId: string) {
  *
  * DELETE /api/v1/users/me — cascade 削除。
  *
- * サーバー削除成功後、および失敗時も fail-safe でローカル撤収（signOut）を実施する。
+ * サーバー削除成功後にのみローカル撤収（signOut）を実施する。
  * signOut: logout API → Push 解除 → トークン削除 → queryClient.clear() → signedOut 遷移。
  *
  * アカウント削除後はリフレッシュトークンが cascade 削除されるため、
@@ -209,8 +209,9 @@ export function useDeleteAccountMutation() {
       return data;
     },
 
-    onSettled: async () => {
-      // サーバー削除成功・失敗いずれの場合もローカルの撤収処理を実施する（fail-safe）。
+    onSuccess: async () => {
+      // 削除失敗時はセッションを維持し、画面側でエラー表示と再試行を可能にする。
+      // サーバー削除成功後はローカルの撤収処理を実施する。
       // アカウント削除後はリフレッシュトークンが cascade 削除済みのため、
       // signOut 内の logout API が失敗しても後続処理を続行する。
       await signOut(queryClient);

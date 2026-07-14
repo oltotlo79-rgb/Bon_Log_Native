@@ -15,6 +15,23 @@
  */
 export const REVENUECAT_PREMIUM_OFFERING_ID = 'premium';
 
+/**
+ * RevenueCat の App User ID をサーバーの currentUser.id に固定できなかった場合の案内。
+ * 匿名 ID や別ユーザー ID のまま購入・復元へ進ませないため、処理を中断して再試行を促す。
+ */
+export const BILLING_USER_IDENTITY_ERROR_MESSAGE =
+  '課金アカウントを確認できませんでした。通信状況を確認して、もう一度お試しください。';
+
+// ---------------------------------------------------------------------------
+// Webhook 反映確認
+// ---------------------------------------------------------------------------
+
+/** RevenueCat Webhook がサーバーの購読状態へ反映されるまでの再確認間隔。 */
+export const SUBSCRIPTION_REFLECTION_POLL_INTERVAL_MS = 2_000;
+
+/** users.me を再確認する最大回数。合計待ち時間を有限にして画面離脱時に停止できるようにする。 */
+export const SUBSCRIPTION_REFLECTION_MAX_ATTEMPTS = 5;
+
 // ---------------------------------------------------------------------------
 // 外部管理 URL
 // ---------------------------------------------------------------------------
