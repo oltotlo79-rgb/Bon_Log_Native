@@ -37,7 +37,7 @@ Codex がこのリポジトリの開発を引き継ぐための現況・規約�
 
 型チェック・lint（エラー0件）・テスト・カバレッジゲートはすべて緑。ただし lint 警告 145 件（大半はテストファイルの `require()` モック由来）が残っており、ゼロ化はしていない。
 
-**本節の数値は 2026-07-14 時点の記録である。2026-07-27・2026-07-28 セッションでさらに更新されており、品質ゲートの最新値は §12.4 を参照（lint 警告は 0 まで解消済み）。**
+**本節の数値は 2026-07-14 時点の記録であり、以後更新しない（固定されたスナップショット）。品質ゲートの最新値は常に §12.4（単一情報源。再測定のたびに上書き更新する節）を参照する（lint 警告は 0 まで解消済み）。**
 
 ## 5. 直近セッションで完了した主なバッチ
 
@@ -63,8 +63,8 @@ Codex がこのリポジトリの開発を引き継ぐための現況・規約�
 
 **未処理（relay 待ち。`docs/plans/` はローカル調整用であり cfw リポジトリの正本ではない）**:
 
-1. **`isBlockedByUser` を `UserProfileResponse` に追加**（`docs/plans/handoff-to-cfw-genre-category-and-bonsai-id-2026-07-05.md` 末尾「追加依頼4」、追記日 2026-07-13）。2026-07-13 付けの cfw 回答書（`reply-from-cfw-genre-category-and-bonsai-id-2026-07-13.md`）は項目1〜3（genre category / bonsaiId / 日時制約）のみに回答しており、この追加依頼4には触れていない。実際に `lib/api/generated/schema.d.ts` を grep しても `isBlockedByUser` は存在せず、**未反映であることを確認済み**。Web は相手からブロックされている場合に専用の全画面表示へ切り替えるが、Native はこの状態を検出できないままになっている。
-2. **検索の複数ジャンルフィルタ**: `GET /api/v1/search/posts` の `genreId` は単一文字列のみ（`lib/api/generated/schema.d.ts:2746` `genreId?: string`）。Native の `components/search/PostSearchFilterPanel.tsx` もこれに合わせて単一選択（`localGenreId: string`）で実装済み。一方 Web の投稿検索（`Bon_Log_cfw/app/(main)/search/page.tsx:37-38,68`）は `genre` パラメータを配列で受け取り複数ジャンル＋カテゴリ分類の `GenreFilter` を提供している。この差分についての**依頼書はまだ作成していない**ため、Codex が起票する必要がある。
+1. **`isBlockedByUser` を `UserProfileResponse` に追加**（`docs/plans/handoff-to-cfw-genre-category-and-bonsai-id-2026-07-05.md` 末尾「追加依頼4」、追記日 2026-07-13）。2026-07-13 付けの cfw 回答書（`reply-from-cfw-genre-category-and-bonsai-id-2026-07-13.md`）は項目1〜3（genre category / bonsaiId / 日時制約）のみに回答しており、この追加依頼4には触れていない。実際に `lib/api/generated/schema.d.ts` を grep しても `isBlockedByUser` は存在せず、**未反映であることを確認済み**。Web は相手からブロックされている場合に専用の全画面表示へ切り替えるが、Native はこの状態を検出できないままになっている。**依頼書は 2026-07-14 セッションで `docs/plans/handoff-to-cfw-user-profile-is-blocked-by-user-2026-07-14.md` として作成済み（§10 参照）。2026-07-27 時点の再検証（§11.6）でも cfw 側は未着手。**
+2. **検索の複数ジャンルフィルタ**: `GET /api/v1/search/posts` の `genreId` は単一文字列のみ（`lib/api/generated/schema.d.ts:2746` `genreId?: string`）。Native の `components/search/PostSearchFilterPanel.tsx` もこれに合わせて単一選択（`localGenreId: string`）で実装済み。一方 Web の投稿検索（`Bon_Log_cfw/app/(main)/search/page.tsx:37-38,68`）は `genre` パラメータを配列で受け取り複数ジャンル＋カテゴリ分類の `GenreFilter` を提供している。**依頼書は 2026-07-14 セッションで `docs/plans/handoff-to-cfw-search-multiple-genres-2026-07-14.md` として作成済み（§10 参照）。2026-07-27 時点の再検証（§11.6）でも cfw 側は未着手。**
 
 ## 7. 残タスク（優先度順。今回の Web 準拠監査〈検索・DM・ブックマーク・分析・発見〉の結果を反映）
 
@@ -89,11 +89,11 @@ Codex がこのリポジトリの開発を引き継ぐための現況・規約�
 
 - **[完了 — 2026-07-14 のセッション内で対応済み。詳細は §10 を参照]** 検索タグタブの人気タグへの到達性（frontend）。Web（`Bon_Log_cfw/app/(main)/search/page.tsx:64`）は `SearchTabs` を常時（クエリの有無に関わらず）描画しており、未入力のままタグタブを開くと人気タグ（`!query && tab === 'tags' && <PopularTags .../>`、93行目）に到達できる。一方 Native の `app/(tabs)/search/index.tsx` は `showInitialView`（508行目、`inputValue` と `debouncedQuery` が両方空かつジャンルフィルタなしで真）の間は `SearchSegmentTabs` 自体を描画しない（536〜590行目）ため、何か入力しない限りタグタブへ到達できない。なお `components/search/HashtagSearchResults.tsx` 自体は「クエリが空なら人気タグ上位10件を表示する」ロジック（139〜190行目）を Web の `PopularTags` 準拠で実装済みであり、**問題はタブへの到達性のみ**（タグタブの中身は未入力表示に対応済み）。
 - **[完了 — 2026-07-14 のセッション内で対応済み。詳細は §10 を参照]** `lib/queries/analytics.ts:28-30` の `toAnalyticsDays` が `String(period) as AnalyticsDays` という `as` キャストを使っている（`AnalyticsPeriod = 7 | 30 | 90`、`AnalyticsDays = '7' | '30' | '90'`。`lib/queries/keys.ts:351,357`）。値は3種類のみで実害はないが、CLAUDE.md 核心ルール8（`any` / `as` 禁止）には反するため、`Record<AnalyticsPeriod, AnalyticsDays>` 等のルックアップ表に置き換えるべき。
-- doc 陳腐化2件:
-  - `docs/design/search-screen.md`: §1・§16 は「MVP スコープで投稿/ユーザーの2タブに絞る（タグ検索は将来検討）」と記述しているが、実装（`app/(tabs)/search/index.tsx:76` の `{ key: 'tags', label: 'タグ' }`、および `components/search/HashtagSearchResults.tsx`）はすでに投稿/ユーザー/タグの3タブ構成になっている。
-  - `docs/design/design-tokens.md:102` は `colorTextPrimary` を `#1a1a1a` と記載しているが、実装 `lib/constants/design-tokens.ts:59` は `#060606` になっている（他の値、例えば `colorBackground` の `#ffffff` は一致しており、ドリフトは一部の値に限られる可能性がある。全項目の突合は未実施）。
-- テスト網羅の追加余地: `PostComposer` の一部分岐（2026-07-27 再測定でも Functions 86.66% で同水準）。**[完了]** `lib/utils/qr-code.ts` の異常系は 2026-07-14 時点で Branches 50% だったが、2026-07-27 再測定では Branches 100% に到達しており解消済み。
-- `docs/design/post-composer.md:880`（§16）: 「PATCH エンドポイントの差分更新方式 — `bonsaiId` を除く項目（部分更新か全件置き換えか）によってリクエスト設計が変わる。`bonsaiId` 自体は部分更新契約であることを確認済み」と記載されたまま `core（要確認）` 扱いで残っている。本書ではこの点の実装調査は行っていない（未確認のまま引き継ぐ）。
+- doc 陳腐化2件（**[完了 — いずれも 2026-07-14 のセッション内で是正済み。§10 参照]**）:
+  - `docs/design/search-screen.md`: 当時 §1・§16 は「MVP スコープで投稿/ユーザーの2タブに絞る（タグ検索は将来検討）」と記述していたが、実装（`app/(tabs)/search/index.tsx:76` の `{ key: 'tags', label: 'タグ' }`、および `components/search/HashtagSearchResults.tsx`）はすでに投稿/ユーザー/タグの3タブ構成になっていた。ドキュメント側の改訂履歴（`docs/design/search-screen.md:4`）に「同日、投稿・ユーザー・タグの3タブ実装と未入力時の人気タグ表示に合わせて更新」と記載されており、現在の §1（`docs/design/search-screen.md:14`）は「Web 版に準拠した『投稿 / ユーザー / タグ』3 タブ構成」と3タブの記述に是正済みであることを確認済み。
+  - `docs/design/design-tokens.md:102` は当時 `colorTextPrimary` を `#1a1a1a` と記載していたが、実装 `lib/constants/design-tokens.ts:59` は `#060606` だった。§10 の全項目監査で同期済みであり、現在は `docs/design/design-tokens.md:107` も `#060606` と記載されていることを確認済み。
+- テスト網羅の追加余地: `PostComposer` の一部分岐（2026-07-28 時点の再測定でも Functions 86.66% で同水準。`components/post/PostComposer.tsx:387-396` が未カバー）。**[完了]** `lib/utils/qr-code.ts` の異常系は 2026-07-14 時点で Branches 50% だったが、2026-07-28 時点の再測定でも Statements/Branches/Functions/Lines すべて 100% を維持しており解消済み。
+- **[完了 — 2026-07-14 のセッション内で調査済み。§10 参照]** `docs/design/post-composer.md` §16 は当時「PATCH エンドポイントの差分更新方式 — `bonsaiId` を除く項目（部分更新か全件置き換えか）によってリクエスト設計が変わる」と `core（要確認）` 扱いのまま残っていたが、Native 生成型・query・composer と cfw 実装の読み取り調査により「`content`/`genreIds`/`mediaUrls`/`mediaTypes` は現在値による全差し替え、`bonsaiId` のみ省略可能な部分更新」というハイブリッド契約であることを確定した。現在の `docs/design/post-composer.md:213`（「契約確認（2026-07-14）」）に詳細が反映され、`:880`（§16 冒頭）にも「2026-07-14 に PATCH 更新契約の調査を完了した。結論は §5.2 のとおりであり、未確定事項から除外した」と明記されていることを確認済み。
 
 ### D 実機QA（次ビルドで要確認。静的コードレビューでは検証しきれない項目）
 
@@ -121,7 +121,7 @@ Codex がこのリポジトリの開発を引き継ぐための現況・規約�
 ## 9. Codex への作業手順
 
 - 分業を踏襲するなら PM-orchestrator 経由で各エージェントへ委譲する。直接作業する場合も `CLAUDE.md` と `.claude/rules/` を厳守すること。
-- **Bon_Log_cfw は絶対に編集しない**。読み取りと `npm run generate:api` によるスキーマ取込みのみ許可。サーバー側の変更が必要な場合は `docs/plans/handoff-to-cfw-*.md` 形式で依頼書を作成し、file:line 引用で裏取りしたうえで引き継ぐ（本書 §6 の未処理2件を参照。特に検索の複数ジャンルフィルタは依頼書が未作成）。
+- **Bon_Log_cfw は絶対に編集しない**。読み取りと `npm run generate:api` によるスキーマ取込みのみ許可。サーバー側の変更が必要な場合は `docs/plans/handoff-to-cfw-*.md` 形式で依頼書を作成し、file:line 引用で裏取りしたうえで引き継ぐ（本書 §6 の未処理2件を参照。両件とも依頼書は 2026-07-14 セッションで作成済みであり、2026-07-27 時点で cfw 側は未着手のまま — 詳細は §6・§11.6）。
 - 変更は都度 commit・push する。並行作業時は `git pull --rebase --autostash` で自分の変更を保持したまま最新化する。
 - 新機能・修正には必ずテストを伴わせ、カバレッジ閾値（branches 80% / functions 85% / lines 85% / statements 85%）を割らないこと。現状値（§4）を下回らせないことを最低ラインとする。
 - 監査・調査を行う際は本書と同様に **file:line の引用義務**を課し、import グラフを辿って本番導線から実際に使われているかを裏取りすること（デッドコード・未使用コンポーネントを本番実装と誤認しないため。過去に `PostForm.tsx` を本番と誤認した事故がある）。
@@ -211,7 +211,7 @@ cfw は引き続き読み取り専用で、Native 側から変更していない
 
 ## 11. 2026-07-27 セッション: Google Play 公開直前の最終是正（品質ゲート実測値の更新）
 
-本節は §4・§10・§10.1 の基準時点より後に実施した作業結果である。**品質ゲートの数値は §12.4（2026-07-28 計測）がさらに新しく、重複する数値は §12.4 を優先する。**
+本節は §4・§10・§10.1 の基準時点より後に実施した作業結果である。**本節（§11.1）の数値も 2026-07-27 時点の記録として以後更新しない（固定されたスナップショット）。品質ゲートの最新値は常に §12.4（単一情報源。再測定のたびに上書き更新する節）を参照する。**
 
 ### 11.1 実測した品質ゲート（2026-07-27）
 
@@ -255,24 +255,27 @@ cfw は引き続き読み取り専用で、Native 側から変更していない
 
 - サーバー（Bon_Log_cfw）は URL の**大文字スキームを受理する**（`../Bon_Log_cfw/lib/api/v1/schemas/request.ts:601,627` の `/^https?:\/\//i`、および `:542,802` の `z.string().url()`）。そのため盆栽園の `website` やイベントの `externalUrl` に `HTTPS://example.com` のような値が保存され得る（Web 版からの登録分も含む）
 - `expo-web-browser` の Android 実装（`node_modules/expo-web-browser/android/.../WebBrowserModule.kt:83-90`）は `intent.data = url.toUri()` の後 `canResolveIntent` で解決できなければ例外を投げる。`normalizeScheme()` を呼んでおらず、Android の IntentFilter のスキーム照合は大文字小文字を区別するため、`HTTPS://` は解決に失敗する
-- 結果、`app/shops/[id]/index.tsx:142-148` と `app/events/[id]/index.tsx:178-184` で外部リンクをタップしても `catch` で Sentry に送られるだけで**ユーザーには何も起きない（サイレント失敗）**
+- 結果、当時の `app/shops/[id]/index.tsx:142-148` と `app/events/[id]/index.tsx:178-184`（`normalizeUrlScheme` 適用前）で外部リンクをタップしても `catch` で Sentry に送られるだけで**ユーザーには何も起きない（サイレント失敗）**という状態だった（この不具合は 12.2 のとおり同セッション中に修正済み）
 - これは今セッションの変更が作った欠陥ではなく、サーバーが以前から大文字スキームを受理していたため、既存データ（特に Web 版から登録された `website` / `externalUrl`）経由でも従来から発生し得た不具合である
 
 ### 12.2 対処
 
 `lib/utils/normalize-url-scheme.ts` に `normalizeUrlScheme(url: string): string` を新設した。`http://` / `https://` のスキーム部分のみを大文字小文字問わず小文字化し、ホスト名・パス・クエリ・フラグメントは一切変更しない（パスは大文字小文字を区別するためリンクが壊れる）。スキームが http/https でない場合・空文字はそのまま返す。URL の妥当性検証（危険スキームの拒否等）は `isValidUrl` の責務のままで、本関数には混ぜていない。
 
-**呼び出し側（`app/shops/[id]/index.tsx` の `openBrowserAsync` 呼び出し直前など）への適用は本セッションのスコープ外（`lib/` 限定の担当）であり、frontend 側の差し替えが必要。** 適用後は実機（Android）での動作確認が必須（§7-D に追記済み）。
+**呼び出し側への適用は完了済みである（コミット `9e03564`）。** `app/shops/[id]/index.tsx:145`（`handleOpenWebsite` 内）と `app/events/[id]/index.tsx:181`（`handleOpenExternalUrl` 内）はいずれも `WebBrowser.openBrowserAsync(normalizeUrlScheme(url))` の形で修正済みであることを実ファイルで確認済み。実機（Android）での動作確認は §7-D のとおり未実施のまま残る。
 
 ### 12.3 `isValidUrl` の意味論変更（§11.3 の補記）
 
 §11.3 に記載の `isValidUrl` 集約は、同時に判定を**大文字小文字非依存**（サーバーと同一の `/^https?:\/\//i`）へ意味論変更していた（コミット `17f3b22`）。詳細は §11.3 本文に追記済み。
 
-### 12.4 実測した品質ゲート（2026-07-28）
+### 12.4 品質ゲート — 単一情報源（最新値。再測定時は本節の数値を上書き更新し、新しい日付見出しの節を追加しない）
 
-- 計測時点のコミット: `daa0468b1bbaad9484b87a167934652dcea88d56`（`refactor: lib配下の軽微な重複を解消`。この文書自身のコミットは計測後に作成されるため、実際の HEAD はこれより新しくなる）
-- 作業ツリー: `lib/utils/normalize-url-scheme.ts` 新規追加 + 本文書の更新のみ
+本節はこの文書における品質ゲート数値の唯一の最新情報源である。§4・§10・§10.1・§11.1 に記載された数値はいずれもそのセッション時点で固定されたスナップショットであり、以後更新しない。今後さらに再測定する場合も、新しい `### 12.5` 等の節を追加するのではなく、本節の数値をその場で上書きすること（分散を防ぐため）。
+
+- 計測時点のコミット: `6583430039046e5a41ff4d337c74fc5b0d20bb08`（`test: normalizeUrlScheme の単体テストを追加`。この文書自身の更新コミットは計測後に作成されるため、実際の HEAD はこれよりわずかに新しくなり得る — 構造上の制約であり実害はない）
+- 作業ツリー: クリーン（`git status --short` 出力なし。本文書の更新のみ後続でコミットする）
 - `npx tsc --noEmit`: エラー **0**
 - `npm run lint`: エラー **0** / 警告 **0**
-- `npm run test:coverage -- --runInBand`: **Test Suites 345 passed / 345**、**Tests 5,844 passed / 5,844**。カバレッジ **Statements 91.66% / Branches 84.42% / Functions 87.62% / Lines 92.53%**（閾値 branches80 / functions85 / lines85 / statements85 をすべて超過。コマンド exit code 0）
-- `normalize-url-scheme.ts` は呼び出し側が frontend で差し替わるまで未カバー（Functions/Lines 0%）。上記の全体カバレッジはこの未カバー分を含んだ実測値であり、閾値を割っていないことを確認済み
+- `npm test -- --runInBand`: **Test Suites 346 passed / 346**、**Tests 5,867 passed / 5,867**
+- `npm run test:coverage -- --runInBand`: 同一の 346 suites / 5,867 tests 全 pass。カバレッジ **Statements 91.69% / Branches 84.42% / Functions 87.68% / Lines 92.55%**（閾値 branches80 / functions85 / lines85 / statements85 をすべて超過。コマンド exit code 0）
+- `lib/utils/normalize-url-scheme.ts`: 呼び出し側への適用（コミット `9e03564`）に続き、単体テスト 23 件（コミット `6583430`、`__tests__/lib/utils/normalize-url-scheme.test.ts`）が追加済みで、個別カバレッジは **Statements/Branches/Functions/Lines すべて 100%**。§12.2 に記載していた「未カバー（Functions/Lines 0%）」は解消済みであり、上記の全体カバレッジ値にもこの分が反映されている
