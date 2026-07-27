@@ -9,6 +9,12 @@ import * as ImagePicker from 'expo-image-picker';
 import { Alert, Linking, Platform } from 'react-native';
 import type { AttachedImage } from '@/components/post/ImageAttachmentGrid';
 import { MAX_POST_IMAGES_FREE, MAX_POST_IMAGES_PREMIUM } from '@/lib/constants/limits/media';
+import {
+  ERR_PHOTO_PERMISSION_TITLE,
+  ERR_PHOTO_PERMISSION_BODY,
+  ERR_VIDEO_PERMISSION_TITLE,
+  ERR_VIDEO_PERMISSION_BODY,
+} from '@/lib/constants/errors';
 
 // ---------------------------------------------------------------------------
 // 型
@@ -74,8 +80,8 @@ export function usePostComposer({ isPremium, initialValues }: UsePostComposerPar
     if (status !== 'granted') {
       if (Platform.OS === 'ios') {
         Alert.alert(
-          '写真へのアクセスが必要です',
-          '設定アプリから写真へのアクセスを許可してください。',
+          ERR_PHOTO_PERMISSION_TITLE,
+          ERR_PHOTO_PERMISSION_BODY,
           [
             { text: 'キャンセル', style: 'cancel' },
             { text: '設定を開く', onPress: () => void Linking.openSettings() },
@@ -83,8 +89,8 @@ export function usePostComposer({ isPremium, initialValues }: UsePostComposerPar
         );
       } else {
         Alert.alert(
-          '写真へのアクセスが必要です',
-          '設定アプリから写真へのアクセスを許可してください。'
+          ERR_PHOTO_PERMISSION_TITLE,
+          ERR_PHOTO_PERMISSION_BODY
         );
       }
       return;
@@ -114,8 +120,8 @@ export function usePostComposer({ isPremium, initialValues }: UsePostComposerPar
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
       Alert.alert(
-        '写真・動画へのアクセスが必要です',
-        '設定アプリから許可してください。'
+        ERR_VIDEO_PERMISSION_TITLE,
+        ERR_VIDEO_PERMISSION_BODY
       );
       return;
     }

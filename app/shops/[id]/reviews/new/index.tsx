@@ -30,6 +30,8 @@ import {
   ERR_REVIEW_DUPLICATE,
   ERR_OFFLINE_ACTION,
   ERR_MEDIA_UPLOAD_FAILED,
+  ERR_PHOTO_PERMISSION_TITLE,
+  ERR_PHOTO_PERMISSION_BODY,
 } from '@/lib/constants/errors';
 import {
   colorBackground,
@@ -124,8 +126,8 @@ export default function NewReviewScreen() {
     if (status !== 'granted') {
       if (Platform.OS === 'ios') {
         Alert.alert(
-          '写真へのアクセスが必要です',
-          '設定アプリから写真へのアクセスを許可してください。',
+          ERR_PHOTO_PERMISSION_TITLE,
+          ERR_PHOTO_PERMISSION_BODY,
           [
             { text: 'キャンセル', style: 'cancel' },
             { text: '設定を開く', onPress: () => void Linking.openSettings() },
@@ -133,8 +135,8 @@ export default function NewReviewScreen() {
         );
       } else {
         Alert.alert(
-          '写真へのアクセスが必要です',
-          '設定アプリから写真へのアクセスを許可してください。'
+          ERR_PHOTO_PERMISSION_TITLE,
+          ERR_PHOTO_PERMISSION_BODY
         );
       }
       return;

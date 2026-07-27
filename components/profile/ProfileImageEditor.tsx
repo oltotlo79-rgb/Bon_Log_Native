@@ -27,6 +27,12 @@ import {
   spacing4,
   radiusFull,
 } from '@/lib/constants/design-tokens';
+import {
+  ERR_PHOTO_PERMISSION_TITLE,
+  ERR_PROFILE_PHOTO_PERMISSION_BODY,
+  ERR_CAMERA_PERMISSION_TITLE,
+  ERR_CAMERA_PERMISSION_BODY,
+} from '@/lib/constants/errors';
 import { UserAvatar } from '@/components/common/UserAvatar';
 
 // ---------------------------------------------------------------------------
@@ -91,8 +97,8 @@ export function ProfileImageEditor({
         const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
         if (status !== 'granted') {
           Alert.alert(
-            '写真へのアクセスが必要です',
-            '設定アプリから写真ライブラリへのアクセスを許可してください。',
+            ERR_PHOTO_PERMISSION_TITLE,
+            ERR_PROFILE_PHOTO_PERMISSION_BODY,
             [{ text: 'OK' }]
           );
           return;
@@ -118,8 +124,8 @@ export function ProfileImageEditor({
         const { status } = await ImagePicker.requestCameraPermissionsAsync();
         if (status !== 'granted') {
           Alert.alert(
-            'カメラへのアクセスが必要です',
-            '設定アプリからカメラへのアクセスを許可してください。',
+            ERR_CAMERA_PERMISSION_TITLE,
+            ERR_CAMERA_PERMISSION_BODY,
             [{ text: 'OK' }]
           );
           return;

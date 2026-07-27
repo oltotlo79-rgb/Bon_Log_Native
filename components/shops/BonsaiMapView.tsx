@@ -44,7 +44,12 @@ import {
   textSm,
   textXs,
 } from '@/lib/constants/design-tokens';
-import { ERR_LOAD_FAILED } from '@/lib/constants/errors';
+import {
+  ERR_LOAD_FAILED,
+  ERR_LOCATION_PERMISSION_TITLE,
+  ERR_LOCATION_PERMISSION_BODY,
+  ERR_CURRENT_LOCATION_FAILED,
+} from '@/lib/constants/errors';
 import { LEAFLET_CSS_CONTENT, LEAFLET_JS_CONTENT } from '@/components/shops/leaflet-vendor';
 
 // ---------------------------------------------------------------------------
@@ -681,8 +686,8 @@ export const BonsaiMapView = React.memo(function BonsaiMapView({
 
       if (status !== 'granted') {
         Alert.alert(
-          '位置情報の使用を許可してください',
-          '現在地を表示するには、設定から位置情報の使用を許可してください。',
+          ERR_LOCATION_PERMISSION_TITLE,
+          ERR_LOCATION_PERMISSION_BODY,
           [
             { text: 'キャンセル', style: 'cancel' },
             {
@@ -704,7 +709,7 @@ export const BonsaiMapView = React.memo(function BonsaiMapView({
       const js = `moveToLocation(${latitude}, ${longitude}); true;`;
       webViewRef.current?.injectJavaScript(js);
     } catch {
-      Alert.alert('エラー', '現在地を取得できませんでした');
+      Alert.alert('エラー', ERR_CURRENT_LOCATION_FAILED);
     } finally {
       setIsLocating(false);
     }
