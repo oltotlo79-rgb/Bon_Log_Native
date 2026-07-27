@@ -231,6 +231,7 @@ export default function LoginScreen() {
                   returnKeyType="next"
                   onSubmitEditing={() => passwordRef.current?.focus()}
                   accessibilityHint="メールアドレスを入力してください"
+                  testID="login-email-input"
                 />
 
                 <PasswordField
@@ -246,6 +247,7 @@ export default function LoginScreen() {
                   textContentType="password"
                   returnKeyType="done"
                   accessibilityHint="8文字以上の英字と数字を含むパスワード"
+                  testID="login-password-input"
                 />
 
                 <FormErrorMessage message={formError} />
@@ -263,6 +265,7 @@ export default function LoginScreen() {
                   onPress={handleSubmit}
                   disabled={!allRequiredFilled || isGoogleLoading}
                   isLoading={isPending}
+                  testID="login-submit-button"
                 />
 
                 <AuthDivider />

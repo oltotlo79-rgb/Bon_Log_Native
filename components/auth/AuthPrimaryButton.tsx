@@ -32,6 +32,7 @@ export type AuthPrimaryButtonProps = {
   disabled?: boolean;
   isLoading?: boolean;
   accessibilityLabel?: string;
+  testID?: string;
 };
 
 // ---------------------------------------------------------------------------
@@ -60,6 +61,7 @@ export function AuthPrimaryButton({
   disabled = false,
   isLoading = false,
   accessibilityLabel,
+  testID,
 }: AuthPrimaryButtonProps) {
   const isDisabled = disabled || isLoading;
   const { ripples, triggerInkRipple } = useInkRipple();
@@ -77,6 +79,7 @@ export function AuthPrimaryButton({
       accessibilityRole="button"
       accessibilityLabel={accessibilityLabel ?? label}
       accessibilityState={{ disabled: isDisabled, busy: isLoading }}
+      testID={testID}
     >
       {({ pressed }) => (
         <LinearGradient
