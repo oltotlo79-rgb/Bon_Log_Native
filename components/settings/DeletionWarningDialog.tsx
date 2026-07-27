@@ -38,6 +38,13 @@ import {
   textLg,
   shadowWashiLg,
 } from '@/lib/constants/design-tokens';
+import {
+  CONFIRM_DELETE_ACCOUNT_TITLE,
+  CONFIRM_DELETE_ACCOUNT_BODY,
+  CONFIRM_DELETE_ACCOUNT_DATA_ITEMS,
+  CONFIRM_DELETE_ACCOUNT_PREMIUM_NOTICE_TITLE,
+  CONFIRM_DELETE_ACCOUNT_PREMIUM_NOTICE_BODY,
+} from '@/lib/constants/errors';
 
 // ---------------------------------------------------------------------------
 // 定数
@@ -47,13 +54,6 @@ const ICON_CIRCLE_SIZE = 56;
 const ICON_SIZE = 28;
 const INFO_ICON_SIZE = 16;
 const GOOGLE_PLAY_SUBSCRIPTIONS_URL = 'https://play.google.com/store/account/subscriptions';
-
-const DELETED_DATA_ITEMS = [
-  'あなたが作成したすべての投稿とコメント',
-  'フォロー中・フォロワーのつながり',
-  'いいね・ブックマークなどの活動履歴',
-  'アカウント情報（メールアドレス・プロフィール等）',
-] as const;
 
 // ---------------------------------------------------------------------------
 // Props
@@ -110,16 +110,14 @@ export function DeletionWarningDialog({
             </View>
 
             {/* タイトル */}
-            <Text style={styles.title}>アカウントを削除しますか？</Text>
+            <Text style={styles.title}>{CONFIRM_DELETE_ACCOUNT_TITLE}</Text>
 
             {/* 説明文 */}
-            <Text style={styles.body}>
-              この操作は取り消せません。削除すると、以下のすべてのデータが完全に削除されます。
-            </Text>
+            <Text style={styles.body}>{CONFIRM_DELETE_ACCOUNT_BODY}</Text>
 
             {/* 削除されるデータリスト */}
             <View style={styles.dataList}>
-              {DELETED_DATA_ITEMS.map((item, index) => (
+              {CONFIRM_DELETE_ACCOUNT_DATA_ITEMS.map((item, index) => (
                 <Text
                   key={index}
                   style={styles.dataListItem}
@@ -145,11 +143,11 @@ export function DeletionWarningDialog({
                     importantForAccessibility="no"
                   />
                   <Text style={styles.premiumWarningTitle}>
-                    プレミアムプランをご利用中の方へ
+                    {CONFIRM_DELETE_ACCOUNT_PREMIUM_NOTICE_TITLE}
                   </Text>
                 </View>
                 <Text style={styles.premiumWarningBody}>
-                  アカウントを削除してもプレミアムプランは自動的には解約されません。Google Play の定期購入管理ページから先にプランを解約されることをおすすめします。
+                  {CONFIRM_DELETE_ACCOUNT_PREMIUM_NOTICE_BODY}
                 </Text>
                 <TouchableOpacity
                   onPress={handleOpenGooglePlay}

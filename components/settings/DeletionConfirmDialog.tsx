@@ -18,6 +18,12 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { FormErrorMessage } from '@/components/auth/FormErrorMessage';
 import {
+  CONFIRM_DELETE_ACCOUNT_FINAL_TITLE,
+  CONFIRM_DELETE_ACCOUNT_FINAL_BODY,
+  CONFIRM_DELETE_ACCOUNT_INPUT_MISMATCH,
+  CONFIRM_DELETE_IRREVERSIBLE_BODY,
+} from '@/lib/constants/errors';
+import {
   colorBackground,
   colorTextPrimary,
   colorTextSecondary,
@@ -128,12 +134,10 @@ export function DeletionConfirmDialog({
           </View>
 
           {/* タイトル */}
-          <Text style={styles.title}>本当にアカウントを削除しますか？</Text>
+          <Text style={styles.title}>{CONFIRM_DELETE_ACCOUNT_FINAL_TITLE}</Text>
 
           {/* 説明文 */}
-          <Text style={styles.body}>
-            確認のために「削除する」と入力してください。
-          </Text>
+          <Text style={styles.body}>{CONFIRM_DELETE_ACCOUNT_FINAL_BODY}</Text>
 
           {/* 意思確認テキスト入力 */}
           <View style={[styles.inputContainer, { borderColor: inputBorderColor }]}>
@@ -149,14 +153,14 @@ export function DeletionConfirmDialog({
               editable={!isDeleting}
               style={styles.input}
               accessibilityLabel="削除することを確認する入力フィールド"
-              accessibilityHint="「削除する」と入力してください"
+              accessibilityHint={CONFIRM_DELETE_ACCOUNT_INPUT_MISMATCH}
             />
           </View>
 
           {/* テキスト不一致エラー */}
           {showInputError && (
             <View accessibilityRole="alert" accessibilityLiveRegion="assertive">
-              <Text style={styles.inputError}>「削除する」と入力してください</Text>
+              <Text style={styles.inputError}>{CONFIRM_DELETE_ACCOUNT_INPUT_MISMATCH}</Text>
             </View>
           )}
 
@@ -187,7 +191,7 @@ export function DeletionConfirmDialog({
               disabled={!isMatched || isDeleting}
               accessibilityRole="button"
               accessibilityLabel="アカウントを完全に削除する"
-              accessibilityHint="この操作は取り消せません。"
+              accessibilityHint={CONFIRM_DELETE_IRREVERSIBLE_BODY}
               accessibilityState={{ disabled: !isMatched || isDeleting }}
             >
               {isDeleting ? (

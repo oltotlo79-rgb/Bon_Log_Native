@@ -31,6 +31,7 @@ import {
   ERR_RATE_LIMIT,
   ERR_FORBIDDEN,
   messageForApiError,
+  CONFIRM_DELETE_ACCOUNT_HINT,
 } from '@/lib/constants/errors';
 import {
   colorBackground,
@@ -230,9 +231,7 @@ export default function SettingsAccountScreen() {
           </TouchableOpacity>
         </View>
 
-        <Text style={styles.dangerHint}>
-          アカウントを削除すると、投稿・コメント・フォロー関係を含むすべてのデータが削除され、元に戻すことはできません。
-        </Text>
+        <Text style={styles.dangerHint}>{CONFIRM_DELETE_ACCOUNT_HINT}</Text>
       </ScrollView>
 
       {/* 第1ダイアログ（警告） */}
