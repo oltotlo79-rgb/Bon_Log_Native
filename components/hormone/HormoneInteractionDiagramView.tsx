@@ -35,6 +35,7 @@ import {
   textXs,
 } from '@/lib/constants/design-tokens';
 import { ERR_LOAD_FAILED } from '@/lib/constants/errors';
+import { isRecord } from '@/lib/utils/type-guards';
 
 // ---------------------------------------------------------------------------
 // 定数（Web 版 lib/constants/hormone-techniques.ts の DIAGRAM_* と同値）
@@ -94,10 +95,6 @@ type Props = {
  * （BonsaiMapView.tsx のようなサブリソース起因の onHttpError は発生し得ない）。
  */
 type DiagramErrorKind = 'ERR_MAIN_FRAME' | 'ERR_JS' | 'ERR_TIMEOUT';
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
-}
 
 /**
  * ホルモン名・相互作用データ等の動的値に `</script` 相当の文字列が含まれると、

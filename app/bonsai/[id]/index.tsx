@@ -206,7 +206,8 @@ export default function BonsaiDetailScreen() {
 
   // サーバーは詳細レスポンスに latestRecord を含めないため、成長記録一覧
   // （recordAt 降順・images は sortOrder 昇順で返る）の先頭画像から導出する。
-  // 一覧画面の thumbnailUrl（latest.images[0]）と同じ導出結果になる。
+  // 通常は一覧画面の thumbnailUrl（latest.images[0]）と同じ導出結果になるが、
+  // 同日に複数記録がある場合は一覧側の並び順が不定なため一致しないことがある。
   const coverImageUrl = allRecords[0]?.images[0]?.url ?? null;
 
   return (

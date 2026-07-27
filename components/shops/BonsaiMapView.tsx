@@ -51,6 +51,7 @@ import {
   ERR_CURRENT_LOCATION_FAILED,
 } from '@/lib/constants/errors';
 import { LEAFLET_CSS_CONTENT, LEAFLET_JS_CONTENT } from '@/components/shops/leaflet-vendor';
+import { isRecord } from '@/lib/utils/type-guards';
 
 // ---------------------------------------------------------------------------
 // 定数
@@ -113,10 +114,6 @@ type Props = {
  * ユーザーの次回報告でどの経路の失敗かを判別できるよう、小さく画面に表示する。
  */
 type MapErrorKind = 'ERR_MAIN_FRAME' | 'ERR_JS' | 'ERR_TIMEOUT';
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
-}
 
 /** タイル画像（サブリソース）の失敗はメインドキュメントの致命的失敗として扱わない */
 function isMainFrameFailureUrl(url: string): boolean {
