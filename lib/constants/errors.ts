@@ -782,6 +782,47 @@ export const CONFIRM_REPORT_TITLE_PREFIX = 'この';
 export const CONFIRM_REPORT_TITLE_SUFFIX = 'を通報しますか？';
 
 // ---------------------------------------------------------------------------
+// アカウント削除フロー（DeletionWarningDialog / DeletionConfirmDialog / 設定画面）
+// Google Play 審査要件（store-compliance.md §アカウント）に関わる重要フローのため、
+// 確認ダイアログ・注意書きの文言をここに集約する。
+// ---------------------------------------------------------------------------
+
+/** アカウント削除フロー 第1ダイアログ（警告）のタイトル */
+export const CONFIRM_DELETE_ACCOUNT_TITLE = 'アカウントを削除しますか？';
+
+/** アカウント削除フロー 第1ダイアログ（警告）の本文 */
+export const CONFIRM_DELETE_ACCOUNT_BODY =
+  'この操作は取り消せません。削除すると、以下のすべてのデータが完全に削除されます。';
+
+/** アカウント削除フロー 第1ダイアログで表示する、削除されるデータの一覧 */
+export const CONFIRM_DELETE_ACCOUNT_DATA_ITEMS = [
+  'あなたが作成したすべての投稿とコメント',
+  'フォロー中・フォロワーのつながり',
+  'いいね・ブックマークなどの活動履歴',
+  'アカウント情報（メールアドレス・プロフィール等）',
+] as const;
+
+/** アカウント削除フロー 第1ダイアログのプレミアム購読中ユーザーへの注意喚起 見出し */
+export const CONFIRM_DELETE_ACCOUNT_PREMIUM_NOTICE_TITLE = 'プレミアムプランをご利用中の方へ';
+
+/** アカウント削除フロー 第1ダイアログのプレミアム購読中ユーザーへの注意喚起 本文 */
+export const CONFIRM_DELETE_ACCOUNT_PREMIUM_NOTICE_BODY =
+  'アカウントを削除してもプレミアムプランは自動的には解約されません。Google Play の定期購入管理ページから先にプランを解約されることをおすすめします。';
+
+/** アカウント削除フロー 第2ダイアログ（意思確認）のタイトル */
+export const CONFIRM_DELETE_ACCOUNT_FINAL_TITLE = '本当にアカウントを削除しますか？';
+
+/** アカウント削除フロー 第2ダイアログ（意思確認）の本文 */
+export const CONFIRM_DELETE_ACCOUNT_FINAL_BODY = '確認のために「削除する」と入力してください。';
+
+/** アカウント削除フロー 第2ダイアログの意思確認テキスト不一致エラー */
+export const CONFIRM_DELETE_ACCOUNT_INPUT_MISMATCH = '「削除する」と入力してください';
+
+/** アカウント設定画面の危険ゾーンに表示するアカウント削除の注意書き */
+export const CONFIRM_DELETE_ACCOUNT_HINT =
+  'アカウントを削除すると、投稿・コメント・フォロー関係を含むすべてのデータが削除され、元に戻すことはできません。';
+
+// ---------------------------------------------------------------------------
 // 認証フォーム — 案内・成功メッセージ
 // ---------------------------------------------------------------------------
 
