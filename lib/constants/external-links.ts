@@ -7,11 +7,9 @@
 
 import { API_BASE_URL } from '@/lib/constants/api';
 
-const BASE_URL = API_BASE_URL;
-
 /** パス文字列とベース URL を結合する共通ロジック */
 function buildUrl(path: string): string {
-  return `${BASE_URL}${path}`;
+  return `${API_BASE_URL}${path}`;
 }
 
 // ---------------------------------------------------------------------------

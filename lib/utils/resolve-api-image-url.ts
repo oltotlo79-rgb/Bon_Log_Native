@@ -5,13 +5,11 @@
  * 相対パスには EXPO_PUBLIC_API_BASE_URL を前置して正規化する。
  */
 
-// EXPO_PUBLIC_API_BASE_URL が未設定の場合は本番 URL にフォールバックする。
-// 開発環境で意図的に空文字を設定した場合でも /images/... のような相対パスは
-// そのままでは expo-image が解決できないため、フォールバックで最低限動作させる。
-const API_BASE_URL = (process.env.EXPO_PUBLIC_API_BASE_URL ?? 'https://www.bon-log.com').replace(
-  /\/$/,
-  ''
-);
+import { API_BASE_URL } from '@/lib/constants/api';
+
+// 相対パス前置用に末尾スラッシュを除去する。フォールバック文字列自体は
+// lib/constants/api.ts の API_BASE_URL に一元化済み。
+const NORMALIZED_API_BASE_URL = API_BASE_URL.replace(/\/$/, '');
 
 /**
  * サーバーが返す imageUrl を完全な HTTPS URL に解決して返す。
@@ -35,7 +33,7 @@ export function resolveApiImageUrl(imageUrl: string | null | undefined): string 
   }
 
   if (imageUrl.startsWith('/')) {
-    return `${API_BASE_URL}${imageUrl}`;
+    return `${NORMALIZED_API_BASE_URL}${imageUrl}`;
   }
 
   return imageUrl;
