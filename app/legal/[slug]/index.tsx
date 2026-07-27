@@ -46,7 +46,7 @@ import {
 const LEGAL_SLUGS = ['tokushoho', 'terms', 'privacy'] as const satisfies readonly LegalSlug[];
 
 function isLegalSlug(value: unknown): value is LegalSlug {
-  return typeof value === 'string' && (LEGAL_SLUGS as readonly string[]).includes(value);
+  return typeof value === 'string' && LEGAL_SLUGS.some((slug) => slug === value);
 }
 
 function formatDate(iso: string): string {

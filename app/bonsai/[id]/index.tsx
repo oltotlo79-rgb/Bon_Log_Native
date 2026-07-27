@@ -265,23 +265,19 @@ export default function BonsaiDetailScreen() {
         {/* 基本情報 */}
         <View style={styles.infoSection}>
           <Text style={styles.bonsaiName}>{bonsai.name}</Text>
-          {(bonsai as { species?: string | null }).species !== undefined &&
-            (bonsai as { species?: string | null }).species !== null &&
-            (bonsai as { species?: string | null }).species !== '' && (
+          {bonsai.species !== null && bonsai.species !== '' && (
             <Text style={styles.species}>
-              {(bonsai as { species: string }).species}
+              {bonsai.species}
             </Text>
           )}
-          {(bonsai as { acquiredAt?: string | null }).acquiredAt !== undefined &&
-            (bonsai as { acquiredAt?: string | null }).acquiredAt !== null && (
+          {bonsai.acquiredAt !== null && (
             <Text style={styles.acquiredAt}>
-              取得日: {formatDate((bonsai as { acquiredAt: string }).acquiredAt)}
+              取得日: {formatDate(bonsai.acquiredAt)}
             </Text>
           )}
-          {(bonsai as { description?: string | null }).description !== undefined &&
-            (bonsai as { description?: string | null }).description !== null && (
+          {bonsai.description !== null && (
             <Text style={styles.description}>
-              {(bonsai as { description: string }).description}
+              {bonsai.description}
             </Text>
           )}
         </View>

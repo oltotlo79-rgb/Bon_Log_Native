@@ -120,7 +120,7 @@ export default function HormoneColumnsScreen() {
 
   const handlePress = useCallback((slug: string) => {
     router.push({
-      pathname: '/hormones/columns/[slug]' as never,
+      pathname: '/hormones/columns/[slug]',
       params: { slug },
     });
   }, []);

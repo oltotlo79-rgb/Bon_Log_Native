@@ -71,7 +71,7 @@ export default function BookmarksScreen() {
 
   const { data: currentUser } = useCurrentUserQuery();
 
-  const allItems: BookmarkItem[] = data?.pages.flatMap((page) => page.items as BookmarkItem[]) ?? [];
+  const allItems: BookmarkItem[] = data?.pages.flatMap((page) => page.items) ?? [];
 
   const handleRefresh = useCallback(() => {
     void refetch();

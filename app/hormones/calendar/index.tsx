@@ -63,6 +63,9 @@ const LEVEL_CONFIG: Record<ActivityLevel, { bg: string; text: string; label: str
   minimal: { bg: colorLevelMinimalBg, text: colorLevelMinimalText, label: '微', numericValue: 0 },
 };
 
+// 凡例の表示順（Object.entries の型が Record のキー順を保証しないため固定配列で列挙する）
+const ACTIVITY_LEVELS: readonly ActivityLevel[] = ['high', 'moderate', 'low', 'minimal'];
+
 const MONTH_LABELS = [
   '1月', '2月', '3月', '4月', '5月', '6月',
   '7月', '8月', '9月', '10月', '11月', '12月',
@@ -92,7 +95,7 @@ export default function HormoneCalendarScreen() {
   const handleMonthPress = useCallback((month: number) => {
     setSelectedMonth((prev) => (prev === month ? null : month));
     router.push({
-      pathname: '/hormones/simulator' as never,
+      pathname: '/hormones/simulator',
       params: { month: String(month) },
     });
   }, []);
@@ -216,14 +219,15 @@ export default function HormoneCalendarScreen() {
         {/* 凡例 */}
         <View style={styles.legendRow}>
           <Text style={styles.legendTitle}>凡例:</Text>
-          {(Object.entries(LEVEL_CONFIG) as [ActivityLevel, typeof LEVEL_CONFIG[ActivityLevel]][]).map(
-            ([key, conf]) => (
+          {ACTIVITY_LEVELS.map((key) => {
+            const conf = LEVEL_CONFIG[key];
+            return (
               <View key={key} style={styles.legendItem}>
                 <View style={[styles.legendSwatch, { backgroundColor: conf.bg }]} />
                 <Text style={styles.legendLabel}>{conf.label}</Text>
               </View>
-            ),
-          )}
+            );
+          })}
         </View>
       </ScrollView>
     </View>

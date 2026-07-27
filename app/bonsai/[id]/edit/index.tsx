@@ -95,7 +95,7 @@ export default function BonsaiEditScreen() {
     return <ScreenLoading variant="spinner" />;
   }
 
-  return <FormBody id={id} bonsai={bonsai as unknown as BonsaiForEdit} />;
+  return <FormBody id={id} bonsai={bonsai} />;
 }
 
 // ---------------------------------------------------------------------------

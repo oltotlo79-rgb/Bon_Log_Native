@@ -76,6 +76,9 @@ import {
 
 type FertilizerAction = 'none' | 'light' | 'moderate' | 'heavy';
 
+// 凡例の表示順（Object.entries の型が Record のキー順を保証しないため固定配列で列挙する）
+const FERTILIZER_ACTIONS: readonly FertilizerAction[] = ['none', 'light', 'moderate', 'heavy'];
+
 // Web版 lib/utils/fertilizer.ts の FERTILIZER_ACTION_BADGE に対応
 const ACTION_LABEL: Record<FertilizerAction, string> = {
   none: '不要',
@@ -417,10 +420,10 @@ const FertilizationTimeline = memo(function FertilizationTimeline({
       {/* 凡例 */}
       <View style={timelineStyles.legend}>
         <Text style={timelineStyles.legendTitle}>施肥量:</Text>
-        {(Object.entries(ACTION_LABEL) as [FertilizerAction, string][]).map(([action, label]) => (
+        {FERTILIZER_ACTIONS.map((action) => (
           <View key={action} style={timelineStyles.legendItem}>
             <View style={[timelineStyles.legendSwatch, { backgroundColor: ACTION_BAR_BG[action] }]} />
-            <Text style={timelineStyles.legendText}>{label}</Text>
+            <Text style={timelineStyles.legendText}>{ACTION_LABEL[action]}</Text>
           </View>
         ))}
       </View>

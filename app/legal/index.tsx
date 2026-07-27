@@ -49,7 +49,7 @@ type LegalListItem = LegalListResponse['items'][number];
 const LEGAL_SLUGS = ['tokushoho', 'terms', 'privacy'] as const;
 
 function isLegalSlug(value: string): value is LegalSlug {
-  return (LEGAL_SLUGS as readonly string[]).includes(value);
+  return LEGAL_SLUGS.some((slug) => slug === value);
 }
 
 // ---------------------------------------------------------------------------
