@@ -204,9 +204,10 @@ export default function BonsaiDetailScreen() {
     );
   }
 
-  const coverImageUrl =
-    (bonsai as { latestRecord?: { thumbnailUrl?: string | null } | null })
-      .latestRecord?.thumbnailUrl ?? null;
+  // サーバーは詳細レスポンスに latestRecord を含めないため、成長記録一覧
+  // （recordAt 降順・images は sortOrder 昇順で返る）の先頭画像から導出する。
+  // 一覧画面の thumbnailUrl（latest.images[0]）と同じ導出結果になる。
+  const coverImageUrl = allRecords[0]?.images[0]?.url ?? null;
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>

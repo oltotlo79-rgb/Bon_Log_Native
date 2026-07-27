@@ -57,7 +57,6 @@ function makeBonsai(overrides = {}) {
     acquiredAt: null,
     description: null,
     recordCount: 0,
-    latestRecord: null,
     createdAt: '2025-06-01T00:00:00Z',
     updatedAt: '2025-06-01T00:00:00Z',
     ...overrides,
@@ -233,6 +232,61 @@ describe('BonsaiDetailScreen', () => {
       });
       renderWithProviders(<BonsaiDetailScreen />);
       expect(screen.getByText('記録がまだありません')).toBeTruthy();
+    });
+  });
+
+  describe('アイキャッチ画像（成長記録から導出）', () => {
+    it('最新の成長記録の先頭画像がカバー画像として表示される', () => {
+      mockUseBonsaiRecordsQuery.mockReturnValue({
+        data: {
+          pages: [{
+            items: [
+              {
+                id: 'rec-latest',
+                content: '最新記録',
+                recordAt: '2025-06-10',
+                images: [{ url: 'https://example.com/latest.jpg', sortOrder: 0 }],
+              },
+              {
+                id: 'rec-old',
+                content: '古い記録',
+                recordAt: '2025-05-01',
+                images: [{ url: 'https://example.com/old.jpg', sortOrder: 0 }],
+              },
+            ],
+            nextCursor: null,
+          }],
+          pageParams: [undefined],
+        },
+        isLoading: false,
+        fetchNextPage: jest.fn(),
+        hasNextPage: false,
+        isFetchingNextPage: false,
+      });
+      mockUseBonsaiDetailQuery.mockReturnValue({
+        data: makeBonsai(),
+        isLoading: false,
+        isError: false,
+        refetch: jest.fn(),
+      });
+      renderWithProviders(<BonsaiDetailScreen />);
+      const coverImage = screen.getByLabelText('黒松の画像');
+      expect(coverImage.props.source).toEqual({ uri: 'https://example.com/latest.jpg' });
+    });
+
+    it('成長記録に画像がない場合はプレースホルダーが表示され、カバー画像は表示されない', () => {
+      mockUseBonsaiRecordsQuery.mockReturnValue({
+        ...defaultRecordsQuery,
+        data: { pages: [{ items: [], nextCursor: null }], pageParams: [undefined] },
+      });
+      mockUseBonsaiDetailQuery.mockReturnValue({
+        data: makeBonsai(),
+        isLoading: false,
+        isError: false,
+        refetch: jest.fn(),
+      });
+      renderWithProviders(<BonsaiDetailScreen />);
+      expect(screen.queryByLabelText('黒松の画像')).toBeNull();
     });
   });
 
