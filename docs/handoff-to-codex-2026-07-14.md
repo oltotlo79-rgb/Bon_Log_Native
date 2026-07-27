@@ -37,7 +37,7 @@ Codex がこのリポジトリの開発を引き継ぐための現況・規約�
 
 型チェック・lint（エラー0件）・テスト・カバレッジゲートはすべて緑。ただし lint 警告 145 件（大半はテストファイルの `require()` モック由来）が残っており、ゼロ化はしていない。
 
-**本節の数値は 2026-07-14 時点の記録である。2026-07-27 セッションでさらに更新されており、品質ゲートの最新値は §11.1 を参照（lint 警告は 0 まで解消済み）。**
+**本節の数値は 2026-07-14 時点の記録である。2026-07-27・2026-07-28 セッションでさらに更新されており、品質ゲートの最新値は §12.4 を参照（lint 警告は 0 まで解消済み）。**
 
 ## 5. 直近セッションで完了した主なバッチ
 
@@ -102,6 +102,7 @@ Codex がこのリポジトリの開発を引き継ぐための現況・規約�
 - 植物ホルモン相互作用ダイアグラムの線描画
 - 投稿カードの墨枠内写真表示
 - ジャンル2階層 UI（カテゴリ→個別ジャンルのチップ選択）の実機操作感
+- 大文字スキーム URL（例: `HTTPS://example.com`）の外部リンクタップ — `normalizeUrlScheme`（§12）適用後、Android 実機の `openBrowserAsync` で正しく解決されるかの確認
 
 ## 8. 公開までの道筋
 
@@ -210,7 +211,7 @@ cfw は引き続き読み取り専用で、Native 側から変更していない
 
 ## 11. 2026-07-27 セッション: Google Play 公開直前の最終是正（品質ゲート実測値の更新）
 
-本節は §4・§10・§10.1 の基準時点より後に実施した作業結果である。**品質ゲートの現在値は本節が最新であり、重複する数値は本節を優先する。**
+本節は §4・§10・§10.1 の基準時点より後に実施した作業結果である。**品質ゲートの数値は §12.4（2026-07-28 計測）がさらに新しく、重複する数値は §12.4 を優先する。**
 
 ### 11.1 実測した品質ゲート（2026-07-27）
 
@@ -231,7 +232,7 @@ cfw は引き続き読み取り専用で、Native 側から変更していない
 - `as` キャストの除去。本番コード（`app/` `lib/` `components/` `hooks/`）に残る `as` は `as const` / `satisfies` 等の型注釈と、RN 画像アセット idiom の `require(...) as number`（`app/hormones/index.tsx`、`app/pesticides/index.tsx`、`components/hormone/HormoneCard.tsx` の計7件）のみに絞り込んだ
 - 権限 Alert 文言・確認ダイアログ文言・アカウント削除フロー文言をインライン文字列から `lib/constants/errors.ts` 等の定数参照へ差し替え（40箇所以上）
 - `isRecord` 型ガードを共通実装へ統合
-- API ベース URL 定数と `isValidUrl` を `lib/constants` / `lib/utils` の共通実装へ集約
+- API ベース URL 定数と `isValidUrl` を `lib/constants` / `lib/utils` の共通実装へ集約。この集約と同時に `isValidUrl` の判定を**大文字小文字非依存**（サーバーと同一の `/^https?:\/\//i`）へ意味論変更した（コミット `17f3b22`）。変更理由はクライアントの事前検証がサーバーより厳格になっており、`HTTPS://example.com` のような正当な入力を弾いてしまっていたため。危険スキーム（`javascript:` 等）を拒否する挙動は変更していない
 - Maestro E2E フローの参照コメント規約を是正（詳細は `.claude/rules/testing.md` 参照）
 
 ### 11.4 Maestro E2E の拡充
@@ -245,3 +246,33 @@ cfw は引き続き読み取り専用で、Native 側から変更していない
 ### 11.6 cfw 依頼の状況（未着手）
 
 2026-07-14 付の依頼書3本（検索複数ジャンル・`isBlockedByUser`・Play公開前ブロッカー6トラック）を、`docs/plans/handoff-to-cfw-consolidated-2026-07-27.md`（9項目。`.gitignore` 対象のローカル連携領域であり本リポジトリのコミット対象には含まれない）として再検証・再送した。2026-07-27 時点で cfw 側の HEAD は `98ae0b7f`（2026-07-13 コミット）のままであり、2026-07-14 の調査時点から**変化がなく未着手**であることを確認済み。9項目のうち**P0（Google Play 公開の直接ブロッカー）は6件**（Android legal/help の決済誘導除去、Google 新規登録の規約同意必須化、Stripe/RevenueCat provider別entitlement、Block済み相互ユーザーの既存通知除外、アカウント削除時の全媒体R2削除保証、Privacy本文・Data Safety台帳のNative SDK反映）。残り2件（検索複数ジャンル・`isBlockedByUser`）は公開ブロッカーではない Web parity 差分、1件（盆栽一覧の「最新記録」取得のタイブレーク不一致）は今回の再検証で新たに検出した軽微な表示不整合であり、いずれも公開判断には影響しない。
+
+## 12. 2026-07-28 セッション: 大文字スキーム URL の外部ブラウザ起動不具合と対処
+
+### 12.1 発見された実害のある不具合
+
+独立監査により、以下が判明した:
+
+- サーバー（Bon_Log_cfw）は URL の**大文字スキームを受理する**（`../Bon_Log_cfw/lib/api/v1/schemas/request.ts:601,627` の `/^https?:\/\//i`、および `:542,802` の `z.string().url()`）。そのため盆栽園の `website` やイベントの `externalUrl` に `HTTPS://example.com` のような値が保存され得る（Web 版からの登録分も含む）
+- `expo-web-browser` の Android 実装（`node_modules/expo-web-browser/android/.../WebBrowserModule.kt:83-90`）は `intent.data = url.toUri()` の後 `canResolveIntent` で解決できなければ例外を投げる。`normalizeScheme()` を呼んでおらず、Android の IntentFilter のスキーム照合は大文字小文字を区別するため、`HTTPS://` は解決に失敗する
+- 結果、`app/shops/[id]/index.tsx:142-148` と `app/events/[id]/index.tsx:178-184` で外部リンクをタップしても `catch` で Sentry に送られるだけで**ユーザーには何も起きない（サイレント失敗）**
+- これは今セッションの変更が作った欠陥ではなく、サーバーが以前から大文字スキームを受理していたため、既存データ（特に Web 版から登録された `website` / `externalUrl`）経由でも従来から発生し得た不具合である
+
+### 12.2 対処
+
+`lib/utils/normalize-url-scheme.ts` に `normalizeUrlScheme(url: string): string` を新設した。`http://` / `https://` のスキーム部分のみを大文字小文字問わず小文字化し、ホスト名・パス・クエリ・フラグメントは一切変更しない（パスは大文字小文字を区別するためリンクが壊れる）。スキームが http/https でない場合・空文字はそのまま返す。URL の妥当性検証（危険スキームの拒否等）は `isValidUrl` の責務のままで、本関数には混ぜていない。
+
+**呼び出し側（`app/shops/[id]/index.tsx` の `openBrowserAsync` 呼び出し直前など）への適用は本セッションのスコープ外（`lib/` 限定の担当）であり、frontend 側の差し替えが必要。** 適用後は実機（Android）での動作確認が必須（§7-D に追記済み）。
+
+### 12.3 `isValidUrl` の意味論変更（§11.3 の補記）
+
+§11.3 に記載の `isValidUrl` 集約は、同時に判定を**大文字小文字非依存**（サーバーと同一の `/^https?:\/\//i`）へ意味論変更していた（コミット `17f3b22`）。詳細は §11.3 本文に追記済み。
+
+### 12.4 実測した品質ゲート（2026-07-28）
+
+- 計測時点のコミット: `daa0468b1bbaad9484b87a167934652dcea88d56`（`refactor: lib配下の軽微な重複を解消`。この文書自身のコミットは計測後に作成されるため、実際の HEAD はこれより新しくなる）
+- 作業ツリー: `lib/utils/normalize-url-scheme.ts` 新規追加 + 本文書の更新のみ
+- `npx tsc --noEmit`: エラー **0**
+- `npm run lint`: エラー **0** / 警告 **0**
+- `npm run test:coverage -- --runInBand`: **Test Suites 345 passed / 345**、**Tests 5,844 passed / 5,844**。カバレッジ **Statements 91.66% / Branches 84.42% / Functions 87.62% / Lines 92.53%**（閾値 branches80 / functions85 / lines85 / statements85 をすべて超過。コマンド exit code 0）
+- `normalize-url-scheme.ts` は呼び出し側が frontend で差し替わるまで未カバー（Functions/Lines 0%）。上記の全体カバレッジはこの未カバー分を含んだ実測値であり、閾値を割っていないことを確認済み
