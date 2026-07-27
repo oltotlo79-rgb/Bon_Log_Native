@@ -4,7 +4,7 @@
  */
 
 import React from 'react';
-import { Alert } from 'react-native';
+import { Alert, ActivityIndicator } from 'react-native';
 import { screen, fireEvent } from '@testing-library/react-native';
 import BonsaiDetailScreen from '@/app/bonsai/[id]/index';
 import { renderWithProviders } from '@/__tests__/utils/test-utils';
@@ -278,6 +278,71 @@ describe('BonsaiDetailScreen', () => {
       mockUseBonsaiRecordsQuery.mockReturnValue({
         ...defaultRecordsQuery,
         data: { pages: [{ items: [], nextCursor: null }], pageParams: [undefined] },
+      });
+      mockUseBonsaiDetailQuery.mockReturnValue({
+        data: makeBonsai(),
+        isLoading: false,
+        isError: false,
+        refetch: jest.fn(),
+      });
+      renderWithProviders(<BonsaiDetailScreen />);
+      expect(screen.queryByLabelText('黒松の画像')).toBeNull();
+    });
+
+    it('先頭の成長記録に画像が0枚の場合はプレースホルダーが表示される（他の記録に画像があっても使わない）', () => {
+      mockUseBonsaiRecordsQuery.mockReturnValue({
+        data: {
+          pages: [{
+            items: [
+              { id: 'rec-latest', content: '最新記録', recordAt: '2025-06-10', images: [] },
+              {
+                id: 'rec-old',
+                content: '古い記録',
+                recordAt: '2025-05-01',
+                images: [{ url: 'https://example.com/old.jpg', sortOrder: 0 }],
+              },
+            ],
+            nextCursor: null,
+          }],
+          pageParams: [undefined],
+        },
+        isLoading: false,
+        fetchNextPage: jest.fn(),
+        hasNextPage: false,
+        isFetchingNextPage: false,
+      });
+      mockUseBonsaiDetailQuery.mockReturnValue({
+        data: makeBonsai(),
+        isLoading: false,
+        isError: false,
+        refetch: jest.fn(),
+      });
+      renderWithProviders(<BonsaiDetailScreen />);
+      expect(screen.queryByLabelText('黒松の画像')).toBeNull();
+    });
+  });
+
+  describe('成長記録のロード中表示', () => {
+    it('isRecordsLoading=true のとき記録セクションにローディング表示になり、空状態メッセージや記録は表示されない', () => {
+      mockUseBonsaiRecordsQuery.mockReturnValue({
+        ...defaultRecordsQuery,
+        isLoading: true,
+      });
+      mockUseBonsaiDetailQuery.mockReturnValue({
+        data: makeBonsai(),
+        isLoading: false,
+        isError: false,
+        refetch: jest.fn(),
+      });
+      renderWithProviders(<BonsaiDetailScreen />);
+      expect(screen.queryByText('記録がまだありません')).toBeNull();
+      expect(screen.UNSAFE_getAllByType(ActivityIndicator).length).toBeGreaterThan(0);
+    });
+
+    it('isRecordsLoading=true のときカバー画像はプレースホルダーになる（成長記録データ未到着のため）', () => {
+      mockUseBonsaiRecordsQuery.mockReturnValue({
+        ...defaultRecordsQuery,
+        isLoading: true,
       });
       mockUseBonsaiDetailQuery.mockReturnValue({
         data: makeBonsai(),

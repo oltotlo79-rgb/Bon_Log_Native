@@ -13,25 +13,18 @@ appId: com.bonlog.app
 - assertVisible:
     text: "ログイン"
 
-# 画面タイトルの Text と入力欄ラベルの Text が同一文言（メールアドレス/パスワード）を
-# 持つため、TextInput 本体は index 1（ラベル Text が index 0）で一意化する。
-# frontend への申し送り: AuthTextField 呼び出し側で testID（例: login-email-input /
-# login-password-input）を付与できると index 依存を解消できる。
+# 入力欄・送信ボタンは testID 付与済みのため id セレクタで一意に参照する
+# （app/(auth)/login/index.tsx:234,250,268）。
 - tapOn:
-    accessibilityLabel: "メールアドレス"
-    index: 1
+    id: "login-email-input"
 - inputText: "${MAESTRO_LOGIN_EMAIL}"
 
 - tapOn:
-    accessibilityLabel: "パスワード"
-    index: 1
+    id: "login-password-input"
 - inputText: "${MAESTRO_LOGIN_PASSWORD}"
 
-# 画面タイトル Text とログインボタンが同一文言「ログイン」のため index 1 で一意化する。
-# frontend への申し送り: AuthPrimaryButton に testID prop を追加できると index 依存を解消できる。
 - tapOn:
-    accessibilityLabel: "ログイン"
-    index: 1
+    id: "login-submit-button"
 
 # 認証成功 → AuthGuard がフィード画面へリダイレクトすることを待つ
 - assertVisible:
