@@ -402,7 +402,7 @@ describe('initializeAuth の onAuthFailure', () => {
 
   it('非同期削除の完了前に signedOut と cache clear を反映する', async () => {
     mockGetItem.mockResolvedValue(null);
-    const resolveDeletes: Array<() => void> = [];
+    const resolveDeletes: (() => void)[] = [];
     mockDeleteItem.mockImplementation(
       () =>
         new Promise<void>((resolve) => {

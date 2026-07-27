@@ -29,7 +29,9 @@ jest.mock('@/lib/queries/fertilizers', () => ({
 }));
 
 jest.mock('@/components/fertilizer/TreeSpeciesCard', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports -- jest.mock ファクトリ内では ESM import が使えないため require を使用する（Jest 制約）
   const React = require('react');
+  // eslint-disable-next-line @typescript-eslint/no-require-imports -- jest.mock ファクトリ内では ESM import が使えないため require を使用する（Jest 制約）
   const { Pressable, Text } = require('react-native');
   return {
     TreeSpeciesCard: ({

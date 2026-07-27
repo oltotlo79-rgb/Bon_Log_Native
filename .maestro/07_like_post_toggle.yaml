@@ -1,0 +1,31 @@
+# いいねトグルフロー
+# 前提: 00_login フロー完了後のログイン済み状態。かつフィードに投稿が最低1件表示されている
+# こと（テストアカウントが誰かをフォロー済み、または自身が投稿済み。01_feed_empty_state の
+# 「未フォロー状態」前提とは逆に、フォロー済み状態を前提とする）。
+# 確認内容: いいねボタンをタップして「いいね済み」表示になり、再タップで元に戻ることを確認する
+# （LikeButton はデバウンス後に API を呼ぶため、連続2タップでは実質的にサーバー状態を変えない）。
+# LikeButtonProps に testID が無いため、件数を含む accessibilityLabel を正規表現で一致させる
+# （components/post/LikeButton.tsx:231-236）。
+appId: com.bonlog.app
+---
+- launchApp:
+    clearState: false
+
+- assertVisible:
+    text: "ホーム"
+
+- tapOn:
+    accessibilityLabel: "いいねする。現在 [0-9]+ 件"
+    index: 0
+
+- assertVisible:
+    accessibilityLabel: "いいねを取り消す。現在 [0-9]+ 件"
+    index: 0
+
+- tapOn:
+    accessibilityLabel: "いいねを取り消す。現在 [0-9]+ 件"
+    index: 0
+
+- assertVisible:
+    accessibilityLabel: "いいねする。現在 [0-9]+ 件"
+    index: 0

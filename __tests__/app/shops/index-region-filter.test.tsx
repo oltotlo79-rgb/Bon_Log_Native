@@ -32,7 +32,9 @@ jest.mock('@/lib/queries/auth', () => ({
 }));
 
 jest.mock('@/components/shops/ShopCard', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports -- jest.mock ファクトリ内では ESM import が使えないため require を使用する（Jest 制約）
   const React = require('react');
+  // eslint-disable-next-line @typescript-eslint/no-require-imports -- jest.mock ファクトリ内では ESM import が使えないため require を使用する（Jest 制約）
   const { Pressable, Text } = require('react-native');
   return {
     ShopCard: ({ name, onPress }: { name: string; onPress: () => void }) =>

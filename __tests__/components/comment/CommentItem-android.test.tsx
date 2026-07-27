@@ -5,7 +5,7 @@
  */
 
 import React from 'react';
-import { Alert, Platform } from 'react-native';
+import { Alert, Modal, Platform } from 'react-native';
 import { screen, fireEvent, waitFor, act } from '@testing-library/react-native';
 import { CommentItem } from '@/components/comment/CommentItem';
 import { makeCommentItem } from '@/__tests__/utils/data-factories';
@@ -32,6 +32,7 @@ jest.mock('@/lib/queries/comments', () => ({
 
 jest.mock('@/components/user/UserActionMenu', () => ({
   UserActionMenu: () => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports -- jest.mock ファクトリ内では ESM import が使えないため require を使用する（Jest 制約）
     const { View, Text } = require('react-native');
     return <View testID="user-action-menu"><Text>menu</Text></View>;
   },
@@ -144,7 +145,6 @@ describe('CommentItem - Android 削除シート', () => {
       expect(screen.getByLabelText('コメントを削除')).toBeTruthy();
     });
     // Modal の onRequestClose を直接呼ぶ。状態更新を act() でラップして React の更新を確定させる
-    const { Modal } = require('react-native');
     const modals = UNSAFE_getAllByType(Modal);
     expect(modals.length).toBeGreaterThan(0);
     await act(async () => {

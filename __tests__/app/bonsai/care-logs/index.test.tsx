@@ -4,7 +4,7 @@
  */
 
 import React from 'react';
-import { Modal } from 'react-native';
+import { Alert, Modal } from 'react-native';
 import { screen, fireEvent, act } from '@testing-library/react-native';
 import CareLogsScreen from '@/app/bonsai/care-logs/index';
 import { renderWithProviders } from '@/__tests__/utils/test-utils';
@@ -530,7 +530,6 @@ describe('CareLogsScreen フォーム送信', () => {
 
 describe('CareLogsScreen 削除', () => {
   it('削除ボタンタップで Alert が表示される', () => {
-    const Alert = require('react-native').Alert;
     const alertSpy = jest.spyOn(Alert, 'alert');
     mockUseCareLogsQuery.mockReturnValue({
       ...defaultQuery,
@@ -550,7 +549,6 @@ describe('CareLogsScreen 削除', () => {
   });
 
   it('削除 Alert の「削除」ボタン押下で deleteMutation.mutate が呼ばれる', () => {
-    const Alert = require('react-native').Alert;
     const alertSpy = jest.spyOn(Alert, 'alert').mockImplementation(
       (_title, _msg, buttons) => {
         const destructiveButton = (buttons as { text: string; onPress?: () => void; style?: string }[])?.find(
@@ -732,7 +730,6 @@ describe('CareLogsScreen オフラインガード — 編集の送信', () => {
 describe('CareLogsScreen オフラインガード — 削除', () => {
   it('オフライン時は削除ボタンを押しても確認 Alert が表示されず、deleteMutation.mutate も呼ばれない', () => {
     goOffline();
-    const Alert = require('react-native').Alert;
     const alertSpy = jest.spyOn(Alert, 'alert');
     mockUseCareLogsQuery.mockReturnValue({
       ...defaultQuery,
@@ -750,7 +747,6 @@ describe('CareLogsScreen オフラインガード — 削除', () => {
   });
 
   it('オンライン時は従来どおり削除確認 Alert が表示される', () => {
-    const Alert = require('react-native').Alert;
     const alertSpy = jest.spyOn(Alert, 'alert');
     mockUseCareLogsQuery.mockReturnValue({
       ...defaultQuery,

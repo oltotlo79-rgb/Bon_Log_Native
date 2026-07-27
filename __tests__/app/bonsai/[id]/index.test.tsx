@@ -178,7 +178,7 @@ describe('BonsaiDetailScreen', () => {
 
   describe('メニュー操作', () => {
     it('メニューボタンをタップすると Alert が呼ばれる', () => {
-      const AlertSpy = jest.spyOn(require('react-native').Alert, 'alert');
+      const AlertSpy = jest.spyOn(Alert, 'alert');
       mockUseBonsaiDetailQuery.mockReturnValue({
         data: makeBonsai(),
         isLoading: false,

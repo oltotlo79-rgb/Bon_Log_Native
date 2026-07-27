@@ -1,0 +1,38 @@
+# 投稿作成フロー（入力 → キャンセル → 破棄確認）
+# 前提: 00_login フロー完了後、またはログイン済み状態でフィード画面が表示済み。
+# 確認内容: FAB → 新規投稿画面 → 本文入力 → キャンセル時に破棄確認ダイアログが出る →
+#           破棄してフィードへ戻ることを確認する（バックエンドに投稿データを残さない非破壊フロー）。
+appId: com.bonlog.app
+---
+- launchApp:
+    clearState: false
+
+- assertVisible:
+    text: "ホーム"
+
+- tapOn:
+    accessibilityLabel: "新規投稿"
+
+# 新規投稿画面固有の要素（キャンセルボタン）で遷移完了を確認する
+- assertVisible:
+    accessibilityLabel: "キャンセル"
+
+# 本文入力欄は testID 付与済み（components/post/PostBodyInput.tsx:84）
+- tapOn:
+    id: "post-body-input"
+- inputText: "Maestro E2E テスト入力（送信しません）"
+
+# 入力により isDirty になり、キャンセル時に破棄確認ダイアログが表示されることを確認する
+- tapOn:
+    accessibilityLabel: "キャンセル"
+
+- assertVisible:
+    text: "投稿を破棄しますか？"
+
+- tapOn:
+    text: "破棄する"
+
+# 投稿画面が閉じてフィードへ戻ることを遷移完了として待つ
+- assertVisible:
+    text: "ホーム"
+    timeout: 10000

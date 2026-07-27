@@ -1,0 +1,23 @@
+# 通知タブ空状態フロー
+# 前提: 00_login フロー完了後のログイン済み状態。かつテストアカウントの通知が0件であること
+# （01_feed_empty_state と同様、クリーンなテストアカウントを前提とする）。
+# 確認内容: 通知タブへ遷移し、ヘッダーと空状態メッセージが表示されることを確認する。
+appId: com.bonlog.app
+---
+- launchApp:
+    clearState: false
+
+- assertVisible:
+    text: "ホーム"
+
+- tapOn:
+    accessibilityLabel: "通知"
+
+- assertVisible:
+    text: "通知"
+
+- assertVisible:
+    text: "まだ通知はありません"
+
+- assertVisible:
+    text: "いいねやコメントが届くとここに表示されます"

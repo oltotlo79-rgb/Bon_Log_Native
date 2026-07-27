@@ -21,7 +21,9 @@ jest.mock('@/lib/queries/bonsai', () => ({
 
 // BonsaiCard のモック
 jest.mock('@/components/bonsai/BonsaiCard', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports -- jest.mock ファクトリ内では ESM import が使えないため require を使用する（Jest 制約）
   const React = require('react');
+  // eslint-disable-next-line @typescript-eslint/no-require-imports -- jest.mock ファクトリ内では ESM import が使えないため require を使用する（Jest 制約）
   const { Pressable, Text } = require('react-native');
   return {
     BonsaiCard: ({ name, onPress }: { name: string; onPress: () => void }) =>

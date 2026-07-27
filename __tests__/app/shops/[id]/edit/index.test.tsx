@@ -4,6 +4,7 @@
  */
 
 import React from 'react';
+import { Alert } from 'react-native';
 import { screen, fireEvent } from '@testing-library/react-native';
 import ShopEditScreen from '@/app/shops/[id]/edit/index';
 import { renderWithProviders } from '@/__tests__/utils/test-utils';
@@ -203,7 +204,6 @@ describe('ShopEditScreen', () => {
 
   describe('handleCancel — 変更あり', () => {
     it('店舗名変更後にキャンセルすると Alert が表示される', () => {
-      const Alert = require('react-native').Alert;
       const alertCalls: Parameters<typeof Alert.alert>[] = [];
       jest.spyOn(Alert, 'alert').mockImplementation((...args: Parameters<typeof Alert.alert>) => {
         alertCalls.push(args);
@@ -217,7 +217,6 @@ describe('ShopEditScreen', () => {
     });
 
     it('Alert の「破棄する」で router.back が呼ばれる', () => {
-      const Alert = require('react-native').Alert;
       const alertCalls: Parameters<typeof Alert.alert>[] = [];
       jest.spyOn(Alert, 'alert').mockImplementation((...args: Parameters<typeof Alert.alert>) => {
         alertCalls.push(args);

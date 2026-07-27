@@ -50,7 +50,9 @@ jest.mock('@/hooks/use-post-card-props', () => ({
 }));
 
 jest.mock('@/components/post/PostCard', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports -- jest.mock ファクトリ内では ESM import が使えないため require を使用する（Jest 制約）
   const React = require('react');
+  // eslint-disable-next-line @typescript-eslint/no-require-imports -- jest.mock ファクトリ内では ESM import が使えないため require を使用する（Jest 制約）
   const { View, Text, Pressable } = require('react-native');
   return {
     PostCard: ({

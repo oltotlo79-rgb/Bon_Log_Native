@@ -1,0 +1,39 @@
+# ログインフロー
+# 前提: development build がインストール済み。未認証状態（ログイン画面）から開始する。
+# 実行時に環境変数でテストアカウントの認証情報を渡す:
+#   maestro test .maestro/ -e MAESTRO_LOGIN_EMAIL=xxx -e MAESTRO_LOGIN_PASSWORD=xxx
+# 確認内容: メールアドレス・パスワードでログインし、フィード画面（ホーム）へ遷移することを確認する。
+# 01〜09 の後続フロー（clearState: false）は、このフローで確立したログイン済みセッションに依存する。
+appId: com.bonlog.app
+---
+- launchApp:
+    clearState: true
+
+# ログイン画面固有の要素が表示されること
+- assertVisible:
+    text: "ログイン"
+
+# 画面タイトルの Text と入力欄ラベルの Text が同一文言（メールアドレス/パスワード）を
+# 持つため、TextInput 本体は index 1（ラベル Text が index 0）で一意化する。
+# frontend への申し送り: AuthTextField 呼び出し側で testID（例: login-email-input /
+# login-password-input）を付与できると index 依存を解消できる。
+- tapOn:
+    accessibilityLabel: "メールアドレス"
+    index: 1
+- inputText: "${MAESTRO_LOGIN_EMAIL}"
+
+- tapOn:
+    accessibilityLabel: "パスワード"
+    index: 1
+- inputText: "${MAESTRO_LOGIN_PASSWORD}"
+
+# 画面タイトル Text とログインボタンが同一文言「ログイン」のため index 1 で一意化する。
+# frontend への申し送り: AuthPrimaryButton に testID prop を追加できると index 依存を解消できる。
+- tapOn:
+    accessibilityLabel: "ログイン"
+    index: 1
+
+# 認証成功 → AuthGuard がフィード画面へリダイレクトすることを待つ
+- assertVisible:
+    text: "ホーム"
+    timeout: 15000

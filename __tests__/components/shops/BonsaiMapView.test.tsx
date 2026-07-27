@@ -296,9 +296,9 @@ describe('BonsaiMapView - 現在地ボタン（許可拒否）', () => {
 
   it('Alert の「設定を開く」ボタンは Linking.openSettings を呼ぶ', async () => {
     const openSettingsSpy = jest.spyOn(Linking, 'openSettings').mockResolvedValue();
-    let capturedButtons: Array<{ text: string; onPress?: () => void }> = [];
+    let capturedButtons: { text: string; onPress?: () => void }[] = [];
     jest.spyOn(Alert, 'alert').mockImplementation((_title, _msg, buttons) => {
-      capturedButtons = (buttons ?? []) as Array<{ text: string; onPress?: () => void }>;
+      capturedButtons = (buttons ?? []) as { text: string; onPress?: () => void }[];
     });
     jest.mocked(Location.requestForegroundPermissionsAsync).mockResolvedValueOnce({
       status: 'denied' as Location.PermissionStatus,

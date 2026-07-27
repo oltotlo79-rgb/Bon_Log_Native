@@ -33,7 +33,9 @@ let capturedOnRemove: ((id: string) => void) | null = null;
 let capturedImages: { localId: string; uri: string }[] = [];
 
 jest.mock('@/components/post/ImageAttachmentGrid', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports -- jest.mock ファクトリ内では ESM import が使えないため require を使用する（Jest 制約）
   const React = require('react');
+  // eslint-disable-next-line @typescript-eslint/no-require-imports -- jest.mock ファクトリ内では ESM import が使えないため require を使用する（Jest 制約）
   const { TouchableOpacity, Text } = require('react-native');
   return {
     ImageAttachmentGrid: ({

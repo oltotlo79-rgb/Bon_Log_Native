@@ -1,0 +1,53 @@
+# プロフィール・設定・ブロックリスト/ミュートリスト導線フロー
+# 前提: 00_login フロー完了後のログイン済み状態。
+# store-compliance.md の要件（ブロック解除導線をアプリ内から到達可能にする）を
+# ナビゲーション観点で確認する。
+appId: com.bonlog.app
+---
+- launchApp:
+    clearState: false
+
+- assertVisible:
+    text: "ホーム"
+
+- tapOn:
+    accessibilityLabel: "プロフィール"
+
+- assertVisible:
+    text: "プロフィール"
+
+- tapOn:
+    accessibilityLabel: "設定を開く"
+
+- assertVisible:
+    text: "設定"
+
+- tapOn:
+    accessibilityLabel: "ブロックリスト"
+
+- assertVisible:
+    text: "ブロックリスト"
+
+- tapOn:
+    accessibilityLabel: "戻る"
+
+- assertVisible:
+    text: "設定"
+
+- tapOn:
+    accessibilityLabel: "ミュートリスト"
+
+- assertVisible:
+    text: "ミュートリスト"
+
+- tapOn:
+    accessibilityLabel: "戻る"
+
+- assertVisible:
+    text: "設定"
+
+- tapOn:
+    accessibilityLabel: "戻る"
+
+- assertVisible:
+    text: "プロフィール"

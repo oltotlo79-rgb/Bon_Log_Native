@@ -35,6 +35,7 @@ jest.mock('@/lib/queries/auth', () => ({
 
 jest.mock('@/components/user/FollowButton', () => ({
   FollowButton: () => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports -- jest.mock ファクトリ内では ESM import が使えないため require を使用する（Jest 制約）
     const { View, Text } = require('react-native');
     return (
       <View testID="follow-button">

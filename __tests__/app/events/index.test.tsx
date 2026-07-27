@@ -33,7 +33,9 @@ jest.mock('@/lib/queries/auth', () => ({
 // ---------------------------------------------------------------------------
 
 jest.mock('@/components/events/EventCalendarNative', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports -- jest.mock ファクトリ内では ESM import が使えないため require を使用する（Jest 制約）
   const React = require('react');
+  // eslint-disable-next-line @typescript-eslint/no-require-imports -- jest.mock ファクトリ内では ESM import が使えないため require を使用する（Jest 制約）
   const { View, Text } = require('react-native');
   return {
     EventCalendarNative: () =>
@@ -42,7 +44,9 @@ jest.mock('@/components/events/EventCalendarNative', () => {
 });
 
 jest.mock('@/components/events/EventsRegionFilterBar', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports -- jest.mock ファクトリ内では ESM import が使えないため require を使用する（Jest 制約）
   const React = require('react');
+  // eslint-disable-next-line @typescript-eslint/no-require-imports -- jest.mock ファクトリ内では ESM import が使えないため require を使用する（Jest 制約）
   const { View, Pressable, Text } = require('react-native');
   return {
     EventsRegionFilterBar: ({
@@ -80,7 +84,9 @@ jest.mock('@/components/events/EventsRegionFilterBar', () => {
 });
 
 jest.mock('@/components/events/EventsViewToggleBar', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports -- jest.mock ファクトリ内では ESM import が使えないため require を使用する（Jest 制約）
   const React = require('react');
+  // eslint-disable-next-line @typescript-eslint/no-require-imports -- jest.mock ファクトリ内では ESM import が使えないため require を使用する（Jest 制約）
   const { View, Pressable, Text } = require('react-native');
   return {
     EventsViewToggleBar: ({
@@ -121,7 +127,9 @@ jest.mock('@/components/events/EventsViewToggleBar', () => {
 
 // EventCard のモック
 jest.mock('@/components/events/EventCard', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports -- jest.mock ファクトリ内では ESM import が使えないため require を使用する（Jest 制約）
   const React = require('react');
+  // eslint-disable-next-line @typescript-eslint/no-require-imports -- jest.mock ファクトリ内では ESM import が使えないため require を使用する（Jest 制約）
   const { Pressable, Text } = require('react-native');
   return {
     EventCard: ({ title, onPress }: { title: string; onPress: () => void }) =>

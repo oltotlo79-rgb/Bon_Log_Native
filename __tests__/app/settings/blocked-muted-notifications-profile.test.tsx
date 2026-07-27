@@ -4,7 +4,7 @@
  */
 
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react-native';
+import { screen, fireEvent, waitFor } from '@testing-library/react-native';
 import { renderWithProviders } from '@/__tests__/utils/test-utils';
 import SettingsBlockedScreen from '@/app/settings/blocked/index';
 import SettingsMutedScreen from '@/app/settings/muted/index';

@@ -5,6 +5,7 @@
  */
 
 import React from 'react';
+import { FlatList } from 'react-native';
 import { screen, fireEvent } from '@testing-library/react-native';
 import UserLikesScreen from '@/app/users/[id]/likes/index';
 import { renderWithProviders } from '@/__tests__/utils/test-utils';
@@ -18,7 +19,9 @@ jest.mock('@/hooks/use-online-status', () => ({
 }));
 
 jest.mock('@/components/post/PostCard', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports -- jest.mock ファクトリ内では ESM import が使えないため require を使用する（Jest 制約）
   const React = require('react');
+  // eslint-disable-next-line @typescript-eslint/no-require-imports -- jest.mock ファクトリ内では ESM import が使えないため require を使用する（Jest 制約）
   const { Text } = require('react-native');
   return {
     PostCard: ({ id }: { id: string }) =>
@@ -109,7 +112,7 @@ describe('UserLikesScreen', () => {
         fetchNextPage,
       });
       renderWithProviders(<UserLikesScreen />);
-      const lists = screen.UNSAFE_getAllByType(require('react-native').FlatList);
+      const lists = screen.UNSAFE_getAllByType(FlatList);
       fireEvent(lists[0], 'endReached');
       expect(fetchNextPage).toHaveBeenCalledTimes(1);
     });
@@ -124,7 +127,7 @@ describe('UserLikesScreen', () => {
         fetchNextPage,
       });
       renderWithProviders(<UserLikesScreen />);
-      const lists = screen.UNSAFE_getAllByType(require('react-native').FlatList);
+      const lists = screen.UNSAFE_getAllByType(FlatList);
       fireEvent(lists[0], 'endReached');
       expect(fetchNextPage).not.toHaveBeenCalled();
     });

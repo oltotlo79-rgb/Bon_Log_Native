@@ -4,11 +4,11 @@
  */
 
 import React from 'react';
+import { Alert } from 'react-native';
 import { screen, fireEvent } from '@testing-library/react-native';
 import ScheduledPostDetailScreen from '@/app/scheduled-posts/[id]/index';
 import { renderWithProviders } from '@/__tests__/utils/test-utils';
 
-const mockRouter = jest.requireMock('expo-router').router;
 const mockUseLocalSearchParams = jest.requireMock('expo-router').useLocalSearchParams;
 
 jest.mock('@/hooks/use-online-status', () => ({
@@ -155,7 +155,7 @@ describe('ScheduledPostDetailScreen', () => {
 
   describe('メニュー操作', () => {
     it('メニューボタンタップで Alert が呼ばれる', () => {
-      const AlertSpy = jest.spyOn(require('react-native').Alert, 'alert');
+      const AlertSpy = jest.spyOn(Alert, 'alert');
       mockUseScheduledPostDetailQuery.mockReturnValue({
         data: makeScheduledPost({ status: 'pending' }),
         isLoading: false,

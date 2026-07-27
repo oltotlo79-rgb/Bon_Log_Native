@@ -1,0 +1,47 @@
+# 投稿の通報フロー（store-compliance.md の UGC 要件: 通報導線の到達確認）
+# 前提: 00_login フロー完了後のログイン済み状態。かつフィードに他ユーザーの投稿が最低1件
+# 表示されていること（テストアカウントが誰かをフォロー済み）。
+# 通報を実際に送信すると本番相当のモデレーションキューにデータが残るため、このフローは
+# 理由選択 → 詳細入力までの UI 到達を確認し、送信はキャンセルして副作用を残さない。
+appId: com.bonlog.app
+---
+- launchApp:
+    clearState: false
+
+- assertVisible:
+    text: "ホーム"
+
+# 複数投稿がある場合は先頭の他ユーザー投稿のメニューを対象にする
+# （components/post/PostCardHeader.tsx:145）
+- tapOn:
+    accessibilityLabel: "投稿のオプションを開く"
+    index: 0
+
+# 投稿の通報メニュー項目（ラベルは対象ユーザーのニックネームに依存しない固定文言。
+# components/user/UserActionMenu.tsx:113）
+- tapOn:
+    accessibilityLabel: "投稿を通報"
+
+- assertVisible:
+    text: "通報の理由を選択してください"
+
+- tapOn:
+    accessibilityLabel: "スパム"
+
+- tapOn:
+    accessibilityLabel: "次へ"
+
+- assertVisible:
+    text: "詳細を入力（任意）"
+
+- tapOn:
+    accessibilityLabel: "通報の詳細を入力"
+- inputText: "Maestro E2E テスト入力（送信しません）"
+
+# 送信せずに閉じる（送信ボタンは「通報する」だが、このフローでは実データを残さない）
+- tapOn:
+    accessibilityLabel: "通報をキャンセルして閉じる"
+
+- assertVisible:
+    text: "ホーム"
+    timeout: 10000

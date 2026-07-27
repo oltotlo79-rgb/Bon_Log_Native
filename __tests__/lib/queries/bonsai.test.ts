@@ -118,13 +118,6 @@ function makeBonsaiRecord(id: string): BonsaiRecordListResponse['items'][number]
   };
 }
 
-function makeBonsaiRecordsPage(items: BonsaiRecordListResponse['items']): InfiniteData<BonsaiRecordListResponse> {
-  return {
-    pages: [{ items, nextCursor: null }],
-    pageParams: [undefined],
-  };
-}
-
 // ---------------------------------------------------------------------------
 // セットアップ
 // ---------------------------------------------------------------------------

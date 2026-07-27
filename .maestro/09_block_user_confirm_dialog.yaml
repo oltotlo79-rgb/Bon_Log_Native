@@ -1,0 +1,37 @@
+# ユーザーブロック確認ダイアログ到達フロー（store-compliance.md の UGC 要件: ブロック導線の到達確認）
+# 前提: 00_login フロー完了後のログイン済み状態。かつフィードに他ユーザーの投稿が最低1件
+# 表示されていること（テストアカウントが誰かをフォロー済み）。
+# ブロックはフォロー関係解除という不可逆な影響があるため、このフローは確認ダイアログへの
+# 到達のみ検証しキャンセルする（実際のブロック実行は行わない）。
+appId: com.bonlog.app
+---
+- launchApp:
+    clearState: false
+
+- assertVisible:
+    text: "ホーム"
+
+# 複数投稿がある場合は先頭の他ユーザー投稿のメニューを対象にする
+- tapOn:
+    accessibilityLabel: "投稿のオプションを開く"
+    index: 0
+
+# ブロック項目のラベルは「@{ニックネーム} をブロック」形式（対象ユーザー依存のため正規表現で
+# 一致させる。components/user/UserActionMenu.tsx:117）
+- tapOn:
+    text: "^@.+ をブロック$"
+
+- assertVisible:
+    text: "^@.+ をブロックしますか？$"
+
+# 確認ダイアログをキャンセルする（components/user/BlockConfirmDialog.tsx:157）
+- tapOn:
+    accessibilityLabel: "キャンセル"
+
+# メニューのキャンセルでメニュー自体を閉じ、フィードへ戻ることを確認する
+- tapOn:
+    accessibilityLabel: "キャンセル"
+
+- assertVisible:
+    text: "ホーム"
+    timeout: 10000

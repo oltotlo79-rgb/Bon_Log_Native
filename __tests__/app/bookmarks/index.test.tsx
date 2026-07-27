@@ -4,6 +4,7 @@
  */
 
 import React from 'react';
+import { FlatList } from 'react-native';
 import { screen, fireEvent } from '@testing-library/react-native';
 import BookmarksScreen from '@/app/bookmarks/index';
 import { renderWithProviders } from '@/__tests__/utils/test-utils';
@@ -11,7 +12,9 @@ import { renderWithProviders } from '@/__tests__/utils/test-utils';
 const mockRouter = jest.requireMock('expo-router').router;
 
 jest.mock('@/components/post/PostCard', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports -- jest.mock ファクトリ内では ESM import が使えないため require を使用する（Jest 制約）
   const React = require('react');
+  // eslint-disable-next-line @typescript-eslint/no-require-imports -- jest.mock ファクトリ内では ESM import が使えないため require を使用する（Jest 制約）
   const { Text } = require('react-native');
   return {
     PostCard: ({ id }: { id: string }) =>
@@ -196,7 +199,7 @@ describe('BookmarksScreen', () => {
       });
       renderWithProviders(<BookmarksScreen />);
       // FlatList には testID がないため UNSAFE_getByProps で取得する
-      const lists = screen.UNSAFE_getAllByType(require('react-native').FlatList);
+      const lists = screen.UNSAFE_getAllByType(FlatList);
       expect(lists.length).toBeGreaterThan(0);
       fireEvent(lists[0], 'endReached');
       expect(fetchNextPage).toHaveBeenCalledTimes(1);
@@ -214,7 +217,7 @@ describe('BookmarksScreen', () => {
         fetchNextPage,
       });
       renderWithProviders(<BookmarksScreen />);
-      const lists = screen.UNSAFE_getAllByType(require('react-native').FlatList);
+      const lists = screen.UNSAFE_getAllByType(FlatList);
       fireEvent(lists[0], 'endReached');
       expect(fetchNextPage).not.toHaveBeenCalled();
     });

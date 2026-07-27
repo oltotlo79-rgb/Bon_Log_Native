@@ -12,7 +12,9 @@ import type { PrefectureName } from '@/lib/constants/prefectures';
 // PrefecturePickerModal は実コンポーネントでは FlatList 仮想化を持つため、
 // テスト内ではシンプルなモックで代替する。
 jest.mock('@/components/shops/PrefecturePickerModal', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports -- jest.mock ファクトリ内では ESM import が使えないため require を使用する（Jest 制約）
   const React = require('react');
+  // eslint-disable-next-line @typescript-eslint/no-require-imports -- jest.mock ファクトリ内では ESM import が使えないため require を使用する（Jest 制約）
   const { View, Pressable, Text } = require('react-native');
   return {
     PrefecturePickerModal: ({

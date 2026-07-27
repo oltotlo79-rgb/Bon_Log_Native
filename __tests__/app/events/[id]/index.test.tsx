@@ -12,7 +12,6 @@ import { ApiError } from '@/lib/api/errors';
 import { renderWithProviders } from '@/__tests__/utils/test-utils';
 import { REPORT_TARGET_LABELS } from '@/lib/constants/report';
 
-const mockRouter = jest.requireMock('expo-router').router;
 const mockUseLocalSearchParams = jest.requireMock('expo-router').useLocalSearchParams;
 
 jest.mock('@/hooks/use-online-status', () => ({
@@ -452,7 +451,7 @@ describe('EventDetailScreen', () => {
     });
 
     it('作成者としてメニューボタンタップで Alert が呼ばれる', () => {
-      const AlertSpy = jest.spyOn(require('react-native').Alert, 'alert');
+      const AlertSpy = jest.spyOn(Alert, 'alert');
       mockUseCurrentUserQuery.mockReturnValue({ data: { id: 'user-1' } });
       mockUseEventDetailQuery.mockReturnValue({
         data: makeEvent({ creator: { id: 'user-1', nickname: '松の匠', avatarUrl: null } }),

@@ -51,15 +51,6 @@ function renderRepostButton(props?: Partial<Props>) {
   return renderWithProviders(<RepostButton {...defaultProps} />);
 }
 
-/**
- * Alert.alert をモックしてボタンインデックスを選択するヘルパー。
- * Android では Alert を使う。
- */
-function pressAlertButton(buttonText: string) {
-  const alertSpy = jest.spyOn(Alert, 'alert');
-  return { alertSpy, buttonText };
-}
-
 // ---------------------------------------------------------------------------
 // テスト
 // ---------------------------------------------------------------------------

@@ -13,6 +13,7 @@ import React from 'react';
 import { screen } from '@testing-library/react-native';
 import ShopsScreen from '@/app/shops/index';
 import { renderWithProviders } from '@/__tests__/utils/test-utils';
+import { useOnlineStatus } from '@/hooks/use-online-status';
 
 // ---------------------------------------------------------------------------
 // モック
@@ -37,7 +38,9 @@ jest.mock('@/lib/queries/auth', () => ({
 }));
 
 jest.mock('@/components/shops/ShopCard', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports -- jest.mock ファクトリ内では ESM import が使えないため require を使用する（Jest 制約）
   const React = require('react');
+  // eslint-disable-next-line @typescript-eslint/no-require-imports -- jest.mock ファクトリ内では ESM import が使えないため require を使用する（Jest 制約）
   const { Text } = require('react-native');
   return {
     ShopCard: ({ name }: { name: string }) =>
@@ -109,7 +112,6 @@ beforeEach(() => {
   mockUseGenresQuery.mockReturnValue(defaultGenreQuery);
   mockUseShopMapPinsQuery.mockReturnValue(defaultMapPinsQuery);
   // useOnlineStatus をデフォルトのオンライン状態にリセットする
-  const { useOnlineStatus } = require('@/hooks/use-online-status');
   (useOnlineStatus as jest.Mock).mockReturnValue(true);
 });
 
@@ -188,7 +190,6 @@ describe('ShopsScreen - 地図統合', () => {
   });
 
   it('オフライン時は WebView の代わりにオフラインメッセージが表示される', () => {
-    const { useOnlineStatus } = require('@/hooks/use-online-status');
     (useOnlineStatus as jest.Mock).mockReturnValue(false);
 
     mockUseShopsListQuery.mockReturnValue({

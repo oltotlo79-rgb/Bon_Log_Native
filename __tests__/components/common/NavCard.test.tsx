@@ -120,7 +120,7 @@ describe('NavCard アクセシビリティ', () => {
   it('タップターゲットの minHeight が 44 以上である（44pt ルール）', () => {
     const { toJSON } = render(<NavCard {...baseProps} />);
     const raw = toJSON();
-    const json = (Array.isArray(raw) ? raw[0] : raw) as { props: { style?: Record<string, unknown> | Array<Record<string, unknown>> } } | null;
+    const json = (Array.isArray(raw) ? raw[0] : raw) as { props: { style?: Record<string, unknown> | Record<string, unknown>[] } } | null;
     if (json === null) throw new Error('toJSON returned null');
     const style = Array.isArray(json.props.style)
       ? Object.assign({}, ...json.props.style)

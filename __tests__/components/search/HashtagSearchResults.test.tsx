@@ -365,7 +365,7 @@ describe('HashtagSearchResults — クエリフックへの引数', () => {
 
   it('limit パラメータが渡される', () => {
     renderWithProviders(<HashtagSearchResults rawQuery="松" />);
-    const [_q, limit] = mockUseSearchHashtagsQuery.mock.calls[0] as [string, number];
+    const [, limit] = mockUseSearchHashtagsQuery.mock.calls[0] as [string, number];
     expect(typeof limit).toBe('number');
     expect(limit).toBeGreaterThan(0);
   });

@@ -6,7 +6,7 @@
  */
 
 import React from 'react';
-import { Alert } from 'react-native';
+import { Alert, Platform, RefreshControl } from 'react-native';
 import { screen, fireEvent, waitFor } from '@testing-library/react-native';
 import PostDetailScreen from '@/app/posts/[id]/index';
 import { renderWithProviders } from '@/__tests__/utils/test-utils';
@@ -171,7 +171,6 @@ describe('PostDetailScreen - handlePressMenuPost', () => {
 
   it('Android 環境で「投稿のオプションを開く」タップすると OwnPostMenu の「編集」ボタンが表示される', async () => {
     // Android 環境を模倣
-    const Platform = require('react-native').Platform;
     const originalOS = Platform.OS;
     Object.defineProperty(Platform, 'OS', { value: 'android', configurable: true });
 
@@ -195,7 +194,6 @@ describe('PostDetailScreen - handlePressMenuPost', () => {
   });
 
   it('Android OwnPostMenu で「投稿を編集」タップすると router.push が呼ばれる', async () => {
-    const Platform = require('react-native').Platform;
     const originalOS = Platform.OS;
     Object.defineProperty(Platform, 'OS', { value: 'android', configurable: true });
 
@@ -220,7 +218,6 @@ describe('PostDetailScreen - handlePressMenuPost', () => {
   });
 
   it('Android OwnPostMenu で「キャンセル」タップするとモーダルが閉じる', async () => {
-    const Platform = require('react-native').Platform;
     const originalOS = Platform.OS;
     Object.defineProperty(Platform, 'OS', { value: 'android', configurable: true });
 
@@ -256,7 +253,6 @@ describe('PostDetailScreen - handlePressMenuPost', () => {
 
 describe('PostDetailScreen - handleAndroidDeletePost (投稿削除確認→削除)', () => {
   it('Android で OwnPostMenu 削除ボタン→Alert 確認→削除 mutation が呼ばれる', async () => {
-    const Platform = require('react-native').Platform;
     const originalOS = Platform.OS;
     Object.defineProperty(Platform, 'OS', { value: 'android', configurable: true });
     const alertCalls: Parameters<typeof Alert.alert>[] = [];
@@ -499,7 +495,6 @@ describe('PostDetailScreen - handleRefetch（プルトゥリフレッシュ）',
   it('RefreshControl の onRefresh で refetchPost と refetchComments が呼ばれる', () => {
     renderWithProviders(<PostDetailScreen />);
     // RefreshControl を UNSAFE で取得して onRefresh を直接呼ぶ
-    const { RefreshControl } = require('react-native');
     const refreshControls = screen.UNSAFE_getAllByType(RefreshControl);
     if (refreshControls.length > 0) {
       const rc = refreshControls[0];

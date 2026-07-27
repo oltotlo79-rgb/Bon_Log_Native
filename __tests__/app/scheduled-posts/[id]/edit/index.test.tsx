@@ -72,7 +72,9 @@ jest.mock('@/hooks/use-post-composer', () => ({
 }));
 
 jest.mock('@/components/post/PostBodyInput', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports -- jest.mock ファクトリ内では ESM import が使えないため require を使用する（Jest 制約）
   const React = require('react');
+  // eslint-disable-next-line @typescript-eslint/no-require-imports -- jest.mock ファクトリ内では ESM import が使えないため require を使用する（Jest 制約）
   const { Text } = require('react-native');
   return {
     PostBodyInput: ({ value }: { value: string }) => React.createElement(Text, null, value),
@@ -80,7 +82,9 @@ jest.mock('@/components/post/PostBodyInput', () => {
 });
 
 jest.mock('@/components/post/GenreSelector', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports -- jest.mock ファクトリ内では ESM import が使えないため require を使用する（Jest 制約）
   const React = require('react');
+  // eslint-disable-next-line @typescript-eslint/no-require-imports -- jest.mock ファクトリ内では ESM import が使えないため require を使用する（Jest 制約）
   const { Text } = require('react-native');
   return {
     GenreSelector: () => React.createElement(Text, null, 'ジャンル選択'),
@@ -88,7 +92,9 @@ jest.mock('@/components/post/GenreSelector', () => {
 });
 
 jest.mock('@/components/post/ImageAttachmentGrid', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports -- jest.mock ファクトリ内では ESM import が使えないため require を使用する（Jest 制約）
   const React = require('react');
+  // eslint-disable-next-line @typescript-eslint/no-require-imports -- jest.mock ファクトリ内では ESM import が使えないため require を使用する（Jest 制約）
   const { Text } = require('react-native');
   return {
     ImageAttachmentGrid: () => React.createElement(Text, null, '画像添付'),
@@ -96,7 +102,9 @@ jest.mock('@/components/post/ImageAttachmentGrid', () => {
 });
 
 jest.mock('@/components/post/VideoAttachmentArea', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports -- jest.mock ファクトリ内では ESM import が使えないため require を使用する（Jest 制約）
   const React = require('react');
+  // eslint-disable-next-line @typescript-eslint/no-require-imports -- jest.mock ファクトリ内では ESM import が使えないため require を使用する（Jest 制約）
   const { Text } = require('react-native');
   return {
     VideoAttachmentArea: () => React.createElement(Text, null, '動画添付'),
@@ -104,7 +112,9 @@ jest.mock('@/components/post/VideoAttachmentArea', () => {
 });
 
 jest.mock('@/components/post/ComposerFormError', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports -- jest.mock ファクトリ内では ESM import が使えないため require を使用する（Jest 制約）
   const React = require('react');
+  // eslint-disable-next-line @typescript-eslint/no-require-imports -- jest.mock ファクトリ内では ESM import が使えないため require を使用する（Jest 制約）
   const { Text } = require('react-native');
   return {
     ComposerFormError: ({ message }: { message: string | null }) =>

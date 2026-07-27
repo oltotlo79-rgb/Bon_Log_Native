@@ -25,7 +25,9 @@ type MockFlatListProps = {
 };
 
 jest.mock('react-native/Libraries/Lists/FlatList', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports -- jest.mock ファクトリ内では ESM import が使えないため require を使用する（Jest 制約）
   const mockReact = require('react');
+  // eslint-disable-next-line @typescript-eslint/no-require-imports -- jest.mock ファクトリ内では ESM import が使えないため require を使用する（Jest 制約）
   const mockRN = require('react-native');
 
   function MockFlatList(props: MockFlatListProps) {

@@ -16,7 +16,9 @@ import AnalyticsScreen from '@/app/analytics/index';
 
 jest.mock('@/components/analytics/PostsView', () => ({
   PostsView: ({ period }: { period: number }) => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports -- jest.mock ファクトリ内では ESM import が使えないため require を使用する（Jest 制約）
     const React = require('react');
+    // eslint-disable-next-line @typescript-eslint/no-require-imports -- jest.mock ファクトリ内では ESM import が使えないため require を使用する（Jest 制約）
     const { Text } = require('react-native');
     return React.createElement(Text, { testID: `posts-view-period-${period}` }, `PostsView period=${period}`);
   },
@@ -24,7 +26,9 @@ jest.mock('@/components/analytics/PostsView', () => ({
 
 jest.mock('@/components/analytics/PeriodComparisonView', () => ({
   PeriodComparisonView: ({ period }: { period: number }) => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports -- jest.mock ファクトリ内では ESM import が使えないため require を使用する（Jest 制約）
     const React = require('react');
+    // eslint-disable-next-line @typescript-eslint/no-require-imports -- jest.mock ファクトリ内では ESM import が使えないため require を使用する（Jest 制約）
     const { Text } = require('react-native');
     return React.createElement(Text, { testID: `comparison-view-period-${period}` }, `PeriodComparisonView period=${period}`);
   },
@@ -32,7 +36,9 @@ jest.mock('@/components/analytics/PeriodComparisonView', () => ({
 
 jest.mock('@/components/analytics/GenrePerformanceView', () => ({
   GenrePerformanceView: ({ period }: { period: number }) => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports -- jest.mock ファクトリ内では ESM import が使えないため require を使用する（Jest 制約）
     const React = require('react');
+    // eslint-disable-next-line @typescript-eslint/no-require-imports -- jest.mock ファクトリ内では ESM import が使えないため require を使用する（Jest 制約）
     const { Text } = require('react-native');
     return React.createElement(Text, { testID: `genre-view-period-${period}` }, `GenrePerformanceView period=${period}`);
   },
@@ -40,7 +46,9 @@ jest.mock('@/components/analytics/GenrePerformanceView', () => ({
 
 jest.mock('@/components/analytics/KeywordsView', () => ({
   KeywordsView: ({ period }: { period: number }) => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports -- jest.mock ファクトリ内では ESM import が使えないため require を使用する（Jest 制約）
     const React = require('react');
+    // eslint-disable-next-line @typescript-eslint/no-require-imports -- jest.mock ファクトリ内では ESM import が使えないため require を使用する（Jest 制約）
     const { Text } = require('react-native');
     return React.createElement(Text, { testID: `keywords-view-period-${period}` }, `KeywordsView period=${period}`);
   },
@@ -48,7 +56,9 @@ jest.mock('@/components/analytics/KeywordsView', () => ({
 
 jest.mock('@/components/analytics/LikesView', () => ({
   LikesView: ({ period }: { period: number }) => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports -- jest.mock ファクトリ内では ESM import が使えないため require を使用する（Jest 制約）
     const React = require('react');
+    // eslint-disable-next-line @typescript-eslint/no-require-imports -- jest.mock ファクトリ内では ESM import が使えないため require を使用する（Jest 制約）
     const { Text } = require('react-native');
     return React.createElement(Text, { testID: `likes-view-period-${period}` }, `LikesView period=${period}`);
   },
@@ -56,7 +66,9 @@ jest.mock('@/components/analytics/LikesView', () => ({
 
 jest.mock('@/components/analytics/EngagementTrendView', () => ({
   EngagementTrendView: ({ period }: { period: number }) => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports -- jest.mock ファクトリ内では ESM import が使えないため require を使用する（Jest 制約）
     const React = require('react');
+    // eslint-disable-next-line @typescript-eslint/no-require-imports -- jest.mock ファクトリ内では ESM import が使えないため require を使用する（Jest 制約）
     const { Text } = require('react-native');
     return React.createElement(Text, { testID: `engagement-view-period-${period}` }, `EngagementTrendView period=${period}`);
   },
@@ -64,7 +76,9 @@ jest.mock('@/components/analytics/EngagementTrendView', () => ({
 
 jest.mock('@/components/analytics/FollowerGrowthView', () => ({
   FollowerGrowthView: ({ period }: { period: number }) => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports -- jest.mock ファクトリ内では ESM import が使えないため require を使用する（Jest 制約）
     const React = require('react');
+    // eslint-disable-next-line @typescript-eslint/no-require-imports -- jest.mock ファクトリ内では ESM import が使えないため require を使用する（Jest 制約）
     const { Text } = require('react-native');
     return React.createElement(Text, { testID: `followers-view-period-${period}` }, `FollowerGrowthView period=${period}`);
   },
@@ -72,7 +86,9 @@ jest.mock('@/components/analytics/FollowerGrowthView', () => ({
 
 jest.mock('@/components/analytics/QuotesView', () => ({
   QuotesView: () => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports -- jest.mock ファクトリ内では ESM import が使えないため require を使用する（Jest 制約）
     const React = require('react');
+    // eslint-disable-next-line @typescript-eslint/no-require-imports -- jest.mock ファクトリ内では ESM import が使えないため require を使用する（Jest 制約）
     const { Text } = require('react-native');
     return React.createElement(Text, { testID: 'quotes-view' }, 'QuotesView');
   },

@@ -4,7 +4,7 @@
  */
 
 import React from 'react';
-import { Alert } from 'react-native';
+import { Alert, Linking } from 'react-native';
 import { screen, fireEvent, act } from '@testing-library/react-native';
 import ShopDetailScreen from '@/app/shops/[id]/index';
 import { ApiError } from '@/lib/api/errors';
@@ -217,7 +217,7 @@ describe('ShopDetailScreen', () => {
     });
 
     it('メニューボタンタップで Alert が呼ばれる', () => {
-      const AlertSpy = jest.spyOn(require('react-native').Alert, 'alert');
+      const AlertSpy = jest.spyOn(Alert, 'alert');
       mockUseShopDetailQuery.mockReturnValue({
         data: makeShop({ isOwner: true }),
         isLoading: false,
@@ -385,7 +385,6 @@ describe('ShopDetailScreen', () => {
     });
 
     it('電話ボタンタップで Linking.openURL が呼ばれる', () => {
-      const Linking = require('react-native').Linking;
       Linking.openURL = jest.fn().mockResolvedValue(undefined);
       mockUseShopDetailQuery.mockReturnValue({
         data: makeShop({ phone: '03-1234-5678' }),
@@ -414,7 +413,6 @@ describe('ShopDetailScreen', () => {
     });
 
     it('地図ボタンタップで Linking.canOpenURL が呼ばれる', () => {
-      const Linking = require('react-native').Linking;
       Linking.canOpenURL = jest.fn().mockResolvedValue(true);
       Linking.openURL = jest.fn().mockResolvedValue(undefined);
       mockUseShopDetailQuery.mockReturnValue({

@@ -7,9 +7,11 @@
  */
 
 import React from 'react';
+import { FlatList } from 'react-native';
 import { screen, fireEvent } from '@testing-library/react-native';
 import ShopsScreen from '@/app/shops/index';
 import { renderWithProviders } from '@/__tests__/utils/test-utils';
+import { useOnlineStatus } from '@/hooks/use-online-status';
 
 const mockRouter = jest.requireMock('expo-router').router;
 
@@ -32,7 +34,9 @@ jest.mock('@/lib/queries/auth', () => ({
 }));
 
 jest.mock('@/components/shops/ShopCard', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports -- jest.mock ファクトリ内では ESM import が使えないため require を使用する（Jest 制約）
   const React = require('react');
+  // eslint-disable-next-line @typescript-eslint/no-require-imports -- jest.mock ファクトリ内では ESM import が使えないため require を使用する（Jest 制約）
   const { Pressable, Text } = require('react-native');
   return {
     ShopCard: ({ name, onPress }: { name: string; onPress: () => void }) =>
@@ -471,7 +475,7 @@ describe('ShopsScreen', () => {
         fetchNextPage,
       });
       renderWithProviders(<ShopsScreen />);
-      const lists = screen.UNSAFE_getAllByType(require('react-native').FlatList);
+      const lists = screen.UNSAFE_getAllByType(FlatList);
       fireEvent(lists[0], 'endReached');
       expect(fetchNextPage).toHaveBeenCalledTimes(1);
     });
@@ -489,7 +493,7 @@ describe('ShopsScreen', () => {
         fetchNextPage,
       });
       renderWithProviders(<ShopsScreen />);
-      const lists = screen.UNSAFE_getAllByType(require('react-native').FlatList);
+      const lists = screen.UNSAFE_getAllByType(FlatList);
       fireEvent(lists[0], 'endReached');
       expect(fetchNextPage).not.toHaveBeenCalled();
     });
@@ -510,7 +514,6 @@ describe('ShopsScreen', () => {
 
   describe('OfflineBanner', () => {
     it('オンライン時には OfflineBanner の accessibilityLabel が設定されない（isVisible=false）', () => {
-      const { useOnlineStatus } = require('@/hooks/use-online-status');
       (useOnlineStatus as jest.Mock).mockReturnValue(true);
       mockUseShopsListQuery.mockReturnValue({
         ...defaultQuery,
@@ -521,7 +524,6 @@ describe('ShopsScreen', () => {
     });
 
     it('オフライン時には OfflineBanner の accessibilityLabel にオフラインメッセージが設定される', () => {
-      const { useOnlineStatus } = require('@/hooks/use-online-status');
       (useOnlineStatus as jest.Mock).mockReturnValue(false);
       mockUseShopsListQuery.mockReturnValue({
         ...defaultQuery,

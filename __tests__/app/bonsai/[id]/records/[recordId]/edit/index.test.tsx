@@ -9,7 +9,6 @@ import { screen, fireEvent, waitFor } from '@testing-library/react-native';
 import BonsaiRecordEditScreen from '@/app/bonsai/[id]/records/[recordId]/edit/index';
 import { renderWithProviders } from '@/__tests__/utils/test-utils';
 
-const mockRouter = jest.requireMock('expo-router').router;
 const mockUseLocalSearchParams = jest.requireMock('expo-router').useLocalSearchParams;
 
 jest.mock('@/hooks/use-online-status', () => ({
@@ -35,7 +34,9 @@ let capturedOnRemove: ((id: string) => void) | null = null;
 let capturedImages: { localId: string; uri: string }[] = [];
 
 jest.mock('@/components/post/ImageAttachmentGrid', () => {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports -- jest.mock ファクトリ内では ESM import が使えないため require を使用する（Jest 制約）
   const React = require('react');
+  // eslint-disable-next-line @typescript-eslint/no-require-imports -- jest.mock ファクトリ内では ESM import が使えないため require を使用する（Jest 制約）
   const { TouchableOpacity, Text } = require('react-native');
   return {
     ImageAttachmentGrid: ({
