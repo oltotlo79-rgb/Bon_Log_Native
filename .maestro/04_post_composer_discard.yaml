@@ -17,7 +17,7 @@ appId: com.bonlog.app
 - assertVisible:
     accessibilityLabel: "キャンセル"
 
-# 本文入力欄は testID 付与済み（components/post/PostBodyInput.tsx:84）
+# 本文入力欄は testID 付与済み（components/post/PostBodyInput.tsx の testID: post-body-input）
 - tapOn:
     id: "post-body-input"
 - inputText: "Maestro E2E テスト入力（送信しません）"

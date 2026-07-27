@@ -5,7 +5,7 @@
 # 確認内容: いいねボタンをタップして「いいね済み」表示になり、再タップで元に戻ることを確認する
 # （LikeButton はデバウンス後に API を呼ぶため、連続2タップでは実質的にサーバー状態を変えない）。
 # LikeButtonProps に testID が無いため、件数を含む accessibilityLabel を正規表現で一致させる
-# （components/post/LikeButton.tsx:231-236）。
+# （components/post/LikeButton.tsx の accessibilityLabel 生成ロジック）。
 appId: com.bonlog.app
 ---
 - launchApp:

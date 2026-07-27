@@ -12,13 +12,13 @@ appId: com.bonlog.app
     text: "ホーム"
 
 # 複数投稿がある場合は先頭の他ユーザー投稿のメニューを対象にする
-# （components/post/PostCardHeader.tsx:145）
+# （components/post/PostCardHeader.tsx の accessibilityLabel: 投稿のオプションを開く）
 - tapOn:
     accessibilityLabel: "投稿のオプションを開く"
     index: 0
 
 # 投稿の通報メニュー項目（ラベルは対象ユーザーのニックネームに依存しない固定文言。
-# components/user/UserActionMenu.tsx:113）
+# components/user/UserActionMenu.tsx の buildMenuItems 内 report アクションのラベル）
 - tapOn:
     accessibilityLabel: "投稿を通報"
 

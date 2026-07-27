@@ -14,7 +14,7 @@ appId: com.bonlog.app
     text: "ログイン"
 
 # 入力欄・送信ボタンは testID 付与済みのため id セレクタで一意に参照する
-# （app/(auth)/login/index.tsx:234,250,268）。
+# （app/(auth)/login/index.tsx の testID: login-email-input / login-password-input / login-submit-button）。
 - tapOn:
     id: "login-email-input"
 - inputText: "${MAESTRO_LOGIN_EMAIL}"

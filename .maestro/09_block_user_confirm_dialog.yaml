@@ -17,14 +17,14 @@ appId: com.bonlog.app
     index: 0
 
 # ブロック項目のラベルは「@{ニックネーム} をブロック」形式（対象ユーザー依存のため正規表現で
-# 一致させる。components/user/UserActionMenu.tsx:117）
+# 一致させる。components/user/UserActionMenu.tsx の buildMenuItems 内 block アクションのラベル）
 - tapOn:
     text: "^@.+ をブロック$"
 
 - assertVisible:
     text: "^@.+ をブロックしますか？$"
 
-# 確認ダイアログをキャンセルする（components/user/BlockConfirmDialog.tsx:157）
+# 確認ダイアログをキャンセルする（components/user/BlockConfirmDialog.tsx の accessibilityLabel: キャンセル）
 - tapOn:
     accessibilityLabel: "キャンセル"
 
