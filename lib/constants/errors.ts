@@ -611,6 +611,9 @@ export const ERR_NOTIFICATION_SETTINGS_UPDATE_FAILED = '通知設定の更新に
 /** 汎用エラー（詳細不明 / 5xx 等） */
 export const ERR_GENERIC = '予期しないエラーが発生しました。しばらく経ってからお試しください。';
 
+/** 汎用エラー Alert のタイトル（Alert.alert の第1引数として使う「エラー」） */
+export const ERR_GENERIC_TITLE = 'エラー';
+
 /** 再試行の案内（単独または他エラー文言の末尾に付与） */
 export const ERR_RETRY_HINT = 'もう一度お試しください。';
 
@@ -661,6 +664,122 @@ export const ERR_LEGAL_LOAD_FAILED = '法的文章を読み込めませんでし
 
 /** 投稿分析読み込み失敗 */
 export const ERR_ANALYTICS_LOAD_FAILED = '投稿分析データを読み込めませんでした。';
+
+// ---------------------------------------------------------------------------
+// 確認ダイアログ系（Alert.alert の確認プロンプト — タイトル・本文）
+// エラーではなく確認ダイアログのため ERR_ ではなく CONFIRM_ プレフィックスを用いる。
+// ---------------------------------------------------------------------------
+
+/** 投稿破棄確認（PostComposer）の Alert タイトル */
+export const CONFIRM_DISCARD_POST_TITLE = '投稿を破棄しますか？';
+
+/** 引用破棄確認（QuoteComposer）の Alert タイトル */
+export const CONFIRM_DISCARD_QUOTE_TITLE = '引用を破棄しますか？';
+
+/** 投稿・引用破棄確認の Alert 本文（PostComposer / QuoteComposer 共通） */
+export const CONFIRM_DISCARD_UNSAVED_BODY = '入力した内容は保存されません。';
+
+/**
+ * 編集画面の変更破棄確認の Alert タイトル。
+ * イベント・盆栽・盆栽記録・予約投稿・盆栽園の各編集/新規作成画面で共通使用。
+ */
+export const CONFIRM_DISCARD_CHANGES_TITLE = '変更を破棄しますか？';
+
+/** 変更破棄確認の Alert 本文（大半の編集画面で共通使用） */
+export const CONFIRM_DISCARD_CHANGES_BODY = '保存されていない変更は失われます。';
+
+/** 変更破棄確認の Alert 本文（予約投稿の新規作成画面。他画面と文言が異なるため別定数） */
+export const CONFIRM_DISCARD_SCHEDULED_POST_BODY = '入力した内容は失われます。';
+
+/** 変更破棄確認の Alert 本文（盆栽園レビュー新規作成画面。他画面と文言が異なるため別定数） */
+export const CONFIRM_DISCARD_REVIEW_BODY = '入力した内容が失われます。';
+
+/** 投稿削除確認（投稿詳細画面）の Alert タイトル */
+export const CONFIRM_DELETE_POST_TITLE = '投稿を削除しますか？';
+
+/** コメント削除確認の Alert タイトル */
+export const CONFIRM_DELETE_COMMENT_TITLE = 'コメントを削除しますか？';
+
+/** 削除確認の Alert 本文（投稿・コメント削除で共通使用） */
+export const CONFIRM_DELETE_IRREVERSIBLE_BODY = 'この操作は取り消せません。';
+
+/** 盆栽削除確認の Alert タイトル */
+export const CONFIRM_DELETE_BONSAI_TITLE = 'この盆栽を削除しますか？';
+
+/** 盆栽削除確認の Alert 本文 */
+export const CONFIRM_DELETE_BONSAI_BODY =
+  '盆栽と関連する成長記録がすべて削除されます。この操作は取り消せません。';
+
+/** 盆栽の成長記録削除確認の Alert タイトル */
+export const CONFIRM_DELETE_BONSAI_RECORD_TITLE = '記録を削除しますか？';
+
+/** 盆栽の成長記録削除確認の Alert 本文 */
+export const CONFIRM_DELETE_BONSAI_RECORD_BODY = 'この成長記録は削除されます。この操作は取り消せません。';
+
+/** イベント削除確認の Alert タイトル */
+export const CONFIRM_DELETE_EVENT_TITLE = 'このイベントを削除しますか？';
+
+/** イベント削除確認の Alert 本文 */
+export const CONFIRM_DELETE_EVENT_BODY = '削除したイベントは復元できません。';
+
+/** 手入れログ削除確認の Alert タイトル */
+export const CONFIRM_DELETE_CARE_LOG_TITLE = '手入れログを削除';
+
+/**
+ * 手入れログ削除確認の Alert 本文の末尾（種別ラベル・日付ラベルの後に続く固定文言）。
+ * 全体は `${typeLabel}（${dateLabel}${CONFIRM_DELETE_CARE_LOG_BODY_SUFFIX}` で組み立てる。
+ */
+export const CONFIRM_DELETE_CARE_LOG_BODY_SUFFIX = '）を削除しますか？';
+
+/** ダイレクトメッセージ削除確認の Alert タイトル */
+export const CONFIRM_DELETE_MESSAGE_TITLE = 'メッセージを削除';
+
+/** ダイレクトメッセージ削除確認の Alert 本文 */
+export const CONFIRM_DELETE_MESSAGE_BODY = 'このメッセージを削除しますか？';
+
+/** 予約投稿の予約取り消し確認の Alert タイトル */
+export const CONFIRM_CANCEL_SCHEDULED_POST_TITLE = '予約を取り消しますか？';
+
+/** 予約投稿の予約取り消し確認の Alert 本文 */
+export const CONFIRM_CANCEL_SCHEDULED_POST_BODY =
+  'キャンセルしても投稿は削除されません。後で確認できます。';
+
+/** 予約投稿削除確認の Alert タイトル */
+export const CONFIRM_DELETE_SCHEDULED_POST_TITLE = 'この予約投稿を削除しますか？';
+
+/** 予約投稿削除確認の Alert 本文 */
+export const CONFIRM_DELETE_SCHEDULED_POST_BODY = '削除すると元に戻せません。';
+
+/** ログアウト確認の Alert タイトル */
+export const CONFIRM_LOGOUT_TITLE = 'ログアウト';
+
+/** ログアウト確認の Alert 本文 */
+export const CONFIRM_LOGOUT_BODY = 'ログアウトしますか？';
+
+/** 2段階認証の無効化確認の Alert タイトル */
+export const CONFIRM_DISABLE_2FA_TITLE = '2段階認証を無効化しますか？';
+
+/** 2段階認証の無効化確認の Alert 本文 */
+export const CONFIRM_DISABLE_2FA_BODY =
+  '無効にすると、ログイン時に認証アプリのコードが不要になり、アカウントのセキュリティが低下します。';
+
+/**
+ * ユーザーブロック確認の Alert タイトルの末尾（`@ニックネーム` の後に続く固定文言）。
+ * 全体は `@${nickname}${CONFIRM_BLOCK_USER_TITLE_SUFFIX}` で組み立てる。
+ */
+export const CONFIRM_BLOCK_USER_TITLE_SUFFIX = ' をブロックしますか？';
+
+/** ユーザーブロック確認の Alert 本文 */
+export const CONFIRM_BLOCK_USER_BODY =
+  'ブロックすると、互いにフォローしている場合はフォロー関係が解除され、相手はあなたのプロフィールを検索・フォローできなくなります。';
+
+/**
+ * 通報確認の Alert タイトルの接頭辞・接尾辞（対象種別ラベルの前後に続く固定文言）。
+ * 全体は `${CONFIRM_REPORT_TITLE_PREFIX}${targetLabel}${CONFIRM_REPORT_TITLE_SUFFIX}` で組み立てる。
+ * targetLabel は lib/constants/report.ts の REPORT_TARGET_LABELS を使う。
+ */
+export const CONFIRM_REPORT_TITLE_PREFIX = 'この';
+export const CONFIRM_REPORT_TITLE_SUFFIX = 'を通報しますか？';
 
 // ---------------------------------------------------------------------------
 // 認証フォーム — 案内・成功メッセージ

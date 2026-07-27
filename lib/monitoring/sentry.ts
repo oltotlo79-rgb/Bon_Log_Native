@@ -6,6 +6,7 @@
 
 import * as Sentry from '@sentry/react-native';
 import type { Breadcrumb, Contexts, ErrorEvent, EventHint, User } from '@sentry/core';
+import { isRecord } from '@/lib/utils/type-guards';
 
 const FILTERED_VALUE = '[Filtered]';
 const CIRCULAR_VALUE = '[Circular]';
@@ -125,10 +126,6 @@ function isUrlKey(key: string): boolean {
 
 function containsSensitivePattern(value: string): boolean {
   return SENSITIVE_VALUE_PATTERNS.some((pattern) => pattern.test(value));
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 function scrubValue(
