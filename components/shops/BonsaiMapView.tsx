@@ -53,6 +53,7 @@ import {
 } from '@/lib/constants/errors';
 import { LEAFLET_CSS_CONTENT, LEAFLET_JS_CONTENT } from '@/components/shops/leaflet-vendor';
 import { isRecord } from '@/lib/utils/type-guards';
+import { API_BASE_URL } from '@/lib/constants/api';
 
 // ---------------------------------------------------------------------------
 // 定数
@@ -70,10 +71,6 @@ const RETRY_BUTTON_MIN_WIDTH = 96;
 // Leaflet 本体は同梱済みでネットワーク非依存だが、タイル読み込み待ちや低スペック端末での
 // 初期化遅延を考慮し、postMessage('ready') が一定時間届かなければエラー表示へフォールバックする。
 const MAP_READY_TIMEOUT_MS = 20000;
-
-// Android の loadDataWithBaseURL 経路を使わせ、referer/origin を持たせるための baseUrl。
-// これがないと一部ネットワーク環境で WebView 内リクエストが素性不明として扱われることがある。
-const MAP_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL ?? 'https://www.bon-log.com';
 
 // OSM タイル配信ホスト。タイル画像の 4xx/5xx は地図自体の動作を妨げないため致命扱いしない。
 const MAP_TILE_HOST = 'tile.openstreetmap.org';
@@ -795,7 +792,9 @@ export const BonsaiMapView = React.memo(function BonsaiMapView({
       <WebView
         key={reloadAttempt}
         ref={webViewRef}
-        source={{ html: htmlContent, baseUrl: MAP_BASE_URL }}
+        // Android の loadDataWithBaseURL 経路を使わせ、referer/origin を持たせるための baseUrl。
+        // これがないと一部ネットワーク環境で WebView 内リクエストが素性不明として扱われることがある。
+        source={{ html: htmlContent, baseUrl: API_BASE_URL }}
         style={styles.webView}
         originWhitelist={['*']}
         onMessage={handleMessage}

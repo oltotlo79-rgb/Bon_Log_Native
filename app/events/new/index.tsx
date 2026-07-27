@@ -63,6 +63,7 @@ import {
   CONFIRM_DISCARD_CHANGES_TITLE,
   CONFIRM_DISCARD_CHANGES_BODY,
 } from '@/lib/constants/errors';
+import { isValidUrl } from '@/lib/utils/is-valid-url';
 
 // ---------------------------------------------------------------------------
 // 定数
@@ -73,11 +74,6 @@ const INPUT_HEIGHT = 48;
 // ---------------------------------------------------------------------------
 // ユーティリティ
 // ---------------------------------------------------------------------------
-
-function isValidUrl(url: string): boolean {
-  if (url.length === 0) return true;
-  return url.startsWith('https://') || url.startsWith('http://');
-}
 
 function isValidDate(date: string | null): boolean {
   if (date === null) return false;

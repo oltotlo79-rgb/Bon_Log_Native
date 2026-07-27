@@ -50,6 +50,7 @@ import {
   CONFIRM_DELETE_IRREVERSIBLE_BODY,
 } from '@/lib/constants/errors';
 import { ROUTE_FEED, routePostEdit, routeUserDetail } from '@/lib/constants/routes';
+import { API_BASE_URL } from '@/lib/constants/api';
 import { ScreenLoading } from '@/components/common/ScreenLoading';
 import { ScreenError } from '@/components/common/ScreenError';
 import { ScreenEmpty } from '@/components/common/ScreenEmpty';
@@ -67,9 +68,6 @@ import { useCurrentUserQuery } from '@/lib/queries/auth';
 import { mapToPostCardProps } from '@/hooks/use-post-card-props';
 import type { ReplyTarget } from '@/components/comment/CommentItem';
 import type { CommentSubmitParams } from '@/components/comment/CommentInput';
-
-// 投稿公開 URL のベース（Share API で使用）
-const WEB_BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL ?? 'https://www.bon-log.com';
 
 // ---------------------------------------------------------------------------
 // 型ガード: useLocalSearchParams の値を string に絞る
@@ -534,7 +532,7 @@ function PostDetailPage({ postId }: PostDetailPageProps) {
   const authorId = post?.user.id;
 
   const handleShare = useCallback(async () => {
-    const postUrl = `${WEB_BASE_URL}/posts/${postId}`;
+    const postUrl = `${API_BASE_URL}/posts/${postId}`;
     try {
       await Share.share({
         message: postUrl,

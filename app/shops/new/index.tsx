@@ -77,6 +77,7 @@ import {
   MIN_SHOP_LONGITUDE,
   MAX_SHOP_LONGITUDE,
 } from '@/lib/constants/limits/shop';
+import { isValidUrl } from '@/lib/utils/is-valid-url';
 
 // ---------------------------------------------------------------------------
 // 定数
@@ -89,11 +90,6 @@ const CHIP_HIT_SLOP = { top: 4, bottom: 4, left: 4, right: 4 };
 // ---------------------------------------------------------------------------
 // ユーティリティ
 // ---------------------------------------------------------------------------
-
-function isValidUrl(url: string): boolean {
-  if (url.length === 0) return true;
-  return url.startsWith('https://') || url.startsWith('http://');
-}
 
 function isValidLat(lat: string): boolean {
   if (lat.length === 0) return true;
