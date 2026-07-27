@@ -59,15 +59,23 @@ describe('isValidUrl', () => {
   });
 
   // ---------------------------------------------------------------------------
-  // 大文字スキーム → 実装は startsWith による大文字小文字を区別する単純比較のため false
+  // 大文字スキーム → サーバーと同じ大文字小文字非依存の判定のため true
   // ---------------------------------------------------------------------------
 
-  it('大文字の HTTPS:// は false を返す（大文字小文字を区別する単純な前方一致のため）', () => {
-    expect(isValidUrl('HTTPS://example.com')).toBe(false);
+  it('大文字の HTTPS:// はサーバーと同じ大文字小文字非依存の判定のため true を返す', () => {
+    expect(isValidUrl('HTTPS://example.com')).toBe(true);
   });
 
-  it('大文字の HTTP:// は false を返す（大文字小文字を区別する単純な前方一致のため）', () => {
-    expect(isValidUrl('HTTP://example.com')).toBe(false);
+  it('大文字の HTTP:// はサーバーと同じ大文字小文字非依存の判定のため true を返す', () => {
+    expect(isValidUrl('HTTP://example.com')).toBe(true);
+  });
+
+  it('大文字小文字が混在する Https:// は true を返す', () => {
+    expect(isValidUrl('Https://example.com')).toBe(true);
+  });
+
+  it('大文字小文字が混在する hTtPs:// は true を返す', () => {
+    expect(isValidUrl('hTtPs://example.com')).toBe(true);
   });
 
   // ---------------------------------------------------------------------------
