@@ -404,6 +404,9 @@ export const ERR_PHOTO_PERMISSION_TITLE = '写真へのアクセスが必要で�
 /** 写真ライブラリへのアクセス拒否時（画像添付）の Alert 本文 */
 export const ERR_PHOTO_PERMISSION_BODY = '設定アプリから写真へのアクセスを許可してください。';
 
+/** 写真ライブラリへのアクセス拒否時（プロフィール画像編集）の Alert 本文 */
+export const ERR_PROFILE_PHOTO_PERMISSION_BODY = '設定アプリから写真ライブラリへのアクセスを許可してください。';
+
 /** 写真ライブラリへのアクセス拒否時（動画添付）の Alert タイトル */
 export const ERR_VIDEO_PERMISSION_TITLE = '写真・動画へのアクセスが必要です';
 
