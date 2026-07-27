@@ -19,6 +19,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as WebBrowser from 'expo-web-browser';
 import * as Sentry from '@sentry/react-native';
 import { useEventDetailQuery, useDeleteEventMutation } from '@/lib/queries/events';
+import { normalizeUrlScheme } from '@/lib/utils/normalize-url-scheme';
 import { useCurrentUserQuery } from '@/lib/queries/auth';
 import { useOnlineStatus } from '@/hooks/use-online-status';
 import { ScreenLoading } from '@/components/common/ScreenLoading';
@@ -177,7 +178,7 @@ export default function EventDetailScreen() {
 
   const handleOpenExternalUrl = useCallback(async (url: string) => {
     try {
-      await WebBrowser.openBrowserAsync(url);
+      await WebBrowser.openBrowserAsync(normalizeUrlScheme(url));
     } catch (err) {
       Sentry.captureException(err);
     }
