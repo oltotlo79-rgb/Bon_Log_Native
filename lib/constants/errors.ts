@@ -395,6 +395,38 @@ export const ERR_SELF_ACTION = '自分自身に対してこの操作はできま
 export const ERR_PRIVATE_ACCOUNT_FOLLOW = 'このユーザーは非公開アカウントです。フォローリクエストを送信してください。';
 
 // ---------------------------------------------------------------------------
+// 権限ガイド系（Alert — 写真・カメラ・位置情報アクセス拒否時）
+// ---------------------------------------------------------------------------
+
+/** 写真ライブラリへのアクセス拒否時（画像添付）の Alert タイトル */
+export const ERR_PHOTO_PERMISSION_TITLE = '写真へのアクセスが必要です';
+
+/** 写真ライブラリへのアクセス拒否時（画像添付）の Alert 本文 */
+export const ERR_PHOTO_PERMISSION_BODY = '設定アプリから写真へのアクセスを許可してください。';
+
+/** 写真ライブラリへのアクセス拒否時（動画添付）の Alert タイトル */
+export const ERR_VIDEO_PERMISSION_TITLE = '写真・動画へのアクセスが必要です';
+
+/** 写真ライブラリへのアクセス拒否時（動画添付）の Alert 本文 */
+export const ERR_VIDEO_PERMISSION_BODY = '設定アプリから許可してください。';
+
+/** カメラへのアクセス拒否時の Alert タイトル */
+export const ERR_CAMERA_PERMISSION_TITLE = 'カメラへのアクセスが必要です';
+
+/** カメラへのアクセス拒否時の Alert 本文 */
+export const ERR_CAMERA_PERMISSION_BODY = '設定アプリからカメラへのアクセスを許可してください。';
+
+/** 位置情報へのアクセス拒否時の Alert タイトル */
+export const ERR_LOCATION_PERMISSION_TITLE = '位置情報の使用を許可してください';
+
+/** 位置情報へのアクセス拒否時の Alert 本文 */
+export const ERR_LOCATION_PERMISSION_BODY =
+  '現在地を表示するには、設定から位置情報の使用を許可してください。';
+
+/** 現在地取得失敗時の Alert 本文（タイトルは汎用の「エラー」を使用） */
+export const ERR_CURRENT_LOCATION_FAILED = '現在地を取得できませんでした';
+
+// ---------------------------------------------------------------------------
 // Push 通知系
 // ---------------------------------------------------------------------------
 
@@ -429,6 +461,12 @@ export const ERR_PURCHASE_PENDING = '決済が保留中です。Google Play で�
 /** 購入復元失敗 */
 export const ERR_PURCHASE_RESTORE_FAILED =
   '購入を復元できませんでした。もう一度お試しください。';
+
+/** 購入処理中の予期しないエラー（RevenueCat の PurchasesError 以外の例外） */
+export const ERR_PURCHASE_UNEXPECTED = '購入中に予期しないエラーが発生しました。';
+
+/** 購入復元処理中の予期しないエラー（RevenueCat の PurchasesError 以外の例外） */
+export const ERR_PURCHASE_RESTORE_UNEXPECTED = '購入の復元中に予期しないエラーが発生しました。';
 
 // ---------------------------------------------------------------------------
 // 汎用系

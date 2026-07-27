@@ -17,6 +17,7 @@ import {
   REVENUECAT_PREMIUM_OFFERING_ID,
   PLAY_SUBSCRIPTIONS_MANAGEMENT_URL,
 } from '@/lib/constants/billing';
+import { ERR_PURCHASE_UNEXPECTED, ERR_PURCHASE_RESTORE_UNEXPECTED } from '@/lib/constants/errors';
 
 // ---------------------------------------------------------------------------
 // 公開型
@@ -196,8 +197,7 @@ export async function purchasePremium(
       return { kind: 'error', message: err.message };
     }
 
-    const message =
-      err instanceof Error ? err.message : '購入中に予期しないエラーが発生しました。';
+    const message = err instanceof Error ? err.message : ERR_PURCHASE_UNEXPECTED;
     return { kind: 'error', message };
   }
 }
@@ -217,8 +217,7 @@ export async function restorePurchases(): Promise<RestoreResult> {
       return { kind: 'error', message: err.message };
     }
 
-    const message =
-      err instanceof Error ? err.message : '購入の復元中に予期しないエラーが発生しました。';
+    const message = err instanceof Error ? err.message : ERR_PURCHASE_RESTORE_UNEXPECTED;
     return { kind: 'error', message };
   }
 }

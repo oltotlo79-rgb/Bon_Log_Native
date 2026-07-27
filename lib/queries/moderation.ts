@@ -8,7 +8,12 @@
  * invalidation-map.md 参照。
  */
 
-import { useMutation, useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
+import {
+  useMutation,
+  useInfiniteQuery,
+  useQueryClient,
+  type InfiniteData,
+} from '@tanstack/react-query';
 import { apiClient } from '@/lib/api/client';
 import { queryKeys } from '@/lib/queries/keys';
 import type { components } from '@/lib/api/generated/schema.d.ts';
@@ -279,13 +284,19 @@ export function useReportMutation() {
  * item の型: UserMinimalWithBio（id / nickname / avatarUrl / bio）。
  */
 export function useBlockedUsersQuery() {
-  return useInfiniteQuery({
+  return useInfiniteQuery<
+    UserMinimalListResponse,
+    Error,
+    InfiniteData<UserMinimalListResponse>,
+    typeof queryKeys.users.blocks,
+    string | undefined
+  >({
     queryKey: queryKeys.users.blocks,
     queryFn: async ({ pageParam }) => {
       const { data, error } = await apiClient.GET('/api/v1/users/me/blocks', {
         params: {
           query: {
-            cursor: typeof pageParam === 'string' ? pageParam : undefined,
+            cursor: pageParam,
             limit: USERS_PAGE_SIZE,
           },
         },
@@ -295,7 +306,7 @@ export function useBlockedUsersQuery() {
       }
       return data;
     },
-    initialPageParam: undefined as string | undefined,
+    initialPageParam: undefined,
     getNextPageParam: (lastPage: UserMinimalListResponse) =>
       lastPage.nextCursor ?? undefined,
   });
@@ -308,13 +319,19 @@ export function useBlockedUsersQuery() {
  * item の型: UserMinimalWithBio（id / nickname / avatarUrl / bio）。
  */
 export function useMutedUsersQuery() {
-  return useInfiniteQuery({
+  return useInfiniteQuery<
+    UserMinimalListResponse,
+    Error,
+    InfiniteData<UserMinimalListResponse>,
+    typeof queryKeys.users.mutes,
+    string | undefined
+  >({
     queryKey: queryKeys.users.mutes,
     queryFn: async ({ pageParam }) => {
       const { data, error } = await apiClient.GET('/api/v1/users/me/mutes', {
         params: {
           query: {
-            cursor: typeof pageParam === 'string' ? pageParam : undefined,
+            cursor: pageParam,
             limit: USERS_PAGE_SIZE,
           },
         },
@@ -324,7 +341,7 @@ export function useMutedUsersQuery() {
       }
       return data;
     },
-    initialPageParam: undefined as string | undefined,
+    initialPageParam: undefined,
     getNextPageParam: (lastPage: UserMinimalListResponse) =>
       lastPage.nextCursor ?? undefined,
   });

@@ -18,6 +18,7 @@ import {
   routeUserDetail,
   routeMessageThread,
 } from '@/lib/constants/routes';
+import { isRecord } from '@/lib/utils/type-guards';
 
 /** 投稿詳細への遷移が対応する通知タイプ（`types/notification.ts` の NotificationType と同期）。 */
 const POST_LINKED_NOTIFICATION_TYPES = new Set([
@@ -77,8 +78,7 @@ function extractPostIdFromUrl(url: string | null): string | null {
  * どのキーも欠落・型不一致があり得るため、それぞれ独立に検証し null にフォールバックする。
  */
 export function parseNotificationPushData(raw: unknown): NotificationPushData {
-  const source: Record<string, unknown> =
-    typeof raw === 'object' && raw !== null ? (raw as Record<string, unknown>) : {};
+  const source: Record<string, unknown> = isRecord(raw) ? raw : {};
 
   const url = readStringField(source, 'url');
   const postId = readStringField(source, 'postId') ?? extractPostIdFromUrl(url);
