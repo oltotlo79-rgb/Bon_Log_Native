@@ -45,6 +45,7 @@ import {
   CONFIRM_DELETE_ACCOUNT_PREMIUM_NOTICE_TITLE,
   CONFIRM_DELETE_ACCOUNT_PREMIUM_NOTICE_BODY,
 } from '@/lib/constants/errors';
+import { PLAY_SUBSCRIPTIONS_MANAGEMENT_URL } from '@/lib/constants/billing';
 
 // ---------------------------------------------------------------------------
 // 定数
@@ -53,7 +54,6 @@ import {
 const ICON_CIRCLE_SIZE = 56;
 const ICON_SIZE = 28;
 const INFO_ICON_SIZE = 16;
-const GOOGLE_PLAY_SUBSCRIPTIONS_URL = 'https://play.google.com/store/account/subscriptions';
 
 // ---------------------------------------------------------------------------
 // Props
@@ -77,9 +77,9 @@ export function DeletionWarningDialog({
   onCancel,
 }: DeletionWarningDialogProps) {
   async function handleOpenGooglePlay() {
-    const canOpen = await Linking.canOpenURL(GOOGLE_PLAY_SUBSCRIPTIONS_URL);
+    const canOpen = await Linking.canOpenURL(PLAY_SUBSCRIPTIONS_MANAGEMENT_URL);
     if (canOpen) {
-      await Linking.openURL(GOOGLE_PLAY_SUBSCRIPTIONS_URL);
+      await Linking.openURL(PLAY_SUBSCRIPTIONS_MANAGEMENT_URL);
     }
   }
 
