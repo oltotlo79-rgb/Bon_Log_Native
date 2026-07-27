@@ -40,6 +40,8 @@ import {
   ERR_FORBIDDEN,
   ERR_SERVER,
   messageForPostBonsaiError,
+  CONFIRM_DISCARD_POST_TITLE,
+  CONFIRM_DISCARD_UNSAVED_BODY,
 } from '@/lib/constants/errors';
 import {
   MAX_POST_CONTENT_FREE,
@@ -167,7 +169,7 @@ export function PostComposer({
       return;
     }
     if (Platform.OS === 'ios') {
-      Alert.alert('投稿を破棄しますか？', '入力した内容は保存されません。', [
+      Alert.alert(CONFIRM_DISCARD_POST_TITLE, CONFIRM_DISCARD_UNSAVED_BODY, [
         { text: '入力を続ける', style: 'cancel' },
         {
           text: '破棄する',
@@ -176,7 +178,7 @@ export function PostComposer({
         },
       ]);
     } else {
-      Alert.alert('投稿を破棄しますか？', '入力した内容は保存されません。', [
+      Alert.alert(CONFIRM_DISCARD_POST_TITLE, CONFIRM_DISCARD_UNSAVED_BODY, [
         { text: '入力を続ける', style: 'cancel' },
         { text: '破棄する', onPress: () => router.dismiss() },
       ]);

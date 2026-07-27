@@ -45,6 +45,8 @@ import {
 import {
   ERR_BONSAI_CREATE_FAILED,
   ERR_OFFLINE_ACTION,
+  CONFIRM_DISCARD_CHANGES_TITLE,
+  CONFIRM_DISCARD_CHANGES_BODY,
 } from '@/lib/constants/errors';
 import { MAX_BONSAI_DESCRIPTION_LENGTH } from '@/lib/constants/limits/bonsai';
 
@@ -90,8 +92,8 @@ export default function BonsaiNewScreen() {
   const handleCancel = useCallback(() => {
     if (hasInput) {
       Alert.alert(
-        '変更を破棄しますか？',
-        '保存されていない変更は失われます。',
+        CONFIRM_DISCARD_CHANGES_TITLE,
+        CONFIRM_DISCARD_CHANGES_BODY,
         [
           { text: '編集を続ける', style: 'cancel' },
           { text: '破棄する', style: 'destructive', onPress: () => router.back() },

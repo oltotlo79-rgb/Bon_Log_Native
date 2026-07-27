@@ -28,6 +28,7 @@ import {
   routes,
 } from '@/lib/constants/routes';
 import { HELP_URL } from '@/lib/constants/external-links';
+import { CONFIRM_LOGOUT_TITLE, CONFIRM_LOGOUT_BODY } from '@/lib/constants/errors';
 import {
   colorBackground,
   colorSurfaceWashi,
@@ -75,8 +76,8 @@ export default function MoreScreen() {
 
   function handleLogout() {
     Alert.alert(
-      'ログアウト',
-      'ログアウトしますか？',
+      CONFIRM_LOGOUT_TITLE,
+      CONFIRM_LOGOUT_BODY,
       [
         { text: 'キャンセル', style: 'cancel' },
         {

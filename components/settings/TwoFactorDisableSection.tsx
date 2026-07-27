@@ -14,6 +14,8 @@ import {
   ERR_OFFLINE_ACTION,
   ERR_2FA_DISABLE_INCORRECT_PASSWORD,
   ERR_2FA_NOT_ENABLED,
+  CONFIRM_DISABLE_2FA_TITLE,
+  CONFIRM_DISABLE_2FA_BODY,
 } from '@/lib/constants/errors';
 import { FormErrorMessage } from '@/components/auth/FormErrorMessage';
 import { PasswordField } from '@/components/auth/PasswordField';
@@ -76,8 +78,8 @@ export function TwoFactorDisableSection({ isOnline }: TwoFactorDisableSectionPro
     }
     setError(null);
     Alert.alert(
-      '2段階認証を無効化しますか？',
-      '無効にすると、ログイン時に認証アプリのコードが不要になり、アカウントのセキュリティが低下します。',
+      CONFIRM_DISABLE_2FA_TITLE,
+      CONFIRM_DISABLE_2FA_BODY,
       [
         { text: 'キャンセル', style: 'cancel' },
         {

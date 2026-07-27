@@ -61,6 +61,8 @@ import {
   ERR_SCHEDULED_POST_DATE_NOT_FUTURE,
   ERR_SCHEDULED_POST_DATE_TOO_FAR,
   ERR_SCHEDULED_POST_EDIT_PENDING_ONLY,
+  CONFIRM_DISCARD_CHANGES_TITLE,
+  CONFIRM_DISCARD_CHANGES_BODY,
 } from '@/lib/constants/errors';
 import { MAX_POST_CONTENT_PREMIUM } from '@/lib/constants/limits/post';
 import {
@@ -163,8 +165,8 @@ function FormBody({ id, post, isPremium }: FormBodyProps) {
   const handleCancel = useCallback(() => {
     if (isDirty || scheduledAt !== initialScheduledAt) {
       Alert.alert(
-        '変更を破棄しますか？',
-        '保存されていない変更は失われます。',
+        CONFIRM_DISCARD_CHANGES_TITLE,
+        CONFIRM_DISCARD_CHANGES_BODY,
         [
           { text: '編集を続ける', style: 'cancel' },
           { text: '破棄する', style: 'destructive', onPress: () => router.back() },

@@ -60,6 +60,10 @@ import {
   ERR_OFFLINE_ACTION,
   ERR_NOT_FOUND,
   ERR_FORBIDDEN,
+  CONFIRM_DELETE_EVENT_TITLE,
+  CONFIRM_DELETE_EVENT_BODY,
+  CONFIRM_REPORT_TITLE_PREFIX,
+  CONFIRM_REPORT_TITLE_SUFFIX,
 } from '@/lib/constants/errors';
 
 // ---------------------------------------------------------------------------
@@ -115,8 +119,8 @@ export default function EventDetailScreen() {
 
   const handleDelete = useCallback(() => {
     Alert.alert(
-      'このイベントを削除しますか？',
-      '削除したイベントは復元できません。',
+      CONFIRM_DELETE_EVENT_TITLE,
+      CONFIRM_DELETE_EVENT_BODY,
       [
         { text: 'キャンセル', style: 'cancel' },
         {
@@ -162,7 +166,7 @@ export default function EventDetailScreen() {
 
   const handleOpenReportMenu = useCallback(() => {
     Alert.alert(
-      `この${REPORT_TARGET_LABELS.event}を通報しますか？`,
+      `${CONFIRM_REPORT_TITLE_PREFIX}${REPORT_TARGET_LABELS.event}${CONFIRM_REPORT_TITLE_SUFFIX}`,
       undefined,
       [
         { text: '通報する', style: 'destructive', onPress: () => setShowReportDialog(true) },

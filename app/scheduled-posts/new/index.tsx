@@ -57,6 +57,8 @@ import {
   ERR_SCHEDULED_POST_DATE_NOT_FUTURE,
   ERR_SCHEDULED_POST_DATE_TOO_FAR,
   ERR_SCHEDULED_POST_PENDING_LIMIT_REACHED,
+  CONFIRM_DISCARD_CHANGES_TITLE,
+  CONFIRM_DISCARD_SCHEDULED_POST_BODY,
 } from '@/lib/constants/errors';
 import {
   MAX_POST_CONTENT_PREMIUM,
@@ -122,8 +124,8 @@ export default function ScheduledPostNewScreen() {
   const handleCancel = useCallback(() => {
     if (isDirty || hasScheduledAt) {
       Alert.alert(
-        '変更を破棄しますか？',
-        '入力した内容は失われます。',
+        CONFIRM_DISCARD_CHANGES_TITLE,
+        CONFIRM_DISCARD_SCHEDULED_POST_BODY,
         [
           { text: '編集を続ける', style: 'cancel' },
           { text: '破棄する', style: 'destructive', onPress: () => router.back() },

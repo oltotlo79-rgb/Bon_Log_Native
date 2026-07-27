@@ -49,7 +49,11 @@ import { routeUserDetail, routeSearchByQuery } from '@/lib/constants/routes';
 import { UserActionMenu } from '@/components/user/UserActionMenu';
 import { CommentLikeButton } from '@/components/comment/CommentLikeButton';
 import { useCommentRepliesQuery, type CommentItem as CommentItemData } from '@/lib/queries/comments';
-import { ERR_GENERIC } from '@/lib/constants/errors';
+import {
+  ERR_GENERIC,
+  CONFIRM_DELETE_COMMENT_TITLE,
+  CONFIRM_DELETE_IRREVERSIBLE_BODY,
+} from '@/lib/constants/errors';
 
 // ---------------------------------------------------------------------------
 // 定数
@@ -240,7 +244,7 @@ function CommentItemInner({
   const handleConfirmDelete = useCallback(() => {
     if (Platform.OS === 'ios') {
       setDeleteSheetVisible(false);
-      Alert.alert('コメントを削除しますか？', 'この操作は取り消せません。', [
+      Alert.alert(CONFIRM_DELETE_COMMENT_TITLE, CONFIRM_DELETE_IRREVERSIBLE_BODY, [
         { text: 'キャンセル', style: 'cancel' },
         {
           text: '削除する',

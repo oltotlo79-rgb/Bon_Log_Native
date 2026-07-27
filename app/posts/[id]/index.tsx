@@ -46,6 +46,8 @@ import {
   ERR_COMMENT_CREATE_FAILED,
   ERR_COMMENT_DELETE_FAILED,
   ERR_OFFLINE_ACTION,
+  CONFIRM_DELETE_POST_TITLE,
+  CONFIRM_DELETE_IRREVERSIBLE_BODY,
 } from '@/lib/constants/errors';
 import { ROUTE_FEED, routePostEdit, routeUserDetail } from '@/lib/constants/routes';
 import { ScreenLoading } from '@/components/common/ScreenLoading';
@@ -290,7 +292,7 @@ function PostDetailContent({ postId }: PostDetailContentProps) {
           text: '削除',
           style: 'destructive',
           onPress: () => {
-            Alert.alert('投稿を削除しますか？', 'この操作は取り消せません。', [
+            Alert.alert(CONFIRM_DELETE_POST_TITLE, CONFIRM_DELETE_IRREVERSIBLE_BODY, [
               { text: 'キャンセル', style: 'cancel' },
               {
                 text: '削除する',
@@ -325,7 +327,7 @@ function PostDetailContent({ postId }: PostDetailContentProps) {
 
   const handleAndroidDeletePost = useCallback(() => {
     setOwnPostMenuVisible(false);
-    Alert.alert('投稿を削除しますか？', 'この操作は取り消せません。', [
+    Alert.alert(CONFIRM_DELETE_POST_TITLE, CONFIRM_DELETE_IRREVERSIBLE_BODY, [
       { text: 'キャンセル', style: 'cancel' },
       {
         text: '削除する',

@@ -53,6 +53,10 @@ import {
   ERR_BONSAI_DELETE_FAILED,
   ERR_BONSAI_RECORD_DELETE_FAILED,
   ERR_OFFLINE_ACTION,
+  CONFIRM_DELETE_BONSAI_TITLE,
+  CONFIRM_DELETE_BONSAI_BODY,
+  CONFIRM_DELETE_BONSAI_RECORD_TITLE,
+  CONFIRM_DELETE_BONSAI_RECORD_BODY,
 } from '@/lib/constants/errors';
 import {
   routeBonsaiEdit,
@@ -114,8 +118,8 @@ export default function BonsaiDetailScreen() {
       return;
     }
     Alert.alert(
-      'この盆栽を削除しますか？',
-      '盆栽と関連する成長記録がすべて削除されます。この操作は取り消せません。',
+      CONFIRM_DELETE_BONSAI_TITLE,
+      CONFIRM_DELETE_BONSAI_BODY,
       [
         { text: 'キャンセル', style: 'cancel' },
         {
@@ -142,8 +146,8 @@ export default function BonsaiDetailScreen() {
         return;
       }
       Alert.alert(
-        '記録を削除しますか？',
-        'この成長記録は削除されます。この操作は取り消せません。',
+        CONFIRM_DELETE_BONSAI_RECORD_TITLE,
+        CONFIRM_DELETE_BONSAI_RECORD_BODY,
         [
           { text: 'キャンセル', style: 'cancel' },
           {

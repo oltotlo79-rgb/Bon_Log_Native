@@ -37,6 +37,8 @@ import {
   ERR_FORBIDDEN,
   ERR_SERVER,
   ERR_OFFLINE_ACTION,
+  CONFIRM_DISCARD_QUOTE_TITLE,
+  CONFIRM_DISCARD_UNSAVED_BODY,
 } from '@/lib/constants/errors';
 import {
   MAX_POST_CONTENT_FREE,
@@ -115,12 +117,12 @@ export function QuoteComposer({
       return;
     }
     if (Platform.OS === 'ios') {
-      Alert.alert('引用を破棄しますか？', '入力した内容は保存されません。', [
+      Alert.alert(CONFIRM_DISCARD_QUOTE_TITLE, CONFIRM_DISCARD_UNSAVED_BODY, [
         { text: '入力を続ける', style: 'cancel' },
         { text: '破棄する', style: 'destructive', onPress: () => router.dismiss() },
       ]);
     } else {
-      Alert.alert('引用を破棄しますか？', '入力した内容は保存されません。', [
+      Alert.alert(CONFIRM_DISCARD_QUOTE_TITLE, CONFIRM_DISCARD_UNSAVED_BODY, [
         { text: '入力を続ける', style: 'cancel' },
         { text: '破棄する', onPress: () => router.dismiss() },
       ]);

@@ -11,6 +11,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import * as WebBrowser from 'expo-web-browser';
 import * as Sentry from '@sentry/react-native';
 import { useLogoutMutation } from '@/lib/queries/auth';
+import { CONFIRM_LOGOUT_TITLE, CONFIRM_LOGOUT_BODY } from '@/lib/constants/errors';
 import {
   colorBackground,
   colorSurface,
@@ -48,8 +49,8 @@ export default function SettingsScreen() {
 
   function handleLogout() {
     Alert.alert(
-      'ログアウト',
-      'ログアウトしますか？',
+      CONFIRM_LOGOUT_TITLE,
+      CONFIRM_LOGOUT_BODY,
       [
         { text: 'キャンセル', style: 'cancel' },
         {

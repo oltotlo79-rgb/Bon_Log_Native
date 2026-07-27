@@ -60,6 +60,8 @@ import {
   ERR_OFFLINE_ACTION,
   ERR_EVENT_END_DATE_BEFORE_START,
   ERR_URL_INVALID_PROTOCOL,
+  CONFIRM_DISCARD_CHANGES_TITLE,
+  CONFIRM_DISCARD_CHANGES_BODY,
 } from '@/lib/constants/errors';
 
 // ---------------------------------------------------------------------------
@@ -141,8 +143,8 @@ export default function EventNewScreen() {
   const handleCancel = useCallback(() => {
     if (hasInput) {
       Alert.alert(
-        '変更を破棄しますか？',
-        '保存されていない変更は失われます。',
+        CONFIRM_DISCARD_CHANGES_TITLE,
+        CONFIRM_DISCARD_CHANGES_BODY,
         [
           { text: '編集を続ける', style: 'cancel' },
           { text: '破棄する', style: 'destructive', onPress: () => router.back() },

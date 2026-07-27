@@ -61,6 +61,8 @@ import {
   ERR_SHOP_LONGITUDE_OUT_OF_RANGE,
   ERR_URL_INVALID_PROTOCOL,
   messageForApiError,
+  CONFIRM_DISCARD_CHANGES_TITLE,
+  CONFIRM_DISCARD_CHANGES_BODY,
 } from '@/lib/constants/errors';
 import {
   MAX_SHOP_NAME_LENGTH,
@@ -193,8 +195,8 @@ export default function ShopNewScreen() {
   const handleCancel = useCallback(() => {
     if (hasInput) {
       Alert.alert(
-        '変更を破棄しますか？',
-        '保存されていない変更は失われます。',
+        CONFIRM_DISCARD_CHANGES_TITLE,
+        CONFIRM_DISCARD_CHANGES_BODY,
         [
           { text: '編集を続ける', style: 'cancel' },
           { text: '破棄する', style: 'destructive', onPress: () => router.back() },

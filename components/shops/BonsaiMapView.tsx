@@ -49,6 +49,7 @@ import {
   ERR_LOCATION_PERMISSION_TITLE,
   ERR_LOCATION_PERMISSION_BODY,
   ERR_CURRENT_LOCATION_FAILED,
+  ERR_GENERIC_TITLE,
 } from '@/lib/constants/errors';
 import { LEAFLET_CSS_CONTENT, LEAFLET_JS_CONTENT } from '@/components/shops/leaflet-vendor';
 import { isRecord } from '@/lib/utils/type-guards';
@@ -706,7 +707,7 @@ export const BonsaiMapView = React.memo(function BonsaiMapView({
       const js = `moveToLocation(${latitude}, ${longitude}); true;`;
       webViewRef.current?.injectJavaScript(js);
     } catch {
-      Alert.alert('エラー', ERR_CURRENT_LOCATION_FAILED);
+      Alert.alert(ERR_GENERIC_TITLE, ERR_CURRENT_LOCATION_FAILED);
     } finally {
       setIsLocating(false);
     }

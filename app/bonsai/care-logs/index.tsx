@@ -48,6 +48,8 @@ import {
   ERR_CARE_LOG_UPDATE_FAILED,
   ERR_CARE_LOG_DELETE_FAILED,
   ERR_OFFLINE_ACTION,
+  CONFIRM_DELETE_CARE_LOG_TITLE,
+  CONFIRM_DELETE_CARE_LOG_BODY_SUFFIX,
 } from '@/lib/constants/errors';
 import { MAX_CARE_LOG_NOTE_LENGTH } from '@/lib/constants/limits/post';
 import {
@@ -768,8 +770,8 @@ export default function CareLogsScreen() {
       const typeLabel = isBonsaiCareType(item.type) ? CARE_TYPE_LABEL[item.type] : item.type;
       const dateLabel = formatPerformedAt(item.performedAt);
       Alert.alert(
-        '手入れログを削除',
-        `${typeLabel}（${dateLabel}）を削除しますか？`,
+        CONFIRM_DELETE_CARE_LOG_TITLE,
+        `${typeLabel}（${dateLabel}${CONFIRM_DELETE_CARE_LOG_BODY_SUFFIX}`,
         [
           { text: 'キャンセル', style: 'cancel' },
           {

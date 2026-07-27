@@ -35,6 +35,10 @@ import {
   textLg,
   textBase,
 } from '@/lib/constants/design-tokens';
+import {
+  CONFIRM_BLOCK_USER_TITLE_SUFFIX,
+  CONFIRM_BLOCK_USER_BODY,
+} from '@/lib/constants/errors';
 
 // ---------------------------------------------------------------------------
 // 定数
@@ -68,8 +72,8 @@ export function BlockConfirmDialog({
   useEffect(() => {
     if (Platform.OS === 'ios') {
       Alert.alert(
-        `@${targetNickname} をブロックしますか？`,
-        'ブロックすると、互いにフォローしている場合はフォロー関係が解除され、相手はあなたのプロフィールを検索・フォローできなくなります。',
+        `@${targetNickname}${CONFIRM_BLOCK_USER_TITLE_SUFFIX}`,
+        CONFIRM_BLOCK_USER_BODY,
         [
           {
             text: 'キャンセル',

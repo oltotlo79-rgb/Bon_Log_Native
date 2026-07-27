@@ -32,6 +32,8 @@ import {
   ERR_MEDIA_UPLOAD_FAILED,
   ERR_PHOTO_PERMISSION_TITLE,
   ERR_PHOTO_PERMISSION_BODY,
+  CONFIRM_DISCARD_CHANGES_TITLE,
+  CONFIRM_DISCARD_REVIEW_BODY,
 } from '@/lib/constants/errors';
 import {
   colorBackground,
@@ -210,8 +212,8 @@ export default function NewReviewScreen() {
       return;
     }
     Alert.alert(
-      '変更を破棄しますか？',
-      '入力した内容が失われます。',
+      CONFIRM_DISCARD_CHANGES_TITLE,
+      CONFIRM_DISCARD_REVIEW_BODY,
       [
         { text: 'キャンセル', style: 'cancel' },
         { text: '破棄する', style: 'destructive', onPress: () => router.back() },

@@ -58,6 +58,11 @@ import {
   ERR_SCHEDULED_POST_DELETE_FAILED,
   ERR_OFFLINE_ACTION,
   ERR_LOAD_FAILED,
+  ERR_GENERIC_TITLE,
+  CONFIRM_CANCEL_SCHEDULED_POST_TITLE,
+  CONFIRM_CANCEL_SCHEDULED_POST_BODY,
+  CONFIRM_DELETE_SCHEDULED_POST_TITLE,
+  CONFIRM_DELETE_SCHEDULED_POST_BODY,
 } from '@/lib/constants/errors';
 import { routeScheduledPostEdit } from '@/lib/constants/routes';
 
@@ -121,12 +126,12 @@ export default function ScheduledPostDetailScreen() {
 
   const handleCancel = useCallback(() => {
     if (!isOnline) {
-      Alert.alert('エラー', ERR_OFFLINE_ACTION);
+      Alert.alert(ERR_GENERIC_TITLE, ERR_OFFLINE_ACTION);
       return;
     }
     Alert.alert(
-      '予約を取り消しますか？',
-      'キャンセルしても投稿は削除されません。後で確認できます。',
+      CONFIRM_CANCEL_SCHEDULED_POST_TITLE,
+      CONFIRM_CANCEL_SCHEDULED_POST_BODY,
       [
         { text: 'やめる', style: 'cancel' },
         {
@@ -137,7 +142,7 @@ export default function ScheduledPostDetailScreen() {
               { id },
               {
                 onSuccess: () => router.back(),
-                onError: () => Alert.alert('エラー', ERR_SCHEDULED_POST_CANCEL_FAILED),
+                onError: () => Alert.alert(ERR_GENERIC_TITLE, ERR_SCHEDULED_POST_CANCEL_FAILED),
               }
             );
           },
@@ -148,12 +153,12 @@ export default function ScheduledPostDetailScreen() {
 
   const handleDelete = useCallback(() => {
     if (!isOnline) {
-      Alert.alert('エラー', ERR_OFFLINE_ACTION);
+      Alert.alert(ERR_GENERIC_TITLE, ERR_OFFLINE_ACTION);
       return;
     }
     Alert.alert(
-      'この予約投稿を削除しますか？',
-      '削除すると元に戻せません。',
+      CONFIRM_DELETE_SCHEDULED_POST_TITLE,
+      CONFIRM_DELETE_SCHEDULED_POST_BODY,
       [
         { text: 'キャンセル', style: 'cancel' },
         {
@@ -164,7 +169,7 @@ export default function ScheduledPostDetailScreen() {
               { id },
               {
                 onSuccess: () => router.back(),
-                onError: () => Alert.alert('エラー', ERR_SCHEDULED_POST_DELETE_FAILED),
+                onError: () => Alert.alert(ERR_GENERIC_TITLE, ERR_SCHEDULED_POST_DELETE_FAILED),
               }
             );
           },

@@ -52,7 +52,12 @@ import {
   textXl,
 } from '@/lib/constants/design-tokens';
 import { routeShopEdit, routeShopReviews, routeShopReviewNew } from '@/lib/constants/routes';
-import { ERR_NOT_FOUND, ERR_FORBIDDEN } from '@/lib/constants/errors';
+import {
+  ERR_NOT_FOUND,
+  ERR_FORBIDDEN,
+  CONFIRM_REPORT_TITLE_PREFIX,
+  CONFIRM_REPORT_TITLE_SUFFIX,
+} from '@/lib/constants/errors';
 
 // ---------------------------------------------------------------------------
 // 定数
@@ -108,7 +113,7 @@ export default function ShopDetailScreen() {
 
   const handleOpenReportMenu = useCallback(() => {
     Alert.alert(
-      `この${REPORT_TARGET_LABELS.shop}を通報しますか？`,
+      `${CONFIRM_REPORT_TITLE_PREFIX}${REPORT_TARGET_LABELS.shop}${CONFIRM_REPORT_TITLE_SUFFIX}`,
       undefined,
       [
         { text: '通報する', style: 'destructive', onPress: () => setShowReportDialog(true) },

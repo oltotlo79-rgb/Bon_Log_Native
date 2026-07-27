@@ -70,6 +70,8 @@ import {
   ERR_NETWORK,
   ERR_OFFLINE_ACTION,
   messageForSendMessageError,
+  CONFIRM_DELETE_MESSAGE_TITLE,
+  CONFIRM_DELETE_MESSAGE_BODY,
 } from '@/lib/constants/errors';
 import { MAX_MESSAGE_LENGTH } from '@/lib/constants/limits/post';
 import { UserAvatar } from '@/components/common/UserAvatar';
@@ -287,8 +289,8 @@ function ConversationThreadContent({ conversationId, paramOtherUser }: Conversat
   const handleLongPressMessage = useCallback(
     (messageId: string) => {
       Alert.alert(
-        'メッセージを削除',
-        'このメッセージを削除しますか？',
+        CONFIRM_DELETE_MESSAGE_TITLE,
+        CONFIRM_DELETE_MESSAGE_BODY,
         [
           { text: 'キャンセル', style: 'cancel' },
           {

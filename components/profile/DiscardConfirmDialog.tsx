@@ -27,6 +27,10 @@ import {
   textLg,
   shadowWashiLg,
 } from '@/lib/constants/design-tokens';
+import {
+  CONFIRM_DISCARD_CHANGES_TITLE,
+  CONFIRM_DISCARD_CHANGES_BODY,
+} from '@/lib/constants/errors';
 
 // ---------------------------------------------------------------------------
 // Props
@@ -61,8 +65,8 @@ export function DiscardConfirmDialog({
           accessibilityRole="alert"
           accessibilityViewIsModal
         >
-          <Text style={styles.title}>変更を破棄しますか？</Text>
-          <Text style={styles.body}>保存されていない変更は失われます。</Text>
+          <Text style={styles.title}>{CONFIRM_DISCARD_CHANGES_TITLE}</Text>
+          <Text style={styles.body}>{CONFIRM_DISCARD_CHANGES_BODY}</Text>
 
           <View style={styles.buttonRow}>
             <TouchableOpacity
