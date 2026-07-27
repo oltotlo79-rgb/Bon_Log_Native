@@ -254,7 +254,7 @@ export default function HormoneSimulatorScreen() {
   const uniqueTechniques = useMemo(() => {
     if (data === undefined) return [];
     const seen = new Set<string>();
-    const result: Array<{ key: string; nameJa: string }> = [];
+    const result: { key: string; nameJa: string }[] = [];
     for (const t of data.techniques) {
       if (!seen.has(t.techniqueKey)) {
         seen.add(t.techniqueKey);
