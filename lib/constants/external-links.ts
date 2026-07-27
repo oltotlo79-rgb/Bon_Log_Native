@@ -5,7 +5,9 @@
  * ベース URL は EXPO_PUBLIC_API_BASE_URL に追従し、開発環境でも正しいホストを向く。
  */
 
-const BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL ?? 'https://www.bon-log.com';
+import { API_BASE_URL } from '@/lib/constants/api';
+
+const BASE_URL = API_BASE_URL;
 
 /** パス文字列とベース URL を結合する共通ロジック */
 function buildUrl(path: string): string {

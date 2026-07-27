@@ -9,6 +9,7 @@
 import createClient, { type Middleware } from 'openapi-fetch';
 import type { paths } from '@/lib/api/generated/schema.d.ts';
 import { ApiError, isApiError, isMobileApiErrorCode, type MobileApiErrorCode } from '@/lib/api/errors';
+import { API_BASE_URL } from '@/lib/constants/api';
 import { REQUEST_TIMEOUT_MS } from '@/lib/constants/query';
 
 // ---------------------------------------------------------------------------
@@ -285,13 +286,11 @@ function buildTimeoutMiddleware(): Middleware {
 // クライアントの生成
 // ---------------------------------------------------------------------------
 
-const BASE_URL = process.env.EXPO_PUBLIC_API_BASE_URL ?? 'https://www.bon-log.com';
-
 /**
  * テスト・内部用のクライアントファクトリ。
  * アプリで使うシングルトン apiClient は下記で生成済み。
  */
-export function createApiClient(baseUrl: string = BASE_URL) {
+export function createApiClient(baseUrl: string = API_BASE_URL) {
   const client = createClient<paths>({ baseUrl });
   client.use(buildTimeoutMiddleware());
   client.use(buildAuthAndErrorMiddleware());
