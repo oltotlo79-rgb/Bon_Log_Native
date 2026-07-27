@@ -37,6 +37,8 @@ Codex がこのリポジトリの開発を引き継ぐための現況・規約�
 
 型チェック・lint（エラー0件）・テスト・カバレッジゲートはすべて緑。ただし lint 警告 145 件（大半はテストファイルの `require()` モック由来）が残っており、ゼロ化はしていない。
 
+**本節の数値は 2026-07-14 時点の記録である。2026-07-27 セッションでさらに更新されており、品質ゲートの最新値は §11.1 を参照（lint 警告は 0 まで解消済み）。**
+
 ## 5. 直近セッションで完了した主なバッチ
 
 `git log --oneline` から遡って判別できる直近バッチ（各バッチは複数コミットに分かれ、実装 → テスト追従 → 設計書追従の順で構成されている。開発体制どおり評価者（evaluator）のクリーン PASS 判定を経てから push する運用で進めてきた）:
@@ -68,6 +70,8 @@ Codex がこのリポジトリの開発を引き継ぐための現況・規約�
 
 ### A 高
 
+**[完了 — 2026-07-14 のセッション内で対応済み。詳細は §10 を参照。以下は着手前の問題点の記録として残す]**
+
 **DM 送信失敗ハンドリング**（frontend、エラー定数の追加が要れば core も）。
 
 `app/messages/[conversationId]/index.tsx` の `handleSend`（253〜258行目）は、`sendMutation.mutate` を呼ぶ**前**に `setInputText('')`（256行目）で入力欄を即クリアしており、送信の成否を待たずに入力内容を消してしまう。`lib/queries/messages.ts` の `useSendMessageMutation`（190〜217行目）には `onSuccess`（208〜214行目）のみ定義されており `onError` が無く、呼び出し側コンポーネントも `sendMutation.isError` / `sendMutation.error` を一切参照していない（`sendMutation` の使用箇所は `.isPending` と `.mutate` のみ）。そのため 429（送信レート `send_message` 系。1分あたりの上限あり）・400（日次送信上限 100 通。`lib/queries/messages.ts` の JSDoc コメントにも記載あり）・403（会話開始後に相手からブロックされた場合。NOT_FOUND として存在秘匿）・オフラインのいずれで送信が失敗しても、**ユーザーには何も表示されず、入力した文章だけが消える**。
@@ -83,12 +87,12 @@ Codex がこのリポジトリの開発を引き継ぐための現況・規約�
 
 ### C 低
 
-- **検索タグタブの人気タグへの到達性**（frontend）。Web（`Bon_Log_cfw/app/(main)/search/page.tsx:64`）は `SearchTabs` を常時（クエリの有無に関わらず）描画しており、未入力のままタグタブを開くと人気タグ（`!query && tab === 'tags' && <PopularTags .../>`、93行目）に到達できる。一方 Native の `app/(tabs)/search/index.tsx` は `showInitialView`（508行目、`inputValue` と `debouncedQuery` が両方空かつジャンルフィルタなしで真）の間は `SearchSegmentTabs` 自体を描画しない（536〜590行目）ため、何か入力しない限りタグタブへ到達できない。なお `components/search/HashtagSearchResults.tsx` 自体は「クエリが空なら人気タグ上位10件を表示する」ロジック（139〜190行目）を Web の `PopularTags` 準拠で実装済みであり、**問題はタブへの到達性のみ**（タグタブの中身は未入力表示に対応済み）。
-- `lib/queries/analytics.ts:28-30` の `toAnalyticsDays` が `String(period) as AnalyticsDays` という `as` キャストを使っている（`AnalyticsPeriod = 7 | 30 | 90`、`AnalyticsDays = '7' | '30' | '90'`。`lib/queries/keys.ts:351,357`）。値は3種類のみで実害はないが、CLAUDE.md 核心ルール8（`any` / `as` 禁止）には反するため、`Record<AnalyticsPeriod, AnalyticsDays>` 等のルックアップ表に置き換えるべき。
+- **[完了 — 2026-07-14 のセッション内で対応済み。詳細は §10 を参照]** 検索タグタブの人気タグへの到達性（frontend）。Web（`Bon_Log_cfw/app/(main)/search/page.tsx:64`）は `SearchTabs` を常時（クエリの有無に関わらず）描画しており、未入力のままタグタブを開くと人気タグ（`!query && tab === 'tags' && <PopularTags .../>`、93行目）に到達できる。一方 Native の `app/(tabs)/search/index.tsx` は `showInitialView`（508行目、`inputValue` と `debouncedQuery` が両方空かつジャンルフィルタなしで真）の間は `SearchSegmentTabs` 自体を描画しない（536〜590行目）ため、何か入力しない限りタグタブへ到達できない。なお `components/search/HashtagSearchResults.tsx` 自体は「クエリが空なら人気タグ上位10件を表示する」ロジック（139〜190行目）を Web の `PopularTags` 準拠で実装済みであり、**問題はタブへの到達性のみ**（タグタブの中身は未入力表示に対応済み）。
+- **[完了 — 2026-07-14 のセッション内で対応済み。詳細は §10 を参照]** `lib/queries/analytics.ts:28-30` の `toAnalyticsDays` が `String(period) as AnalyticsDays` という `as` キャストを使っている（`AnalyticsPeriod = 7 | 30 | 90`、`AnalyticsDays = '7' | '30' | '90'`。`lib/queries/keys.ts:351,357`）。値は3種類のみで実害はないが、CLAUDE.md 核心ルール8（`any` / `as` 禁止）には反するため、`Record<AnalyticsPeriod, AnalyticsDays>` 等のルックアップ表に置き換えるべき。
 - doc 陳腐化2件:
   - `docs/design/search-screen.md`: §1・§16 は「MVP スコープで投稿/ユーザーの2タブに絞る（タグ検索は将来検討）」と記述しているが、実装（`app/(tabs)/search/index.tsx:76` の `{ key: 'tags', label: 'タグ' }`、および `components/search/HashtagSearchResults.tsx`）はすでに投稿/ユーザー/タグの3タブ構成になっている。
   - `docs/design/design-tokens.md:102` は `colorTextPrimary` を `#1a1a1a` と記載しているが、実装 `lib/constants/design-tokens.ts:59` は `#060606` になっている（他の値、例えば `colorBackground` の `#ffffff` は一致しており、ドリフトは一部の値に限られる可能性がある。全項目の突合は未実施）。
-- テスト網羅の追加余地: `PostComposer` の一部分岐、`lib/utils/qr-code.ts` の異常系（`test:coverage` の関数別内訳では `qr-code.ts` は Branches 50% と低め。ただしグローバル閾値〈branches80等〉自体はリポジトリ全体で達成済み）。
+- テスト網羅の追加余地: `PostComposer` の一部分岐（2026-07-27 再測定でも Functions 86.66% で同水準）。**[完了]** `lib/utils/qr-code.ts` の異常系は 2026-07-14 時点で Branches 50% だったが、2026-07-27 再測定では Branches 100% に到達しており解消済み。
 - `docs/design/post-composer.md:880`（§16）: 「PATCH エンドポイントの差分更新方式 — `bonsaiId` を除く項目（部分更新か全件置き換えか）によってリクエスト設計が変わる。`bonsaiId` 自体は部分更新契約であることを確認済み」と記載されたまま `core（要確認）` 扱いで残っている。本書ではこの点の実装調査は行っていない（未確認のまま引き継ぐ）。
 
 ### D 実機QA（次ビルドで要確認。静的コードレビューでは検証しきれない項目）
@@ -203,3 +207,41 @@ cfw は引き続き読み取り専用で、Native 側から変更していない
 - Maestro CLIはローカル環境に無く、実機E2Eは未実行
 
 上記外部ブロッカーとcfw 6トラックが解消するまでは、コード品質ゲートが緑でも「Google Play提出可能」と判定しない。
+
+## 11. 2026-07-27 セッション: Google Play 公開直前の最終是正（品質ゲート実測値の更新）
+
+本節は §4・§10・§10.1 の基準時点より後に実施した作業結果である。**品質ゲートの現在値は本節が最新であり、重複する数値は本節を優先する。**
+
+### 11.1 実測した品質ゲート（2026-07-27）
+
+- ブランチ: `main`（`origin/main` と同期済み・up to date）
+- 最新コミット: `a083a43126e37300899aaafc4769a44f01913c81`（`refactor: UI層のローカル重複定義をlib共通実装へ差し替え`）
+- 作業ツリー: クリーン（`git status --short` 出力なし）
+- `npx tsc --noEmit`: エラー **0**
+- `npm run lint`: エラー **0** / 警告 **0**（§4・§10.1 時点の警告139〜145件を**全解消**。コマンド exit code 0）
+- `npm test -- --runInBand`: **Test Suites 344 passed / 344**、**Tests 5,823 passed / 5,823**
+- `npm run test:coverage -- --runInBand`: 同一の 344 suites / 5,823 tests 全 pass。カバレッジ **Statements 91.69% / Branches 84.43% / Functions 87.67% / Lines 92.54%**（閾値 branches80 / functions85 / lines85 / statements85 をすべて超過。コマンド exit code 0）
+
+### 11.2 実バグの発見・修正
+
+盆栽詳細画面（`app/bonsai/[id]/index.tsx`）のカバー画像が**常に非表示**になっていた。サーバーの詳細レスポンスには存在しないフィールド `latestRecord` を `as` キャストで参照していたため、値は常に `undefined` になっていた。成長記録一覧（最新順・`sortOrder` 昇順）の先頭画像から導出する形に修正し、一覧画面の `thumbnailUrl` と同じ結果になるようにした（コミット `b535b53`）。テストモックが実際には存在しないフィールドを渡していたため不整合が隠蔽されており、回帰テストを追加した（`__tests__/app/bonsai/[id]/index.test.tsx`）。
+
+### 11.3 規約違反の是正
+
+- `as` キャストの除去。本番コード（`app/` `lib/` `components/` `hooks/`）に残る `as` は `as const` / `satisfies` 等の型注釈と、RN 画像アセット idiom の `require(...) as number`（`app/hormones/index.tsx`、`app/pesticides/index.tsx`、`components/hormone/HormoneCard.tsx` の計7件）のみに絞り込んだ
+- 権限 Alert 文言・確認ダイアログ文言・アカウント削除フロー文言をインライン文字列から `lib/constants/errors.ts` 等の定数参照へ差し替え（40箇所以上）
+- `isRecord` 型ガードを共通実装へ統合
+- API ベース URL 定数と `isValidUrl` を `lib/constants` / `lib/utils` の共通実装へ集約
+- Maestro E2E フローの参照コメント規約を是正（詳細は `.claude/rules/testing.md` 参照）
+
+### 11.4 Maestro E2E の拡充
+
+`.maestro/` を 3 フローから **10 フロー**へ拡充した: ログイン (`00_login.yaml`) / フィード空状態 (`01_feed_empty_state.yaml`) / タブ遷移 (`02_tab_navigation.yaml`) / 新規投稿FAB (`03_fab_post_new.yaml`) / 投稿破棄 (`04_post_composer_discard.yaml`) / 通知空状態 (`05_notifications_empty_state.yaml`) / プロフィール・設定遷移 (`06_profile_and_settings_navigation.yaml`) / いいねトグル (`07_like_post_toggle.yaml`) / 通報フロー (`08_report_post_flow.yaml`) / ブロック確認ダイアログ (`09_block_user_confirm_dialog.yaml`)。通報・ブロックは Google Play UGC ポリシーの必須要件（`.claude/rules/store-compliance.md`）。ローカルに Maestro CLI が無く実機実行が未実施な点（§10.1 末尾参照）は変わらない。
+
+### 11.5 意図的に見送った項目（バックログ）
+
+`app/bonsai/[id]/index.tsx` の成長記録リストが `ScrollView` + `map` で描画されており、`.claude/rules/components.md`（件数が有界でないリストは FlatList / FlashList を使う）に違反している。セッション開始前からの既存実装であり、詳細画面の構造変更は回帰リスクが高い。**実機 QA が未実施の段階で公開直前に触るのは危険**と判断し、今セッションでは見送った。実機確認が可能になってから着手すべきバックログとして記録する。
+
+### 11.6 cfw 依頼の状況（未着手）
+
+2026-07-14 付の依頼書3本（検索複数ジャンル・`isBlockedByUser`・Play公開前ブロッカー6トラック）を、`docs/plans/handoff-to-cfw-consolidated-2026-07-27.md`（9項目。`.gitignore` 対象のローカル連携領域であり本リポジトリのコミット対象には含まれない）として再検証・再送した。2026-07-27 時点で cfw 側の HEAD は `98ae0b7f`（2026-07-13 コミット）のままであり、2026-07-14 の調査時点から**変化がなく未着手**であることを確認済み。9項目のうち**P0（Google Play 公開の直接ブロッカー）は6件**（Android legal/help の決済誘導除去、Google 新規登録の規約同意必須化、Stripe/RevenueCat provider別entitlement、Block済み相互ユーザーの既存通知除外、アカウント削除時の全媒体R2削除保証、Privacy本文・Data Safety台帳のNative SDK反映）。残り2件（検索複数ジャンル・`isBlockedByUser`）は公開ブロッカーではない Web parity 差分、1件（盆栽一覧の「最新記録」取得のタイブレーク不一致）は今回の再検証で新たに検出した軽微な表示不整合であり、いずれも公開判断には影響しない。

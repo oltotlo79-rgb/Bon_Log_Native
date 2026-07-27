@@ -51,3 +51,4 @@ npm run test:e2e        # E2E（Maestro: maestro test .maestro/）
 - フローは `.maestro/` 配下。主要フロー（ログイン → フィード → 投稿 → いいね → 通知）をカバーする
 - locator が不安定な箇所（動的リスト項目等）のみ `testID` を付与する。命名は `{feature}-{element}` 形式で統一
 - クリック → 遷移の検証は遷移完了をアサーションで待つ（Web の `clickAndWaitForUrl` と同じ思想。タイミング依存の flake を作らない）
+- セレクタの妥当性を裏取りする参照コメントは**ファイルパス + シンボル名 / 要素の説明**で書く。`file:line` 形式は禁止（本番コードの編集で行番号がずれ、コメントが即座に腐るため）
