@@ -215,13 +215,15 @@ function UserDetailContent({ userId, isOffline }: UserDetailContentProps) {
     );
   }
 
-  // Web の users/[id]/page.tsx と同じ判定: 相手からブロックされている場合はプロフィール本体を隠す
-  if (isBlockedByViewedUser(data)) {
+  // Web の users/[id]/page.tsx と同じ判定: 自分が相手をブロックしている場合・
+  // 相手から自分がブロックされている場合のいずれもプロフィール本体を隠す
+  const isBlockedByUser = isBlockedByViewedUser(data);
+  if (data.isBlocked || isBlockedByUser) {
     return (
       <SafeAreaView style={styles.safeArea} edges={['top']}>
         <NavBar title="プロフィール" showMenu={false} onMenuPress={undefined} />
         <OfflineBanner isVisible={isOffline} />
-        <BlockedByUserNotice />
+        <BlockedNotice isBlockedByUser={isBlockedByUser} />
       </SafeAreaView>
     );
   }
@@ -320,21 +322,22 @@ function UserDetailContent({ userId, isOffline }: UserDetailContentProps) {
 }
 
 // ---------------------------------------------------------------------------
-// 相手からブロックされている場合の通知（Web の users/[id]/page.tsx と文言を統一）
+// ブロック関係にある場合の通知（Web の users/[id]/page.tsx とレイアウト・文言を統一。
+// アイコンは Web に存在しないため付与しない）
 // ---------------------------------------------------------------------------
 
-function BlockedByUserNotice() {
+type BlockedNoticeProps = {
+  /** true: 相手からブロックされている / false: 自分が相手をブロックしている */
+  isBlockedByUser: boolean;
+};
+
+function BlockedNotice({ isBlockedByUser }: BlockedNoticeProps) {
   return (
     <View style={styles.blockedNotice}>
-      <Ionicons
-        name="ban-outline"
-        size={32}
-        color={colorTextPrimary}
-        accessibilityElementsHidden
-        importantForAccessibility="no"
-      />
       <Text style={styles.blockedNoticeTitle}>このページは表示できません</Text>
-      <Text style={styles.blockedNoticeDesc}>このユーザーからブロックされています</Text>
+      <Text style={styles.blockedNoticeDesc}>
+        {isBlockedByUser ? 'このユーザーからブロックされています' : 'このユーザーをブロックしています'}
+      </Text>
     </View>
   );
 }
