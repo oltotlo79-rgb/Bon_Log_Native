@@ -8,7 +8,7 @@ import { apiClient } from '@/lib/api/client';
 import { queryKeys, type SearchPostsFilter } from '@/lib/queries/keys';
 import { STALE_TIME_SEARCH } from '@/lib/constants/query';
 import { FEED_PAGE_SIZE, USERS_PAGE_SIZE } from '@/lib/constants/limits/pagination';
-import { hasSearchPostsFilter } from '@/lib/utils/search-filter';
+import { hasSearchPostsFilter, normalizeGenreIds } from '@/lib/utils/search-filter';
 import type { components } from '@/lib/api/generated/schema.d.ts';
 
 export type SearchPostItem = components['schemas']['SearchPostsResponse']['items'][number];
@@ -26,6 +26,10 @@ type HashtagSearchResponse = components['schemas']['HashtagSearchResponse'];
  * q が空文字かつフィルタ未指定の場合のみフェッチを行わない（enabled=false）。
  * ブロック済みユーザーの投稿はサーバー側で除外済み。
  * 未指定フィルタはリクエストに含めない（undefined をそのまま渡す）。
+ *
+ * genreId（単一・既存）と genreIds（複数・OR-any）は併用可。サーバー側で和集合・重複除去される
+ * （投稿選択ジャンルのいずれか 1 つでも一致すればヒット。AND ではない）。
+ * genreIds はキャッシュキー・リクエストの両方で normalizeGenreIds により重複除去・ソートされる。
  */
 export function useSearchPostsQuery(q: string, filter?: SearchPostsFilter) {
   return useInfiniteQuery<SearchPostsResponse, Error, InfiniteData<SearchPostsResponse>, ReturnType<typeof queryKeys.search.posts>, string | undefined>({
@@ -38,6 +42,7 @@ export function useSearchPostsQuery(q: string, filter?: SearchPostsFilter) {
             cursor: pageParam ?? undefined,
             limit: FEED_PAGE_SIZE,
             genreId: filter?.genreId,
+            genreIds: normalizeGenreIds(filter?.genreIds),
             dateFrom: filter?.dateFrom,
             dateTo: filter?.dateTo,
             minLikes: filter?.minLikes,

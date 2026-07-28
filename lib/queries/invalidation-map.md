@@ -12,7 +12,7 @@
 | onAuthFailure（リフレッシュ失敗・再利用検知） | なし（lib/auth が `queryClient.clear()` を呼ぶ） | — |
 | パスワードリセット要求 | なし（状態変更なし） | — |
 | パスワードリセット確定 | なし（ログインし直すため、その後のログインで解決） | — |
-| Google サインイン | なし（ログイン成功と同等） | — |
+| Google サインイン | なし（ログイン成功と同等） | 新規ユーザー作成時のみ `termsAccepted`/`termsVersion`（OpenAPI 1.37.0）が必須。不足・不一致は 403 `TERMS_ACCEPTANCE_REQUIRED`（`isTermsAcceptanceRequired` で判別）。既存ユーザーのログインでは省略可 |
 | 新規登録（register） | なし（201 = メール確認待ち。ログインしないため状態変更なし） | 成功後は verify-email-sent 画面へ遷移するのみ |
 | 確認メール再送（`useResendVerificationMutation`） | なし（状態変更なし。常に 200 = キャッシュ無効化不要） | 429 のみ ERR_VERIFY_EMAIL_RESEND_RATE_LIMITED として throw する |
 | 2FA セットアップ発行（`useTwoFactorSetupMutation`） | なし（キャッシュしない設計。呼び出す度に新しい secret/setupId が発行されるため useMutation として扱う） | GET /api/v1/auth/2fa/setup。戻り値は画面のローカル state で保持する |
@@ -142,10 +142,10 @@
 | `queryKeys.users.following(userId)` | `useUserFollowingQuery` | フォロー変更時（同上。followers とはカーソルの意味が異なるためキャッシュ分離） |
 | `queryKeys.users.likes(userId)` | `useUserLikedPostsQuery` | いいね変更時（現状は明示的な invalidate 対象に含めていない — 低頻度画面のため次回表示時の自然な stale 更新に委ねる） |
 | `queryKeys.users.meProfile` | `useCurrentUserProfileQuery` | プロフィール更新成功時（useUpdateProfileMutation の onSuccess で setQueryData + invalidate） |
-| `queryKeys.users.detail(id)` | `useUserProfileQuery` | フォロー変更・プロフィール更新・ブロック・ミュート時 |
+| `queryKeys.users.detail(id)` | `useUserProfileQuery` | フォロー変更・プロフィール更新・ブロック・ミュート時。`isBlockedByUser`（対象ユーザー→閲覧者方向、OpenAPI 1.37.0）は `isBlockedByViewedUser`（lib/queries/users.ts）で判定する。サーバー本番配備前は実行時 undefined になり得るため `=== true` で安全側判定する |
 | `queryKeys.users.blocks` | `useBlockedUsersQuery` | ブロック・ブロック解除時 |
 | `queryKeys.users.mutes` | `useMutedUsersQuery` | ミュート・ミュート解除時 |
-| `queryKeys.search.posts(q, filter)` | `useSearchPostsQuery` | 投稿削除・大幅更新時（検索キャッシュは低優先）。フィルタが異なると別キャッシュ |
+| `queryKeys.search.posts(q, filter)` | `useSearchPostsQuery` | 投稿削除・大幅更新時（検索キャッシュは低優先）。フィルタが異なると別キャッシュ。`genreIds`（複数ジャンル OR-any・OpenAPI 1.37.0）は `normalizeGenreIds`（重複除去 + ソート）でキー・リクエストの両方を正規化するため、指定順序が異なるだけでは別キャッシュにならない |
 | `queryKeys.search.users(q)` | `useSearchUsersQuery` | ユーザー名変更・削除・ブロック時（低優先） |
 | `queryKeys.search.hashtags(q, limit)` | `useSearchHashtagsQuery` | 投稿作成・削除後（ハッシュタグの count が変わる場合）。search.all で一括 invalidate 可 |
 | `queryKeys.notifications.list()` | `useNotificationsQuery` | 通知既読操作時（Batch 2b）・ブロック・ミュート時・フォローリクエスト承認時 |

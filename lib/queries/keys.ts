@@ -8,6 +8,8 @@
  * 現時点では unknown を使わず、必要最小限の string 型で保持する。
  */
 
+import { normalizeGenreIds } from '@/lib/utils/search-filter';
+
 // ---------------------------------------------------------------------------
 // FeedFilter — サーバー API 確定前の最小型
 // ---------------------------------------------------------------------------
@@ -105,8 +107,20 @@ export const queryKeys = {
   search: {
     /** ルートキー */
     all: ['search'] as const,
-    /** 投稿検索（フィルタ付き。フィルタが異なると別キャッシュになる） */
-    posts: (query: string, filter?: SearchPostsFilter) => ['search', 'posts', query, filter ?? {}] as const,
+    /**
+     * 投稿検索（フィルタ付き。フィルタが異なると別キャッシュになる）。
+     * genreIds は normalizeGenreIds で重複除去・ソート済みの配列に正規化してから埋め込む
+     * （順序違いだけの同一フィルタが別キャッシュに分裂しないようにするため）。
+     */
+    posts: (query: string, filter?: SearchPostsFilter) =>
+      [
+        'search',
+        'posts',
+        query,
+        filter === undefined
+          ? {}
+          : { ...filter, genreIds: normalizeGenreIds(filter.genreIds) },
+      ] as const,
     /** ユーザー検索 */
     users: (query: string) => ['search', 'users', query] as const,
     /** ハッシュタグ候補検索（オートコンプリート） */
@@ -401,9 +415,13 @@ export type CareLogsParams = {
   to?: string;
 };
 
-/** 投稿検索の追加フィルタ（mediaType は API スキーマのリテラルユニオンをミラー） */
+/**
+ * 投稿検索の追加フィルタ（mediaType は API スキーマのリテラルユニオンをミラー）。
+ * genreId（単一・既存）と genreIds（複数・OR-any）は併用可。サーバー側で和集合・重複除去される。
+ */
 export type SearchPostsFilter = {
   genreId?: string;
+  genreIds?: string[];
   dateFrom?: string;
   dateTo?: string;
   minLikes?: number;

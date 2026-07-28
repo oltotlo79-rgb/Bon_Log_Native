@@ -5,11 +5,11 @@
 
 import type { components } from '@/lib/api/generated/schema.d.ts';
 
-/** スペック定義のエラーコード enum（18 値）。 */
+/** スペック定義のエラーコード enum（20 値）。 */
 export type MobileApiErrorCode = components['schemas']['MobileApiErrorCode'];
 
 /**
- * スペック由来の 18 値 readonly 配列。
+ * スペック由来の 20 値 readonly 配列。
  * isMobileApiErrorCode の照合基準として使う。生成スキーマの enum と一致させること。
  */
 const MOBILE_API_ERROR_CODES = [
@@ -32,6 +32,7 @@ const MOBILE_API_ERROR_CODES = [
   'INTERNAL_ERROR',
   'SERVER_MISCONFIGURED',
   'PREMIUM_REQUIRED',
+  'TERMS_ACCEPTANCE_REQUIRED',
 ] as const satisfies readonly MobileApiErrorCode[];
 
 /**
@@ -82,4 +83,12 @@ export function isApiError(error: unknown): error is ApiError {
  */
 export function isReuseDetected(error: unknown): error is ApiError {
   return isApiError(error) && error.code === 'AUTH_REFRESH_TOKEN_REUSE_DETECTED';
+}
+
+/**
+ * TERMS_ACCEPTANCE_REQUIRED（Google 新規登録で規約同意が不足・不一致）かどうかを判定する型ガード。
+ * サーバーは 403 を返すが、HTTP ステータスではなく本コードで分岐すること（cfw handback 2026-07-28 §4.4）。
+ */
+export function isTermsAcceptanceRequired(error: unknown): error is ApiError {
+  return isApiError(error) && error.code === 'TERMS_ACCEPTANCE_REQUIRED';
 }

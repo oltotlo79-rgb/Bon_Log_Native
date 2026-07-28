@@ -16,11 +16,15 @@ function buildUrl(path: string): string {
 // 既存 URL 定数（互換のため維持）
 // ---------------------------------------------------------------------------
 
-/** 利用規約ページ（Bon_Log_cfw: app/(legal)/terms/page.tsx） */
-export const TERMS_URL = buildUrl('/terms');
+/**
+ * 利用規約ページ（Bon_Log_cfw: app/(mobile-legal)/mobile/android/terms/page.tsx — Android 専用）。
+ * 未ログイン 200・Cookie 不要・Web の決済導線（Stripe 等）を継承しない専用ページ。
+ * Web 版 URL（/terms）を使うと Google Play 決済ポリシー違反になるため使わない（store-compliance.md）。
+ */
+export const TERMS_URL = buildUrl('/mobile/android/terms');
 
-/** プライバシーポリシーページ（Bon_Log_cfw: app/(legal)/privacy/page.tsx） */
-export const PRIVACY_URL = buildUrl('/privacy');
+/** プライバシーポリシーページ（Bon_Log_cfw: app/(mobile-legal)/mobile/android/privacy/page.tsx — Android 専用。TERMS_URL 同様の理由） */
+export const PRIVACY_URL = buildUrl('/mobile/android/privacy');
 
 /**
  * PRIVACY_URL の別名。frontend 向け統一命名（TERMS_URL に合わせた _URL サフィックス + 意味を明示する名前）。
@@ -28,8 +32,8 @@ export const PRIVACY_URL = buildUrl('/privacy');
  */
 export const PRIVACY_POLICY_URL = PRIVACY_URL;
 
-/** ヘルプページ（Bon_Log_cfw: app/help/page.tsx） */
-export const HELP_URL = buildUrl('/help');
+/** ヘルプページ（Bon_Log_cfw: app/(mobile-legal)/mobile/android/help/page.tsx — Android 専用。TERMS_URL 同様の理由） */
+export const HELP_URL = buildUrl('/mobile/android/help');
 
 // ---------------------------------------------------------------------------
 // 「もっと見る」メニュー向け URL 定数

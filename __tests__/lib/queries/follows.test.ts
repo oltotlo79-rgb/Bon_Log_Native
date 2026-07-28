@@ -95,6 +95,7 @@ function makeUserProfile(overrides?: Partial<UserProfileResponse>): UserProfileR
     requested: false,
     isSelf: false,
     isBlocked: false,
+    isBlockedByUser: false,
     isPremium: false,
     isMuted: false,
     ...overrides,

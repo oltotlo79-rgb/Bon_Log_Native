@@ -11,6 +11,15 @@ import { signOut } from '@/lib/auth/auth';
 import type { components } from '@/lib/api/generated/schema.d.ts';
 
 export type UserProfile = components['schemas']['UserProfileResponse'];
+
+/**
+ * 対象ユーザーが閲覧者をブロックしているか（isBlocked とは逆方向）を安全に判定する。
+ * スペック上は required boolean だが、サーバーの本番配備前は未実装のため実行時に
+ * undefined が返り得る（cfw handback 2026-07-28）。undefined は「ブロックされていない」扱いにする。
+ */
+export function isBlockedByViewedUser(profile: Pick<UserProfile, 'isBlockedByUser'>): boolean {
+  return profile.isBlockedByUser === true;
+}
 export type UsersMeFullResponse = components['schemas']['UsersMeFullResponse'];
 export type SuccessResponse = components['schemas']['SuccessResponse'];
 export type UpdateProfileRequest = components['schemas']['UpdateProfileRequest'];

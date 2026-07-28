@@ -8,7 +8,7 @@
  * Error 400 invalid_request が発生するため、ネイティブ SDK に移行した。
  */
 
-import { useCallback, useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import {
   GoogleSignin,
   statusCodes,
@@ -24,9 +24,20 @@ import {
 // 型定義
 // ---------------------------------------------------------------------------
 
+/** 新規ユーザー作成時に必須の規約同意情報（Google 新規登録経路のみ送信する）。 */
+export type GoogleAuthTerms = { termsAccepted: true; termsVersion: string };
+
 export type UseGoogleAuthReturn = {
-  /** Google 認証フローを開始する。 */
-  signIn: () => Promise<void>;
+  /**
+   * Google 認証フローを開始する。
+   *
+   * terms 省略時（通常の初回呼び出し）: ネイティブの Google アカウント選択を開始する。
+   * サーバーが 403 TERMS_ACCEPTANCE_REQUIRED を返した場合（新規ユーザー作成時のみ発生）、
+   * frontend は isTermsAcceptanceRequired(error) で判別して同意画面を出し、
+   * 同意後に terms 付きで signIn を再度呼び出す。このとき直前に取得済みの ID トークンを
+   * 再利用するため、ネイティブのアカウント選択は再表示されない。
+   */
+  signIn: (terms?: GoogleAuthTerms) => Promise<void>;
   /** サーバー検証中は true。 */
   isLoading: boolean;
   /**
@@ -85,41 +96,60 @@ export function useGoogleAuth(): UseGoogleAuthReturn {
 
   const isAvailable = useMemo(() => webClientId !== '', [webClientId]);
 
-  const signIn = useCallback(async (): Promise<void> => {
+  // terms 付きの再試行（規約同意画面からの再送）でネイティブのアカウント選択を
+  // 再表示しないよう、直近で取得した ID トークンを保持する。
+  const lastIdTokenRef = useRef<string | null>(null);
+
+  const signIn = useCallback(async (terms?: GoogleAuthTerms): Promise<void> => {
     if (!isAvailable) {
       return;
     }
 
-    let result: SignInResponse;
-    try {
-      await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
-      result = await GoogleSignin.signIn();
-    } catch (err) {
-      const code = nativeErrorCode(err);
-      if (code !== null) {
-        if (code === statusCodes.SIGN_IN_CANCELLED) {
-          return;
+    let idToken = terms !== undefined ? lastIdTokenRef.current : null;
+
+    if (idToken === null) {
+      let result: SignInResponse;
+      try {
+        await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+        result = await GoogleSignin.signIn();
+      } catch (err) {
+        const code = nativeErrorCode(err);
+        if (code !== null) {
+          if (code === statusCodes.SIGN_IN_CANCELLED) {
+            return;
+          }
+          if (code === statusCodes.IN_PROGRESS) {
+            return;
+          }
         }
-        if (code === statusCodes.IN_PROGRESS) {
-          return;
-        }
+
+        const message =
+          err instanceof Error ? err.message : ERR_GOOGLE_SIGN_IN_FAILED;
+        throw new Error(message);
       }
 
-      const message =
-        err instanceof Error ? err.message : ERR_GOOGLE_SIGN_IN_FAILED;
-      throw new Error(message);
+      if (result.type === 'cancelled') {
+        return;
+      }
+
+      const rawIdToken: string | null = result.data.idToken;
+      if (typeof rawIdToken !== 'string' || rawIdToken === '') {
+        throw new Error(ERR_GOOGLE_ID_TOKEN_MISSING);
+      }
+
+      idToken = rawIdToken;
+      lastIdTokenRef.current = rawIdToken;
     }
 
-    if (result.type === 'cancelled') {
-      return;
+    if (terms !== undefined) {
+      await mutation.mutateAsync({
+        idToken,
+        termsAccepted: terms.termsAccepted,
+        termsVersion: terms.termsVersion,
+      });
+    } else {
+      await mutation.mutateAsync({ idToken });
     }
-
-    const rawIdToken: string | null = result.data.idToken;
-    if (typeof rawIdToken !== 'string' || rawIdToken === '') {
-      throw new Error(ERR_GOOGLE_ID_TOKEN_MISSING);
-    }
-
-    await mutation.mutateAsync({ idToken: rawIdToken });
   }, [isAvailable, mutation]);
 
   return {

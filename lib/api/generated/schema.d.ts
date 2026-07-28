@@ -966,9 +966,10 @@ export interface paths {
          * @description Google Sign-In で取得した ID トークンを検証し、TokenPair を発行する。
          *
          *     ユーザー解決フロー:
-         *     1. Account(provider='google', providerAccountId=sub) を検索
-         *     2. なければ email で User を検索し Account を作成してリンク
-         *     3. User も存在しなければ新規作成
+         *     1. Account(provider='google', providerAccountId=sub) を検索 — 既存ログインは termsAccepted 不要
+         *     2. なければ email で User を検索し Account を作成してリンク — 既存ユーザーは termsAccepted 不要
+         *     3. User も存在しなければ、termsAccepted === true かつ termsVersion が現行バージョンと一致する
+         *        場合のみ新規作成する。不足・不一致の場合は何も作成せず 403 TERMS_ACCEPTANCE_REQUIRED を返す。
          */
         post: {
             parameters: {
@@ -1010,7 +1011,7 @@ export interface paths {
                         "application/json": components["schemas"]["ApiErrorResponse"];
                     };
                 };
-                /** @description アカウント停止 (ACCOUNT_SUSPENDED) */
+                /** @description アカウント停止 (ACCOUNT_SUSPENDED)、または新規ユーザー作成時の規約同意欠落・バージョン不一致 (TERMS_ACCEPTANCE_REQUIRED) */
                 403: {
                     headers: {
                         [name: string]: unknown;
@@ -2135,6 +2136,10 @@ export interface paths {
          *     メールアドレスは返却しない。
          *     非公開アカウントはフォロワー以外には公開情報のみ返す（フォロワー数等は含む）。
          *     ゲストアカウントは 404 として扱う。
+         *
+         *     isBlockedByUser: 対象ユーザーが認証中の閲覧者をブロックしているか（isBlocked とは逆方向、相互に導出しない）。
+         *     可視性 gate（404）通過後にのみ逆方向 Block を解決する。self は解決せず false 固定。
+         *     逆方向 Block の解決に失敗した場合はプロフィール本体を返さず 500 INTERNAL_ERROR とする（fail-closed）。
          */
         get: {
             parameters: {
@@ -2189,6 +2194,15 @@ export interface paths {
                     headers: {
                         /** @description 次のリクエストまでの待機秒数 */
                         "Retry-After"?: number;
+                        [name: string]: unknown;
+                    };
+                    content: {
+                        "application/json": components["schemas"]["ApiErrorResponse"];
+                    };
+                };
+                /** @description 逆方向ブロック解決失敗など (INTERNAL_ERROR) */
+                500: {
+                    headers: {
                         [name: string]: unknown;
                     };
                     content: {
@@ -2731,7 +2745,11 @@ export interface paths {
          *     - mediaType: image / video / none（image=画像あり / video=動画あり / none=テキストのみ）
          *     - dateFrom / dateTo: ISO8601 日付（YYYY-MM-DD）での期間絞り込み
          *     - minLikes: 最低いいね数でフィルタ
-         *     - genreId: ジャンル ID で絞り込み
+         *     - genreId: ジャンル ID で絞り込み（既存・後方互換。削除・改名・配列化はしない）
+         *     - genreIds: 複数ジャンル ID の OR-any 絞り込み（反復クエリ genreIds=a&genreIds=b、style=form, explode=true）。
+         *       投稿に選択ジャンルのいずれか 1 つ以上が付いていれば一致（AND-all ではない）。
+         *       genreId と genreIds を同時指定した場合は和集合・重複除去して適用する。
+         *       空要素（genreIds=）は 400 VALIDATION_ERROR。投稿作成の genreIds 3 件上限はここには適用されない。
          */
         get: {
             parameters: {
@@ -2742,8 +2760,10 @@ export interface paths {
                     cursor?: string;
                     /** @description 取得上限件数 */
                     limit?: number;
-                    /** @description ジャンル ID でフィルタ */
+                    /** @description ジャンル ID でフィルタ（既存・後方互換） */
                     genreId?: string;
+                    /** @description 複数ジャンル ID で OR-any フィルタ（反復クエリ genreIds=a&genreIds=b）。genreId と併用時は和集合・重複除去。 */
+                    genreIds?: string[];
                     /** @description 投稿日時の開始日（ISO8601 YYYY-MM-DD） */
                     dateFrom?: string;
                     /** @description 投稿日時の終了日（ISO8601 YYYY-MM-DD） */
@@ -13443,16 +13463,16 @@ export interface components {
         ApiErrorResponse: {
             error: {
                 /** @enum {string} */
-                code: "AUTH_REQUIRED" | "AUTH_INVALID_TOKEN" | "AUTH_TOKEN_EXPIRED" | "AUTH_INVALID_CREDENTIALS" | "AUTH_2FA_REQUIRED" | "AUTH_2FA_INVALID_CODE" | "AUTH_2FA_TICKET_EXPIRED" | "AUTH_REFRESH_TOKEN_INVALID" | "AUTH_REFRESH_TOKEN_REUSE_DETECTED" | "ACCOUNT_SUSPENDED" | "GUEST_NOT_ALLOWED" | "EMAIL_NOT_VERIFIED" | "VALIDATION_ERROR" | "RATE_LIMITED" | "NOT_FOUND" | "CONFLICT" | "INTERNAL_ERROR" | "SERVER_MISCONFIGURED" | "PREMIUM_REQUIRED";
+                code: "AUTH_REQUIRED" | "AUTH_INVALID_TOKEN" | "AUTH_TOKEN_EXPIRED" | "AUTH_INVALID_CREDENTIALS" | "AUTH_2FA_REQUIRED" | "AUTH_2FA_INVALID_CODE" | "AUTH_2FA_TICKET_EXPIRED" | "AUTH_REFRESH_TOKEN_INVALID" | "AUTH_REFRESH_TOKEN_REUSE_DETECTED" | "ACCOUNT_SUSPENDED" | "GUEST_NOT_ALLOWED" | "EMAIL_NOT_VERIFIED" | "VALIDATION_ERROR" | "RATE_LIMITED" | "NOT_FOUND" | "CONFLICT" | "INTERNAL_ERROR" | "SERVER_MISCONFIGURED" | "PREMIUM_REQUIRED" | "TERMS_ACCEPTANCE_REQUIRED";
                 message: string;
                 status: number;
             };
         };
         /**
-         * @description エラーコード enum（18 値）。モバイル側はこの enum からコード→メッセージ対応表を導出できる。
+         * @description エラーコード enum（20 値）。モバイル側はこの enum からコード→メッセージ対応表を導出できる。
          * @enum {string}
          */
-        MobileApiErrorCode: "AUTH_REQUIRED" | "AUTH_INVALID_TOKEN" | "AUTH_TOKEN_EXPIRED" | "AUTH_INVALID_CREDENTIALS" | "AUTH_2FA_REQUIRED" | "AUTH_2FA_INVALID_CODE" | "AUTH_2FA_TICKET_EXPIRED" | "AUTH_REFRESH_TOKEN_INVALID" | "AUTH_REFRESH_TOKEN_REUSE_DETECTED" | "ACCOUNT_SUSPENDED" | "GUEST_NOT_ALLOWED" | "EMAIL_NOT_VERIFIED" | "VALIDATION_ERROR" | "RATE_LIMITED" | "NOT_FOUND" | "CONFLICT" | "INTERNAL_ERROR" | "SERVER_MISCONFIGURED" | "PREMIUM_REQUIRED";
+        MobileApiErrorCode: "AUTH_REQUIRED" | "AUTH_INVALID_TOKEN" | "AUTH_TOKEN_EXPIRED" | "AUTH_INVALID_CREDENTIALS" | "AUTH_2FA_REQUIRED" | "AUTH_2FA_INVALID_CODE" | "AUTH_2FA_TICKET_EXPIRED" | "AUTH_REFRESH_TOKEN_INVALID" | "AUTH_REFRESH_TOKEN_REUSE_DETECTED" | "ACCOUNT_SUSPENDED" | "GUEST_NOT_ALLOWED" | "EMAIL_NOT_VERIFIED" | "VALIDATION_ERROR" | "RATE_LIMITED" | "NOT_FOUND" | "CONFLICT" | "INTERNAL_ERROR" | "SERVER_MISCONFIGURED" | "PREMIUM_REQUIRED" | "TERMS_ACCEPTANCE_REQUIRED";
         /** @description メール/パスワード認証のリクエスト。 */
         LoginRequest: {
             /** Format: email */
@@ -13513,9 +13533,18 @@ export interface components {
         LogoutRequest: {
             refreshToken: string;
         };
-        /** @description Google ID トークン認証のリクエスト。 */
+        /**
+         * @description Google ID トークン認証のリクエスト。
+         *     termsAccepted / termsVersion は既存ユーザーのログイン・アカウントリンクでは不要（省略可）。
+         *     Account/email に一致する User が存在せず新規作成する場合のみ必須で、
+         *     termsAccepted === true かつ termsVersion が現行の利用規約バージョンと一致する場合のみ新規作成する。
+         *     省略・不一致の場合は 403 TERMS_ACCEPTANCE_REQUIRED を返す（User/Account/token は一切作成しない）。
+         */
         GoogleRequest: {
             idToken: string;
+            /** @enum {boolean} */
+            termsAccepted?: true;
+            termsVersion?: string;
         };
         /** @description パスワードリセットメール送信のリクエスト。 */
         PasswordResetRequest: {
@@ -13558,6 +13587,8 @@ export interface components {
         /**
          * @description 投稿検索クエリパラメータ。SearchQuery を拡張して投稿専用フィルタを追加。
          *     mediaType は image / video / none のいずれか（image=画像あり / video=動画あり / none=テキストのみ）。
+         *     genreId: 単一ジャンル ID フィルタ（既存・後方互換）。
+         *     genreIds: 複数ジャンル ID の OR-any フィルタ（反復クエリ genreIds=a&genreIds=b）。genreId と併用時は和集合・重複除去。
          */
         SearchPostsQuery: {
             cursor?: string;
@@ -13565,6 +13596,7 @@ export interface components {
             /** @default  */
             q: string;
             genreId?: string;
+            genreIds?: string[];
             dateFrom?: string;
             dateTo?: string;
             minLikes?: number | null;
@@ -14330,7 +14362,11 @@ export interface components {
             }[];
             nextCursor: string | null;
         };
-        /** @description ユーザープロフィール取得レスポンス。 */
+        /**
+         * @description ユーザープロフィール取得レスポンス。
+         *     isBlocked: 閲覧者 → 対象ユーザー方向のブロック。isBlockedByUser: 対象ユーザー → 閲覧者方向のブロック（逆方向、相互に導出しない）。
+         *     self（閲覧者自身のプロフィール）は isBlocked / isMuted / isBlockedByUser すべて false 固定。
+         */
         UserProfileResponse: {
             id: string;
             nickname: string;
@@ -14353,6 +14389,7 @@ export interface components {
             isSelf: boolean;
             isBlocked: boolean;
             isMuted: boolean;
+            isBlockedByUser: boolean;
             isPremium: boolean;
         };
         /** @description 投稿検索結果レスポンス。 */

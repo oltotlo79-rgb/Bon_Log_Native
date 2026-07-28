@@ -246,6 +246,12 @@ export const ERR_PASSWORD_MISMATCH = 'パスワードが一致しません。';
 /** 利用規約への同意が必要 */
 export const ERR_TERMS_AGREEMENT_REQUIRED = '利用規約とプライバシーポリシーに同意してください。';
 
+/**
+ * サーバーの TERMS_ACCEPTANCE_REQUIRED（Google 新規登録時の規約同意欠落・バージョン不一致、403）に対応する文言。
+ * 既存ログインでは発生しない — 新規ユーザー作成時のみ返る（auth-tokens.md）。
+ */
+export const ERR_TERMS_ACCEPTANCE_REQUIRED = '規約への同意が必要です。内容をご確認のうえ、同意して続行してください。';
+
 /** パスワード短すぎ */
 export const ERR_PASSWORD_MIN_LENGTH = 'パスワードは8文字以上で入力してください。';
 
@@ -957,6 +963,8 @@ export function messageForApiError(code: MobileApiErrorCode): string {
       return ERR_SERVER;
     case 'PREMIUM_REQUIRED':
       return ERR_PREMIUM_ONLY;
+    case 'TERMS_ACCEPTANCE_REQUIRED':
+      return ERR_TERMS_ACCEPTANCE_REQUIRED;
     default:
       return ERR_GENERIC;
   }

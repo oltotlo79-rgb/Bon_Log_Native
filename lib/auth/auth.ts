@@ -372,13 +372,24 @@ export async function confirmPasswordReset(params: {
 /**
  * Google ID トークンでログインする。
  * ID トークンの検証はサーバーの責務。クライアントは検証・信頼しない（auth-tokens.md）。
+ *
+ * terms は新規ユーザー作成時のみ必須（既存ユーザーのログイン・アカウントリンクでは省略可）。
+ * サーバーは新規作成時に限り termsAccepted !== true または termsVersion 不一致を
+ * 403 TERMS_ACCEPTANCE_REQUIRED として返す（isTermsAcceptanceRequired で判別する）。
  */
-export async function signInWithGoogle(idToken: string): Promise<void> {
+export async function signInWithGoogle(
+  idToken: string,
+  terms?: { termsAccepted: true; termsVersion: string }
+): Promise<void> {
   await waitForAuthFailureCleanup();
   pending2FATicket = null;
 
   const { data, error } = await apiClient.POST('/api/v1/auth/google', {
-    body: { idToken },
+    body: {
+      idToken,
+      termsAccepted: terms?.termsAccepted,
+      termsVersion: terms?.termsVersion,
+    },
   });
 
   if (error !== undefined || data === undefined) {

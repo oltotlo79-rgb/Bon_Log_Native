@@ -133,10 +133,22 @@ export function usePasswordResetConfirmMutation() {
  * Google OAuth サインインミューテーション。
  * expo-auth-session で ID トークンを取得した後に呼び出す。
  * ID トークンの検証はサーバーの責務（auth-tokens.md）。
+ *
+ * termsAccepted / termsVersion は新規ユーザー作成時のみ必須（既存ユーザーのログインでは省略可）。
+ * 不足・不一致時は 403 TERMS_ACCEPTANCE_REQUIRED が返る
+ * （lib/api/errors の isTermsAcceptanceRequired で判別する。HTTP ステータスでは分岐しない）。
  */
 export function useGoogleSignInMutation() {
-  return useMutation<void, Error, { idToken: string }>({
-    mutationFn: ({ idToken }) => signInWithGoogle(idToken),
+  return useMutation<
+    void,
+    Error,
+    { idToken: string; termsAccepted?: true; termsVersion?: string }
+  >({
+    mutationFn: ({ idToken, termsAccepted, termsVersion }) =>
+      signInWithGoogle(
+        idToken,
+        termsAccepted === true ? { termsAccepted, termsVersion: termsVersion ?? '' } : undefined
+      ),
   });
 }
 

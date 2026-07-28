@@ -9,4 +9,4 @@ export type { SignInResult, AuthStatus, AuthFailureReason } from '@/lib/auth/aut
 export { useAuth } from '@/lib/auth/use-auth';
 export type { UseAuthReturn } from '@/lib/auth/use-auth';
 export { useGoogleAuth } from '@/lib/auth/use-google-auth';
-export type { UseGoogleAuthReturn } from '@/lib/auth/use-google-auth';
+export type { UseGoogleAuthReturn, GoogleAuthTerms } from '@/lib/auth/use-google-auth';
