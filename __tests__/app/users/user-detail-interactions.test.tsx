@@ -67,6 +67,7 @@ jest.mock('@/components/user/UserActionMenu', () => ({
 
 const mockUseUserProfileQuery = jest.fn();
 jest.mock('@/lib/queries/users', () => ({
+  ...jest.requireActual('@/lib/queries/users'),
   useUserProfileQuery: () => mockUseUserProfileQuery(),
 }));
 

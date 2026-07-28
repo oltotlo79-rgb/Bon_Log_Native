@@ -41,6 +41,7 @@ jest.mock('@/lib/queries/bookmarks', () => ({
 
 const mockUseUserProfileQuery = jest.fn();
 jest.mock('@/lib/queries/users', () => ({
+  ...jest.requireActual('@/lib/queries/users'),
   useUserProfileQuery: () => mockUseUserProfileQuery(),
 }));
 
