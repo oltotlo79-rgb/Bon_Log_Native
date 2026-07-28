@@ -285,7 +285,9 @@ export default function RegisterScreen() {
                   label="Google で登録"
                   disabled={!isGoogleAvailable}
                   loading={isGoogleLoading}
-                  onPress={googleSignIn}
+                  onPress={() => {
+                    void googleSignIn();
+                  }}
                 />
 
                 <FormErrorMessage

@@ -299,7 +299,9 @@ export default function LoginScreen() {
                   label="Google でログイン"
                   disabled={!isGoogleAvailable || isPending}
                   loading={isGoogleLoading}
-                  onPress={googleSignIn}
+                  onPress={() => {
+                    void googleSignIn();
+                  }}
                 />
 
                 <FormErrorMessage
