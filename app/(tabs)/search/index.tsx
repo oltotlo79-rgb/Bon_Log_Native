@@ -505,7 +505,10 @@ export default function SearchScreen() {
   // ジャンルフィルタが適用されている間は、クエリが空でも初期案内画面へ戻さない
   // （ジャンルタグタップ直後に投稿タブへ着地させる — Web の GenreFilter 挙動）。
   // タグタブは未入力で人気タグを表示するため、この初期表示分岐の対象外とする。
-  const hasGenreFilter = postFilter.genreId !== undefined;
+  // 詳細フィルターパネルでの複数選択適用後は genreIds のみが設定されるため、両方を見る。
+  const hasGenreFilter =
+    postFilter.genreId !== undefined ||
+    (postFilter.genreIds !== undefined && postFilter.genreIds.length > 0);
   const hasEmptyQuery = inputValue.length === 0 && debouncedQuery.length === 0;
   const showInitialView =
     hasEmptyQuery && activeSegment !== 'tags' && !(activeSegment === 'posts' && hasGenreFilter);

@@ -2,15 +2,15 @@
  * @module components/search/PostSearchFilterPanel
  * 投稿検索の詳細フィルタパネル（ジャンル / 期間 / 最小いいね数 / メディア種別）。
  * Web の AdvancedSearchFilters + GenreFilter に対応。
+ * ジャンルはカテゴリ別チップの複数選択（Web の GenreFilter の階層構造に準拠）。
  * 開閉トグル付き。適用時に onApply コールバックへ SearchPostsFilter を渡す。
  */
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import {
   View,
   Text,
   Pressable,
-  ScrollView,
   TextInput,
   StyleSheet,
   LayoutAnimation,
@@ -19,6 +19,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useGenresQuery } from '@/lib/queries/shops';
+import { groupGenresByCategory } from '@/lib/utils/group-genres-by-category';
 import { DatePickerField } from '@/components/common/DatePickerField';
 import type { SearchPostsFilter } from '@/lib/queries/keys';
 import {
@@ -34,6 +35,7 @@ import {
   colorActionPrimaryText,
   colorActionSecondary,
   colorActionSecondaryText,
+  spacing1,
   spacing2,
   spacing3,
   spacing4,
@@ -89,6 +91,23 @@ export type PostSearchFilterPanelProps = {
 // Component
 // ---------------------------------------------------------------------------
 
+/**
+ * genreId（単一・既存）と genreIds（複数）のどちらで来てもローカル選択状態は
+ * 常に「選択中ジャンル id の配列」に正規化する（重複除去）。
+ */
+function mergedInitialGenreIds(filter: SearchPostsFilter): string[] {
+  const ids = new Set<string>();
+  if (filter.genreId !== undefined && filter.genreId.length > 0) {
+    ids.add(filter.genreId);
+  }
+  if (filter.genreIds !== undefined) {
+    for (const id of filter.genreIds) {
+      if (id.length > 0) ids.add(id);
+    }
+  }
+  return Array.from(ids);
+}
+
 export function PostSearchFilterPanel({
   currentFilter,
   onApply,
@@ -96,6 +115,7 @@ export function PostSearchFilterPanel({
 }: PostSearchFilterPanelProps) {
   const hasActiveFilters =
     (currentFilter.genreId !== undefined && currentFilter.genreId.length > 0) ||
+    (currentFilter.genreIds !== undefined && currentFilter.genreIds.length > 0) ||
     (currentFilter.dateFrom !== undefined && currentFilter.dateFrom.length > 0) ||
     (currentFilter.dateTo !== undefined && currentFilter.dateTo.length > 0) ||
     currentFilter.minLikes !== undefined ||
@@ -103,7 +123,9 @@ export function PostSearchFilterPanel({
 
   const [isOpen, setIsOpen] = useState(hasActiveFilters);
 
-  const [localGenreId, setLocalGenreId] = useState(currentFilter.genreId ?? '');
+  const [localGenreIds, setLocalGenreIds] = useState<string[]>(() =>
+    mergedInitialGenreIds(currentFilter)
+  );
   const [localDateFrom, setLocalDateFrom] = useState(currentFilter.dateFrom ?? '');
   const [localDateTo, setLocalDateTo] = useState(currentFilter.dateTo ?? '');
   const [localMinLikes, setLocalMinLikes] = useState(
@@ -114,10 +136,11 @@ export function PostSearchFilterPanel({
   );
 
   const { data: genreData } = useGenresQuery('post');
-  const genres = genreData?.items ?? [];
+  const genres = useMemo(() => genreData?.items ?? [], [genreData]);
+  const genreCategoryGroups = useMemo(() => groupGenresByCategory(genres), [genres]);
 
   const localHasFilters =
-    localGenreId.length > 0 ||
+    localGenreIds.length > 0 ||
     localDateFrom.length > 0 ||
     localDateTo.length > 0 ||
     localMinLikes.length > 0 ||
@@ -128,9 +151,25 @@ export function PostSearchFilterPanel({
     setIsOpen((prev) => !prev);
   }, []);
 
+  const toggleGenre = useCallback((genreId: string) => {
+    setLocalGenreIds((prev) =>
+      prev.includes(genreId) ? prev.filter((id) => id !== genreId) : [...prev, genreId]
+    );
+  }, []);
+
+  const clearGenres = useCallback(() => {
+    setLocalGenreIds([]);
+  }, []);
+
   const handleApply = useCallback(() => {
     const filter: SearchPostsFilter = {};
-    if (localGenreId.length > 0) filter.genreId = localGenreId;
+    // 単一選択時は既存の genreId 形式を維持し、複数選択時のみ genreIds を使う
+    // （サーバーは和集合として扱うため結果は同一。単一選択の既存挙動を変えないため）
+    if (localGenreIds.length === 1) {
+      filter.genreId = localGenreIds[0];
+    } else if (localGenreIds.length > 1) {
+      filter.genreIds = localGenreIds;
+    }
     if (localDateFrom.length > 0) filter.dateFrom = localDateFrom;
     if (localDateTo.length > 0) filter.dateTo = localDateTo;
     const parsedMinLikes = parseInt(localMinLikes, 10);
@@ -139,10 +178,10 @@ export function PostSearchFilterPanel({
       filter.mediaType = localMediaType;
     }
     onApply(filter);
-  }, [localGenreId, localDateFrom, localDateTo, localMinLikes, localMediaType, onApply]);
+  }, [localGenreIds, localDateFrom, localDateTo, localMinLikes, localMediaType, onApply]);
 
   const handleReset = useCallback(() => {
-    setLocalGenreId('');
+    setLocalGenreIds([]);
     setLocalDateFrom('');
     setLocalDateTo('');
     setLocalMinLikes('');
@@ -173,35 +212,55 @@ export function PostSearchFilterPanel({
 
       {isOpen && (
         <View style={styles.panel}>
-          {/* ジャンル */}
+          {/* ジャンル（Web の GenreFilter に対応。カテゴリ別チップの複数選択・OR-any） */}
           <View style={styles.section}>
-            <Text style={styles.sectionLabel}>ジャンル</Text>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.chipsRow}
-            >
-              {genres.map((genre) => {
-                const isSelected = localGenreId === genre.id;
-                return (
-                  <Pressable
-                    key={genre.id}
-                    style={[styles.chip, isSelected && styles.chipSelected]}
-                    onPress={() => setLocalGenreId(isSelected ? '' : genre.id)}
-                    hitSlop={CHIP_HIT_SLOP}
-                    accessibilityRole="checkbox"
-                    accessibilityState={{ checked: isSelected }}
-                    accessibilityLabel={`ジャンル ${genre.name}${isSelected ? ' 選択中' : ''}`}
-                  >
-                    <Text
-                      style={[styles.chipText, isSelected && styles.chipTextSelected]}
-                    >
-                      {genre.name}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </ScrollView>
+            <View style={styles.genreHeaderRow}>
+              <Text style={styles.sectionLabel}>ジャンル</Text>
+              {localGenreIds.length > 0 && (
+                <View style={styles.genreCountBadge}>
+                  <Text style={styles.genreCountBadgeText}>{localGenreIds.length}</Text>
+                </View>
+              )}
+              {localGenreIds.length > 0 && (
+                <Pressable
+                  style={styles.genreClearButton}
+                  onPress={clearGenres}
+                  hitSlop={CHIP_HIT_SLOP}
+                  accessibilityRole="button"
+                  accessibilityLabel="ジャンルの選択をクリア"
+                >
+                  <Text style={styles.genreClearButtonText}>クリア</Text>
+                </Pressable>
+              )}
+            </View>
+
+            {genreCategoryGroups.map((group, index) => (
+              <View key={`${index}-${group.category}`} style={styles.genreCategoryBlock}>
+                <Text style={styles.genreCategoryLabel}>{group.category}</Text>
+                <View style={styles.chipsWrapRow}>
+                  {group.genres.map((genre) => {
+                    const isSelected = localGenreIds.includes(genre.id);
+                    return (
+                      <Pressable
+                        key={genre.id}
+                        style={[styles.chip, isSelected && styles.chipSelected]}
+                        onPress={() => toggleGenre(genre.id)}
+                        hitSlop={CHIP_HIT_SLOP}
+                        accessibilityRole="checkbox"
+                        accessibilityState={{ checked: isSelected }}
+                        accessibilityLabel={`ジャンル ${genre.name}${isSelected ? ' 選択中' : ''}`}
+                      >
+                        <Text
+                          style={[styles.chipText, isSelected && styles.chipTextSelected]}
+                        >
+                          {genre.name}
+                        </Text>
+                      </Pressable>
+                    );
+                  })}
+                </View>
+              </View>
+            ))}
           </View>
 
           {/* 期間（開始日 / 終了日 — DatePickerField による日付のみピッカー） */}
@@ -353,10 +412,48 @@ const styles = StyleSheet.create({
     color: colorTextTertiary,
     letterSpacing: letterSpacingTight,
   },
-  chipsRow: {
+  genreHeaderRow: {
     flexDirection: 'row',
+    alignItems: 'center',
     gap: spacing2,
-    paddingVertical: spacing2,
+  },
+  genreCountBadge: {
+    minWidth: 18,
+    height: 18,
+    paddingHorizontal: spacing1,
+    borderRadius: radiusFull,
+    backgroundColor: colorActionPrimary,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  genreCountBadgeText: {
+    ...textXs,
+    color: colorActionPrimaryText,
+    fontWeight: '600',
+  },
+  genreClearButton: {
+    marginLeft: 'auto',
+    paddingVertical: spacing1,
+    paddingHorizontal: spacing2,
+  },
+  genreClearButtonText: {
+    ...textXs,
+    color: colorActionPrimary,
+    fontWeight: '600',
+  },
+  genreCategoryBlock: {
+    gap: spacing2,
+    marginTop: spacing2,
+  },
+  genreCategoryLabel: {
+    ...textXs,
+    color: colorTextTertiary,
+    letterSpacing: letterSpacingTight,
+  },
+  chipsWrapRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: spacing2,
   },
   mediaTypeRow: {
     flexDirection: 'row',
