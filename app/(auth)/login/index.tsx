@@ -26,7 +26,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Toast } from '@/components/common/Toast';
 import { validateEmail } from '@/lib/utils/validate-auth';
 import { useLoginMutation } from '@/lib/queries/auth';
-import { useTermsVersion } from '@/lib/queries/legal';
+import { CURRENT_TERMS_VERSION } from '@/lib/constants/terms';
 import { useAuth } from '@/lib/auth/use-auth';
 import { useGoogleAuth } from '@/lib/auth';
 import { isApiError, isTermsAcceptanceRequired } from '@/lib/api/errors';
@@ -89,7 +89,8 @@ export default function LoginScreen() {
   const { mutate: login, isPending } = useLoginMutation();
   const { lastAuthFailureReason } = useAuth();
   const { signIn: googleSignIn, isLoading: isGoogleLoading, isAvailable: isGoogleAvailable, error: googleError } = useGoogleAuth();
-  const { version: termsVersion } = useTermsVersion();
+  // legal API (GET /api/v1/legal/{slug}) は Bearer 認証必須のため、未認証のこの画面からは取得できない
+  const termsVersion = CURRENT_TERMS_VERSION;
 
   const [prevGoogleError, setPrevGoogleError] = useState(googleError);
   // 新規ユーザー作成時のみサーバーが 403 TERMS_ACCEPTANCE_REQUIRED を返す（auth-tokens.md）。

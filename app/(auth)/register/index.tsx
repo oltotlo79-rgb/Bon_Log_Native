@@ -47,7 +47,7 @@ import {
   messageForRegisterError,
 } from '@/lib/constants/errors';
 import { useRegisterMutation } from '@/lib/queries/auth';
-import { useTermsVersion } from '@/lib/queries/legal';
+import { CURRENT_TERMS_VERSION } from '@/lib/constants/terms';
 import { useGoogleAuth } from '@/lib/auth';
 import { isApiError, isTermsAcceptanceRequired } from '@/lib/api/errors';
 
@@ -79,7 +79,8 @@ export default function RegisterScreen() {
 
   const { mutate: register, isPending } = useRegisterMutation();
   const { signIn: googleSignIn, isLoading: isGoogleLoading, isAvailable: isGoogleAvailable, error: googleError } = useGoogleAuth();
-  const { version: termsVersion } = useTermsVersion();
+  // legal API (GET /api/v1/legal/{slug}) は Bearer 認証必須のため、未認証のこの画面からは取得できない
+  const termsVersion = CURRENT_TERMS_VERSION;
 
   const [prevGoogleError, setPrevGoogleError] = useState(googleError);
   // 新規ユーザー作成時のみサーバーが 403 TERMS_ACCEPTANCE_REQUIRED を返す（auth-tokens.md）。
