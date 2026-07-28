@@ -97,5 +97,21 @@ describe('LoginScreen - useGoogleAuth 結線', () => {
       fireEvent.press(googleButton);
       expect(mockGoogleSignIn).toHaveBeenCalledTimes(1);
     });
+
+    // 回帰再発防止: Pressable の onPress は実タップ時に GestureResponderEvent を
+    // 第1引数として渡す（RN の仕様）。かつて onPress={googleSignIn} と直接渡していたため、
+    // そのイベントオブジェクトが signIn(terms?) の terms 引数として渡ってしまい、
+    // 2回目以降のタップでキャッシュ済み ID トークンを再送してしまう不具合があった
+    // （修正済み: onPress={() => { void googleSignIn(); }}）。
+    // fireEvent.press にネイティブ相当のイベントを渡すことで実タップを再現し、
+    // signIn が引数なしで呼ばれることを検証する。
+    it('ネイティブのタップイベント相当の引数付きで押しても signIn は引数なしで呼ばれる（イベント混入の再発防止）', () => {
+      setGoogleAuthState({ isAvailable: true });
+      renderWithProviders(<LoginScreen />);
+      const googleButton = screen.getByRole('button', { name: 'Google でログイン' });
+      fireEvent.press(googleButton, { nativeEvent: { locationX: 10, locationY: 10 } });
+      expect(mockGoogleSignIn).toHaveBeenCalledTimes(1);
+      expect(mockGoogleSignIn).toHaveBeenCalledWith();
+    });
   });
 });

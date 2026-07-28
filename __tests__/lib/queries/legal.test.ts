@@ -9,8 +9,9 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { ApiError } from '@/lib/api/errors';
 import type { MobileApiErrorCode } from '@/lib/api/errors';
 import { createTestQueryClient } from '@/__tests__/utils/test-utils';
-import { useLegalListQuery, useLegalDocumentQuery } from '@/lib/queries/legal';
+import { useLegalListQuery, useLegalDocumentQuery, useTermsVersion } from '@/lib/queries/legal';
 import type { LegalSlug } from '@/lib/queries/legal';
+import { CURRENT_TERMS_VERSION } from '@/lib/constants/terms';
 
 // ---------------------------------------------------------------------------
 // モック設定
@@ -234,5 +235,86 @@ describe('useLegalDocumentQuery', () => {
 
     await waitFor(() => expect(result.current.isError).toBe(true));
     expect(result.current.error).toBeInstanceOf(Error);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// useTermsVersion
+// ---------------------------------------------------------------------------
+
+describe('useTermsVersion', () => {
+  it('呼び出し元をブロックしない: データ未取得の初回レンダーでも即座に CURRENT_TERMS_VERSION を返す', () => {
+    // pending のまま解決しない Promise にして「取得前」の状態を固定する
+    mockApiClientGet.mockReturnValue(new Promise(() => {}));
+    const { Wrapper } = createWrapper();
+
+    const { result } = renderHook(() => useTermsVersion(), { wrapper: Wrapper });
+
+    // waitFor を使わず、レンダー直後の同期的な戻り値を検証する
+    expect(result.current.version).toBe(CURRENT_TERMS_VERSION);
+    expect(result.current.isFromServer).toBe(false);
+  });
+
+  it('サーバーから updatedAt を取得できた場合、その値が version に反映され isFromServer は true', async () => {
+    mockApiClientGet.mockResolvedValue({
+      data: makeLegalDocument('terms'),
+      error: undefined,
+    });
+    const { Wrapper } = createWrapper();
+
+    const { result } = renderHook(() => useTermsVersion(), { wrapper: Wrapper });
+
+    await waitFor(() => expect(result.current.isFromServer).toBe(true));
+    expect(result.current.version).toBe('2025-01-01T00:00:00Z');
+  });
+
+  it('サーバーの updatedAt が CURRENT_TERMS_VERSION と異なっていてもサーバー値をそのまま採用する', async () => {
+    mockApiClientGet.mockResolvedValue({
+      data: { ...makeLegalDocument('terms'), updatedAt: '2026-12-31T00:00:00Z' },
+      error: undefined,
+    });
+    const { Wrapper } = createWrapper();
+
+    const { result } = renderHook(() => useTermsVersion(), { wrapper: Wrapper });
+
+    await waitFor(() => expect(result.current.isFromServer).toBe(true));
+    expect(result.current.version).toBe('2026-12-31T00:00:00Z');
+    expect(result.current.version).not.toBe(CURRENT_TERMS_VERSION);
+  });
+
+  it('取得失敗（ネットワークエラー・オフライン相当）のとき CURRENT_TERMS_VERSION にフォールバックし isFromServer は false', async () => {
+    mockApiClientGet.mockResolvedValue({
+      data: undefined,
+      error: makeApiError('INTERNAL_ERROR', 500),
+    });
+    const { Wrapper, queryClient } = createWrapper();
+
+    const { result } = renderHook(() => useTermsVersion(), { wrapper: Wrapper });
+
+    await waitFor(() => {
+      const query = queryClient.getQueryCache().find({ queryKey: ['legal', 'document', 'terms'] });
+      expect(query?.state.status).toBe('error');
+    });
+
+    expect(result.current.version).toBe(CURRENT_TERMS_VERSION);
+    expect(result.current.isFromServer).toBe(false);
+  });
+
+  it('未配備（404 NOT_FOUND）のとき CURRENT_TERMS_VERSION にフォールバックし isFromServer は false', async () => {
+    mockApiClientGet.mockResolvedValue({
+      data: undefined,
+      error: makeApiError('NOT_FOUND', 404),
+    });
+    const { Wrapper, queryClient } = createWrapper();
+
+    const { result } = renderHook(() => useTermsVersion(), { wrapper: Wrapper });
+
+    await waitFor(() => {
+      const query = queryClient.getQueryCache().find({ queryKey: ['legal', 'document', 'terms'] });
+      expect(query?.state.status).toBe('error');
+    });
+
+    expect(result.current.version).toBe(CURRENT_TERMS_VERSION);
+    expect(result.current.isFromServer).toBe(false);
   });
 });

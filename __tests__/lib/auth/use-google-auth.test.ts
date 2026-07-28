@@ -13,6 +13,7 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
 import { createTestQueryClient } from '@/__tests__/utils/test-utils';
 import { useGoogleAuth } from '@/lib/auth/use-google-auth';
+import type { GoogleAuthTerms } from '@/lib/auth/use-google-auth';
 import {
   ERR_GOOGLE_ID_TOKEN_MISSING,
   ERR_GOOGLE_SIGN_IN_FAILED,
@@ -551,6 +552,66 @@ describe('useGoogleAuth - signIn（規約同意フロー）', () => {
       idToken: 'FIRST_ID_TOKEN',
       termsAccepted: true,
       termsVersion: '2026-07-01',
+    });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// signIn - 引数の型検証（防御の有無を確認するプローブ）
+//
+// 過去に画面側で onPress={googleSignIn} と直接渡してしまい、Pressable が渡す
+// GestureResponderEvent が terms 引数に混入する回帰があった（画面側は修正済み。
+// 上記の login-google-auth.test.tsx / register-google-auth.test.tsx で再発防止済み）。
+// ここでは signIn 自体が terms の形状を検証しない（型ガードがない）ことを記録する。
+// `terms !== undefined` のみで判定しているため、GoogleAuthTerms 以外の値
+// （イベントオブジェクト等）が渡ってもキャッシュ済み ID トークン経路に入り、
+// キャッシュがある状態ではネイティブの再認証（GoogleSignin.signIn）をスキップする。
+// これは実装が引数の型を検証していないことによる潜在的な欠陥であり、
+// フック直接呼び出し（画面外のコード）から誤用された場合は再発しうる。
+// 本番コードの修正（terms の型ガード追加）は core の担当のため、ここでは
+// 現状の（防御的でない）挙動を固定して回帰検知の土台とするに留める。
+// ---------------------------------------------------------------------------
+
+describe('useGoogleAuth - signIn（terms 引数の型検証の有無を確認するプローブ）', () => {
+  const WEB_CLIENT_ID = 'test-web-client-id.apps.googleusercontent.com';
+
+  beforeEach(() => {
+    process.env['EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID'] = WEB_CLIENT_ID;
+  });
+
+  afterEach(() => {
+    delete process.env['EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID'];
+  });
+
+  it('既知の欠陥: ID トークンをキャッシュ済みの状態で GoogleAuthTerms ではない値（イベント相当）を渡すと、terms の形状を検証せずキャッシュ経路に入り、ネイティブの再認証をスキップする', async () => {
+    const { Wrapper } = createWrapper();
+    const { result } = renderHook(() => useGoogleAuth(), { wrapper: Wrapper });
+
+    // 1 回目: terms なしの正規の呼び出しでキャッシュを作る
+    await act(async () => {
+      await result.current.signIn();
+    });
+    expect(mockGoogleSignIn).toHaveBeenCalledTimes(1);
+
+    // 2 回目: GoogleAuthTerms ではない値（GestureResponderEvent 相当）を渡す。
+    // signIn は `terms !== undefined` のみで判定するため、型が異なっても
+    // 「terms 付き呼び出し」と誤認識される。
+    const eventLikeValue = {
+      nativeEvent: { locationX: 10, locationY: 10 },
+    } as unknown as GoogleAuthTerms;
+
+    await act(async () => {
+      await result.current.signIn(eventLikeValue);
+    });
+
+    // 防御的な実装であればここでネイティブの再認証（2回目の GoogleSignin.signIn）が
+    // 呼ばれるはずだが、現状の実装はキャッシュ済み ID トークンをそのまま再利用し、
+    // ネイティブ呼び出しをスキップする（= 引数の型を検証していない）。
+    expect(mockGoogleSignIn).toHaveBeenCalledTimes(1);
+    expect(mockMutateAsync).toHaveBeenNthCalledWith(2, {
+      idToken: 'GOOGLE_ID_TOKEN',
+      termsAccepted: undefined,
+      termsVersion: undefined,
     });
   });
 });

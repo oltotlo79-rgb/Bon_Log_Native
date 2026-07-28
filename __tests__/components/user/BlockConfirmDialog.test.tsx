@@ -15,10 +15,24 @@ import { BlockConfirmDialog } from '@/components/user/BlockConfirmDialog';
 // セットアップ
 // ---------------------------------------------------------------------------
 
+// Android パスはアクセシビリティフォーカス移動用に real setTimeout(100ms) を
+// 使う（BlockConfirmDialog.tsx）。フェイクタイマーで決定的に進めないと、
+// 並列実行時の CPU 負荷でこの実タイマーが RNTL の自動 cleanup（afterEach）と
+// 競合し、"Exceeded timeout of 5000 ms for a hook" が散発する（テスト側で対処可能な
+// タイミング flake。本番コードの setTimeout 自体は正しく動作しており修正不要）。
+// jest.setTimeout はこのファイルのみに適用され、他ファイルの閾値には影響しない。
+jest.setTimeout(15000);
+
 beforeEach(() => {
   jest.clearAllMocks();
   // テストは Android パスをデフォルトとする
   Object.defineProperty(Platform, 'OS', { get: () => 'android', configurable: true });
+  jest.useFakeTimers();
+});
+
+afterEach(() => {
+  jest.runOnlyPendingTimers();
+  jest.useRealTimers();
 });
 
 // ---------------------------------------------------------------------------

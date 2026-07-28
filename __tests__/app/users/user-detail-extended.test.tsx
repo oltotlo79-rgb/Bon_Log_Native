@@ -257,4 +257,76 @@ describe('UserDetailScreen - 拡張テスト', () => {
       expect(screen.getAllByText('松の名人').length).toBeGreaterThanOrEqual(1);
     });
   });
+
+  describe('自分が相手をブロックしている場合の表示（isBlocked） — Web 準拠の新規挙動', () => {
+    it('isBlocked=true のとき専用の通知文言（自分がブロックしている側）が表示される', () => {
+      const profile = makeUserProfile({ isBlocked: true, isBlockedByUser: false });
+      mockUseUserProfileQuery.mockReturnValue({ ...defaultProfileState, data: profile });
+      renderWithProviders(<UserDetailScreen />);
+      expect(screen.getByText('このページは表示できません')).toBeTruthy();
+      expect(screen.getByText('このユーザーをブロックしています')).toBeTruthy();
+      expect(screen.queryByText('このユーザーからブロックされています')).toBeNull();
+    });
+
+    it('isBlocked=true のときプロフィール本体（bio・統計）が表示されない', () => {
+      const profile = makeUserProfile({
+        isBlocked: true,
+        isBlockedByUser: false,
+        bio: '盆栽歴10年。松柏類専門。',
+        postsCount: 42,
+        followersCount: 100,
+        followingCount: 50,
+      });
+      mockUseUserProfileQuery.mockReturnValue({ ...defaultProfileState, data: profile });
+      renderWithProviders(<UserDetailScreen />);
+      expect(screen.queryByText('盆栽歴10年。松柏類専門。')).toBeNull();
+      expect(screen.queryByText('42')).toBeNull();
+      expect(screen.queryByText('100')).toBeNull();
+      expect(screen.queryByText('50')).toBeNull();
+    });
+
+    it('isBlocked=true のとき投稿一覧・メニューボタンが表示されない', () => {
+      const profile = makeUserProfile({ isBlocked: true, isBlockedByUser: false, isSelf: false });
+      mockUseUserProfileQuery.mockReturnValue({ ...defaultProfileState, data: profile });
+      renderWithProviders(<UserDetailScreen />);
+      expect(screen.queryByText('まだ投稿がありません')).toBeNull();
+      expect(screen.queryByRole('button', { name: 'メニューを開く' })).toBeNull();
+    });
+
+    it('isBlocked=true かつ isBlockedByUser=undefined（サーバー未配備時）でも isBlocked のみでプロフィールが隠れる', () => {
+      const profile = makeUserProfile({ isBlocked: true, nickname: '松の名人' });
+      // @ts-expect-error -- サーバー未配備時のレスポンス欠落を再現するため意図的に undefined を渡す
+      profile.isBlockedByUser = undefined;
+      mockUseUserProfileQuery.mockReturnValue({ ...defaultProfileState, data: profile });
+      renderWithProviders(<UserDetailScreen />);
+      expect(screen.getByText('このページは表示できません')).toBeTruthy();
+      expect(screen.getByText('このユーザーをブロックしています')).toBeTruthy();
+      expect(screen.queryByText('松の名人')).toBeNull();
+    });
+
+    it('isBlocked=false かつ isBlockedByUser=false のとき通常表示になる（両方 false）', () => {
+      const profile = makeUserProfile({ isBlocked: false, isBlockedByUser: false, nickname: '松の名人' });
+      mockUseUserProfileQuery.mockReturnValue({ ...defaultProfileState, data: profile });
+      renderWithProviders(<UserDetailScreen />);
+      expect(screen.queryByText('このページは表示できません')).toBeNull();
+      expect(screen.getAllByText('松の名人').length).toBeGreaterThanOrEqual(1);
+    });
+
+    it('isBlocked=true かつ isBlockedByUser=true（相互ブロック相当）のときブロック通知が表示される', () => {
+      const profile = makeUserProfile({ isBlocked: true, isBlockedByUser: true });
+      mockUseUserProfileQuery.mockReturnValue({ ...defaultProfileState, data: profile });
+      renderWithProviders(<UserDetailScreen />);
+      expect(screen.getByText('このページは表示できません')).toBeTruthy();
+      // isBlockedByUser=true を優先し「相手からブロックされている」文言になる
+      expect(screen.getByText('このユーザーからブロックされています')).toBeTruthy();
+    });
+
+    it('ブロック通知にアイコンが含まれない（Web 準拠: 見出し＋本文のみ）', () => {
+      const profile = makeUserProfile({ isBlocked: true, isBlockedByUser: false });
+      mockUseUserProfileQuery.mockReturnValue({ ...defaultProfileState, data: profile });
+      renderWithProviders(<UserDetailScreen />);
+      expect(screen.getByText('このページは表示できません')).toBeTruthy();
+      expect(screen.queryByTestId('icon-ban-outline')).toBeNull();
+    });
+  });
 });
