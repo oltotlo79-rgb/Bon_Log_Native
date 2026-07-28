@@ -19,6 +19,7 @@ import {
   ERR_GOOGLE_ID_TOKEN_MISSING,
   ERR_GOOGLE_SIGN_IN_FAILED,
 } from '@/lib/constants/errors';
+import { isRecord } from '@/lib/utils/type-guards';
 
 // ---------------------------------------------------------------------------
 // 型定義
@@ -55,6 +56,15 @@ function nativeErrorCode(error: unknown): string | null {
   }
 
   return typeof error.code === 'string' ? error.code : null;
+}
+
+// イベントハンドラへ直接渡されると呼び出し元イベントが引数に紛れ込みうるため、形を実行時にも検証する
+function isGoogleAuthTerms(value: unknown): value is GoogleAuthTerms {
+  return (
+    isRecord(value) &&
+    value.termsAccepted === true &&
+    typeof value.termsVersion === 'string'
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -105,7 +115,9 @@ export function useGoogleAuth(): UseGoogleAuthReturn {
       return;
     }
 
-    let idToken = terms !== undefined ? lastIdTokenRef.current : null;
+    const validTerms = isGoogleAuthTerms(terms) ? terms : undefined;
+
+    let idToken = validTerms !== undefined ? lastIdTokenRef.current : null;
 
     if (idToken === null) {
       let result: SignInResponse;
@@ -141,11 +153,11 @@ export function useGoogleAuth(): UseGoogleAuthReturn {
       lastIdTokenRef.current = rawIdToken;
     }
 
-    if (terms !== undefined) {
+    if (validTerms !== undefined) {
       await mutation.mutateAsync({
         idToken,
-        termsAccepted: terms.termsAccepted,
-        termsVersion: terms.termsVersion,
+        termsAccepted: validTerms.termsAccepted,
+        termsVersion: validTerms.termsVersion,
       });
     } else {
       await mutation.mutateAsync({ idToken });

@@ -557,22 +557,19 @@ describe('useGoogleAuth - signIn（規約同意フロー）', () => {
 });
 
 // ---------------------------------------------------------------------------
-// signIn - 引数の型検証（防御の有無を確認するプローブ）
+// signIn - 引数の型検証（terms の実行時型ガード）
 //
 // 過去に画面側で onPress={googleSignIn} と直接渡してしまい、Pressable が渡す
 // GestureResponderEvent が terms 引数に混入する回帰があった（画面側は修正済み。
 // 上記の login-google-auth.test.tsx / register-google-auth.test.tsx で再発防止済み）。
-// ここでは signIn 自体が terms の形状を検証しない（型ガードがない）ことを記録する。
-// `terms !== undefined` のみで判定しているため、GoogleAuthTerms 以外の値
-// （イベントオブジェクト等）が渡ってもキャッシュ済み ID トークン経路に入り、
-// キャッシュがある状態ではネイティブの再認証（GoogleSignin.signIn）をスキップする。
-// これは実装が引数の型を検証していないことによる潜在的な欠陥であり、
-// フック直接呼び出し（画面外のコード）から誤用された場合は再発しうる。
-// 本番コードの修正（terms の型ガード追加）は core の担当のため、ここでは
-// 現状の（防御的でない）挙動を固定して回帰検知の土台とするに留める。
+// signIn 内部の isGoogleAuthTerms（termsAccepted === true かつ termsVersion が
+// string であることを検証する型ガード）により、GoogleAuthTerms の形でない値は
+// 「同意なし」として扱われ、ID トークンのキャッシュを再利用せずネイティブの
+// 再認証（GoogleSignin.signIn）を必ず経由する。ここではその防御が効いていることを
+// 固定する回帰テストとして検証する。
 // ---------------------------------------------------------------------------
 
-describe('useGoogleAuth - signIn（terms 引数の型検証の有無を確認するプローブ）', () => {
+describe('useGoogleAuth - signIn（terms 引数の実行時型ガード）', () => {
   const WEB_CLIENT_ID = 'test-web-client-id.apps.googleusercontent.com';
 
   beforeEach(() => {
@@ -583,7 +580,7 @@ describe('useGoogleAuth - signIn（terms 引数の型検証の有無を確認す
     delete process.env['EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID'];
   });
 
-  it('既知の欠陥: ID トークンをキャッシュ済みの状態で GoogleAuthTerms ではない値（イベント相当）を渡すと、terms の形状を検証せずキャッシュ経路に入り、ネイティブの再認証をスキップする', async () => {
+  it('ID トークンをキャッシュ済みの状態で GoogleAuthTerms ではない値（イベント相当）を渡すと、同意なしとして扱われネイティブの再認証を行う', async () => {
     const { Wrapper } = createWrapper();
     const { result } = renderHook(() => useGoogleAuth(), { wrapper: Wrapper });
 
@@ -594,8 +591,7 @@ describe('useGoogleAuth - signIn（terms 引数の型検証の有無を確認す
     expect(mockGoogleSignIn).toHaveBeenCalledTimes(1);
 
     // 2 回目: GoogleAuthTerms ではない値（GestureResponderEvent 相当）を渡す。
-    // signIn は `terms !== undefined` のみで判定するため、型が異なっても
-    // 「terms 付き呼び出し」と誤認識される。
+    // isGoogleAuthTerms の型ガードにより形が一致しないため「同意なし」と判定される。
     const eventLikeValue = {
       nativeEvent: { locationX: 10, locationY: 10 },
     } as unknown as GoogleAuthTerms;
@@ -604,14 +600,43 @@ describe('useGoogleAuth - signIn（terms 引数の型検証の有無を確認す
       await result.current.signIn(eventLikeValue);
     });
 
-    // 防御的な実装であればここでネイティブの再認証（2回目の GoogleSignin.signIn）が
-    // 呼ばれるはずだが、現状の実装はキャッシュ済み ID トークンをそのまま再利用し、
-    // ネイティブ呼び出しをスキップする（= 引数の型を検証していない）。
-    expect(mockGoogleSignIn).toHaveBeenCalledTimes(1);
+    // 型ガードにより terms 付き呼び出しとは認識されず、キャッシュ済み ID トークンを
+    // 再利用せずネイティブの再認証（2回目の GoogleSignin.signIn）が呼ばれる。
+    expect(mockGoogleSignIn).toHaveBeenCalledTimes(2);
     expect(mockMutateAsync).toHaveBeenNthCalledWith(2, {
       idToken: 'GOOGLE_ID_TOKEN',
-      termsAccepted: undefined,
-      termsVersion: undefined,
+    });
+  });
+
+  // isGoogleAuthTerms は termsAccepted === true かつ termsVersion が string の
+  // 場合のみ true を返す。それ以外の形の値はすべて「同意なし」として扱われ、
+  // ID トークンのキャッシュを再利用せずネイティブの再認証を必ず経由することを
+  // 網羅的に確認する（型上不正な値のため @ts-expect-error で意図的に渡す）。
+  it.each<[string, unknown]>([
+    ['null', null],
+    ['文字列', 'termsAccepted=true'],
+    ['数値', 42],
+    ['配列', ['termsAccepted', true]],
+    ['termsVersion 欠落', { termsAccepted: true }],
+    ['termsAccepted が文字列', { termsAccepted: 'true', termsVersion: 'x' }],
+    ['termsAccepted が false', { termsAccepted: false, termsVersion: 'x' }],
+  ])('GoogleAuthTerms の形でない値（%s）を渡すと同意なしとして扱われネイティブの再認証を行う', async (_label, invalidTerms) => {
+    const { Wrapper } = createWrapper();
+    const { result } = renderHook(() => useGoogleAuth(), { wrapper: Wrapper });
+
+    await act(async () => {
+      await result.current.signIn();
+    });
+    expect(mockGoogleSignIn).toHaveBeenCalledTimes(1);
+
+    await act(async () => {
+      // @ts-expect-error 実行時の型ガード（isGoogleAuthTerms）の網羅性を検証するための意図的な型違反
+      await result.current.signIn(invalidTerms);
+    });
+
+    expect(mockGoogleSignIn).toHaveBeenCalledTimes(2);
+    expect(mockMutateAsync).toHaveBeenNthCalledWith(2, {
+      idToken: 'GOOGLE_ID_TOKEN',
     });
   });
 });
