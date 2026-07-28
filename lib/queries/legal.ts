@@ -1,7 +1,10 @@
 /**
  * @module lib/queries/legal
  * 法的文章（特定商取引法表記・利用規約・プライバシーポリシー）のクエリフック。
- * 変更頻度が低いため STALE_TIME_MASTER を適用する。ゲスト可。
+ * 変更頻度が低いため STALE_TIME_MASTER を適用する。
+ *
+ * サーバー側の GET /api/v1/legal, /legal/{slug} は Bearer 認証必須（未認証では 401）。
+ * ここのフックはサインイン後の画面（app/legal/ 配下）からのみ呼び出すこと。
  */
 
 import { useQuery } from '@tanstack/react-query';
@@ -59,6 +62,9 @@ export type TermsVersionResult = {
  * サーバーの updatedAt（GET /api/v1/legal/terms）を正とし、
  * 未取得（初回ロード中・オフライン・エラー・未配備）時のみ CURRENT_TERMS_VERSION にフォールバックする。
  * 内部の useLegalDocumentQuery はバックグラウンド取得のため、呼び出し元（同意モーダル等）を待たせない。
+ *
+ * 未認証画面（ログイン・新規登録）からは GET /api/v1/legal/{slug} が 401 を返すため常にフォールバックする。
+ * サインイン済みの画面からのみ呼び出すこと。
  */
 export function useTermsVersion(): TermsVersionResult {
   const { data } = useLegalDocumentQuery('terms');
