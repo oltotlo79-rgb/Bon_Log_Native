@@ -11,7 +11,7 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
-import { useUserProfileQuery } from '@/lib/queries/users';
+import { useUserProfileQuery, isBlockedByViewedUser } from '@/lib/queries/users';
 import { useCurrentUserQuery } from '@/lib/queries/auth';
 import { useStartConversationMutation } from '@/lib/queries/messages';
 import { useOnlineStatus } from '@/hooks/use-online-status';
@@ -215,6 +215,17 @@ function UserDetailContent({ userId, isOffline }: UserDetailContentProps) {
     );
   }
 
+  // Web の users/[id]/page.tsx と同じ判定: 相手からブロックされている場合はプロフィール本体を隠す
+  if (isBlockedByViewedUser(data)) {
+    return (
+      <SafeAreaView style={styles.safeArea} edges={['top']}>
+        <NavBar title="プロフィール" showMenu={false} onMenuPress={undefined} />
+        <OfflineBanner isVisible={isOffline} />
+        <BlockedByUserNotice />
+      </SafeAreaView>
+    );
+  }
+
   const showMenu = !data.isSelf && currentUserId !== undefined;
   // 他者のプロフィールかつログイン済みの場合のみメッセージボタンを表示する
   const showMessageButton = !data.isSelf && currentUserId !== undefined;
@@ -305,6 +316,26 @@ function UserDetailContent({ userId, isOffline }: UserDetailContentProps) {
         />
       )}
     </SafeAreaView>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// 相手からブロックされている場合の通知（Web の users/[id]/page.tsx と文言を統一）
+// ---------------------------------------------------------------------------
+
+function BlockedByUserNotice() {
+  return (
+    <View style={styles.blockedNotice}>
+      <Ionicons
+        name="ban-outline"
+        size={32}
+        color={colorTextPrimary}
+        accessibilityElementsHidden
+        importantForAccessibility="no"
+      />
+      <Text style={styles.blockedNoticeTitle}>このページは表示できません</Text>
+      <Text style={styles.blockedNoticeDesc}>このユーザーからブロックされています</Text>
+    </View>
   );
 }
 
@@ -405,6 +436,23 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   privateNoticeDesc: {
+    ...textBase,
+    color: colorTextPrimary,
+    textAlign: 'center',
+  },
+  blockedNotice: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: spacing4 * 2,
+    gap: spacing4,
+  },
+  blockedNoticeTitle: {
+    ...textLg,
+    color: colorTextPrimary,
+    textAlign: 'center',
+  },
+  blockedNoticeDesc: {
     ...textBase,
     color: colorTextPrimary,
     textAlign: 'center',
