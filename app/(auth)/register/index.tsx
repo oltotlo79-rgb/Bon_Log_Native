@@ -17,6 +17,7 @@ import { AuthDivider } from '@/components/auth/AuthDivider';
 import { GoogleSignInButton } from '@/components/auth/GoogleSignInButton';
 import { FormErrorMessage } from '@/components/auth/FormErrorMessage';
 import { AuthTermsAgreement } from '@/components/auth/AuthTermsAgreement';
+import { GoogleTermsAgreementModal } from '@/components/auth/GoogleTermsAgreementModal';
 import { AuthBrandHeader } from '@/components/auth/AuthBrandHeader';
 import { AuthHeroImage } from '@/components/auth/AuthHeroImage';
 import { AuthScreenBackground } from '@/components/auth/AuthScreenBackground';
@@ -47,7 +48,8 @@ import {
 } from '@/lib/constants/errors';
 import { useRegisterMutation } from '@/lib/queries/auth';
 import { useGoogleAuth } from '@/lib/auth';
-import { isApiError } from '@/lib/api/errors';
+import { isApiError, isTermsAcceptanceRequired } from '@/lib/api/errors';
+import { CURRENT_TERMS_VERSION } from '@/lib/constants/terms';
 
 // ---------------------------------------------------------------------------
 // Component
@@ -65,6 +67,7 @@ export default function RegisterScreen() {
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [confirmError, setConfirmError] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
+  const [showGoogleTermsModal, setShowGoogleTermsModal] = useState(false);
 
   const emailRef = useRef<TextInput>(null);
   const passwordRef = useRef<TextInput>(null);
@@ -72,6 +75,28 @@ export default function RegisterScreen() {
 
   const { mutate: register, isPending } = useRegisterMutation();
   const { signIn: googleSignIn, isLoading: isGoogleLoading, isAvailable: isGoogleAvailable, error: googleError } = useGoogleAuth();
+
+  const [prevGoogleError, setPrevGoogleError] = useState(googleError);
+  // 新規ユーザー作成時のみサーバーが 403 TERMS_ACCEPTANCE_REQUIRED を返す（auth-tokens.md）。
+  // レンダー中に前回値と比較して更新する React 公式パターン（副作用ではなく派生 state の調整）。
+  if (googleError !== prevGoogleError) {
+    setPrevGoogleError(googleError);
+    if (isTermsAcceptanceRequired(googleError)) {
+      setShowGoogleTermsModal(true);
+    }
+  }
+
+  function handleGoogleTermsCancel() {
+    setShowGoogleTermsModal(false);
+  }
+
+  function handleGoogleTermsConfirm() {
+    googleSignIn({ termsAccepted: true, termsVersion: CURRENT_TERMS_VERSION })
+      .then(() => setShowGoogleTermsModal(false))
+      .catch(() => {
+        // エラーは googleError 経由でモーダル内に表示する
+      });
+  }
 
   function validateEmailField(value: string): string | null {
     if (value.length === 0) return ERR_EMAIL_REQUIRED;
@@ -263,7 +288,9 @@ export default function RegisterScreen() {
                   onPress={googleSignIn}
                 />
 
-                <FormErrorMessage message={googleError?.message ?? null} />
+                <FormErrorMessage
+                  message={showGoogleTermsModal ? null : googleError?.message ?? null}
+                />
               </View>
 
               <View style={styles.footer}>
@@ -278,6 +305,18 @@ export default function RegisterScreen() {
           </ScrollView>
         </KeyboardAvoidingView>
       </AuthScreenBackground>
+
+      <GoogleTermsAgreementModal
+        visible={showGoogleTermsModal}
+        onConfirm={handleGoogleTermsConfirm}
+        onCancel={handleGoogleTermsCancel}
+        isSubmitting={isGoogleLoading}
+        error={
+          showGoogleTermsModal && googleError !== null && !isTermsAcceptanceRequired(googleError)
+            ? googleError.message
+            : null
+        }
+      />
     </SafeAreaView>
   );
 }

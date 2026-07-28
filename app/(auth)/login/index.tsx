@@ -21,13 +21,15 @@ import { AuthHeroImage } from '@/components/auth/AuthHeroImage';
 import { AuthScreenBackground } from '@/components/auth/AuthScreenBackground';
 import { AuthCardFrame } from '@/components/auth/AuthCardFrame';
 import { ResendVerificationButton } from '@/components/auth/ResendVerificationButton';
+import { GoogleTermsAgreementModal } from '@/components/auth/GoogleTermsAgreementModal';
 import { useToast } from '@/hooks/use-toast';
 import { Toast } from '@/components/common/Toast';
 import { validateEmail } from '@/lib/utils/validate-auth';
 import { useLoginMutation } from '@/lib/queries/auth';
 import { useAuth } from '@/lib/auth/use-auth';
 import { useGoogleAuth } from '@/lib/auth';
-import { isApiError } from '@/lib/api/errors';
+import { isApiError, isTermsAcceptanceRequired } from '@/lib/api/errors';
+import { CURRENT_TERMS_VERSION } from '@/lib/constants/terms';
 import {
   colorBackground,
   colorTextPrimary,
@@ -75,6 +77,7 @@ export default function LoginScreen() {
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [isEmailVerifiedError, setIsEmailVerifiedError] = useState(false);
+  const [showGoogleTermsModal, setShowGoogleTermsModal] = useState(false);
 
   const passwordRef = useRef<TextInput>(null);
   const { toast, showToast, hideToast } = useToast();
@@ -82,6 +85,28 @@ export default function LoginScreen() {
   const { mutate: login, isPending } = useLoginMutation();
   const { lastAuthFailureReason } = useAuth();
   const { signIn: googleSignIn, isLoading: isGoogleLoading, isAvailable: isGoogleAvailable, error: googleError } = useGoogleAuth();
+
+  const [prevGoogleError, setPrevGoogleError] = useState(googleError);
+  // 新規ユーザー作成時のみサーバーが 403 TERMS_ACCEPTANCE_REQUIRED を返す（auth-tokens.md）。
+  // レンダー中に前回値と比較して更新する React 公式パターン（副作用ではなく派生 state の調整）。
+  if (googleError !== prevGoogleError) {
+    setPrevGoogleError(googleError);
+    if (isTermsAcceptanceRequired(googleError)) {
+      setShowGoogleTermsModal(true);
+    }
+  }
+
+  function handleGoogleTermsCancel() {
+    setShowGoogleTermsModal(false);
+  }
+
+  function handleGoogleTermsConfirm() {
+    googleSignIn({ termsAccepted: true, termsVersion: CURRENT_TERMS_VERSION })
+      .then(() => setShowGoogleTermsModal(false))
+      .catch(() => {
+        // エラーは googleError 経由でモーダル内に表示する
+      });
+  }
 
   function validateEmailField(value: string): string | null {
     if (value.length === 0) return ERR_EMAIL_REQUIRED;
@@ -277,7 +302,9 @@ export default function LoginScreen() {
                   onPress={googleSignIn}
                 />
 
-                <FormErrorMessage message={googleError?.message ?? null} />
+                <FormErrorMessage
+                  message={showGoogleTermsModal ? null : googleError?.message ?? null}
+                />
               </View>
 
               <View style={styles.footer}>
@@ -301,6 +328,18 @@ export default function LoginScreen() {
         visible={toast.visible}
         variant={toast.variant}
         onHide={hideToast}
+      />
+
+      <GoogleTermsAgreementModal
+        visible={showGoogleTermsModal}
+        onConfirm={handleGoogleTermsConfirm}
+        onCancel={handleGoogleTermsCancel}
+        isSubmitting={isGoogleLoading}
+        error={
+          showGoogleTermsModal && googleError !== null && !isTermsAcceptanceRequired(googleError)
+            ? googleError.message
+            : null
+        }
       />
     </SafeAreaView>
   );
