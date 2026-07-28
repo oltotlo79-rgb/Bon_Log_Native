@@ -223,7 +223,7 @@ function UserDetailContent({ userId, isOffline }: UserDetailContentProps) {
       <SafeAreaView style={styles.safeArea} edges={['top']}>
         <NavBar title="プロフィール" showMenu={false} onMenuPress={undefined} />
         <OfflineBanner isVisible={isOffline} />
-        <BlockedNotice isBlockedByUser={isBlockedByUser} />
+        <BlockedNotice isBlocked={data.isBlocked} />
       </SafeAreaView>
     );
   }
@@ -323,20 +323,21 @@ function UserDetailContent({ userId, isOffline }: UserDetailContentProps) {
 
 // ---------------------------------------------------------------------------
 // ブロック関係にある場合の通知（Web の users/[id]/page.tsx とレイアウト・文言を統一。
-// アイコンは Web に存在しないため付与しない）
+// アイコンは Web に存在しないため付与しない。相互ブロック時の文言優先順位も
+// Web と同じく isBlocked（自分が相手をブロック）を優先する）
 // ---------------------------------------------------------------------------
 
 type BlockedNoticeProps = {
-  /** true: 相手からブロックされている / false: 自分が相手をブロックしている */
-  isBlockedByUser: boolean;
+  /** true: 自分が相手をブロックしている（相互ブロック時はこちらを優先表示） */
+  isBlocked: boolean;
 };
 
-function BlockedNotice({ isBlockedByUser }: BlockedNoticeProps) {
+function BlockedNotice({ isBlocked }: BlockedNoticeProps) {
   return (
     <View style={styles.blockedNotice}>
       <Text style={styles.blockedNoticeTitle}>このページは表示できません</Text>
       <Text style={styles.blockedNoticeDesc}>
-        {isBlockedByUser ? 'このユーザーからブロックされています' : 'このユーザーをブロックしています'}
+        {isBlocked ? 'このユーザーをブロックしています' : 'このユーザーからブロックされています'}
       </Text>
     </View>
   );
