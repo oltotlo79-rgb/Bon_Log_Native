@@ -317,8 +317,9 @@ describe('UserDetailScreen - 拡張テスト', () => {
       mockUseUserProfileQuery.mockReturnValue({ ...defaultProfileState, data: profile });
       renderWithProviders(<UserDetailScreen />);
       expect(screen.getByText('このページは表示できません')).toBeTruthy();
-      // isBlockedByUser=true を優先し「相手からブロックされている」文言になる
-      expect(screen.getByText('このユーザーからブロックされています')).toBeTruthy();
+      // Web 準拠: isBlocked（自分が相手をブロック）を優先し「ブロックしています」文言になる
+      expect(screen.getByText('このユーザーをブロックしています')).toBeTruthy();
+      expect(screen.queryByText('このユーザーからブロックされています')).toBeNull();
     });
 
     it('ブロック通知にアイコンが含まれない（Web 準拠: 見出し＋本文のみ）', () => {
