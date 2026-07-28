@@ -47,9 +47,9 @@ import {
   messageForRegisterError,
 } from '@/lib/constants/errors';
 import { useRegisterMutation } from '@/lib/queries/auth';
+import { useTermsVersion } from '@/lib/queries/legal';
 import { useGoogleAuth } from '@/lib/auth';
 import { isApiError, isTermsAcceptanceRequired } from '@/lib/api/errors';
-import { CURRENT_TERMS_VERSION } from '@/lib/constants/terms';
 
 // ---------------------------------------------------------------------------
 // Component
@@ -68,6 +68,10 @@ export default function RegisterScreen() {
   const [confirmError, setConfirmError] = useState<string | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [showGoogleTermsModal, setShowGoogleTermsModal] = useState(false);
+  // モーダルを開かせた（＝初回表示のトリガーとなった）エラー参照。
+  // モーダル内で再送して同じ TERMS_ACCEPTANCE_REQUIRED が再発しても別インスタンスになるため、
+  // この参照との差分でモーダル内エラー表示（再送分のみ）を判定できる。
+  const [modalOpenedForError, setModalOpenedForError] = useState<Error | null>(null);
 
   const emailRef = useRef<TextInput>(null);
   const passwordRef = useRef<TextInput>(null);
@@ -75,24 +79,30 @@ export default function RegisterScreen() {
 
   const { mutate: register, isPending } = useRegisterMutation();
   const { signIn: googleSignIn, isLoading: isGoogleLoading, isAvailable: isGoogleAvailable, error: googleError } = useGoogleAuth();
+  const { version: termsVersion } = useTermsVersion();
 
   const [prevGoogleError, setPrevGoogleError] = useState(googleError);
   // 新規ユーザー作成時のみサーバーが 403 TERMS_ACCEPTANCE_REQUIRED を返す（auth-tokens.md）。
   // レンダー中に前回値と比較して更新する React 公式パターン（副作用ではなく派生 state の調整）。
   if (googleError !== prevGoogleError) {
     setPrevGoogleError(googleError);
-    if (isTermsAcceptanceRequired(googleError)) {
+    if (isTermsAcceptanceRequired(googleError) && !showGoogleTermsModal) {
       setShowGoogleTermsModal(true);
+      setModalOpenedForError(googleError);
     }
   }
 
   function handleGoogleTermsCancel() {
     setShowGoogleTermsModal(false);
+    setModalOpenedForError(null);
   }
 
   function handleGoogleTermsConfirm() {
-    googleSignIn({ termsAccepted: true, termsVersion: CURRENT_TERMS_VERSION })
-      .then(() => setShowGoogleTermsModal(false))
+    googleSignIn({ termsAccepted: true, termsVersion })
+      .then(() => {
+        setShowGoogleTermsModal(false);
+        setModalOpenedForError(null);
+      })
       .catch(() => {
         // エラーは googleError 経由でモーダル内に表示する
       });
@@ -314,7 +324,7 @@ export default function RegisterScreen() {
         onCancel={handleGoogleTermsCancel}
         isSubmitting={isGoogleLoading}
         error={
-          showGoogleTermsModal && googleError !== null && !isTermsAcceptanceRequired(googleError)
+          showGoogleTermsModal && googleError !== null && googleError !== modalOpenedForError
             ? googleError.message
             : null
         }
