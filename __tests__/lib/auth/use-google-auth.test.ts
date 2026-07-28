@@ -13,7 +13,6 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
 import { createTestQueryClient } from '@/__tests__/utils/test-utils';
 import { useGoogleAuth } from '@/lib/auth/use-google-auth';
-import type { GoogleAuthTerms } from '@/lib/auth/use-google-auth';
 import {
   ERR_GOOGLE_ID_TOKEN_MISSING,
   ERR_GOOGLE_SIGN_IN_FAILED,
@@ -594,9 +593,10 @@ describe('useGoogleAuth - signIn（terms 引数の実行時型ガード）', () 
     // isGoogleAuthTerms の型ガードにより形が一致しないため「同意なし」と判定される。
     const eventLikeValue = {
       nativeEvent: { locationX: 10, locationY: 10 },
-    } as unknown as GoogleAuthTerms;
+    };
 
     await act(async () => {
+      // @ts-expect-error 実行時の型ガード（isGoogleAuthTerms）の網羅性を検証するための意図的な型違反
       await result.current.signIn(eventLikeValue);
     });
 

@@ -47,6 +47,15 @@ const termsRequiredError = new ApiError({
   message: ERR_TERMS_ACCEPTANCE_REQUIRED,
 });
 
+// モーダル内での再送後に発生した「別インスタンス」の 403 を表す。
+// 同じ TERMS_ACCEPTANCE_REQUIRED でもメッセージを変えて、静的な modal 本文（ERR_TERMS_ACCEPTANCE_REQUIRED）
+// と見分けが付くようにしている。
+const termsRequiredErrorOnResend = new ApiError({
+  code: 'TERMS_ACCEPTANCE_REQUIRED',
+  status: 403,
+  message: '同意内容の再送に失敗しました（テスト用の再送エラー）',
+});
+
 /**
  * RegisterScreen を error: null でマウントしてから error を差し替えて rerender する。
  * useGoogleAuth の error は前回値との参照比較で検知されるため、初回マウント時の
@@ -119,5 +128,71 @@ describe('RegisterScreen - Google 規約同意フロー', () => {
       expect(screen.queryByText('利用規約への同意')).toBeNull();
     });
     expect(mockGoogleSignIn).not.toHaveBeenCalled();
+  });
+
+  describe('モーダル内での再送 403（modalOpenedForError による区別）', () => {
+    it('初回の 403 ではモーダル内にエラーが表示されない', () => {
+      renderWithGoogleErrorTransition(termsRequiredError);
+      expect(screen.getByText('利用規約への同意')).toBeTruthy();
+      // 静的な body 文言（ERR_TERMS_ACCEPTANCE_REQUIRED）以外に FormErrorMessage は描画されない
+      expect(screen.getAllByText(ERR_TERMS_ACCEPTANCE_REQUIRED)).toHaveLength(1);
+    });
+
+    it('モーダル内で同意して再送し、再び 403 になった場合はモーダル内にエラーが表示される', async () => {
+      // 再送が失敗する経路（.catch のみが呼ばれ、モーダルは閉じない）を模す
+      mockGoogleSignIn.mockRejectedValueOnce(new Error('resend failed'));
+      const utils = renderWithGoogleErrorTransition(termsRequiredError);
+
+      fireEvent.press(screen.getByRole('checkbox'));
+      fireEvent.press(screen.getByRole('button', { name: '同意して続行' }));
+
+      await waitFor(() => {
+        expect(mockGoogleSignIn).toHaveBeenCalledWith({
+          termsAccepted: true,
+          termsVersion: CURRENT_TERMS_VERSION,
+        });
+      });
+
+      // フックの mutation.error が新しいインスタンスの 403 に更新されたことを模す
+      setGoogleAuthState({ error: termsRequiredErrorOnResend });
+      utils.rerender(<RegisterScreen />);
+
+      expect(screen.getByText('利用規約への同意')).toBeTruthy();
+      expect(screen.getByText(termsRequiredErrorOnResend.message)).toBeTruthy();
+    });
+
+    it('再送エラー表示中も画面下の生エラー表示は隠れたままになる', async () => {
+      mockGoogleSignIn.mockRejectedValueOnce(new Error('resend failed'));
+      const utils = renderWithGoogleErrorTransition(termsRequiredError);
+
+      fireEvent.press(screen.getByRole('checkbox'));
+      fireEvent.press(screen.getByRole('button', { name: '同意して続行' }));
+      await waitFor(() => {
+        expect(mockGoogleSignIn).toHaveBeenCalled();
+      });
+
+      setGoogleAuthState({ error: termsRequiredErrorOnResend });
+      utils.rerender(<RegisterScreen />);
+
+      // モーダル内・画面下の両方を合わせても再送エラーの文言は 1 箇所にしか出ない
+      expect(screen.getAllByText(termsRequiredErrorOnResend.message)).toHaveLength(1);
+    });
+
+    it('キャンセルして閉じた後に再び 403 が起きた場合、新しい 403 は初回として扱われモーダル内にエラーが表示されない', () => {
+      const utils = renderWithGoogleErrorTransition(termsRequiredError);
+      fireEvent.press(screen.getByRole('button', { name: 'キャンセル' }));
+      expect(screen.queryByText('利用規約への同意')).toBeNull();
+
+      const secondFirstTimeError = new ApiError({
+        code: 'TERMS_ACCEPTANCE_REQUIRED',
+        status: 403,
+        message: '2回目の登録試行での初回 403（テスト用）',
+      });
+      setGoogleAuthState({ error: secondFirstTimeError });
+      utils.rerender(<RegisterScreen />);
+
+      expect(screen.getByText('利用規約への同意')).toBeTruthy();
+      expect(screen.queryByText(secondFirstTimeError.message)).toBeNull();
+    });
   });
 });
