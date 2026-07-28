@@ -476,3 +476,133 @@ describe('PostSearchFilterPanel — リセット（onReset）', () => {
     expect(screen.getByRole('checkbox', { name: 'ジャンル 松柏類' }).props.accessibilityState.checked).toBe(false);
   });
 });
+
+// ---------------------------------------------------------------------------
+// カテゴリ別表示・複数選択（genreIds） — 複数ジャンル選択フィルタ
+// ---------------------------------------------------------------------------
+
+const MOCK_CATEGORIZED_GENRES = [
+  { id: 'genre-1', name: '黒松', category: '松柏類' },
+  { id: 'genre-2', name: '五葉松', category: '松柏類' },
+  { id: 'genre-3', name: 'もみじ', category: '雑木類' },
+  { id: 'genre-4', name: 'コケ', category: '草もの' },
+];
+
+const categorizedGenreQueryResult = {
+  data: { items: MOCK_CATEGORIZED_GENRES },
+  isLoading: false,
+  isError: false,
+};
+
+describe('PostSearchFilterPanel — カテゴリ別表示・複数選択（genreIds）', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    mockUseGenresQuery.mockReturnValue(categorizedGenreQueryResult);
+  });
+
+  it('カテゴリ見出しごとにジャンルチップが表示される', () => {
+    renderPanel({});
+    fireEvent.press(screen.getByRole('button', { name: '詳細フィルターを開く' }));
+    expect(screen.getByText('松柏類')).toBeTruthy();
+    expect(screen.getByText('雑木類')).toBeTruthy();
+    expect(screen.getByText('草もの')).toBeTruthy();
+    expect(screen.getByRole('checkbox', { name: 'ジャンル 黒松' })).toBeTruthy();
+    expect(screen.getByRole('checkbox', { name: 'ジャンル 五葉松' })).toBeTruthy();
+    expect(screen.getByRole('checkbox', { name: 'ジャンル もみじ' })).toBeTruthy();
+    expect(screen.getByRole('checkbox', { name: 'ジャンル コケ' })).toBeTruthy();
+  });
+
+  it('カテゴリをまたいで複数選択できる（上限なし）', () => {
+    renderPanel({});
+    fireEvent.press(screen.getByRole('button', { name: '詳細フィルターを開く' }));
+    // 選択すると accessibilityLabel に「 選択中」が付与されるため、押下前のラベルで取得する
+    fireEvent.press(screen.getByRole('checkbox', { name: 'ジャンル 黒松' }));
+    fireEvent.press(screen.getByRole('checkbox', { name: 'ジャンル 五葉松' }));
+    fireEvent.press(screen.getByRole('checkbox', { name: 'ジャンル もみじ' }));
+    fireEvent.press(screen.getByRole('checkbox', { name: 'ジャンル コケ' }));
+    expect(screen.getByRole('checkbox', { name: 'ジャンル 黒松 選択中' }).props.accessibilityState.checked).toBe(true);
+    expect(screen.getByRole('checkbox', { name: 'ジャンル 五葉松 選択中' }).props.accessibilityState.checked).toBe(true);
+    expect(screen.getByRole('checkbox', { name: 'ジャンル もみじ 選択中' }).props.accessibilityState.checked).toBe(true);
+    expect(screen.getByRole('checkbox', { name: 'ジャンル コケ 選択中' }).props.accessibilityState.checked).toBe(true);
+  });
+
+  it('1件選択時は genreId で onApply に渡る', () => {
+    const onApply = jest.fn();
+    renderPanel({}, { onApply });
+    fireEvent.press(screen.getByRole('button', { name: '詳細フィルターを開く' }));
+    fireEvent.press(screen.getByRole('checkbox', { name: 'ジャンル 黒松' }));
+    fireEvent.press(screen.getByRole('button', { name: 'フィルターを適用する' }));
+    expect(onApply).toHaveBeenCalledWith({ genreId: 'genre-1' });
+  });
+
+  it('2件選択時は genreIds で onApply に渡る（genreId は含まれない）', () => {
+    const onApply = jest.fn();
+    renderPanel({}, { onApply });
+    fireEvent.press(screen.getByRole('button', { name: '詳細フィルターを開く' }));
+    fireEvent.press(screen.getByRole('checkbox', { name: 'ジャンル 黒松' }));
+    fireEvent.press(screen.getByRole('checkbox', { name: 'ジャンル 五葉松' }));
+    fireEvent.press(screen.getByRole('button', { name: 'フィルターを適用する' }));
+    expect(onApply).toHaveBeenCalledWith({ genreIds: ['genre-1', 'genre-2'] });
+  });
+
+  it('3件以上選択時も genreIds に全件含まれる', () => {
+    const onApply = jest.fn();
+    renderPanel({}, { onApply });
+    fireEvent.press(screen.getByRole('button', { name: '詳細フィルターを開く' }));
+    fireEvent.press(screen.getByRole('checkbox', { name: 'ジャンル 黒松' }));
+    fireEvent.press(screen.getByRole('checkbox', { name: 'ジャンル 五葉松' }));
+    fireEvent.press(screen.getByRole('checkbox', { name: 'ジャンル もみじ' }));
+    fireEvent.press(screen.getByRole('button', { name: 'フィルターを適用する' }));
+    expect(onApply).toHaveBeenCalledWith({ genreIds: ['genre-1', 'genre-2', 'genre-3'] });
+  });
+
+  it('選択件数バッジが選択数に応じて表示される', () => {
+    renderPanel({});
+    fireEvent.press(screen.getByRole('button', { name: '詳細フィルターを開く' }));
+    expect(screen.queryByText('1')).toBeNull();
+
+    fireEvent.press(screen.getByRole('checkbox', { name: 'ジャンル 黒松' }));
+    expect(screen.getByText('1')).toBeTruthy();
+
+    fireEvent.press(screen.getByRole('checkbox', { name: 'ジャンル 五葉松' }));
+    expect(screen.queryByText('1')).toBeNull();
+    expect(screen.getByText('2')).toBeTruthy();
+  });
+
+  it('「クリア」でジャンル選択のみが空になり、他のフィルタは維持される', () => {
+    const onApply = jest.fn();
+    renderPanel({}, { onApply });
+    fireEvent.press(screen.getByRole('button', { name: '詳細フィルターを開く' }));
+    fireEvent.press(screen.getByRole('checkbox', { name: 'ジャンル 黒松' }));
+    fireEvent.press(screen.getByRole('checkbox', { name: 'ジャンル 五葉松' }));
+    fireEvent.changeText(screen.getByLabelText('最小いいね数を入力'), '10');
+
+    fireEvent.press(screen.getByRole('button', { name: 'ジャンルの選択をクリア' }));
+
+    expect(screen.getByRole('checkbox', { name: 'ジャンル 黒松' }).props.accessibilityState.checked).toBe(false);
+    expect(screen.getByRole('checkbox', { name: 'ジャンル 五葉松' }).props.accessibilityState.checked).toBe(false);
+    expect(screen.getByLabelText('最小いいね数を入力').props.value).toBe('10');
+
+    fireEvent.press(screen.getByRole('button', { name: 'フィルターを適用する' }));
+    expect(onApply).toHaveBeenCalledWith({ minLikes: 10 });
+  });
+
+  it('currentFilter.genreId 単体で渡された場合も選択済み表示になる（ディープリンク互換）', () => {
+    renderPanel({ genreId: 'genre-2' });
+    expect(
+      screen.getByRole('checkbox', { name: 'ジャンル 五葉松 選択中' }).props.accessibilityState.checked
+    ).toBe(true);
+    expect(screen.getByText('1')).toBeTruthy();
+  });
+
+  it('currentFilter.genreIds 複数で渡された場合も全件選択済み表示になる', () => {
+    renderPanel({ genreIds: ['genre-1', 'genre-3'] });
+    expect(
+      screen.getByRole('checkbox', { name: 'ジャンル 黒松 選択中' }).props.accessibilityState.checked
+    ).toBe(true);
+    expect(
+      screen.getByRole('checkbox', { name: 'ジャンル もみじ 選択中' }).props.accessibilityState.checked
+    ).toBe(true);
+    expect(screen.getByText('2')).toBeTruthy();
+  });
+});
