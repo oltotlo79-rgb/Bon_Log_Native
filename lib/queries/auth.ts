@@ -130,6 +130,14 @@ export function usePasswordResetConfirmMutation() {
 // ---------------------------------------------------------------------------
 
 /**
+ * termsAccepted と termsVersion は「両方指定」か「両方省略」のみを許す判別共用体。
+ * termsVersion だけが欠落した空文字送信（サーバーの min(1) で 400 VALIDATION_ERROR）を型で防ぐ。
+ */
+export type GoogleSignInMutationParams =
+  | { idToken: string; termsAccepted?: undefined; termsVersion?: undefined }
+  | { idToken: string; termsAccepted: true; termsVersion: string };
+
+/**
  * Google OAuth サインインミューテーション。
  * expo-auth-session で ID トークンを取得した後に呼び出す。
  * ID トークンの検証はサーバーの責務（auth-tokens.md）。
@@ -139,15 +147,13 @@ export function usePasswordResetConfirmMutation() {
  * （lib/api/errors の isTermsAcceptanceRequired で判別する。HTTP ステータスでは分岐しない）。
  */
 export function useGoogleSignInMutation() {
-  return useMutation<
-    void,
-    Error,
-    { idToken: string; termsAccepted?: true; termsVersion?: string }
-  >({
-    mutationFn: ({ idToken, termsAccepted, termsVersion }) =>
+  return useMutation<void, Error, GoogleSignInMutationParams>({
+    mutationFn: (params) =>
       signInWithGoogle(
-        idToken,
-        termsAccepted === true ? { termsAccepted, termsVersion: termsVersion ?? '' } : undefined
+        params.idToken,
+        params.termsAccepted === true
+          ? { termsAccepted: params.termsAccepted, termsVersion: params.termsVersion }
+          : undefined
       ),
   });
 }

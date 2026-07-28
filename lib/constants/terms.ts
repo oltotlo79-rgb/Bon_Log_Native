@@ -1,10 +1,13 @@
 /**
  * @module lib/constants/terms
- * Google 新規登録時に送信する利用規約バージョン定数。
- * cfw 側 lib/constants/terms-version.ts の CURRENT_TERMS_VERSION と同値を維持する
- * （ANDROID_LEGAL_DOCUMENTS.terms.updatedAt が正。値が変わったら既存未登録ユーザーの
- * 同意フローが再度必要になる）。
+ * Google 新規登録時に送信する利用規約バージョンのフォールバック定数。
+ *
+ * 正の値はサーバー（GET /api/v1/legal/terms の updatedAt）。
+ * 規約改定でサーバー側の値が変わると、この定数と乖離した配布済みバイナリは
+ * 403 TERMS_ACCEPTANCE_REQUIRED を返され続けるため、通常は
+ * lib/queries/legal.ts の useTermsVersion() 経由でサーバー値を優先取得すること。
+ * ここの値はオフライン・未配備時のフォールバックとしてのみ使う。
  */
 
-/** 現行の利用規約バージョン（Google 新規登録の termsVersion に送信する値）。 */
+/** フォールバック用の利用規約バージョン。通常は useTermsVersion() を使うこと。 */
 export const CURRENT_TERMS_VERSION = '2026-07-28';

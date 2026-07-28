@@ -8,6 +8,7 @@ import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '@/lib/api/client';
 import { queryKeys } from '@/lib/queries/keys';
 import { STALE_TIME_MASTER } from '@/lib/constants/query';
+import { CURRENT_TERMS_VERSION } from '@/lib/constants/terms';
 import type { components } from '@/lib/api/generated/schema.d.ts';
 
 export type LegalListResponse = components['schemas']['LegalListResponse'];
@@ -44,4 +45,27 @@ export function useLegalDocumentQuery(slug: LegalSlug) {
     },
     staleTime: STALE_TIME_MASTER,
   });
+}
+
+export type TermsVersionResult = {
+  /** Google 新規登録の termsVersion に送信する値。 */
+  version: string;
+  /** true ならサーバーの現行値、false なら CURRENT_TERMS_VERSION フォールバック。 */
+  isFromServer: boolean;
+};
+
+/**
+ * Google 新規登録に送る規約バージョンを解決するフック。
+ * サーバーの updatedAt（GET /api/v1/legal/terms）を正とし、
+ * 未取得（初回ロード中・オフライン・エラー・未配備）時のみ CURRENT_TERMS_VERSION にフォールバックする。
+ * 内部の useLegalDocumentQuery はバックグラウンド取得のため、呼び出し元（同意モーダル等）を待たせない。
+ */
+export function useTermsVersion(): TermsVersionResult {
+  const { data } = useLegalDocumentQuery('terms');
+
+  if (data !== undefined) {
+    return { version: data.updatedAt, isFromServer: true };
+  }
+
+  return { version: CURRENT_TERMS_VERSION, isFromServer: false };
 }
