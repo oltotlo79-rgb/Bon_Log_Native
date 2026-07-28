@@ -429,3 +429,128 @@ describe('useGoogleAuth - signIn（isAvailable=true）', () => {
     );
   });
 });
+
+// ---------------------------------------------------------------------------
+// signIn - 規約同意フロー（terms 付き呼び出し・ID トークン再利用）
+// ---------------------------------------------------------------------------
+
+describe('useGoogleAuth - signIn（規約同意フロー）', () => {
+  const WEB_CLIENT_ID = 'test-web-client-id.apps.googleusercontent.com';
+
+  beforeEach(() => {
+    process.env['EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID'] = WEB_CLIENT_ID;
+  });
+
+  afterEach(() => {
+    delete process.env['EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID'];
+  });
+
+  it('terms なしで呼ぶと mutateAsync が idToken のみで呼ばれる（従来どおり・既存ユーザーのログインが壊れない）', async () => {
+    const { Wrapper } = createWrapper();
+    const { result } = renderHook(() => useGoogleAuth(), { wrapper: Wrapper });
+
+    await act(async () => {
+      await result.current.signIn();
+    });
+
+    expect(mockMutateAsync).toHaveBeenCalledWith({ idToken: 'GOOGLE_ID_TOKEN' });
+  });
+
+  it('初回呼び出しから terms 付きの場合も Google アカウント選択を経て mutateAsync に termsAccepted / termsVersion が含まれる', async () => {
+    const { Wrapper } = createWrapper();
+    const { result } = renderHook(() => useGoogleAuth(), { wrapper: Wrapper });
+
+    await act(async () => {
+      await result.current.signIn({ termsAccepted: true, termsVersion: '2026-07-01' });
+    });
+
+    expect(mockGoogleSignIn).toHaveBeenCalledTimes(1);
+    expect(mockMutateAsync).toHaveBeenCalledWith({
+      idToken: 'GOOGLE_ID_TOKEN',
+      termsAccepted: true,
+      termsVersion: '2026-07-01',
+    });
+  });
+
+  it('terms なし失敗後に terms 付きで再試行すると、直前に取得済みの ID トークンを再利用しネイティブのアカウント選択を再表示しない', async () => {
+    const { Wrapper } = createWrapper();
+    const { result } = renderHook(() => useGoogleAuth(), { wrapper: Wrapper });
+
+    // 1 回目: terms なし（TERMS_ACCEPTANCE_REQUIRED でサーバーが拒否したと想定するシナリオの前段）
+    await act(async () => {
+      await result.current.signIn();
+    });
+
+    expect(mockGoogleSignIn).toHaveBeenCalledTimes(1);
+    expect(mockMutateAsync).toHaveBeenNthCalledWith(1, { idToken: 'GOOGLE_ID_TOKEN' });
+
+    // 2 回目: terms 付きで再試行
+    await act(async () => {
+      await result.current.signIn({ termsAccepted: true, termsVersion: '2026-07-01' });
+    });
+
+    // ネイティブのアカウント選択（GoogleSignin.signIn）は再度呼ばれない
+    expect(mockGoogleSignIn).toHaveBeenCalledTimes(1);
+    expect(mockHasPlayServices).toHaveBeenCalledTimes(1);
+    expect(mockMutateAsync).toHaveBeenNthCalledWith(2, {
+      idToken: 'GOOGLE_ID_TOKEN',
+      termsAccepted: true,
+      termsVersion: '2026-07-01',
+    });
+  });
+
+  it('初回に別の ID トークンが返っても、再試行時はその値がキャッシュされ再利用される', async () => {
+    mockGoogleSignIn.mockResolvedValue({
+      type: 'success',
+      data: {
+        idToken: 'FIRST_ID_TOKEN',
+        serverAuthCode: null,
+        scopes: [],
+        user: {
+          email: 'test@example.com',
+          id: 'user-id',
+          givenName: 'Test',
+          familyName: 'User',
+          photo: null,
+          name: 'Test User',
+        },
+      },
+    });
+
+    const { Wrapper } = createWrapper();
+    const { result } = renderHook(() => useGoogleAuth(), { wrapper: Wrapper });
+
+    await act(async () => {
+      await result.current.signIn();
+    });
+
+    // 1 回目の後にネイティブ側の戻り値が変わっても、再試行時はキャッシュされた値を使う
+    mockGoogleSignIn.mockResolvedValue({
+      type: 'success',
+      data: {
+        idToken: 'SECOND_ID_TOKEN',
+        serverAuthCode: null,
+        scopes: [],
+        user: {
+          email: 'test@example.com',
+          id: 'user-id',
+          givenName: 'Test',
+          familyName: 'User',
+          photo: null,
+          name: 'Test User',
+        },
+      },
+    });
+
+    await act(async () => {
+      await result.current.signIn({ termsAccepted: true, termsVersion: '2026-07-01' });
+    });
+
+    expect(mockGoogleSignIn).toHaveBeenCalledTimes(1);
+    expect(mockMutateAsync).toHaveBeenNthCalledWith(2, {
+      idToken: 'FIRST_ID_TOKEN',
+      termsAccepted: true,
+      termsVersion: '2026-07-01',
+    });
+  });
+});

@@ -8,7 +8,8 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { ApiError } from '@/lib/api/errors';
 import type { MobileApiErrorCode } from '@/lib/api/errors';
 import { createTestQueryClient } from '@/__tests__/utils/test-utils';
-import { useUserProfileQuery } from '@/lib/queries/users';
+import { useUserProfileQuery, isBlockedByViewedUser } from '@/lib/queries/users';
+import type { UserProfile } from '@/lib/queries/users';
 
 const mockApiClientGet = jest.fn();
 
@@ -108,5 +109,42 @@ describe('useUserProfileQuery', () => {
 
     await waitFor(() => expect(result.current.isError).toBe(true));
     expect(result.current.error).toBeInstanceOf(ApiError);
+  });
+});
+
+describe('isBlockedByViewedUser', () => {
+  it('isBlockedByUser: true のとき true を返す', () => {
+    const profile: Pick<UserProfile, 'isBlockedByUser'> = { isBlockedByUser: true };
+    expect(isBlockedByViewedUser(profile)).toBe(true);
+  });
+
+  it('isBlockedByUser: false のとき false を返す', () => {
+    const profile: Pick<UserProfile, 'isBlockedByUser'> = { isBlockedByUser: false };
+    expect(isBlockedByViewedUser(profile)).toBe(false);
+  });
+
+  it('isBlockedByUser: undefined（サーバー未配備時）のとき false を返す（安全側判定）', () => {
+    // スペック上は required boolean だが、サーバー本番配備前は実行時 undefined になり得る
+    // （lib/queries/users.ts の JSDoc / cfw handback 2026-07-28）。型と実行時の乖離を吸収できることを検証する。
+    const profile = { isBlockedByUser: undefined } as unknown as Pick<
+      UserProfile,
+      'isBlockedByUser'
+    >;
+    expect(isBlockedByViewedUser(profile)).toBe(false);
+  });
+
+  it('isBlockedByUser フィールド自体が存在しないオブジェクトでも false を返す', () => {
+    const profile = {} as unknown as Pick<UserProfile, 'isBlockedByUser'>;
+    expect(isBlockedByViewedUser(profile)).toBe(false);
+  });
+
+  it('profile 自体が undefined の場合は TypeError を throw する（呼び出し側の型で防止される契約）', () => {
+    // @ts-expect-error 実行時に undefined が渡された場合の挙動を検証するための意図的な型違反
+    expect(() => isBlockedByViewedUser(undefined)).toThrow(TypeError);
+  });
+
+  it('profile 自体が null の場合は TypeError を throw する（呼び出し側の型で防止される契約）', () => {
+    // @ts-expect-error 実行時に null が渡された場合の挙動を検証するための意図的な型違反
+    expect(() => isBlockedByViewedUser(null)).toThrow(TypeError);
   });
 });

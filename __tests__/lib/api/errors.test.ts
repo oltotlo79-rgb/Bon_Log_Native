@@ -2,7 +2,13 @@
  * ApiError クラスと型ガードのユニットテスト。
  */
 
-import { ApiError, isApiError, isMobileApiErrorCode, isReuseDetected } from '@/lib/api/errors';
+import {
+  ApiError,
+  isApiError,
+  isMobileApiErrorCode,
+  isReuseDetected,
+  isTermsAcceptanceRequired,
+} from '@/lib/api/errors';
 import type { MobileApiErrorCode } from '@/lib/api/errors';
 
 describe('ApiError', () => {
@@ -145,5 +151,47 @@ describe('isReuseDetected', () => {
 
   it('非 ApiError で false を返す', () => {
     expect(isReuseDetected(new Error('plain'))).toBe(false);
+  });
+});
+
+describe('isTermsAcceptanceRequired', () => {
+  it('TERMS_ACCEPTANCE_REQUIRED（403）で true を返す', () => {
+    const err = new ApiError({
+      code: 'TERMS_ACCEPTANCE_REQUIRED',
+      status: 403,
+      message: 'Terms acceptance required',
+    });
+    expect(isTermsAcceptanceRequired(err)).toBe(true);
+  });
+
+  it('同じ 403 ステータスでも別コードなら false を返す（ステータスではなくコードで判定する）', () => {
+    const err = new ApiError({
+      code: 'GUEST_NOT_ALLOWED',
+      status: 403,
+      message: 'Guest not allowed',
+    });
+    expect(isTermsAcceptanceRequired(err)).toBe(false);
+  });
+
+  it('別コード（401）で false を返す', () => {
+    const err = new ApiError({
+      code: 'AUTH_INVALID_TOKEN',
+      status: 401,
+      message: 'Invalid token',
+    });
+    expect(isTermsAcceptanceRequired(err)).toBe(false);
+  });
+
+  it('ApiError でない場合（Error）で false を返す', () => {
+    expect(isTermsAcceptanceRequired(new Error('plain'))).toBe(false);
+  });
+
+  it('null / undefined で false を返す', () => {
+    expect(isTermsAcceptanceRequired(null)).toBe(false);
+    expect(isTermsAcceptanceRequired(undefined)).toBe(false);
+  });
+
+  it('文字列で false を返す', () => {
+    expect(isTermsAcceptanceRequired('TERMS_ACCEPTANCE_REQUIRED')).toBe(false);
   });
 });

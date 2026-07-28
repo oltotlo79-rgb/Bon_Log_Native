@@ -512,6 +512,56 @@ describe('signInWithGoogle', () => {
 
     await expect(signInWithGoogle('invalid-token')).rejects.toBeInstanceOf(ApiError);
   });
+
+  it('terms 省略時: リクエストの termsAccepted / termsVersion は undefined になる（既存ユーザーのログインが壊れない）', async () => {
+    mockApiClientPost.mockResolvedValue({
+      data: makeTokenPair(),
+      error: undefined,
+    });
+
+    await signInWithGoogle('google-id-token');
+
+    expect(mockApiClientPost).toHaveBeenCalledWith('/api/v1/auth/google', {
+      body: {
+        idToken: 'google-id-token',
+        termsAccepted: undefined,
+        termsVersion: undefined,
+      },
+    });
+  });
+
+  it('terms 指定時: リクエストに termsAccepted / termsVersion が含まれる', async () => {
+    mockApiClientPost.mockResolvedValue({
+      data: makeTokenPair(),
+      error: undefined,
+    });
+
+    await signInWithGoogle('google-id-token', {
+      termsAccepted: true,
+      termsVersion: '2026-07-01',
+    });
+
+    expect(mockApiClientPost).toHaveBeenCalledWith('/api/v1/auth/google', {
+      body: {
+        idToken: 'google-id-token',
+        termsAccepted: true,
+        termsVersion: '2026-07-01',
+      },
+    });
+    expect(getAuthStatus()).toBe('signedIn');
+  });
+
+  it('403（TERMS_ACCEPTANCE_REQUIRED）: ApiError を throw する（新規登録時の規約同意不足）', async () => {
+    mockApiClientPost.mockResolvedValue({
+      data: undefined,
+      error: makeApiError('TERMS_ACCEPTANCE_REQUIRED', 403),
+    });
+
+    await expect(signInWithGoogle('google-id-token')).rejects.toBeInstanceOf(ApiError);
+    await expect(signInWithGoogle('google-id-token')).rejects.toMatchObject({
+      code: 'TERMS_ACCEPTANCE_REQUIRED',
+    });
+  });
 });
 
 // ---------------------------------------------------------------------------
