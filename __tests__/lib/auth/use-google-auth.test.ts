@@ -17,6 +17,7 @@ import {
   ERR_GOOGLE_ID_TOKEN_MISSING,
   ERR_GOOGLE_SIGN_IN_FAILED,
 } from '@/lib/constants/errors';
+import { ApiError } from '@/lib/api/errors';
 
 // ---------------------------------------------------------------------------
 // モック設定
@@ -551,6 +552,126 @@ describe('useGoogleAuth - signIn（規約同意フロー）', () => {
       idToken: 'FIRST_ID_TOKEN',
       termsAccepted: true,
       termsVersion: '2026-07-01',
+    });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// signIn - 規約バージョンのサーバー値優先・フォールバック・ref リセット
+//
+// 既存の規約同意フロー系テストは mutateAsync が常に resolve するため、
+// catch ブロック内の getCurrentTermsVersion → lastServerTermsVersionRef 更新ロジックを
+// 一度も通らない。ここでは mutateAsync を reject させ、そのロジックを実際に駆動する。
+// ---------------------------------------------------------------------------
+
+describe('useGoogleAuth - signIn（規約バージョンのサーバー値優先・フォールバック）', () => {
+  const WEB_CLIENT_ID = 'test-web-client-id.apps.googleusercontent.com';
+
+  beforeEach(() => {
+    process.env['EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID'] = WEB_CLIENT_ID;
+  });
+
+  afterEach(() => {
+    delete process.env['EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID'];
+  });
+
+  it('サーバー値優先: 403 の details.currentTermsVersion を受け取った場合、同意付き再送で優先使用される', async () => {
+    const serverError = new ApiError({
+      code: 'TERMS_ACCEPTANCE_REQUIRED',
+      status: 403,
+      message: 'Terms acceptance required',
+      details: { currentTermsVersion: 'SERVER_VERSION' },
+    });
+    mockMutateAsync.mockRejectedValueOnce(serverError).mockResolvedValueOnce(undefined);
+
+    const { Wrapper } = createWrapper();
+    const { result } = renderHook(() => useGoogleAuth(), { wrapper: Wrapper });
+
+    // 1 回目: terms なし。サーバーが 403 + details.currentTermsVersion を返す想定
+    await act(async () => {
+      await expect(result.current.signIn()).rejects.toBe(serverError);
+    });
+    expect(mockMutateAsync).toHaveBeenNthCalledWith(1, { idToken: 'GOOGLE_ID_TOKEN' });
+
+    // 2 回目: 呼び出し側は FALLBACK を渡すが、サーバー値（SERVER_VERSION）が優先される
+    await act(async () => {
+      await result.current.signIn({ termsAccepted: true, termsVersion: 'FALLBACK' });
+    });
+
+    // アカウント選択は再表示されない（ID トークン再利用）
+    expect(mockGoogleSignIn).toHaveBeenCalledTimes(1);
+    expect(mockMutateAsync).toHaveBeenNthCalledWith(2, {
+      idToken: 'GOOGLE_ID_TOKEN',
+      termsAccepted: true,
+      termsVersion: 'SERVER_VERSION',
+    });
+  });
+
+  it('フォールバック: 403 に details が無い（未デプロイの旧サーバー）場合、再送時は呼び出し側が渡した値が使われる', async () => {
+    const legacyError = new ApiError({
+      code: 'TERMS_ACCEPTANCE_REQUIRED',
+      status: 403,
+      message: 'Terms acceptance required',
+    });
+    mockMutateAsync.mockRejectedValueOnce(legacyError).mockResolvedValueOnce(undefined);
+
+    const { Wrapper } = createWrapper();
+    const { result } = renderHook(() => useGoogleAuth(), { wrapper: Wrapper });
+
+    await act(async () => {
+      await expect(result.current.signIn()).rejects.toBe(legacyError);
+    });
+
+    await act(async () => {
+      await result.current.signIn({ termsAccepted: true, termsVersion: 'FALLBACK' });
+    });
+
+    expect(mockMutateAsync).toHaveBeenNthCalledWith(2, {
+      idToken: 'GOOGLE_ID_TOKEN',
+      termsAccepted: true,
+      termsVersion: 'FALLBACK',
+    });
+  });
+
+  it('ref のリセット: 新規のネイティブ認証（idToken === null 分岐）をやり直すと前回のサーバー値が漏れない', async () => {
+    const staleServerError = new ApiError({
+      code: 'TERMS_ACCEPTANCE_REQUIRED',
+      status: 403,
+      message: 'Terms acceptance required',
+      details: { currentTermsVersion: 'STALE_VERSION' },
+    });
+    mockMutateAsync
+      .mockRejectedValueOnce(staleServerError)
+      .mockResolvedValueOnce(undefined)
+      .mockResolvedValueOnce(undefined);
+
+    const { Wrapper } = createWrapper();
+    const { result } = renderHook(() => useGoogleAuth(), { wrapper: Wrapper });
+
+    // 1 回目: terms なしで失敗し、サーバー値 STALE_VERSION が ref に保持される
+    await act(async () => {
+      await expect(result.current.signIn()).rejects.toBe(staleServerError);
+    });
+    expect(mockGoogleSignIn).toHaveBeenCalledTimes(1);
+
+    // 2 回目: ユーザーがアカウント選択からやり直す（terms なしの新規呼び出し）。
+    // idToken === null 分岐に入り、ref がリセットされたうえで成功する。
+    await act(async () => {
+      await result.current.signIn();
+    });
+    expect(mockGoogleSignIn).toHaveBeenCalledTimes(2);
+    expect(mockMutateAsync).toHaveBeenNthCalledWith(2, { idToken: 'GOOGLE_ID_TOKEN' });
+
+    // 3 回目: 同意付きで再送。ref はリセット済みのため、呼び出し側の値（FALLBACK2）が
+    // 使われる（STALE_VERSION が漏れ出ない）。
+    await act(async () => {
+      await result.current.signIn({ termsAccepted: true, termsVersion: 'FALLBACK2' });
+    });
+    expect(mockGoogleSignIn).toHaveBeenCalledTimes(2);
+    expect(mockMutateAsync).toHaveBeenNthCalledWith(3, {
+      idToken: 'GOOGLE_ID_TOKEN',
+      termsAccepted: true,
+      termsVersion: 'FALLBACK2',
     });
   });
 });

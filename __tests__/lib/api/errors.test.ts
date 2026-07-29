@@ -8,6 +8,7 @@ import {
   isMobileApiErrorCode,
   isReuseDetected,
   isTermsAcceptanceRequired,
+  getCurrentTermsVersion,
 } from '@/lib/api/errors';
 import type { MobileApiErrorCode } from '@/lib/api/errors';
 
@@ -193,5 +194,78 @@ describe('isTermsAcceptanceRequired', () => {
 
   it('文字列で false を返す', () => {
     expect(isTermsAcceptanceRequired('TERMS_ACCEPTANCE_REQUIRED')).toBe(false);
+  });
+});
+
+describe('getCurrentTermsVersion', () => {
+  it('TERMS_ACCEPTANCE_REQUIRED かつ details.currentTermsVersion が文字列 → その値を返す', () => {
+    const err = new ApiError({
+      code: 'TERMS_ACCEPTANCE_REQUIRED',
+      status: 403,
+      message: 'Terms acceptance required',
+      details: { currentTermsVersion: '2026-07-28' },
+    });
+    expect(getCurrentTermsVersion(err)).toBe('2026-07-28');
+  });
+
+  it('details が無い（旧サーバー） → undefined を返す', () => {
+    const err = new ApiError({
+      code: 'TERMS_ACCEPTANCE_REQUIRED',
+      status: 403,
+      message: 'Terms acceptance required',
+    });
+    expect(getCurrentTermsVersion(err)).toBeUndefined();
+  });
+
+  it('details はあるが currentTermsVersion が無い → undefined を返す', () => {
+    const err = new ApiError({
+      code: 'TERMS_ACCEPTANCE_REQUIRED',
+      status: 403,
+      message: 'Terms acceptance required',
+      details: { otherField: 'value' },
+    });
+    expect(getCurrentTermsVersion(err)).toBeUndefined();
+  });
+
+  it.each<[string, unknown]>([
+    ['数値', 20260728],
+    ['null', null],
+    ['オブジェクト', { value: '2026-07-28' }],
+  ])('currentTermsVersion が文字列でない（%s） → undefined を返す', (_label, value) => {
+    const err = new ApiError({
+      code: 'TERMS_ACCEPTANCE_REQUIRED',
+      status: 403,
+      message: 'Terms acceptance required',
+      details: { currentTermsVersion: value },
+    });
+    expect(getCurrentTermsVersion(err)).toBeUndefined();
+  });
+
+  it('エラーコードが別（ACCOUNT_SUSPENDED 等の 403 含む） → undefined を返す', () => {
+    const suspended = new ApiError({
+      code: 'ACCOUNT_SUSPENDED',
+      status: 403,
+      message: 'Account suspended',
+      details: { currentTermsVersion: '2026-07-28' },
+    });
+    expect(getCurrentTermsVersion(suspended)).toBeUndefined();
+
+    const guestNotAllowed = new ApiError({
+      code: 'GUEST_NOT_ALLOWED',
+      status: 403,
+      message: 'Guest not allowed',
+      details: { currentTermsVersion: '2026-07-28' },
+    });
+    expect(getCurrentTermsVersion(guestNotAllowed)).toBeUndefined();
+  });
+
+  it('ApiError でない値（Error）→ undefined を返す', () => {
+    expect(getCurrentTermsVersion(new Error('plain'))).toBeUndefined();
+  });
+
+  it('null / undefined / 文字列 → undefined を返す', () => {
+    expect(getCurrentTermsVersion(null)).toBeUndefined();
+    expect(getCurrentTermsVersion(undefined)).toBeUndefined();
+    expect(getCurrentTermsVersion('TERMS_ACCEPTANCE_REQUIRED')).toBeUndefined();
   });
 });

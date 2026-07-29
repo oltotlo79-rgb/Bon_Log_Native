@@ -88,6 +88,53 @@ describe('parseApiError', () => {
     expect(err.code).toBe('INTERNAL_ERROR');
     expect(err.status).toBe(500);
   });
+
+  it('403 レスポンスの details をそのまま ApiError.details に格納する', async () => {
+    const res = makeResponse(403, {
+      error: {
+        code: 'TERMS_ACCEPTANCE_REQUIRED',
+        message: 'Terms acceptance required',
+        status: 403,
+        details: { currentTermsVersion: '2026-07-28' },
+      },
+    });
+    const err = await parseApiError(res);
+    expect(err.code).toBe('TERMS_ACCEPTANCE_REQUIRED');
+    expect(err.details).toEqual({ currentTermsVersion: '2026-07-28' });
+  });
+
+  it('details が無いレスポンスでは details が undefined になる', async () => {
+    const res = makeResponse(403, makeErrorBody('TERMS_ACCEPTANCE_REQUIRED', 'Terms acceptance required'));
+    const err = await parseApiError(res);
+    expect(err.details).toBeUndefined();
+  });
+
+  it.each<[string, unknown]>([
+    ['文字列', 'not-an-object'],
+    ['配列', ['currentTermsVersion', '2026-07-28']],
+    ['数値', 12345],
+  ])('details が %s（オブジェクトでない）場合は undefined にフォールバックする', async (_label, details) => {
+    const res = makeResponse(403, {
+      error: {
+        code: 'TERMS_ACCEPTANCE_REQUIRED',
+        message: 'Terms acceptance required',
+        status: 403,
+        details,
+      },
+    });
+    const err = await parseApiError(res);
+    expect(err.details).toBeUndefined();
+  });
+
+  it.each<number>([400, 401, 429, 500])(
+    'ステータス %i でも details 欠落時に例外を投げず undefined になる',
+    async (status) => {
+      const res = makeResponse(status, makeErrorBody('VALIDATION_ERROR', 'error'));
+      const err = await parseApiError(res);
+      expect(err.details).toBeUndefined();
+      expect(err.status).toBe(status);
+    }
+  );
 });
 
 // ---------------------------------------------------------------------------
