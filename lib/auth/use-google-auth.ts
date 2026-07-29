@@ -20,6 +20,7 @@ import {
   ERR_GOOGLE_SIGN_IN_FAILED,
 } from '@/lib/constants/errors';
 import { isRecord } from '@/lib/utils/type-guards';
+import { getCurrentTermsVersion } from '@/lib/api/errors';
 
 // ---------------------------------------------------------------------------
 // 型定義
@@ -37,6 +38,10 @@ export type UseGoogleAuthReturn = {
    * frontend は isTermsAcceptanceRequired(error) で判別して同意画面を出し、
    * 同意後に terms 付きで signIn を再度呼び出す。このとき直前に取得済みの ID トークンを
    * 再利用するため、ネイティブのアカウント選択は再表示されない。
+   *
+   * terms.termsVersion は呼び出し側が指定するフォールバック値として扱う。
+   * 直前の 403 応答が現行バージョン（error.details.currentTermsVersion）を
+   * 同梱していた場合はその値を優先して送信する（cfw handback 2026-07-29 §2）。
    */
   signIn: (terms?: GoogleAuthTerms) => Promise<void>;
   /** サーバー検証中は true。 */
@@ -110,6 +115,12 @@ export function useGoogleAuth(): UseGoogleAuthReturn {
   // 再表示しないよう、直近で取得した ID トークンを保持する。
   const lastIdTokenRef = useRef<string | null>(null);
 
+  // 直前の 403 TERMS_ACCEPTANCE_REQUIRED が同梱していたサーバー側の現行規約
+  // バージョン。値が一致することが構造上保証されるため、再送時はこれを優先する
+  // （cfw handback 2026-07-29 §2）。未デプロイのサーバーでは付与されないため
+  // undefined のままになり、呼び出し側が渡した値（フォールバック）を使う。
+  const lastServerTermsVersionRef = useRef<string | undefined>(undefined);
+
   const signIn = useCallback(async (terms?: GoogleAuthTerms): Promise<void> => {
     if (!isAvailable) {
       return;
@@ -120,6 +131,9 @@ export function useGoogleAuth(): UseGoogleAuthReturn {
     let idToken = validTerms !== undefined ? lastIdTokenRef.current : null;
 
     if (idToken === null) {
+      // 無関係な過去の試行から漏れたバージョンを持ち越さない
+      lastServerTermsVersionRef.current = undefined;
+
       let result: SignInResponse;
       try {
         await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
@@ -153,14 +167,22 @@ export function useGoogleAuth(): UseGoogleAuthReturn {
       lastIdTokenRef.current = rawIdToken;
     }
 
-    if (validTerms !== undefined) {
-      await mutation.mutateAsync({
-        idToken,
-        termsAccepted: validTerms.termsAccepted,
-        termsVersion: validTerms.termsVersion,
-      });
-    } else {
-      await mutation.mutateAsync({ idToken });
+    try {
+      if (validTerms !== undefined) {
+        await mutation.mutateAsync({
+          idToken,
+          termsAccepted: validTerms.termsAccepted,
+          termsVersion: lastServerTermsVersionRef.current ?? validTerms.termsVersion,
+        });
+      } else {
+        await mutation.mutateAsync({ idToken });
+      }
+    } catch (err) {
+      const serverTermsVersion = getCurrentTermsVersion(err);
+      if (serverTermsVersion !== undefined) {
+        lastServerTermsVersionRef.current = serverTermsVersion;
+      }
+      throw err;
     }
   }, [isAvailable, mutation]);
 

@@ -11,6 +11,7 @@ import type { paths } from '@/lib/api/generated/schema.d.ts';
 import { ApiError, isApiError, isMobileApiErrorCode, type MobileApiErrorCode } from '@/lib/api/errors';
 import { API_BASE_URL } from '@/lib/constants/api';
 import { REQUEST_TIMEOUT_MS } from '@/lib/constants/query';
+import { isRecord } from '@/lib/utils/type-guards';
 
 // ---------------------------------------------------------------------------
 // 注入式認証フック
@@ -85,29 +86,27 @@ export async function parseApiError(response: Response): Promise<ApiError> {
 
   let code: MobileApiErrorCode = 'INTERNAL_ERROR';
   let message = response.statusText || 'Unknown error';
+  let details: Record<string, unknown> | undefined;
 
   try {
     const body: unknown = await response.clone().json();
     if (
-      typeof body === 'object' &&
-      body !== null &&
-      'error' in body &&
-      typeof body.error === 'object' &&
-      body.error !== null &&
-      'code' in body.error &&
+      isRecord(body) &&
+      isRecord(body.error) &&
       typeof body.error.code === 'string' &&
-      'message' in body.error &&
       typeof body.error.message === 'string'
     ) {
       // スペック外の未知コードは INTERNAL_ERROR として扱い、as キャストを避ける
       code = isMobileApiErrorCode(body.error.code) ? body.error.code : 'INTERNAL_ERROR';
       message = body.error.message;
+      // details はコード固有（例: TERMS_ACCEPTANCE_REQUIRED）で、他のエラーには存在しない
+      details = isRecord(body.error.details) ? body.error.details : undefined;
     }
   } catch {
     // JSON パース失敗は無視して status ベースのエラーにフォールバックする
   }
 
-  return new ApiError({ code, status: response.status, message, retryAfter });
+  return new ApiError({ code, status: response.status, message, retryAfter, details });
 }
 
 // ---------------------------------------------------------------------------

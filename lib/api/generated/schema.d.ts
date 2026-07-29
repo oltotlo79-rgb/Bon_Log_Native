@@ -970,6 +970,9 @@ export interface paths {
          *     2. なければ email で User を検索し Account を作成してリンク — 既存ユーザーは termsAccepted 不要
          *     3. User も存在しなければ、termsAccepted === true かつ termsVersion が現行バージョンと一致する
          *        場合のみ新規作成する。不足・不一致の場合は何も作成せず 403 TERMS_ACCEPTANCE_REQUIRED を返す。
+         *
+         *     403 受信時は error.details.currentTermsVersion（付与されている場合）を使って同意画面を表示し、
+         *     termsAccepted: true / termsVersion: <currentTermsVersion> を付けて再送すること。details は新規作成時（未知ユーザー）の同意欠落・バージョン不一致でのみ付与され、ACCOUNT_SUSPENDED では付与されない。
          */
         post: {
             parameters: {
@@ -1011,13 +1014,13 @@ export interface paths {
                         "application/json": components["schemas"]["ApiErrorResponse"];
                     };
                 };
-                /** @description アカウント停止 (ACCOUNT_SUSPENDED)、または新規ユーザー作成時の規約同意欠落・バージョン不一致 (TERMS_ACCEPTANCE_REQUIRED) */
+                /** @description アカウント停止 (ACCOUNT_SUSPENDED)、または新規ユーザー作成時の規約同意欠落・バージョン不一致 (TERMS_ACCEPTANCE_REQUIRED、この場合のみ error.details.currentTermsVersion が付与される) */
                 403: {
                     headers: {
                         [name: string]: unknown;
                     };
                     content: {
-                        "application/json": components["schemas"]["ApiErrorResponse"];
+                        "application/json": components["schemas"]["GoogleAuthTermsRequiredResponse"];
                     };
                 };
                 /** @description レート制限超過。Retry-After ヘッダー（秒）が返却される。自動リトライ禁止。 */
@@ -13466,6 +13469,22 @@ export interface components {
                 code: "AUTH_REQUIRED" | "AUTH_INVALID_TOKEN" | "AUTH_TOKEN_EXPIRED" | "AUTH_INVALID_CREDENTIALS" | "AUTH_2FA_REQUIRED" | "AUTH_2FA_INVALID_CODE" | "AUTH_2FA_TICKET_EXPIRED" | "AUTH_REFRESH_TOKEN_INVALID" | "AUTH_REFRESH_TOKEN_REUSE_DETECTED" | "ACCOUNT_SUSPENDED" | "GUEST_NOT_ALLOWED" | "EMAIL_NOT_VERIFIED" | "VALIDATION_ERROR" | "RATE_LIMITED" | "NOT_FOUND" | "CONFLICT" | "INTERNAL_ERROR" | "SERVER_MISCONFIGURED" | "PREMIUM_REQUIRED" | "TERMS_ACCEPTANCE_REQUIRED";
                 message: string;
                 status: number;
+            };
+        };
+        /**
+         * @description POST /api/v1/auth/google の 403 レスポンス（共通 ApiErrorResponse の全 field を維持した拡張）。
+         *     新規ユーザー作成時のみ error.details.currentTermsVersion（現行の利用規約バージョン）が付与される。
+         *     クライアントはこの値で同意画面を表示し、termsAccepted: true / termsVersion: <currentTermsVersion> を付けて再送すること。ACCOUNT_SUSPENDED 等 details を伴わない 403 では details は省略される。
+         */
+        GoogleAuthTermsRequiredResponse: {
+            error: {
+                /** @enum {string} */
+                code: "AUTH_REQUIRED" | "AUTH_INVALID_TOKEN" | "AUTH_TOKEN_EXPIRED" | "AUTH_INVALID_CREDENTIALS" | "AUTH_2FA_REQUIRED" | "AUTH_2FA_INVALID_CODE" | "AUTH_2FA_TICKET_EXPIRED" | "AUTH_REFRESH_TOKEN_INVALID" | "AUTH_REFRESH_TOKEN_REUSE_DETECTED" | "ACCOUNT_SUSPENDED" | "GUEST_NOT_ALLOWED" | "EMAIL_NOT_VERIFIED" | "VALIDATION_ERROR" | "RATE_LIMITED" | "NOT_FOUND" | "CONFLICT" | "INTERNAL_ERROR" | "SERVER_MISCONFIGURED" | "PREMIUM_REQUIRED" | "TERMS_ACCEPTANCE_REQUIRED";
+                message: string;
+                status: number;
+                details?: {
+                    currentTermsVersion: string;
+                };
             };
         };
         /**

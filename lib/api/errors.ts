@@ -4,6 +4,7 @@
  */
 
 import type { components } from '@/lib/api/generated/schema.d.ts';
+import { isRecord } from '@/lib/utils/type-guards';
 
 /** スペック定義のエラーコード enum（20 値）。 */
 export type MobileApiErrorCode = components['schemas']['MobileApiErrorCode'];
@@ -52,23 +53,28 @@ export function isMobileApiErrorCode(value: string): value is MobileApiErrorCode
  * API から返る型付きエラー。
  * `code` を使って認証エラー・レート制限などを区別する。
  * `retryAfter` は 429 レスポンスの Retry-After ヘッダー値（秒）。
+ * `details` はコード固有の追加情報（例: TERMS_ACCEPTANCE_REQUIRED の
+ * currentTermsVersion）。ほとんどのエラーコードでは付与されない。
  */
 export class ApiError extends Error {
   readonly code: MobileApiErrorCode;
   readonly status: number;
   readonly retryAfter: number | undefined;
+  readonly details: Record<string, unknown> | undefined;
 
   constructor(params: {
     code: MobileApiErrorCode;
     status: number;
     message: string;
     retryAfter?: number;
+    details?: Record<string, unknown>;
   }) {
     super(params.message);
     this.name = 'ApiError';
     this.code = params.code;
     this.status = params.status;
     this.retryAfter = params.retryAfter;
+    this.details = params.details;
   }
 }
 
@@ -91,4 +97,19 @@ export function isReuseDetected(error: unknown): error is ApiError {
  */
 export function isTermsAcceptanceRequired(error: unknown): error is ApiError {
   return isApiError(error) && error.code === 'TERMS_ACCEPTANCE_REQUIRED';
+}
+
+/**
+ * TERMS_ACCEPTANCE_REQUIRED の 403 応答に同梱される現行規約バージョンを取り出す。
+ * サーバーが details を返さない場合（未デプロイの旧サーバー・想定外の欠落）は
+ * undefined を返す。呼び出し側は CURRENT_TERMS_VERSION へフォールバックすること
+ * （cfw handback 2026-07-29 §2）。
+ */
+export function getCurrentTermsVersion(error: unknown): string | undefined {
+  if (!isTermsAcceptanceRequired(error) || !isRecord(error.details)) {
+    return undefined;
+  }
+
+  const { currentTermsVersion } = error.details;
+  return typeof currentTermsVersion === 'string' ? currentTermsVersion : undefined;
 }
