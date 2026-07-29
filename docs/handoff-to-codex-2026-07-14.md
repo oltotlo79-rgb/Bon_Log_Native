@@ -63,8 +63,8 @@ Codex がこのリポジトリの開発を引き継ぐための現況・規約�
 
 **未処理（relay 待ち。`docs/plans/` はローカル調整用であり cfw リポジトリの正本ではない）**:
 
-1. **`isBlockedByUser` を `UserProfileResponse` に追加**（`docs/plans/handoff-to-cfw-genre-category-and-bonsai-id-2026-07-05.md` 末尾「追加依頼4」、追記日 2026-07-13）。2026-07-13 付けの cfw 回答書（`reply-from-cfw-genre-category-and-bonsai-id-2026-07-13.md`）は項目1〜3（genre category / bonsaiId / 日時制約）のみに回答しており、この追加依頼4には触れていない。実際に `lib/api/generated/schema.d.ts` を grep しても `isBlockedByUser` は存在せず、**未反映であることを確認済み**。Web は相手からブロックされている場合に専用の全画面表示へ切り替えるが、Native はこの状態を検出できないままになっている。**依頼書は 2026-07-14 セッションで `docs/plans/handoff-to-cfw-user-profile-is-blocked-by-user-2026-07-14.md` として作成済み（§10 参照）。2026-07-27 時点の再検証（§11.6）でも cfw 側は未着手。**
-2. **検索の複数ジャンルフィルタ**: `GET /api/v1/search/posts` の `genreId` は単一文字列のみ（`lib/api/generated/schema.d.ts:2746` `genreId?: string`）。Native の `components/search/PostSearchFilterPanel.tsx` もこれに合わせて単一選択（`localGenreId: string`）で実装済み。一方 Web の投稿検索（`Bon_Log_cfw/app/(main)/search/page.tsx:37-38,68`）は `genre` パラメータを配列で受け取り複数ジャンル＋カテゴリ分類の `GenreFilter` を提供している。**依頼書は 2026-07-14 セッションで `docs/plans/handoff-to-cfw-search-multiple-genres-2026-07-14.md` として作成済み（§10 参照）。2026-07-27 時点の再検証（§11.6）でも cfw 側は未着手。**
+1. **`isBlockedByUser` を `UserProfileResponse` に追加**（`docs/plans/handoff-to-cfw-genre-category-and-bonsai-id-2026-07-05.md` 末尾「追加依頼4」、追記日 2026-07-13）。2026-07-13 付けの cfw 回答書（`reply-from-cfw-genre-category-and-bonsai-id-2026-07-13.md`）は項目1〜3（genre category / bonsaiId / 日時制約）のみに回答しており、この追加依頼4には触れていない。実際に `lib/api/generated/schema.d.ts` を grep しても `isBlockedByUser` は存在せず、**未反映であることを確認済み**。Web は相手からブロックされている場合に専用の全画面表示へ切り替えるが、Native はこの状態を検出できないままになっている。**依頼書は 2026-07-14 セッションで `docs/plans/handoff-to-cfw-user-profile-is-blocked-by-user-2026-07-14.md` として作成済み（§10 参照）。2026-07-27 時点の再検証（§11.6）でも cfw 側は未着手だったが、2026-07-29 に OpenAPI 1.37.0 で解消済み（§13.1 参照）。**
+2. **検索の複数ジャンルフィルタ**: `GET /api/v1/search/posts` の `genreId` は単一文字列のみ（`lib/api/generated/schema.d.ts:2746` `genreId?: string`）。Native の `components/search/PostSearchFilterPanel.tsx` もこれに合わせて単一選択（`localGenreId: string`）で実装済み。一方 Web の投稿検索（`Bon_Log_cfw/app/(main)/search/page.tsx:37-38,68`）は `genre` パラメータを配列で受け取り複数ジャンル＋カテゴリ分類の `GenreFilter` を提供している。**依頼書は 2026-07-14 セッションで `docs/plans/handoff-to-cfw-search-multiple-genres-2026-07-14.md` として作成済み（§10 参照）。2026-07-27 時点の再検証（§11.6）でも cfw 側は未着手だったが、2026-07-29 に OpenAPI 1.37.0 で解消済み（§13.1 参照）。**
 
 ## 7. 残タスク（優先度順。今回の Web 準拠監査〈検索・DM・ブックマーク・分析・発見〉の結果を反映）
 
@@ -81,6 +81,8 @@ Codex がこのリポジトリの開発を引き継ぐための現況・規約�
 修正方針: 成功時のみ入力をクリアする／`onError` で `isApiError` 判別してコード別のエラー文言（`lib/constants/errors.ts` に追加が必要な場合あり）を表示する／再試行導線を用意する。`.claude/rules/error-handling.md` の「ローディング / 空 / エラー / オフライン」4状態原則に準拠させる。
 
 ### B 中（サーバー対応後に着手）
+
+**[両項目とも完了 — 2026-07-29 セッションで cfw の OpenAPI 1.37.0 取り込みに伴い対応済み。詳細は §13.1 を参照。以下は着手前の問題点の記録として残す]**
 
 - 検索の複数ジャンル＋カテゴリ分類（cfw 側の API 拡張後、frontend で `PostSearchFilterPanel` を複数選択・カテゴリ見出し表示に変更）
 - `isBlockedByUser` の全画面表示への反映（cfw → `generate:api` → frontend でユーザープロフィール画面に専用エラー表示を追加）
@@ -103,15 +105,16 @@ Codex がこのリポジトリの開発を引き継ぐための現況・規約�
 - 投稿カードの墨枠内写真表示
 - ジャンル2階層 UI（カテゴリ→個別ジャンルのチップ選択）の実機操作感
 - 大文字スキーム URL（例: `HTTPS://example.com`）の外部リンクタップ — `normalizeUrlScheme`（§12）適用後、Android 実機の `openBrowserAsync` で正しく解決されるかの確認
+- OpenAPI 1.37.0 対応（§13.1）: 検索の複数ジャンル選択チップ、相手ブロック時の専用表示、Google 新規登録の規約同意モーダルの実機操作感
 
 ## 8. 公開までの道筋
 
-1. 残 Web 準拠差分の消化（§7-A の DM 送信失敗ハンドリング、§7-B のサーバー対応待ち2件、§7-C の低優先度群）
+1. 残 Web 準拠差分の消化（§7-A の DM 送信失敗ハンドリング、§7-B のサーバー対応待ち2件、§7-C の低優先度群）— **2026-07-29 時点で §7-A/B/C はすべて完了済み（各項目の `[完了]` 注記を参照）。残るのは §7-D の実機 QA のみ**
 2. 実機QA（§7-D）で回帰確認
 3. ストア審査要件（`.claude/rules/store-compliance.md`）の充足確認:
    - 通報・ブロックのアプリ内露出 — 完了（`components/report/ReportDialog.tsx` が投稿・コメント・ユーザー・イベント・盆栽園・レビューの6種UGCから呼び出し可能な状態まで実装済み。§5 バッチ3参照）
    - アカウント削除導線 — 実装済み（`app/settings/account/index.tsx`）。ただし Play Console 側のデータ削除手段の申告は本リポジトリ外の作業として別途必要
-   - 外部決済（Stripe 等）への誘導なし — 本セッションでの再確認は未実施。billing.md の規約は遵守する前提で実装されている
+   - 外部決済（Stripe 等）への誘導なし — アプリ内 UI（billing.md 準拠）に加え、Android から到達する legal/help ページも Android 専用 URL（`/mobile/android/{terms,privacy,help}`）へ差し替え、Web 版の Stripe・カード決済導線露出を回避した（§13.1）。cfw 側のデプロイ後に実機で最終確認が必要
    - データセーフティ申告（Sentry・RevenueCat 等の実収集内容との一致）— 未実施。Play Console 側の作業
    - 審査用デモアカウントの準備 — 未確認
    - サンドボックス購入 → RevenueCat Webhook → DB 反映 → プレミアム機能解放の疎通確認 — 未確認
@@ -121,7 +124,7 @@ Codex がこのリポジトリの開発を引き継ぐための現況・規約�
 ## 9. Codex への作業手順
 
 - 分業を踏襲するなら PM-orchestrator 経由で各エージェントへ委譲する。直接作業する場合も `CLAUDE.md` と `.claude/rules/` を厳守すること。
-- **Bon_Log_cfw は絶対に編集しない**。読み取りと `npm run generate:api` によるスキーマ取込みのみ許可。サーバー側の変更が必要な場合は `docs/plans/handoff-to-cfw-*.md` 形式で依頼書を作成し、file:line 引用で裏取りしたうえで引き継ぐ（本書 §6 の未処理2件を参照。両件とも依頼書は 2026-07-14 セッションで作成済みであり、2026-07-27 時点で cfw 側は未着手のまま — 詳細は §6・§11.6）。
+- **Bon_Log_cfw は絶対に編集しない**。読み取りと `npm run generate:api` によるスキーマ取込みのみ許可。サーバー側の変更が必要な場合は `docs/plans/handoff-to-cfw-*.md` 形式で依頼書を作成し、file:line 引用で裏取りしたうえで引き継ぐ（本書 §6 の従来の未処理2件は 2026-07-29 に OpenAPI 1.37.0 で解消済み — 詳細は §6・§11.6・§13.1。同種の依頼を今後行う場合も同じ運用に従う）。
 - 変更は都度 commit・push する。並行作業時は `git pull --rebase --autostash` で自分の変更を保持したまま最新化する。
 - 新機能・修正には必ずテストを伴わせ、カバレッジ閾値（branches 80% / functions 85% / lines 85% / statements 85%）を割らないこと。現状値（§4）を下回らせないことを最低ラインとする。
 - 監査・調査を行う際は本書と同様に **file:line の引用義務**を課し、import グラフを辿って本番導線から実際に使われているかを裏取りすること（デッドコード・未使用コンポーネントを本番実装と誤認しないため。過去に `PostForm.tsx` を本番と誤認した事故がある）。
@@ -247,6 +250,8 @@ cfw は引き続き読み取り専用で、Native 側から変更していない
 
 2026-07-14 付の依頼書3本（検索複数ジャンル・`isBlockedByUser`・Play公開前ブロッカー6トラック）を、`docs/plans/handoff-to-cfw-consolidated-2026-07-27.md`（9項目。`.gitignore` 対象のローカル連携領域であり本リポジトリのコミット対象には含まれない）として再検証・再送した。2026-07-27 時点で cfw 側の HEAD は `98ae0b7f`（2026-07-13 コミット）のままであり、2026-07-14 の調査時点から**変化がなく未着手**であることを確認済み。9項目のうち**P0（Google Play 公開の直接ブロッカー）は6件**（Android legal/help の決済誘導除去、Google 新規登録の規約同意必須化、Stripe/RevenueCat provider別entitlement、Block済み相互ユーザーの既存通知除外、アカウント削除時の全媒体R2削除保証、Privacy本文・Data Safety台帳のNative SDK反映）。残り2件（検索複数ジャンル・`isBlockedByUser`）は公開ブロッカーではない Web parity 差分、1件（盆栽一覧の「最新記録」取得のタイブレーク不一致）は今回の再検証で新たに検出した軽微な表示不整合であり、いずれも公開判断には影響しない。
 
+**2026-07-29 追記: 本節の「未着手」は解消済み。** cfw が9項目全件に対応した OpenAPI 1.37.0 の handback（`handback-2026-07-28`）を受領し、Native 側の取り込みを完了した。詳細は §13.1 を参照。
+
 ## 12. 2026-07-28 セッション: 大文字スキーム URL の外部ブラウザ起動不具合と対処
 
 ### 12.1 発見された実害のある不具合
@@ -272,10 +277,58 @@ cfw は引き続き読み取り専用で、Native 側から変更していない
 
 本節はこの文書における品質ゲート数値の唯一の最新情報源である。§4・§10・§10.1・§11.1 に記載された数値はいずれもそのセッション時点で固定されたスナップショットであり、以後更新しない。今後さらに再測定する場合も、新しい `### 12.5` 等の節を追加するのではなく、本節の数値をその場で上書きすること（分散を防ぐため）。
 
-- 計測時点のコミット: `6583430039046e5a41ff4d337c74fc5b0d20bb08`（`test: normalizeUrlScheme の単体テストを追加`。この文書自身の更新コミットは計測後に作成されるため、実際の HEAD はこれよりわずかに新しくなり得る — 構造上の制約であり実害はない）
+- 計測時点のコミット: `5da505623d78a350cc5a10a2242c7a85f4cb15ec`（`docs: テストが欠陥検出できることを確認するルールを追記`。この文書自身の更新コミットは計測後に作成されるため、実際の HEAD はこれよりわずかに新しくなり得る — 構造上の制約であり実害はない）
 - 作業ツリー: クリーン（`git status --short` 出力なし。本文書の更新のみ後続でコミットする）
 - `npx tsc --noEmit`: エラー **0**
 - `npm run lint`: エラー **0** / 警告 **0**
-- `npm test -- --runInBand`: **Test Suites 346 passed / 346**、**Tests 5,867 passed / 5,867**
-- `npm run test:coverage -- --runInBand`: 同一の 346 suites / 5,867 tests 全 pass。カバレッジ **Statements 91.69% / Branches 84.42% / Functions 87.68% / Lines 92.55%**（閾値 branches80 / functions85 / lines85 / statements85 をすべて超過。コマンド exit code 0）
+- `npm test`: **Test Suites 349 passed / 349**、**Tests 5,986 passed / 5,986**
+- `npm run test:coverage`: 同一の 349 suites / 5,986 tests 全 pass。カバレッジ **Statements 91.73% / Branches 84.50% / Functions 87.80% / Lines 92.60%**（閾値 branches80 / functions85 / lines85 / statements85 をすべて超過。コマンド exit code 0）
 - `lib/utils/normalize-url-scheme.ts`: 呼び出し側への適用（コミット `9e03564`）に続き、単体テスト 23 件（コミット `6583430`、`__tests__/lib/utils/normalize-url-scheme.test.ts`）が追加済みで、個別カバレッジは **Statements/Branches/Functions/Lines すべて 100%**。§12.2 に記載していた「未カバー（Functions/Lines 0%）」は解消済みであり、上記の全体カバレッジ値にもこの分が反映されている
+
+## 13. 2026-07-29 セッション: OpenAPI 1.37.0/1.38.0 相当の取り込みと Google サインイン回帰の修正
+
+### 13.1 OpenAPI 1.37.0 対応（cfw handback-2026-07-28 の回答）
+
+cfw が §11.6 の9項目（検索の複数ジャンル / `isBlockedByUser` / Play 公開ブロッカー6トラック）に対応した回答（`cfw handback-2026-07-28`）を受け、`npm run generate:api` で取り込んだ（コミット `8b42b5b`・テスト追加 `72875d0`）。
+
+Native 側で追加対応した項目:
+
+- 検索の複数ジャンル選択 UI（Web の `GenreFilter` 準拠。`components/search/PostSearchFilterPanel.tsx`、`lib/queries/search.ts` に `genreIds` 正規化を追加。コミット `44c99b6`）
+- 相手ブロック時の専用表示（Web 準拠。`app/users/[id]/index.tsx` で `data.isBlocked || isBlockedByUser` を判定し本体・投稿一覧・メニューを隠す。`isBlockedByViewedUser`（`lib/queries/users.ts`）はサーバー本番配備前の undefined を安全側判定。コミット `977355b`）
+- Google 新規登録の規約同意フロー（`components/auth/GoogleTermsAgreementModal.tsx` を新設し、403 `TERMS_ACCEPTANCE_REQUIRED`（新規ユーザー作成時のみ）を検知して同意モーダルを表示。同意後は直前の ID トークンを再利用して再送するためネイティブのアカウント選択は再表示されない。コミット `a02c27e`）
+- 法的文書 URL を Android 専用（`/mobile/android/{terms,privacy,help}`）へ差し替え（`lib/constants/external-links.ts`。Google Play 審査要件 — Web 版の決済導線露出を回避）
+
+cfw 側で完結し Native 変更不要だった項目: provider 別 entitlement（Stripe/RevenueCat の購読状態を OR で `isPremium` 判定）、通知一覧・未読数からの Block 済みユーザー除外、アカウント削除時の R2 媒体削除の耐障害化、盆栽一覧「最新記録」取得のタイブレーク是正。
+
+### 13.2 OpenAPI 1.38.0 相当対応（規約バージョンのドリフト解消）
+
+**問題**: サーバーは規約バージョンを規約本文の `updatedAt` から自動導出し、Google 新規登録の `termsVersion` に厳密一致を要求する（`===`。範囲・旧バージョン許容なし）。一方 Native はビルド時点のハードコード定数（`lib/constants/terms.ts` の `CURRENT_TERMS_VERSION`）を送るため、**cfw 側が規約を改定するたびに、改定前にビルド・配布済みの全 Native バイナリで Google 新規登録が恒久停止する**リスクがあった（既存ユーザーのログイン・メール新規登録には影響しない）。
+
+未認証画面から `GET /api/v1/legal/{slug}` で現行バージョンを取得しフォールバックする緩和策（`lib/queries/legal.ts` の `useTermsVersion()`）を既に実装していたが、同エンドポイントは**Bearer 認証必須**であることが判明した。cfw の doc comment「ゲスト可」は「認証不要」の意味ではなく「ゲスト共有アカウントの Bearer トークンでも拒否しない」の意味であり（`rejectGuest` オプションの有無と対応）、かつモバイル向けにはそもそもゲストアカウントの Bearer トークンを発行する経路が無いため、この取得は未認証画面では常に 401 で失敗し、常にハードコード値へフォールバックしていた（緩和策が機能していなかった）。
+
+依頼書（`docs/plans/handoff-to-cfw-terms-version-discovery-2026-07-29.md`、案A/B/Cを提示し案Bを推奨）を送付し、cfw が案B（403 `TERMS_ACCEPTANCE_REQUIRED` のレスポンスに `error.details.currentTermsVersion` を同梱する専用スキーマ `GoogleAuthTermsRequiredResponse` を新設）で対応した回答（`cfw handback-2026-07-29`）を受領した。
+
+Native 側の対応（コミット `eea157a`〜`aab16d7`）: 403 から受け取った `currentTermsVersion` を同意画面表示・再送に優先使用し、値が欠落した場合（旧サーバー・details 無し）のみハードコード定数 `CURRENT_TERMS_VERSION` へフォールバックする。**サーバーが返す値と検証に使う値が同一定数（`CURRENT_TERMS_VERSION = ANDROID_LEGAL_DOCUMENTS.terms.updatedAt`）由来のため、構造上必ず一致する。** `terms` 引数は `isGoogleAuthTerms` による実行時型ガードで検証してから同意フローに入るようにした（§13.3 の回帰と根を同じくする防御）。
+
+### 13.3 発見・修正した不具合
+
+- **Google サインインの回帰**（コミット `428785a`・`ce69365`）: `app/(auth)/login/index.tsx` / `app/(auth)/register/index.tsx` で `onPress={googleSignIn}` のように signIn 関数を直接渡していたため、`GestureResponderEvent` が `terms` 引数として混入し、2回目以降のタップで「同意あり」と誤認識され ID トークンのキャッシュ経路に入っていた（ネイティブのアカウント選択が再表示されず、トークン失効後は復旧不能）。呼び出し側の修正に加え、`lib/auth/use-google-auth.ts` に `isGoogleAuthTerms` 型ガードを追加し、不正な値が渡っても同意ありと誤認識しない構造にした（再発防止）。
+- 盆栽詳細のカバー画像が常に非表示だった不具合（§11.2）と大文字スキーム URL の外部リンクサイレント失敗（§12.1）は本セッションより前に発見・修正済みであり、変更はない。
+
+### 13.4 テスト規約の追加
+
+`.claude/rules/testing.md` に「新規ロジックへのテスト追加後、対象の実装を一時的に壊してテストが red になることを確認してから元に戻す」を追記した（コミット `5da5056`）。目的は「テストが通ること」ではなく「欠陥を検出できること」の担保。モックが厚すぎて検証対象の経路（画面テストがフックを丸ごとモックして実結線が未検証、モックが常に成功を返しエラー経路が未実行等）を迂回する問題が繰り返し発生したための対策。
+
+### 13.5 cfw 連携状況
+
+- cfw の回答書2本（`handback-from-cfw-consolidated-2026-07-28.md` / `handback-from-cfw-terms-version-discovery-2026-07-29.md`）を受領済み。いずれも `docs/plans/`（`.gitignore` 対象のローカル連携領域）で授受したものであり本リポジトリのコミット対象には含まれない
+- ⚠️ **cfw の該当コミットは未 push・未デプロイ**であり、本番反映は cfw 側オペレーション待ちである
+- **migration 3本の本番適用・backfill 実行・デプロイの完了は Native 側から確認できない。** 特に backfill を飛ばすと、既存プレミアムユーザーが entitlement ベースの失効判定から漏れる可能性がある（cfw 回答書に警告あり）。Native 側は `npm run generate:api` の型取り込みとクライアント実装までは完了しているが、**本番相手の疎通確認（サンドボックス Google 新規登録・複数ジャンル検索・ブロック表示）は cfw のデプロイ後に必要**
+
+### 13.6 残タスクの更新
+
+現時点でリポジトリ内に残るコード作業（実ファイルで裏取り済み）:
+
+1. `app/bonsai/[id]/index.tsx:244,342` の `ScrollView` + `map`（`.claude/rules/components.md` 違反。§11.5 のとおり実機 QA 後のバックログとして受容済み。未着手のまま変わらず）
+2. `app.json` の `expo-notifications` プラグイン設定（66〜72行目）に `icon` が未設定（**専用アセット画像の作成が前提**。§10.1 の「Bon_Log専用Android small notification iconがない」から未解消）
+3. `app.json` に `android.googleServicesFile` の設定が無く、`google-services.json` もリポジトリに未配置（**ファイルの提供が前提**。§10.1 の「FCM standalone Pushは未完成」から未解消）
