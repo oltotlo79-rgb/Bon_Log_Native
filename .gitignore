@@ -18,6 +18,10 @@ expo-env.d.ts
 
 # Firebase 設定 (API キーを含むため public リポジトリへコミットしない)
 /google-services.json
+/GoogleService-Info.plist
+
+# eas env:pull が設定ファイルの実体を .eas/.env/ へ展開するため除外
+.eas/
 
 # 署名鍵
 *.jks
