@@ -16,6 +16,9 @@ expo-env.d.ts
 .env.local
 .env*.local
 
+# Firebase 設定 (API キーを含むため public リポジトリへコミットしない)
+/google-services.json
+
 # 署名鍵
 *.jks
 *.p8
