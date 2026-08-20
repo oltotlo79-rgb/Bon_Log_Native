@@ -118,9 +118,8 @@ async function waitForFormLoad() {
   });
 }
 
-beforeEach(() => {
-  jest.clearAllMocks();
-  // パスに基づいて適切なデータを返す: 複数回呼ばれても正しく動作する
+// パスに基づいて適切なデータを返す: 複数回呼ばれても正しく動作する
+function mockProfileApiSuccess() {
   mockApiGet.mockImplementation((path: string) => {
     if (path === '/api/v1/users/me') {
       return Promise.resolve({ data: PROFILE_DATA, error: undefined });
@@ -130,6 +129,29 @@ beforeEach(() => {
     }
     return Promise.resolve({ data: undefined, error: { status: 404 } });
   });
+}
+
+// SettingsProfileScreen は ProfileImageEditor 以外の入力コンポーネント（BirthdayField 等）を
+// モックせずに使っており、@expo/vector-icons やネイティブモジュールの遅延 require が
+// 「プロセス内で最初にこの画面を描画したとき」だけ数秒級の同期コストを払う。
+// warm-up なしだとその一回分のコストが最初のテストの waitFor（既定 1000ms）の予算内に
+// 混入し、cold cache やワーカーの CPU 競合が重なった場合にだけ間欠的にタイムアウトする。
+// ここで一度マウント→アンマウントしてコストを吸収し、実テストの計測対象から切り離す。
+beforeAll(async () => {
+  mockProfileApiSuccess();
+  const warmup = renderWithProviders(<SettingsProfileScreen />);
+  await waitFor(
+    () => {
+      expect(screen.getByLabelText('ニックネーム（必須）')).toBeTruthy();
+    },
+    { timeout: 20000 }
+  );
+  warmup.unmount();
+}, 25000);
+
+beforeEach(() => {
+  jest.clearAllMocks();
+  mockProfileApiSuccess();
   mockApiPatch.mockResolvedValue({ data: PROFILE_UPDATED, error: undefined });
   mockUploadMutateAsync.mockResolvedValue('https://cdn.bon-log.com/new-avatar.jpg');
 });
@@ -225,15 +247,7 @@ describe('SettingsProfileScreen - エラー状態', () => {
     });
 
     // 再試行後は正常データを返す
-    mockApiGet.mockImplementation((path: string) => {
-      if (path === '/api/v1/users/me') {
-        return Promise.resolve({ data: PROFILE_DATA, error: undefined });
-      }
-      if (path === '/api/v1/users/{id}') {
-        return Promise.resolve({ data: PROFILE_DETAIL, error: undefined });
-      }
-      return Promise.resolve({ data: undefined, error: { status: 404 } });
-    });
+    mockProfileApiSuccess();
 
     fireEvent.press(screen.getByRole('button', { name: '再試行する' }));
 
