@@ -106,6 +106,13 @@ Codex がこのリポジトリの開発を引き継ぐための現況・規約�
 - ジャンル2階層 UI（カテゴリ→個別ジャンルのチップ選択）の実機操作感
 - 大文字スキーム URL（例: `HTTPS://example.com`）の外部リンクタップ — `normalizeUrlScheme`（§12）適用後、Android 実機の `openBrowserAsync` で正しく解決されるかの確認
 - OpenAPI 1.37.0 対応（§13.1）: 検索の複数ジャンル選択チップ、相手ブロック時の専用表示、Google 新規登録の規約同意モーダルの実機操作感
+- **盆栽園マップの「現在地に移動」ボタン（精密位置情報の除外後・未検証）** — `ACCESS_FINE_LOCATION` を除外したビルドで、許可ダイアログの表示と現在地取得が成功するかを実機で確認する。現時点でこの確認は未実施である
+
+**Android 位置情報権限の現行構成（上記実機QA項目の前提）:**
+
+実装が使う精度は `components/shops/BonsaiMapView.tsx` の `handleLocationPress` における `Location.Accuracy.Balanced`（Android の `PRIORITY_BALANCED_POWER_ACCURACY`）のみで、`ACCESS_FINE_LOCATION` を必要とする経路はリポジトリ内に存在しない。そのため `app.json` の `android.permissions` は `ACCESS_COARSE_LOCATION` のみとし、`ACCESS_FINE_LOCATION` は `blockedPermissions` に加えた。
+
+注意点として、`expo-location` の config plugin は COARSE / FINE を無条件に追加し、オプションで抑止できない。したがって `npx expo config --json` の introspection では `android.permissions` に FINE が現れ続けるが、これは plugin による再追加であって `app.json` の宣言ではない。実際の除去は `blockedPermissions` が merged manifest に出力する `tools:node="remove"` によって行われる（同ファイルの `RECORD_AUDIO` / `SYSTEM_ALERT_WINDOW` と同じ機構）。`expo-location` の Android 実装は fine / coarse のいずれも無い場合にのみ権限不足と判定するため、COARSE 単独でも `getCurrentPositionAsync` は動作する想定である。
 
 ## 8. 公開までの道筋
 
@@ -172,7 +179,7 @@ Codex がこのリポジトリの開発を引き継ぐための現況・規約�
 - Google Sign-In の native error code 判定から型キャストを除去した。未知 Google User の規約同意 bypass はサーバー契約なしでは安全に閉じられないため、cfw トラックへ分離した
 - 検索画面テストの非同期更新を整理し、対象38件で React `act(...)` warning 0件を確認した
 - Shippori Mincho を package root ではなく400/500/700のweight subpathから読み込み、未使用600/800フォントをAndroid bundleから除外した
-- Android manifest設定として foreground位置情報を明示し、`RECORD_AUDIO` / `SYSTEM_ALERT_WINDOW` を `tools:node="remove"`、image pickerのmicrophone permissionを無効化した。Native handlerのない `/verify-email` App Linkを削除し、`/password-reset/confirm` のみ維持した
+- Android manifest設定として foreground位置情報を明示し、`RECORD_AUDIO` / `SYSTEM_ALERT_WINDOW` を `tools:node="remove"`、image pickerのmicrophone permissionを無効化した。Native handlerのない `/verify-email` App Linkを削除し、`/password-reset/confirm` のみ維持した（位置情報権限はその後見直し、`ACCESS_FINE_LOCATION` を `blockedPermissions` へ移して除外した。現行の権限構成は §7 D 末尾の注記を正とする）
 - RevenueCatの外部決済認証復帰対策としてcustom config pluginで`MainActivity.launchMode=singleTop`を固定した。Sentry Debug ID source map対応の`metro.config.js`も追加した
 - Expo SDK 56のpatch依存を`expo install --fix`で整合し、`expo-doctor` 21/21を達成した。`openapi-typescript@7.13.0`のpeerがTypeScript 5系のため、TypeScriptは`~5.9.3`を維持し、`expo.install.exclude`へ理由付きで追加した。安全な`npm audit fix`でhigh severityは解消した
 
@@ -196,7 +203,7 @@ cfw は引き続き読み取り専用で、Native 側から変更していない
 - `npm test -- --runInBand`: 344 suites / 5,807 tests全成功
 - `npm run test:coverage -- --runInBand`: 同じ5,807 tests全成功。Statements 91.61% / Branches 84.34% / Functions 87.61% / Lines 92.46%
 - `npx expo export --platform android --clear`: 成功。2,646 modules / 90 assets。Shippori Minchoは400/500/700のみ
-- Expo config introspection: `MainActivity=singleTop`、COARSE/FINE位置情報あり、`RECORD_AUDIO` / `SYSTEM_ALERT_WINDOW`はremove指定、App Linkは`/password-reset/confirm`のみ
+- Expo config introspection: `MainActivity=singleTop`、COARSE/FINE位置情報あり、`RECORD_AUDIO` / `SYSTEM_ALERT_WINDOW`はremove指定、App Linkは`/password-reset/confirm`のみ（この時点のスナップショット。FINE はその後 `blockedPermissions` により manifest から除外された。§7 D 末尾の注記を参照）
 - Gradle `app:processReleaseMainManifest`: `SENTRY_DISABLE_AUTO_UPLOAD=true`の監査用ローカル実行で成功。merged release manifestは上記permission、`singleTop`、App Linkを確認済み
 - `npm audit --omit=dev`: high 0、moderate 14。Expo config toolingの`xcode → uuid`由来で、提示されるforce fixは`expo-splash-screen`をSDK 55へ破壊的downgradeするため未適用
 - `git diff --check`: 成功
@@ -277,7 +284,7 @@ cfw は引き続き読み取り専用で、Native 側から変更していない
 
 本節はこの文書における品質ゲート数値の唯一の最新情報源である。§4・§10・§10.1・§11.1 に記載された数値はいずれもそのセッション時点で固定されたスナップショットであり、以後更新しない。今後さらに再測定する場合も、新しい `### 12.5` 等の節を追加するのではなく、本節の数値をその場で上書きすること（分散を防ぐため）。
 
-- 計測時点のコミット: `5da505623d78a350cc5a10a2242c7a85f4cb15ec`（`docs: テストが欠陥検出できることを確認するルールを追記`。この文書自身の更新コミットは計測後に作成されるため、実際の HEAD はこれよりわずかに新しくなり得る — 構造上の制約であり実害はない）
+- 計測時点のコミット: `4085bb03084e4d96f350fce741f0e3a4529697b5`（Android 位置情報権限の除外作業時に再計測。数値は前回計測（`5da5056`）から変化なし。この文書自身の更新コミットは計測後に作成されるため、実際の HEAD はこれよりわずかに新しくなり得る — 構造上の制約であり実害はない）
 - 作業ツリー: クリーン（`git status --short` 出力なし。本文書の更新のみ後続でコミットする）
 - `npx tsc --noEmit`: エラー **0**
 - `npm run lint`: エラー **0** / 警告 **0**
