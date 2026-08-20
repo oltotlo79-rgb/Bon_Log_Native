@@ -9,11 +9,12 @@ import React, { useCallback } from 'react';
 import {
   View,
   Text,
-  ScrollView,
+  FlatList,
   StyleSheet,
   Pressable,
   Alert,
   ActivityIndicator,
+  type ListRenderItemInfo,
 } from 'react-native';
 import { router, useLocalSearchParams } from 'expo-router';
 import { Image } from 'expo-image';
@@ -168,6 +169,15 @@ export default function BonsaiDetailScreen() {
     [isOnline, id, deleteRecord, showToast]
   );
 
+  const renderRecordItem = useCallback(
+    ({ item }: ListRenderItemInfo<RecordItem>) => (
+      <GrowthRecordItem record={item} bonsaiId={id} onDelete={handleDeleteRecord} />
+    ),
+    [id, handleDeleteRecord]
+  );
+
+  const keyExtractorRecord = useCallback((item: RecordItem) => item.id, []);
+
   const handleShowMenu = useCallback(() => {
     Alert.alert('メニュー', undefined, [
       {
@@ -188,6 +198,43 @@ export default function BonsaiDetailScreen() {
       void fetchNextPage();
     }
   }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
+
+  const renderRecordsEmpty = useCallback(() => {
+    if (isRecordsLoading) {
+      return (
+        <ActivityIndicator size="small" color={colorActionPrimary} style={styles.recordsSpinner} />
+      );
+    }
+    return (
+      <View style={styles.emptyRecords}>
+        <Text style={styles.emptyRecordsTitle}>記録がまだありません</Text>
+        <Text style={styles.emptyRecordsDesc}>
+          「+ 追加」をタップして最初の記録をつけましょう。
+        </Text>
+      </View>
+    );
+  }, [isRecordsLoading]);
+
+  const renderRecordsFooter = useCallback(() => {
+    if (allRecords.length === 0) return null;
+    return (
+      <>
+        {isFetchingNextPage && (
+          <ActivityIndicator size="small" color={colorActionPrimary} style={styles.recordsSpinner} />
+        )}
+        {hasNextPage && !isFetchingNextPage && (
+          <Pressable
+            onPress={handleLoadMoreRecords}
+            style={styles.loadMoreButton}
+            accessibilityRole="button"
+            accessibilityLabel="さらに記録を読み込む"
+          >
+            <Text style={styles.loadMoreText}>さらに読み込む</Text>
+          </Pressable>
+        )}
+      </>
+    );
+  }, [allRecords.length, isFetchingNextPage, hasNextPage, handleLoadMoreRecords]);
 
   if (isLoading) {
     return (
@@ -241,105 +288,76 @@ export default function BonsaiDetailScreen() {
         </Pressable>
       </View>
 
-      <ScrollView
+      <FlatList
+        data={allRecords}
+        keyExtractor={keyExtractorRecord}
+        renderItem={renderRecordItem}
+        ListHeaderComponent={
+          <>
+            {/* アイキャッチ画像 */}
+            {coverImageUrl !== null ? (
+              <Image
+                source={{ uri: coverImageUrl }}
+                style={styles.coverImage}
+                contentFit="cover"
+                transition={durationFast}
+                accessibilityLabel={`${bonsai.name}の画像`}
+              />
+            ) : (
+              <View style={styles.coverPlaceholder}>
+                <Ionicons
+                  name="leaf-outline"
+                  size={TREE_ICON_SIZE}
+                  color={colorTextSecondary}
+                  accessibilityElementsHidden
+                  importantForAccessibility="no"
+                />
+              </View>
+            )}
+
+            {/* 基本情報 */}
+            <View style={styles.infoSection}>
+              <Text style={styles.bonsaiName}>{bonsai.name}</Text>
+              {bonsai.species !== null && bonsai.species !== '' && (
+                <Text style={styles.species}>
+                  {bonsai.species}
+                </Text>
+              )}
+              {bonsai.acquiredAt !== null && (
+                <Text style={styles.acquiredAt}>
+                  取得日: {formatDate(bonsai.acquiredAt)}
+                </Text>
+              )}
+              {bonsai.description !== null && (
+                <Text style={styles.description}>
+                  {bonsai.description}
+                </Text>
+              )}
+            </View>
+
+            <View style={styles.separator} />
+
+            {/* 成長記録セクション見出し */}
+            <View style={styles.recordsHeader}>
+              <Text style={styles.recordsSectionTitle}>成長記録</Text>
+              <Pressable
+                onPress={() => router.push(routeBonsaiRecordNew(id))}
+                accessibilityRole="button"
+                accessibilityLabel="記録を追加"
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Text style={styles.addRecordText}>+ 記録を追加</Text>
+              </Pressable>
+            </View>
+          </>
+        }
+        ListEmptyComponent={renderRecordsEmpty}
+        ListFooterComponent={renderRecordsFooter}
         contentContainerStyle={[
           styles.scrollContent,
           { paddingBottom: insets.bottom + spacing6 },
         ]}
-      >
-        {/* アイキャッチ画像 */}
-        {coverImageUrl !== null ? (
-          <Image
-            source={{ uri: coverImageUrl }}
-            style={styles.coverImage}
-            contentFit="cover"
-            transition={durationFast}
-            accessibilityLabel={`${bonsai.name}の画像`}
-          />
-        ) : (
-          <View style={styles.coverPlaceholder}>
-            <Ionicons
-              name="leaf-outline"
-              size={TREE_ICON_SIZE}
-              color={colorTextSecondary}
-              accessibilityElementsHidden
-              importantForAccessibility="no"
-            />
-          </View>
-        )}
-
-        {/* 基本情報 */}
-        <View style={styles.infoSection}>
-          <Text style={styles.bonsaiName}>{bonsai.name}</Text>
-          {bonsai.species !== null && bonsai.species !== '' && (
-            <Text style={styles.species}>
-              {bonsai.species}
-            </Text>
-          )}
-          {bonsai.acquiredAt !== null && (
-            <Text style={styles.acquiredAt}>
-              取得日: {formatDate(bonsai.acquiredAt)}
-            </Text>
-          )}
-          {bonsai.description !== null && (
-            <Text style={styles.description}>
-              {bonsai.description}
-            </Text>
-          )}
-        </View>
-
-        <View style={styles.separator} />
-
-        {/* 成長記録セクション */}
-        <View style={styles.recordsSection}>
-          <View style={styles.recordsHeader}>
-            <Text style={styles.recordsSectionTitle}>成長記録</Text>
-            <Pressable
-              onPress={() => router.push(routeBonsaiRecordNew(id))}
-              accessibilityRole="button"
-              accessibilityLabel="記録を追加"
-              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            >
-              <Text style={styles.addRecordText}>+ 記録を追加</Text>
-            </Pressable>
-          </View>
-
-          {isRecordsLoading ? (
-            <ActivityIndicator size="small" color={colorActionPrimary} style={styles.recordsSpinner} />
-          ) : allRecords.length === 0 ? (
-            <View style={styles.emptyRecords}>
-              <Text style={styles.emptyRecordsTitle}>記録がまだありません</Text>
-              <Text style={styles.emptyRecordsDesc}>
-                「+ 追加」をタップして最初の記録をつけましょう。
-              </Text>
-            </View>
-          ) : (
-            <>
-              {allRecords.map((record) => (
-                <GrowthRecordItem
-                  key={record.id}
-                  record={record}
-                  bonsaiId={id}
-                  onDelete={() => handleDeleteRecord(record.id)}
-                />
-              ))}
-              {isFetchingNextPage && (
-                <ActivityIndicator size="small" color={colorActionPrimary} style={styles.recordsSpinner} />
-              )}
-              {hasNextPage && !isFetchingNextPage && (
-                <Pressable
-                  onPress={handleLoadMoreRecords}
-                  style={styles.loadMoreButton}
-                  accessibilityRole="button"
-                  accessibilityLabel="さらに記録を読み込む"
-                >
-                  <Text style={styles.loadMoreText}>さらに読み込む</Text>
-                </Pressable>
-              )}
-            </>
-          )}
-        </View>
-      </ScrollView>
+      />
 
       <Toast message={toast.message} visible={toast.visible} variant={toast.variant} onHide={hideToast} />
     </View>
@@ -353,10 +371,14 @@ export default function BonsaiDetailScreen() {
 type GrowthRecordItemProps = {
   record: RecordItem;
   bonsaiId: string;
-  onDelete: () => void;
+  onDelete: (recordId: string) => void;
 };
 
-function GrowthRecordItem({ record, bonsaiId, onDelete }: GrowthRecordItemProps) {
+const GrowthRecordItem = React.memo(function GrowthRecordItem({
+  record,
+  bonsaiId,
+  onDelete,
+}: GrowthRecordItemProps) {
   const handleMenu = useCallback(() => {
     Alert.alert('記録のメニュー', undefined, [
       {
@@ -366,7 +388,7 @@ function GrowthRecordItem({ record, bonsaiId, onDelete }: GrowthRecordItemProps)
       {
         text: '削除する',
         style: 'destructive',
-        onPress: onDelete,
+        onPress: () => onDelete(record.id),
       },
       { text: 'キャンセル', style: 'cancel' },
     ]);
@@ -413,7 +435,7 @@ function GrowthRecordItem({ record, bonsaiId, onDelete }: GrowthRecordItemProps)
       </View>
     </View>
   );
-}
+});
 
 // ---------------------------------------------------------------------------
 // ユーティリティ
@@ -505,13 +527,11 @@ const styles = StyleSheet.create({
     marginHorizontal: spacing4,
     marginVertical: spacing4,
   },
-  recordsSection: {
-    paddingHorizontal: spacing4,
-  },
   recordsHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    paddingHorizontal: spacing4,
     marginBottom: spacing4,
   },
   recordsSectionTitle: {
@@ -524,10 +544,12 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   recordsSpinner: {
+    paddingHorizontal: spacing4,
     marginVertical: spacing4,
   },
   emptyRecords: {
     alignItems: 'center',
+    paddingHorizontal: spacing4,
     paddingVertical: spacing8,
     gap: spacing2,
   },
@@ -543,6 +565,7 @@ const styles = StyleSheet.create({
   },
   loadMoreButton: {
     alignItems: 'center',
+    paddingHorizontal: spacing4,
     paddingVertical: spacing4,
     minHeight: 44,
   },
@@ -555,6 +578,7 @@ const styles = StyleSheet.create({
 const recordStyles = StyleSheet.create({
   container: {
     flexDirection: 'row',
+    paddingHorizontal: spacing4,
     marginBottom: spacing4,
   },
   timelineCol: {
