@@ -106,13 +106,13 @@ Codex がこのリポジトリの開発を引き継ぐための現況・規約�
 - ジャンル2階層 UI（カテゴリ→個別ジャンルのチップ選択）の実機操作感
 - 大文字スキーム URL（例: `HTTPS://example.com`）の外部リンクタップ — `normalizeUrlScheme`（§12）適用後、Android 実機の `openBrowserAsync` で正しく解決されるかの確認
 - OpenAPI 1.37.0 対応（§13.1）: 検索の複数ジャンル選択チップ、相手ブロック時の専用表示、Google 新規登録の規約同意モーダルの実機操作感
-- **盆栽園マップの「現在地に移動」ボタン（精密位置情報の除外後・未検証）** — `ACCESS_FINE_LOCATION` を除外したビルドで、許可ダイアログの表示と現在地取得が成功するかを実機で確認する。現時点でこの確認は未実施である
+- **盆栽園マップの「現在地に移動」ボタン（精密位置情報の除外後・未検証）** — `ACCESS_FINE_LOCATION` を除外し、`ACCESS_COARSE_LOCATION` 単独となったビルドで、許可ダイアログの表示と現在地取得が成功するかを実機で確認する。現時点でこの確認は未実施である
 
 **Android 位置情報権限の現行構成（上記実機QA項目の前提）:**
 
-実装が使う精度は `components/shops/BonsaiMapView.tsx` の `handleLocationPress` における `Location.Accuracy.Balanced`（Android の `PRIORITY_BALANCED_POWER_ACCURACY`）のみで、`ACCESS_FINE_LOCATION` を必要とする経路はリポジトリ内に存在しない。そのため `app.json` の `android.permissions` は `ACCESS_COARSE_LOCATION` のみとし、`ACCESS_FINE_LOCATION` は `blockedPermissions` に加えた。
+実装が使う精度は `components/shops/BonsaiMapView.tsx` の `handleLocationPress` における `Location.Accuracy.Balanced`（Android の `PRIORITY_BALANCED_POWER_ACCURACY`）のみで、`ACCESS_FINE_LOCATION` を必要とする経路はリポジトリ内に存在しない。そのため `app.json` の `android.permissions` は `ACCESS_COARSE_LOCATION` のみとし、`ACCESS_FINE_LOCATION` は `blockedPermissions` に加えた（コミット `445a977`）。
 
-注意点として、`expo-location` の config plugin は COARSE / FINE を無条件に追加し、オプションで抑止できない。したがって `npx expo config --json` の introspection では `android.permissions` に FINE が現れ続けるが、これは plugin による再追加であって `app.json` の宣言ではない。実際の除去は `blockedPermissions` が merged manifest に出力する `tools:node="remove"` によって行われる（同ファイルの `RECORD_AUDIO` / `SYSTEM_ALERT_WINDOW` と同じ機構）。`expo-location` の Android 実装は fine / coarse のいずれも無い場合にのみ権限不足と判定するため、COARSE 単独でも `getCurrentPositionAsync` は動作する想定である。
+注意点として、`expo-location` の config plugin は COARSE / FINE を無条件に追加し、オプションで抑止できない。したがって `npx expo config --json` の introspection では `android.permissions` に FINE が現れ続けるが、これは plugin による再追加であって `app.json` の宣言ではない。実際の除去は `blockedPermissions` が merged manifest に出力する `tools:node="remove"` によって行われる（同ファイルの `RECORD_AUDIO` / `SYSTEM_ALERT_WINDOW` と同じ機構）。`expo-location` の Android 実装は fine / coarse のいずれも無い場合にのみ権限不足と判定するため、COARSE 単独でも `getCurrentPositionAsync` は動作する想定である。**ただし、`445a977` の変更後に `ACCESS_FINE_LOCATION` が実際の merged manifest から除去されたことは未検証であり、COARSE 単独で「現在地に移動」ボタンが動作することも Android 実機では未検証である。**
 
 ## 8. 公開までの道筋
 
@@ -125,8 +125,8 @@ Codex がこのリポジトリの開発を引き継ぐための現況・規約�
    - データセーフティ申告（Sentry・RevenueCat 等の実収集内容との一致）— 未実施。Play Console 側の作業
    - 審査用デモアカウントの準備 — 未確認
    - サンドボックス購入 → RevenueCat Webhook → DB 反映 → プレミアム機能解放の疎通確認 — 未確認
-4. EAS Build（production）→ Play 内部テスト → submit（計画書 Phase 5）
-5. 本番設定の確認: 環境変数（`EXPO_PUBLIC_*` は公開情報のみで秘密鍵を含まないこと）・EAS Secrets・RevenueCat ANDROID キー・Push（FCM）・Sentry の release 紐付け
+4. EAS Build（production）→ Play 内部テスト → submit（計画書 Phase 5）。特に `GOOGLE_SERVICES_JSON` が EAS builder 上で有効な絶対パスへ展開され、FCM を含むビルドになっていることを確認する（§10.1）
+5. 本番設定の確認: Sentry と FCM の基礎設定は完了済み（§10.1）。残る RevenueCat ANDROID キー等の整合、Sentry の release 紐付け、各外部サービスの実疎通を確認する。環境変数は `EXPO_PUBLIC_*` に秘密情報を含めない
 
 ## 9. Codex への作業手順
 
@@ -182,6 +182,8 @@ Codex がこのリポジトリの開発を引き継ぐための現況・規約�
 - Android manifest設定として foreground位置情報を明示し、`RECORD_AUDIO` / `SYSTEM_ALERT_WINDOW` を `tools:node="remove"`、image pickerのmicrophone permissionを無効化した。Native handlerのない `/verify-email` App Linkを削除し、`/password-reset/confirm` のみ維持した（位置情報権限はその後見直し、`ACCESS_FINE_LOCATION` を `blockedPermissions` へ移して除外した。現行の権限構成は §7 D 末尾の注記を正とする）
 - RevenueCatの外部決済認証復帰対策としてcustom config pluginで`MainActivity.launchMode=singleTop`を固定した。Sentry Debug ID source map対応の`metro.config.js`も追加した
 - Expo SDK 56のpatch依存を`expo install --fix`で整合し、`expo-doctor` 21/21を達成した。`openapi-typescript@7.13.0`のpeerがTypeScript 5系のため、TypeScriptは`~5.9.3`を維持し、`expo.install.exclude`へ理由付きで追加した。安全な`npm audit fix`でhigh severityは解消した
+- public リポジトリへ Firebase 設定を混入させないため、`google-services.json` を `.gitignore` に追加した（`f53d05c`）。`app.config.js` を新設し、`android.googleServicesFile` を `GOOGLE_SERVICES_JSON` から解決し、未設定時だけ `./google-services.json` へフォールバックする構成にした（`afd16af`）
+- `.mcp.json` に直書きされていた Supabase project-ref を `${SUPABASE_PROJECT_REF}` 参照へ変更した（`4085bb0`）。アプリの DB 接続を追加したものではなく、開発用 MCP 設定の環境変数化である
 
 **cfw relay 待ち（追加6トラック）:** `docs/plans/handoff-to-cfw-play-release-blockers-2026-07-14.md` を作成済み。731行の自己完結依頼書で、現状file:line、要求、受入条件、必須test、OpenAPI影響、handback要件を記載している。
 
@@ -208,16 +210,18 @@ cfw は引き続き読み取り専用で、Native 側から変更していない
 - `npm audit --omit=dev`: high 0、moderate 14。Expo config toolingの`xcode → uuid`由来で、提示されるforce fixは`expo-splash-screen`をSDK 55へ破壊的downgradeするため未適用
 - `git diff --check`: 成功
 
-**Native repo外・外部設定の公開ブロッカー:**
+**Native repo外・外部設定の公開ブロッカー（2026-07-14 時点の記録を残し、各項目に現状を追記）:**
 
-- production EAS環境に`EXPO_PUBLIC_SENTRY_DSN`、`SENTRY_ORG`、`SENTRY_PROJECT`が不足している。Metro設定導入後の通常Gradle releaseはsource map uploadで失敗することを再現済み
-- `android.googleServicesFile`と`google-services.json`がなく、FCM standalone Pushは未完成。EAS file secret等で安全に注入して実機確認する
+- **当時:** production EAS環境に`EXPO_PUBLIC_SENTRY_DSN`、`SENTRY_ORG`、`SENTRY_PROJECT`が不足している。Metro設定導入後の通常Gradle releaseはsource map uploadで失敗することを再現済み。**現状:** production 環境へ `EXPO_PUBLIC_SENTRY_DSN`、`SENTRY_ORG=bon-log`、`SENTRY_PROJECT=bonsai-sns`、`SENTRY_AUTH_TOKEN` を登録済みで、この Native アプリは Web 版と同じ Sentry プロジェクトを共有する方針である
+- **当時:** `android.googleServicesFile`と`google-services.json`がなく、FCM standalone Pushは未完成。EAS file secret等で安全に注入して実機確認する。**現状:** Firebase プロジェクト `bon-log-7c7d1` を作成し、Android package name `com.bonlog.app` の `google-services.json` を取得してリポジトリ直下へ配置済み（`.gitignore` 対象）。`GOOGLE_SERVICES_JSON` は EAS の production / preview / development 全環境へ file 型・visibility `sensitive` で登録済みで、`eas env:pull` では `.eas/.env/` 配下へ展開され環境変数値が絶対パスになることまで疎通確認済みである。リポジトリ側の解決方法は上記 `f53d05c` / `afd16af` を正とし、FCM の設定不足は解消済みである
 - production EAS環境のRevenueCat Android public key、Google Web client ID等を確定し、RevenueCat dashboard / webhook / Play product・base planを整合する
-- Bon_Log専用Android small notification iconがない。既存`android-icon-monochrome.png`はExpo雛形ロゴのため使用せず、白＋透明の専用assetを作成して`expo-notifications.icon`へ設定する
+- **当時:** Bon_Log専用Android small notification iconがない。既存`android-icon-monochrome.png`はExpo雛形ロゴのため使用せず、白＋透明の専用assetを作成して`expo-notifications.icon`へ設定する。**現状:** `assets/images/notification-icon.png` を追加し、`expo-notifications.icon` に設定済み（`d87e4ee`）。この未解決項目は解消済みである
 - Play App Signing証明書を含む`assetlinks.json`のApp Link検証、Play sandbox購入・restore・pending・cancel・expire・refund、Data Safety、account deletion URL、Content Rating / UGC、審査用account、production AAB、内部テスト、submitが残る
 - Maestro CLIはローカル環境に無く、実機E2Eは未実行
 
-上記外部ブロッカーとcfw 6トラックが解消するまでは、コード品質ゲートが緑でも「Google Play提出可能」と判定しない。
+**未検証の警告:** `eas env:pull` によるローカル疎通は済んでいるが、EAS builder 上で `GOOGLE_SERVICES_JSON` が実際にどのパスへ展開されるかは未検証である。builder 上で `GOOGLE_SERVICES_JSON` または解決後の `android.googleServicesFile` が設定として届かない場合、Expo config plugin の `setGoogleServicesFile` は無言で `false` を返し得るため、FCM が動かないビルドでも「成功」してしまう。production build では resolved Expo config と生成物を確認し、FCM 実機 Push まで疎通すること。
+
+2026-07-14 当時は上記外部ブロッカーと cfw 6トラックが解消するまで「Google Play提出可能」と判定しない方針だった。現状は cfw 6トラック（§13.1）、Sentry 環境変数、FCM 基礎設定、専用通知アイコンまで解消済みだが、前段の EAS builder / FCM 実機検証と、現在も未完了と記した RevenueCat・Play Console・実機 E2E 等が残るため、引き続きコード品質ゲートだけでは提出可能と判定しない。
 
 ## 11. 2026-07-27 セッション: Google Play 公開直前の最終是正（品質ゲート実測値の更新）
 
@@ -250,6 +254,8 @@ cfw は引き続き読み取り専用で、Native 側から変更していない
 `.maestro/` を 3 フローから **10 フロー**へ拡充した: ログイン (`00_login.yaml`) / フィード空状態 (`01_feed_empty_state.yaml`) / タブ遷移 (`02_tab_navigation.yaml`) / 新規投稿FAB (`03_fab_post_new.yaml`) / 投稿破棄 (`04_post_composer_discard.yaml`) / 通知空状態 (`05_notifications_empty_state.yaml`) / プロフィール・設定遷移 (`06_profile_and_settings_navigation.yaml`) / いいねトグル (`07_like_post_toggle.yaml`) / 通報フロー (`08_report_post_flow.yaml`) / ブロック確認ダイアログ (`09_block_user_confirm_dialog.yaml`)。通報・ブロックは Google Play UGC ポリシーの必須要件（`.claude/rules/store-compliance.md`）。ローカルに Maestro CLI が無く実機実行が未実施な点（§10.1 末尾参照）は変わらない。
 
 ### 11.5 意図的に見送った項目（バックログ）
+
+**2026-08-21 現状: 本バックログは解消済み。** `app/bonsai/[id]/index.tsx` の成長記録リストは `ScrollView` + `map` から `FlatList` へ移行し、`GrowthRecordItem` も `React.memo` 化した（コミット `c5ef955`）。現在の残タスクは §13.6 を正とする。以下は見送った当時の判断記録として残す。
 
 `app/bonsai/[id]/index.tsx` の成長記録リストが `ScrollView` + `map` で描画されており、`.claude/rules/components.md`（件数が有界でないリストは FlatList / FlashList を使う）に違反している。セッション開始前からの既存実装であり、詳細画面の構造変更は回帰リスクが高い。**実機 QA が未実施の段階で公開直前に触るのは危険**と判断し、今セッションでは見送った。実機確認が可能になってから着手すべきバックログとして記録する。
 
@@ -284,7 +290,7 @@ cfw は引き続き読み取り専用で、Native 側から変更していない
 
 本節はこの文書における品質ゲート数値の唯一の最新情報源である。§4・§10・§10.1・§11.1 に記載された数値はいずれもそのセッション時点で固定されたスナップショットであり、以後更新しない。今後さらに再測定する場合も、新しい `### 12.5` 等の節を追加するのではなく、本節の数値をその場で上書きすること（分散を防ぐため）。
 
-- 計測時点のコミット: `4085bb03084e4d96f350fce741f0e3a4529697b5`（Android 位置情報権限の除外作業時に再計測。数値は前回計測（`5da5056`）から変化なし。この文書自身の更新コミットは計測後に作成されるため、実際の HEAD はこれよりわずかに新しくなり得る — 構造上の制約であり実害はない）
+- 計測時点のコミット: `4085bb03084e4d96f350fce741f0e3a4529697b5`（`SUPABASE_PROJECT_REF` の環境変数化コミット。Android 位置情報権限の除外コミット `445a977` の直前に再計測し、数値は前回計測（`5da5056`）から変化なし。この文書自身の更新コミットは計測後に作成されるため、実際の HEAD はこれより新しくなる — 構造上の制約であり実害はない）。今回の文書同期では品質ゲートを再測定していないため、以下の数値は変更していない
 - 作業ツリー: クリーン（`git status --short` 出力なし。本文書の更新のみ後続でコミットする）
 - `npx tsc --noEmit`: エラー **0**
 - `npm run lint`: エラー **0** / 警告 **0**
@@ -334,8 +340,6 @@ Native 側の対応（コミット `eea157a`〜`aab16d7`）: 403 から受け取
 
 ### 13.6 残タスクの更新
 
-現時点でリポジトリ内に残るコード作業（実ファイルで裏取り済み）:
+従来ここに列挙していたリポジトリ内コード作業（盆栽詳細の `FlatList` 化、専用通知アイコン、`android.googleServicesFile` の設定）はすべて解消済みであり、**現時点で本節に残すリポジトリ内コード作業はない**。履歴と現在の設定はそれぞれ §11.5 と §10.1 を参照する。
 
-1. `app/bonsai/[id]/index.tsx:244,342` の `ScrollView` + `map`（`.claude/rules/components.md` 違反。§11.5 のとおり実機 QA 後のバックログとして受容済み。未着手のまま変わらず）
-2. `app.json` の `expo-notifications` プラグイン設定（66〜72行目）に `icon` が未設定（**専用アセット画像の作成が前提**。§10.1 の「Bon_Log専用Android small notification iconがない」から未解消）
-3. `app.json` に `android.googleServicesFile` の設定が無く、`google-services.json` もリポジトリに未配置（**ファイルの提供が前提**。§10.1 の「FCM standalone Pushは未完成」から未解消）
+残るのはコード実装ではなく、§7-D の merged manifest / COARSE 単独動作を含む実機 QA、および §10.1 の EAS builder 上の `GOOGLE_SERVICES_JSON` 展開確認・FCM 実機 Push・RevenueCat / Play Console 等の外部設定と疎通確認である。
